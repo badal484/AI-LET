@@ -38,8 +38,8 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
   }
 
   private resolveModelName(requested?: string): string {
-    if (!requested || requested.includes('mock') || requested.includes('gpt')) {
-      return 'gemini-2.5-flash-lite';
+    if (!requested || requested.includes('mock') || requested.includes('gpt') || requested.includes('gemini-2.5')) {
+      return 'gemini-3.1-flash-lite';
     }
     if (requested.startsWith('models/')) {
       return requested.replace('models/', '');
@@ -55,11 +55,20 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
     for (const m of nonSystemMessages) {
       const role: 'user' | 'model' = m.role === 'assistant' ? 'model' : 'user';
+      // Clean internal guardrail boundary tags and system injection wrappers
+      const cleanContent = m.content
+        .replace(/\[USER_MESSAGE_START\]\n?/gi, '')
+        .replace(/\n?\[USER_MESSAGE_END\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\]\n?/gi, '')
+        .replace(/\n?\[SYSTEM_MESSAGE_END\]/gi, '')
+        .trim();
+      if (!cleanContent) continue;
+
       const last = contents[contents.length - 1];
       if (last && last.role === role && last.parts[0]) {
-        last.parts[0].text += `\n\n${m.content}`;
+        last.parts[0].text += `\n\n${cleanContent}`;
       } else {
-        contents.push({ role, parts: [{ text: m.content }] });
+        contents.push({ role, parts: [{ text: cleanContent }] });
       }
     }
 
@@ -101,12 +110,23 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     try {
       const body = this.buildGeminiPayload(request);
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${this.apiKey}`;
-      const response = await fetch(url, {
+      let actualModel = modelName;
+      let url = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:generateContent?key=${this.apiKey}`;
+      let response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
+      if (!response.ok && response.status === 429 && actualModel !== 'gemini-flash-lite-latest') {
+        actualModel = 'gemini-flash-lite-latest';
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:generateContent?key=${this.apiKey}`;
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -114,7 +134,15 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       }
 
       const data: any = await response.json();
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const content = rawContent
+        .replace(/\[USER_MESSAGE_START\][\s\S]*?\[USER_MESSAGE_END\]\s*/gi, '')
+        .replace(/\[USER_MESSAGE_START\]/gi, '')
+        .replace(/\[USER_MESSAGE_END\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\][\s\S]*?\[SYSTEM_MESSAGE_END\]\s*/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_END\]/gi, '')
+        .trim();
       const finishReason = data.candidates?.[0]?.finishReason || 'STOP';
       const usage = data.usageMetadata || {};
       const latencyMs = Date.now() - startTime;
@@ -163,12 +191,23 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     try {
       const body = this.buildGeminiPayload(request);
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
-      const response = await fetch(url, {
+      let actualModel = modelName;
+      let url = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
+      let response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
+      if (!response.ok && response.status === 429 && actualModel !== 'gemini-flash-lite-latest') {
+        actualModel = 'gemini-flash-lite-latest';
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${actualModel}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      }
 
       if (!response.ok || !response.body) {
         const errorText = await response.text();
@@ -229,10 +268,19 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         }
       }
 
+      const sanitizedFullContent = accumulated
+        .replace(/\[USER_MESSAGE_START\][\s\S]*?\[USER_MESSAGE_END\]\s*/gi, '')
+        .replace(/\[USER_MESSAGE_START\]/gi, '')
+        .replace(/\[USER_MESSAGE_END\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\][\s\S]*?\[SYSTEM_MESSAGE_END\]\s*/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_END\]/gi, '')
+        .trim();
+
       yield {
         type: 'completed',
         id: generationId,
-        fullContent: accumulated,
+        fullContent: sanitizedFullContent,
         finishReason: 'stop',
         usage: lastUsage || {
           promptTokens: Math.ceil(request.messages.reduce((acc, m) => acc + m.content.length, 0) / 4),

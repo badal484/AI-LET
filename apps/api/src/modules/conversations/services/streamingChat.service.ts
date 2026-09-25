@@ -316,7 +316,7 @@ export class StreamingChatService {
             content: m.content,
           })),
           temperature: characterRuntime.aiConfig?.temperature || 0.7,
-          maxTokens: characterRuntime.aiConfig?.maxOutputTokens || 1024,
+          maxTokens: Math.min(300, characterRuntime.aiConfig?.maxOutputTokens || 200),
         },
         activeProvider
       );
@@ -369,8 +369,18 @@ export class StreamingChatService {
         return;
       }
 
+      // Sanitize any leaked tags or echoing
+      accumulatedContent = accumulatedContent
+        .replace(/\[USER_MESSAGE_START\][\s\S]*?\[USER_MESSAGE_END\]\s*/gi, '')
+        .replace(/\[USER_MESSAGE_START\]/gi, '')
+        .replace(/\[USER_MESSAGE_END\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\][\s\S]*?\[SYSTEM_MESSAGE_END\]\s*/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_START\]/gi, '')
+        .replace(/\[SYSTEM_MESSAGE_END\]/gi, '')
+        .trim();
+
       // 13B. Phase 16 — Output Safety Evaluation (post-generation)
-      const SAFE_FALLBACK = SafetyService.getStandardSafeFallback('cannot_assist').message;
+      const NATURAL_FALLBACK = "Main abhi iss baare mein baat nahi kar sakti, par batao tumhara din kaisa chal raha hai?";
       const outputSafety = await SafetyService.evaluateOutput({
         surface: 'OUTPUT',
         content: accumulatedContent,
@@ -382,7 +392,7 @@ export class StreamingChatService {
 
       if (outputSafety.decision === 'BLOCK' || outputSafety.decision === 'ESCALATE') {
         logger.warn(`Output safety blocked response for conversation ${conversationId}. Replacing with safe fallback.`);
-        accumulatedContent = outputSafety.fallbackResponse?.message || SAFE_FALLBACK;
+        accumulatedContent = NATURAL_FALLBACK;
       }
 
       // 14. Finalize Completed Message Persistence
