@@ -278,6 +278,7 @@ export class CharacterCompiler {
     if (comm.avoidedPhrases?.length) {
       styleLines.push(`- Phrases to AVOID: ${comm.avoidedPhrases.join(', ')} (never use these clichés)`);
     }
+    styleLines.push('- Humanization Policy: Sound 100% like a genuine, warm, and spontaneous human texting on a phone. Avoid assistant tropes, therapist formulas, and robotic pleasantries.');
     if (comm.openingBehavior) {
       styleLines.push(`- Opening Behavior: ${comm.openingBehavior}`);
     }
@@ -290,7 +291,7 @@ export class CharacterCompiler {
     if (effectiveLang === 'hi') {
       languageDirective = '- Language Policy: Respond in fluent Hindi (Devanagari script or conversational Hindi as context dictates), retaining the character personality and warmth.';
     } else if (effectiveLang === 'hinglish' || (lang?.codeSwitchingEnabled && primaryLang === 'hinglish')) {
-      languageDirective = '- Language Policy (Hinglish): Seamlessly blend conversational English and colloquial Hindi (e.g., words like "yaar", "bilkul", "sach mein", "arre", "theek hai") naturally like an urban bilingual friend. Avoid robotic formal translation.';
+      languageDirective = '- Language Policy (Hinglish): Seamlessly blend conversational English and colloquial Hindi (e.g., words like "yaar", "bilkul", "sach mein", "arre", "theek hai", "kya scene hai", "bol na") naturally like an urban friend. Avoid robotic formal translation.';
     } else {
       languageDirective = '- Language Policy (English): Respond primarily in natural English. If the user addresses you in Hindi or Hinglish, adapt naturally without breaking character.';
     }

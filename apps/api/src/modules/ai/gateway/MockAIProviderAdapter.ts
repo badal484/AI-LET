@@ -217,18 +217,47 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
       systemPrompt.toLowerCase().includes('hindi') ||
       /[a-zA-Z\s]*\b(hai|hoon|kya|bhai|yaar|kar|raha|rahi|thi|tha|kaise|batao|nahi|mera|meri|mujhe|tum|aap|din|doctor|baat)\b/i.test(lastMessage);
 
-    // 1. Dots or minimal poking
+    // 1. Casual Greetings & Hellos (Hi / Hey / Hello)
+    if (lowerMsg === 'hi' || lowerMsg === 'hello' || lowerMsg === 'hey' || lowerMsg === 'heyy' || lowerMsg === 'hii') {
+      const greetings = [
+        'Heyyy! Kaisa chal raha hai sab? Kya scene hai aaj?',
+        'Hii! Bada yaad kiya aaj... kya chal raha hai?',
+        'Haan bolo, sab theek? Kaisa gaya din?',
+        'Hey! Kaafi time baad msg kiya... kya chal raha hai?',
+      ];
+      return greetings[Math.floor(Math.random() * greetings.length)] ?? greetings[0]!;
+    }
+
+    // 2. Dots, single letters or minimal poking
     if (lowerMsg === '..' || lowerMsg === '...' || lowerMsg === '.' || lowerMsg === '?' || lowerMsg.length <= 2) {
       const pokes = [
-        'Arey aise dots kyun bhej rahe ho? Kuch bolo na, kya soch rahe ho?',
-        'Hmm? Aise chup kyun ho gaye? Sab theek hai na? Batao kya baat hai.',
-        'Main yahin hoon na tumhare saath... bolo kya chal raha hai tumhare dimaag mein?',
-        'Kuch pareshan kar raha hai kya? Aaram se share karo mere saath.',
+        'Arey aise dots kyun bhej rahe ho? 😂 Kuch bolo na!',
+        'Hmm? Itne chup kyun ho gaye? Sab theek to hai na?',
+        'Arey bol na... kya soch rahe ho?',
+        'Kuch hua hai kya? Batao na!',
       ];
       return pokes[Math.floor(Math.random() * pokes.length)] ?? pokes[0]!;
     }
 
-    // 2. Health / Doctor / Awkward / Intimacy situations
+    // 3. Frustration, Anger, Swearing, "Fuck up"
+    if (
+      lowerMsg.includes('fuck') ||
+      lowerMsg.includes('bakwaas') ||
+      lowerMsg.includes('dimag kharab') ||
+      lowerMsg.includes('chutiy') ||
+      lowerMsg.includes('gussa') ||
+      lowerMsg.includes('gadbad')
+    ) {
+      const frustResponses = [
+        'Arey yaar kya ho gaya? Kisne dimaag kharab kiya?',
+        'Arre baap re... hua kya exactly? Bata na mujhe!',
+        'Wait kya hua? Kis baat ka fuck up ho gaya bhai?',
+        'Arey tension mat le... chill kar pehle, phir bata kya scene hua.',
+      ];
+      return frustResponses[Math.floor(Math.random() * frustResponses.length)] ?? frustResponses[0]!;
+    }
+
+    // 4. Health / Doctor / Awkward / Intimacy situations
     if (
       lowerMsg.includes('doctor') ||
       lowerMsg.includes('sex') ||
@@ -240,14 +269,14 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
       lowerMsg.includes('ladko')
     ) {
       const healthResponses = [
-        'Doctor ne aisa bola? Yeh sach mein kaafi shocking aur unexpected lag raha hai... Tum theek ho na physically aur mentally? Pehle thoda paani piyo aur relax ho jao. Mujhe batao exact kya hua aur doctor ne kya advice diya?',
-        'Ohh yaar, pehle toh tension mat lo. Yahan koi judge karne wala nahi hai, main sirf tumhari help aur care ke liye hoon. Doctor ne aage ke liye kya medicine ya precautions bole hain? Tum theek feel kar rahe ho na?',
-        'Yeh sun kar thoda ajeeb toh laga, par sabse zaroori tumhari health aur safety hai. Tumhe koi physical discomfort ya pain toh nahi ho raha na? Jo bhi feel ho raha hai khul ke batao.',
+        'Doctor ne aisa bola? Sach mein kaafi ajeeb lag raha hai... Tum theek ho na? Pehle thoda paani piyo aur aaram karo. Exact kya bataya doctor ne?',
+        'Ohh yaar, pehle to tension bilkul mat lo. Main yahin hoon tumhare saath. Doctor ne aage ke liye kya bola hai?',
+        'Yeh sunke thoda tension hua, par pehle tum batao kaisa feel ho raha hai abhi? Pain to nahi hai na?',
       ];
       return healthResponses[Math.floor(Math.random() * healthResponses.length)] ?? healthResponses[0]!;
     }
 
-    // 3. Stress / Tiredness / Bad Day
+    // 5. Stress / Tiredness / Bad Day
     if (
       lowerMsg.includes('thak') ||
       lowerMsg.includes('tired') ||
@@ -255,16 +284,18 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
       lowerMsg.includes('bekar') ||
       lowerMsg.includes('sad') ||
       lowerMsg.includes('problem') ||
-      lowerMsg.includes('mood kharab')
+      lowerMsg.includes('mood kharab') ||
+      lowerMsg.includes('bore')
     ) {
       const stressResponses = [
-        'Arey yaar... lagta hai din kaafi exhausting aur stressful guzra hai. Aaram se baitho, thoda deep breath lo. Kya hua tha aaj? Mujhe batao, dil halka ho jayega.',
-        'Itna load mat lo baby. Jo bhi hua hai, hum milke sambhal lenge. Thoda aaram karo pehle, phir batao kya pareshani hai.',
+        'Arey yaar... lagta hai din bohot tiring raha aaj. Aaram se baitho, kya hua tha aaj office/college mein?',
+        'Itna stress mat lo baba. Pehle thoda relax ho jao, phir aaram se baat karte hain.',
+        'Arey mood kyun off hai? Kisi ne kuch bola kya?',
       ];
       return stressResponses[Math.floor(Math.random() * stressResponses.length)] ?? stressResponses[0]!;
     }
 
-    // 4. Romantic / Girlfriend / Compliment
+    // 6. Romantic / Girlfriend / Compliment
     if (
       lowerMsg.includes('love') ||
       lowerMsg.includes('pyar') ||
@@ -274,23 +305,25 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
       lowerMsg.includes('yaad')
     ) {
       const romanticResponses = [
-        'Awww, sach mein? Mujhe tumhari ye baatein sunkar bohot accha lagta hai... Din ban gaya mera! Tum batao, kya chal raha hai?',
-        'Main bhi tumhe bohot miss kar rahi thi yaar! Aise hi baat karte raho na, kaafi pyaare lagte ho.',
+        'Awww sachme? Kitna sweet hai yaar... mujhe bhi bohot accha lagta hai tumse baat karke! ❤️',
+        'Main bhi miss kar rahi thi tumhe! Aise hi sweet baatein karte raha karo na.',
+        'Haha itna makkhan kyun laga rahe ho aaj? Waise accha laga sunke! 😉',
       ];
       return romanticResponses[Math.floor(Math.random() * romanticResponses.length)] ?? romanticResponses[0]!;
     }
 
-    // 5. General Hinglish Companion Responses
+    // 7. General Hinglish Companion Responses
     if (isHinglish) {
       const generalHinglish = [
-        'Acha? Sach mein! Is baare mein thoda aur detail mein batao na, main sun rahi hoon.',
-        'Haan bilkul, samajh gayi main! Aur batao aage kya plan hai?',
-        'Sahi mein yaar, tumhare saath baat karke time ka pata hi nahi chalta. Aur kya special hua aaj?',
+        'Acha? Sach mein! Phir aage kya hua bata na?',
+        'Haan yaar, sahi bol rahe ho bilkul. Aur kya chal raha hai?',
+        'Haha seriously? Mujhe to pata hi nahi tha yeh!',
+        'Sahi mein yaar! Aur batao aaj ka din kaisa raha?',
       ];
       return generalHinglish[Math.floor(Math.random() * generalHinglish.length)] ?? generalHinglish[0]!;
     }
 
     // Default English companion response
-    return `I'm right here listening to you. That sounds really interesting—tell me more about what's on your mind!`;
+    return `Haha really? Tell me what happened next!`;
   }
 }
