@@ -17,6 +17,7 @@ import {
 import { MockAIProviderAdapter } from './MockAIProviderAdapter.js';
 import { OpenAIProviderAdapter } from './OpenAIProviderAdapter.js';
 import { AnthropicProviderAdapter } from './AnthropicProviderAdapter.js';
+import { GoogleAIProviderAdapter } from './GoogleAIProviderAdapter.js';
 
 export class AIGatewayError extends AppError {
   public readonly failureType: AIFailureType;
@@ -47,6 +48,7 @@ export class AIGateway {
     this.registerAdapter(new MockAIProviderAdapter());
     this.registerAdapter(new OpenAIProviderAdapter());
     this.registerAdapter(new AnthropicProviderAdapter());
+    this.registerAdapter(new GoogleAIProviderAdapter());
   }
 
   public static getInstance(): AIGateway {
