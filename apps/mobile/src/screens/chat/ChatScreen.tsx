@@ -14,6 +14,7 @@ import {
   ImageBackground,
   Modal,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -303,15 +304,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       style={styles.backgroundImage}
       resizeMode="cover"
     >
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
       <View style={styles.backgroundScrim} />
 
       <KeyboardAvoidingView
-        style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+        style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
-        {/* Top App Bar */}
-        <View style={styles.header}>
+        {/* Top App Bar with safe area paddingTop for edge-to-edge */}
+        <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 4 : 12 }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={navigation.goBack}

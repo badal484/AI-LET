@@ -1,6 +1,8 @@
 package com.aicompanionmobile
 
+import android.graphics.Color
 import android.os.Bundle
+import androidx.core.view.WindowCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -10,6 +12,9 @@ class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    window.statusBarColor = Color.TRANSPARENT
+    window.navigationBarColor = Color.TRANSPARENT
   }
 
   /**

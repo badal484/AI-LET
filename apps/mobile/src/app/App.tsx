@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
@@ -161,6 +161,11 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
+          <StatusBar
+            barStyle="light-content"
+            translucent
+            backgroundColor="transparent"
+          />
           <AppContent />
           <Toast />
         </SafeAreaProvider>
