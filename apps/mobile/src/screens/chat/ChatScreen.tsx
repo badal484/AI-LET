@@ -337,9 +337,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           styles.container,
           {
             paddingBottom:
-              keyboardHeight > 0
-                ? keyboardHeight
-                : Math.max(insets.bottom, 8),
+              Platform.OS === 'ios'
+                ? (keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 8))
+                : (keyboardHeight > 0 ? 4 : Math.max(insets.bottom, 8)),
           },
         ]}
       >
