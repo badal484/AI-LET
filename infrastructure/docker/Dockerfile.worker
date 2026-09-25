@@ -1,0 +1,53 @@
+# -----------------------------------------------------------------------------
+# Production Dockerfile for AI Companion Background Queue Worker Service
+# Multi-stage, non-root user, graceful job shutdown
+# -----------------------------------------------------------------------------
+
+FROM node:24-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
+
+# Stage 1: Dependencies & Builder
+FROM base AS builder
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
+COPY packages/ ./packages/
+COPY apps/api/ ./apps/api/
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @ai-companion/api run db:generate
+
+RUN pnpm --filter @ai-companion/types build && \
+    pnpm --filter @ai-companion/validation build && \
+    pnpm --filter @ai-companion/config build && \
+    pnpm --filter @ai-companion/utils build && \
+    pnpm --filter @ai-companion/api-client build && \
+    pnpm --filter @ai-companion/api build
+
+# Stage 2: Production Worker Runner
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV IS_WORKER_PROCESS=true
+
+RUN apk add --no-cache dumb-init
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/pnpm-lock.yaml ./
+COPY --from=builder --chown=nodejs:nodejs /app/pnpm-workspace.yaml ./
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/packages ./packages
+COPY --from=builder --chown=nodejs:nodejs /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=nodejs:nodejs /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder --chown=nodejs:nodejs /app/apps/api/prisma ./apps/api/prisma
+
+USER nodejs
+
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "apps/api/dist/worker.js"]

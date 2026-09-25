@@ -1,0 +1,68 @@
+name: Production Canary Deployment & Rollout
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      canary_percentage:
+        description: 'Initial Canary Traffic Percentage (e.g., 5, 10, 25, 100)'
+        required: true
+        default: '10'
+
+jobs:
+  deploy-production:
+    name: Production Canary Deployment
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js v24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Clean Production Build
+        run: pnpm build
+
+      - name: Run Database Migrations
+        run: pnpm --filter @ai-companion/api run db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+
+      # No canary rollout mechanism (image push, traffic split, automated rollback) is implemented yet.
+      # Refuse to report a production deployment as successful until one exists, instead of echoing
+      # a passed "health gate" that measured nothing.
+      - name: Canary Rollout
+        run: |
+          echo "::error::Production canary rollout (${{ github.event.inputs.canary_percentage || '10' }}%) is not implemented: no deploy target or traffic-shifting step is configured."
+          exit 1
+
+      - name: Production Health Gate
+        env:
+          PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
+        run: |
+          if [ -z "$PRODUCTION_API_URL" ]; then
+            echo "::error::PRODUCTION_API_URL is not configured."
+            exit 1
+          fi
+          for i in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 5 "$PRODUCTION_API_URL/health/ready"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Production did not become ready."
+          exit 1

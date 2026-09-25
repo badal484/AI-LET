@@ -1,0 +1,41 @@
+{
+  "name": "ai-companion-platform-root",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production AI Companion Platform Monorepo",
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "dev:api": "pnpm --filter @ai-companion/api run dev",
+    "dev:admin": "pnpm --filter @ai-companion/admin run dev",
+    "dev:mobile": "pnpm --filter @ai-companion/mobile run start",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "test": "pnpm -r run test",
+    "test:load:social": "k6 run infrastructure/load-tests/social.k6.js",
+    "db:migrate:deploy": "pnpm --filter @ai-companion/api exec prisma migrate deploy",
+    "db:seed": "pnpm --filter @ai-companion/api db:seed",
+    "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
+    "clean": "pnpm -r exec rm -rf dist build .next coverage node_modules && rm -rf node_modules pnpm-lock.yaml"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^9.21.0",
+    "prettier": "^3.5.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "dependencies": {
+    "react-native-gesture-handler": "2.20.2",
+    "react-native-screens": "4.1.0"
+  }
+}

@@ -1,0 +1,63 @@
+name: Staging Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging Environment
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js v24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `migrate deploy` only applies committed migrations (never `migrate dev`/`db push`, which can
+      # generate or reset schema). A failed migration fails the deployment.
+      - name: Run Database Migrations
+        run: pnpm --filter @ai-companion/api run db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+      - name: Build Production Containers
+        run: |
+          docker build -t ai-companion-api:staging -f infrastructure/docker/Dockerfile.api .
+          docker build -t ai-companion-worker:staging -f infrastructure/docker/Dockerfile.worker .
+          docker build -t ai-companion-admin:staging -f infrastructure/docker/Dockerfile.admin .
+
+      # NOTE: there is no image push / rollout step yet — the images above are built but not deployed.
+      # This gate therefore checks whatever is currently running at STAGING_API_URL and FAILS (rather
+      # than reporting success) if that URL is not configured or not healthy.
+      - name: Staging Health Gate
+        env:
+          STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+        run: |
+          if [ -z "$STAGING_API_URL" ]; then
+            echo "::error::STAGING_API_URL is not configured; cannot verify staging health."
+            exit 1
+          fi
+          for i in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 5 "$STAGING_API_URL/health/ready"; then
+              echo "Staging is ready."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Staging did not become ready at $STAGING_API_URL/health/ready"
+          exit 1

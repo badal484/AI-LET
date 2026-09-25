@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+.turbo
+coverage
+.next
+.expo
+android
+ios
+*.log
+*.lock
+package-lock.json

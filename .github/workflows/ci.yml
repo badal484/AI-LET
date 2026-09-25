@@ -1,0 +1,76 @@
+name: CI Quality & Verification Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: ai_companion_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js v24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint Check
+        run: pnpm lint
+
+      - name: Run Strict Typechecks
+        run: pnpm typecheck
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @ai-companion/api run db:generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/ai_companion_test?schema=public
+
+      - name: Run Test Suite
+        run: pnpm test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/ai_companion_test?schema=public
+          JWT_ACCESS_SECRET: test_jwt_access_secret_min_32_characters_for_ci
+          JWT_REFRESH_SECRET: test_jwt_refresh_secret_min_32_characters_for_ci
+
+      - name: Verify Build
+        run: pnpm build

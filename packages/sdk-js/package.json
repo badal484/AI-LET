@@ -1,0 +1,17 @@
+{
+  "name": "@ai-companion/sdk",
+  "version": "1.0.0",
+  "description": "Official TypeScript and JavaScript SDK for the AI Companion Developer Platform",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-companion/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

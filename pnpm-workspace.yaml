@@ -1,0 +1,17 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'infrastructure/*'
+
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  'prisma': true
+  'esbuild': true
+  'unrs-resolver': true
+  'argon2': true
+  'msgpackr-extract': false
+
+overrides:
+  '@types/react': '^18.3.18'
+  '@types/react-dom': '^18.3.5'

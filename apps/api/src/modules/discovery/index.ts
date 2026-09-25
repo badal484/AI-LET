@@ -1,0 +1,20 @@
+export { homeRouter } from './routes/home.routes.js';
+export { discoveryRouter } from './routes/discovery.routes.js';
+export { searchRouter } from './routes/search.routes.js';
+export { adminDiscoveryRouter } from './routes/adminDiscovery.routes.js';
+export { HomeFeedService } from './services/HomeFeedService.js';
+export { SearchService } from './search/SearchService.js';
+export { SearchIndexService } from './search/SearchIndexService.js';
+export { SearchQueryAnalyzer } from './search/SearchQueryAnalyzer.js';
+export { CatalogService } from './catalogs/CatalogService.js';
+export { CharacterEligibilityService } from './services/CharacterEligibilityService.js';
+export { CandidateGenerationService } from './recommendations/CandidateGenerationService.js';
+export { CharacterRankingService } from './ranking/CharacterRankingService.js';
+export { DiversificationService } from './ranking/DiversificationService.js';
+export { SimilarityService } from './services/SimilarityService.js';
+export { DiscoveryAdminService } from './services/DiscoveryAdminService.js';
+export { RecommendationEngine } from './recommendations/RecommendationEngine.js';
+export { TrendingEngine } from './ranking/TrendingEngine.js';
+export { SignalAggregationService } from './services/SignalAggregationService.js';
+export { CharacterDiscoveryEligibilityService } from './services/CharacterDiscoveryEligibilityService.js';
+

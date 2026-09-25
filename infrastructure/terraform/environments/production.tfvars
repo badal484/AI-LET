@@ -1,0 +1,17 @@
+environment                    = "production"
+aws_region                     = "us-east-1"
+app_name                       = "ai-companion"
+vpc_cidr                       = "10.0.0.0/16"
+availability_zones             = ["us-east-1a", "us-east-1b", "us-east-1c"]
+database_instance_class        = "db.r6g.2xlarge"
+database_allocated_storage     = 200
+database_max_allocated_storage = 2000
+redis_node_type                = "cache.r6g.xlarge"
+redis_num_cache_clusters       = 3
+api_task_cpu                   = 2048
+api_task_memory                = 4096
+api_min_instances              = 6
+api_max_instances              = 60
+worker_min_instances           = 4
+worker_max_instances           = 30
+domain_name                    = "aicompanion.app"

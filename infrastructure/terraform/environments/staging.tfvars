@@ -1,0 +1,17 @@
+environment                    = "staging"
+aws_region                     = "us-east-1"
+app_name                       = "ai-companion"
+vpc_cidr                       = "10.1.0.0/16"
+availability_zones             = ["us-east-1a", "us-east-1b"]
+database_instance_class        = "db.t4g.xlarge"
+database_allocated_storage     = 50
+database_max_allocated_storage = 200
+redis_node_type                = "cache.t4g.medium"
+redis_num_cache_clusters       = 2
+api_task_cpu                   = 1024
+api_task_memory                = 2048
+api_min_instances              = 2
+api_max_instances              = 10
+worker_min_instances           = 1
+worker_max_instances           = 4
+domain_name                    = "staging.aicompanion.app"

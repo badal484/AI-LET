@@ -1,0 +1,395 @@
+openapi: 3.0.3
+info:
+  title: AI Companion Developer Platform API
+  version: 1.0.0
+  description: Official public API for building AI companion experiences, characters, conversations, agents, and webhooks.
+servers:
+  - url: https://api.companion.ai/v1
+    description: Production API Server
+  - url: http://localhost:4000/v1
+    description: Local Development Server
+
+security:
+  - ApiKeyAuth: []
+  - OAuth2Auth: []
+
+paths:
+  /characters:
+    get:
+      summary: List published characters
+      description: Returns a cursor-paginated list of publicly discoverable AI characters.
+      operationId: listCharacters
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Characters retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicCharacter'
+                  has_more:
+                    type: boolean
+                  next_cursor:
+                    type: string
+    post:
+      summary: Create a character
+      description: Creates a new character owned by the developer account.
+      operationId: createCharacter
+      security:
+        - ApiKeyAuth: ['characters:write']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                tagline:
+                  type: string
+                description:
+                  type: string
+                avatarUrl:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Character created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PublicCharacter'
+
+  /characters/{id}:
+    get:
+      summary: Get character by ID
+      operationId: getCharacter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Character details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PublicCharacter'
+
+  /conversations:
+    post:
+      summary: Create conversation
+      description: Creates or retrieves an existing active conversation with a character.
+      operationId: createConversation
+      security:
+        - ApiKeyAuth: ['conversations:write']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - characterId
+              properties:
+                characterId:
+                  type: string
+                title:
+                  type: string
+      responses:
+        '200':
+          description: Conversation resolved or created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PublicConversation'
+
+    get:
+      summary: List conversations
+      operationId: listConversations
+      security:
+        - ApiKeyAuth: ['conversations:read']
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: after
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicConversation'
+                  has_more:
+                    type: boolean
+                  next_cursor:
+                    type: string
+
+  /conversations/{id}/messages:
+    post:
+      summary: Send message
+      description: Posts a user message and generates the character's assistant response (JSON or SSE stream).
+      operationId: createMessage
+      security:
+        - ApiKeyAuth: ['messages:write']
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                stream:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Assistant response (or SSE text/event-stream)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PublicMessage'
+            text/event-stream:
+              schema:
+                type: string
+
+    get:
+      summary: List messages in conversation
+      operationId: listMessages
+      security:
+        - ApiKeyAuth: ['conversations:read']
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Chronological message list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublicMessage'
+                  has_more:
+                    type: boolean
+                  next_cursor:
+                    type: string
+
+  /agent-tasks:
+    post:
+      summary: Spawn autonomous agent task
+      operationId: createAgentTask
+      security:
+        - ApiKeyAuth: ['agents:run']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - instruction
+              properties:
+                characterId:
+                  type: string
+                conversationId:
+                  type: string
+                instruction:
+                  type: string
+      responses:
+        '202':
+          description: Agent task accepted for execution
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                      steps_count:
+                        type: integer
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API-Key
+      description: Use sk_live_... or pk_live_... API key
+    OAuth2Auth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://api.companion.ai/oauth/authorize
+          tokenUrl: https://api.companion.ai/oauth/token
+          scopes:
+            characters:read: Read character metadata
+            characters:write: Manage project characters
+            conversations:read: Read conversation history
+            conversations:write: Create and manage conversations
+            messages:write: Send messages and receive replies
+            agents:run: Execute autonomous agent workflows
+
+  schemas:
+    PublicCharacter:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        description:
+          type: string
+        avatarUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        isNsfw:
+          type: boolean
+        totalConversations:
+          type: integer
+        totalMessages:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+
+    PublicConversation:
+      type: object
+      properties:
+        id:
+          type: string
+        characterId:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        unreadCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PublicMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        conversationId:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PublicApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string

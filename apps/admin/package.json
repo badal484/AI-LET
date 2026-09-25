@@ -1,0 +1,33 @@
+{
+  "name": "@ai-companion/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ai-companion/api-client": "workspace:*",
+    "@ai-companion/config": "workspace:*",
+    "@ai-companion/types": "workspace:*",
+    "@ai-companion/ui-tokens": "workspace:*",
+    "@ai-companion/utils": "workspace:*",
+    "@ai-companion/validation": "workspace:*",
+    "@tanstack/react-query": "^5.66.9",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
+    "next": "^15.1.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "eslint-config-next": "^15.1.7",
+    "typescript": "^5.7.3"
+  }
+}

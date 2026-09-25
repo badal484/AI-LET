@@ -1,0 +1,50 @@
+# -----------------------------------------------------------------------------
+# Production Dockerfile for AI Companion Admin Command Center (Next.js)
+# Multi-stage standalone output, non-root user
+# -----------------------------------------------------------------------------
+
+FROM node:24-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
+
+# Stage 1: Dependencies & Builder
+FROM base AS builder
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
+COPY packages/ ./packages/
+COPY apps/admin/ ./apps/admin/
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm --filter @ai-companion/types build && \
+    pnpm --filter @ai-companion/validation build && \
+    pnpm --filter @ai-companion/config build && \
+    pnpm --filter @ai-companion/ui-tokens build && \
+    pnpm --filter @ai-companion/utils build && \
+    pnpm --filter @ai-companion/api-client build && \
+    pnpm --filter @ai-companion/admin build
+
+# Stage 2: Production Runner
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/admin/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); })"
+
+CMD ["node", "apps/admin/server.js"]

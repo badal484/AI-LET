@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai_companion_prod_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-production_secure_db_password_123}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_companion_production}
+    ports:
+      - "5432:5432"
+    volumes:
+      - prod_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_admin -d ai_companion_production"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai_companion_prod_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-redis_production_password_123}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - prod_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_production_password_123}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: ai_companion_prod_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app_admin}:${POSTGRES_PASSWORD:-production_secure_db_password_123}@postgres:5432/${POSTGRES_DB:-ai_companion_production}?schema=public&connection_limit=25
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_production_password_123}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-production_jwt_access_secret_min_32_characters_long_123}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-production_jwt_refresh_secret_min_32_characters_long_123}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/Dockerfile.worker
+    container_name: ai_companion_prod_worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      IS_WORKER_PROCESS: "true"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app_admin}:${POSTGRES_PASSWORD:-production_secure_db_password_123}@postgres:5432/${POSTGRES_DB:-ai_companion_production}?schema=public&connection_limit=15
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_production_password_123}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  prod_postgres_data:
+  prod_redis_data:
