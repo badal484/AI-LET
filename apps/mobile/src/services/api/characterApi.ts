@@ -29,4 +29,35 @@ export class CharacterApi {
     const res = await client.get<ApiSuccessResponse<CharacterSummary>>(`/characters/${idOrSlug}`);
     return res.data.data;
   }
+
+  /**
+   * Create personalized custom AI companion.
+   */
+  public static async createCustomCompanion(input: {
+    name: string;
+    tagline?: string;
+    category?: string;
+    archetype?: string;
+    avatarUrl?: string;
+    coverImageUrl?: string;
+    domainFocus?: string;
+    personalityPrompt?: string;
+    traits?: {
+      warmth?: number;
+      playfulness?: number;
+      sarcasm?: number;
+      empathy?: number;
+      confidence?: number;
+    };
+    language?: 'hinglish' | 'en' | 'hi';
+    rules?: string[];
+    greeting?: string;
+  }): Promise<{ character: CharacterSummary; conversationId: string }> {
+    const client = ApiClient.getInstance();
+    const res = await client.post<ApiSuccessResponse<{ character: CharacterSummary; conversationId: string }>>(
+      '/characters/custom',
+      input,
+    );
+    return res.data.data;
+  }
 }

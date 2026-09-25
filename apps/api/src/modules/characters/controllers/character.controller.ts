@@ -30,4 +30,19 @@ export class CharacterController {
       next(err);
     }
   }
+
+  public static async createCustomCharacter(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ success: false, error: { message: 'Authentication required' } });
+        return;
+      }
+
+      const result = await CharacterService.createCustomUserCompanion(userId, req.body);
+      ApiResponse.success(res, result, 201);
+    } catch (err) {
+      next(err);
+    }
+  }
 }

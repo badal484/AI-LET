@@ -4,20 +4,33 @@ const ADMIN_API_URL = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:40
 
 let memoryAdminToken: string | null = null;
 
+export function getAdminToken(): string | null {
+  if (memoryAdminToken) return memoryAdminToken;
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('admin_access_token');
+  }
+  return null;
+}
+
 export function setMemoryAdminToken(token: string | null): void {
   memoryAdminToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('admin_access_token', token);
+    } else {
+      localStorage.removeItem('admin_access_token');
+    }
+  }
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getAdminToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string>),
   };
-
-  if (memoryAdminToken) {
-    headers['Authorization'] = `Bearer ${memoryAdminToken}`;
-  }
 
   const response = await fetch(`${ADMIN_API_URL}${endpoint}`, {
     ...options,

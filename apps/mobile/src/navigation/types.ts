@@ -23,6 +23,7 @@ export type RootStackParamList = {
     characterSlug?: string;
     initialPrompt?: string;
   };
+  CreateCharacter: undefined;
   CategoryBrowser: {
     categorySlug: string;
     categoryName?: string;

@@ -24,6 +24,7 @@ import { SocialFollowListScreen, SocialInboxScreen, SocialProfileScreen, SocialP
 import { CommunityScreen, SocialPrivacySettingsScreen } from '../features/social/screens/SocialSettingsScreens.js';
 import { ExperiencesScreen } from '../screens/experiences/ExperiencesScreen.js';
 import { KnowledgeDocumentsScreen } from '../screens/knowledge/KnowledgeDocumentsScreen.js';
+import { CreateCharacterScreen } from '../screens/creator/CreateCharacterScreen.js';
 import type { RootStackParamList } from './types.js';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -38,6 +39,7 @@ export const RootNavigator: React.FC = () => {
       initialRouteName="MainTabs"
     >
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen name="CreateCharacter" component={CreateCharacterScreen} />
       <Stack.Screen name="CharacterDetail" component={CharacterDetailScreen} />
       <Stack.Screen name="CreatorProfile" component={CreatorProfileScreen} />
       <Stack.Screen name="CategoryBrowser" component={CategoryBrowserScreen} />

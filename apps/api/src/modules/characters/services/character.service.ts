@@ -11,7 +11,7 @@ import type {
 } from '@ai-companion/types';
 import type { PublicCharacterQueryInput } from '@ai-companion/validation';
 import { CharacterRuntimeBuilder } from '../engine/runtime.js';
-import type { CompilationContext } from '../engine/compiler.js';
+import { CharacterCompiler, type CompilationContext } from '../engine/compiler.js';
 
 export class CharacterService {
   private static CACHE_TTL_SECONDS = SYSTEM_CONSTANTS.CACHE?.CHARACTER_TTL_SECONDS || 3600;
@@ -262,6 +262,213 @@ export class CharacterService {
       versionSnapshot,
       context,
     );
+  }
+
+  /**
+   * Creates a personalized AI companion for an authenticated user with full compiler setup & active conversation.
+   */
+  public static async createCustomUserCompanion(
+    userId: string,
+    input: {
+      name: string;
+      tagline?: string;
+      category?: string;
+      archetype?: string;
+      avatarUrl?: string;
+      coverImageUrl?: string;
+      domainFocus?: string;
+      personalityPrompt?: string;
+      traits?: {
+        warmth?: number;
+        playfulness?: number;
+        sarcasm?: number;
+        empathy?: number;
+        confidence?: number;
+      };
+      language?: 'hinglish' | 'en' | 'hi';
+      rules?: string[];
+      greeting?: string;
+    },
+  ): Promise<{ character: any; conversationId: string }> {
+    const name = input.name.trim();
+    let baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'companion';
+    let slug = baseSlug;
+    let counter = 1;
+    while (await prisma.character.findFirst({ where: { slug, deletedAt: null } })) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const internalKey = `user_char_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const avatarUrl =
+      input.avatarUrl ||
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';
+    const coverImageUrl = input.coverImageUrl || avatarUrl;
+    const category = input.category || 'friendship';
+    const tagline = input.tagline || `${input.archetype || 'Custom Companion'} tailored for you`;
+    const greeting = input.greeting || `Hey! I'm ${name}. What's on your mind today?`;
+
+    const identityData = {
+      name,
+      role: input.archetype || 'Companion',
+      occupation: input.archetype || 'Companion',
+      greetingMessage: greeting,
+      backstory: `${name} is a personalized companion. ${input.domainFocus || input.personalityPrompt || tagline}`,
+      personalitySummary: input.personalityPrompt || tagline,
+    };
+
+    const personalityData = {
+      traits: {
+        warmth: input.traits?.warmth ?? 85,
+        confidence: input.traits?.confidence ?? 80,
+        playfulness: input.traits?.playfulness ?? 75,
+        empathy: input.traits?.empathy ?? 90,
+        sarcasm: input.traits?.sarcasm ?? 25,
+      },
+    };
+
+    const communicationData = {
+      pacing: 'natural',
+      formality: 'casual',
+      emojiPolicy: 'moderate',
+    };
+
+    const languageData = {
+      primaryLanguage: input.language || 'hinglish',
+      fallbackLanguages: ['en', 'hi'],
+      codeSwitchingEnabled: true,
+    };
+
+    const behaviorRulesData = (input.rules || []).map((r, i) => ({
+      id: `rule-${i + 1}`,
+      type: 'DO',
+      ruleText: r,
+    }));
+    behaviorRulesData.push({
+      id: 'default-rule',
+      type: 'DO',
+      ruleText: `Stay in character as ${name}. Always be authentic, empathetic, and speak with natural conversational warmth.`,
+    });
+
+    const knowledgeData = input.domainFocus
+      ? [
+          {
+            id: 'kn-domain',
+            title: 'Domain Focus & Specialization',
+            content: input.domainFocus,
+          },
+        ]
+      : [];
+
+    const versionDraft = {
+      versionNumber: 1,
+      status: 'PUBLISHED' as const,
+      publishedAt: new Date(),
+      createdById: userId,
+      changeSummary: 'Initial custom companion build',
+      identityData,
+      personalityData,
+      communicationData,
+      languageData,
+      behaviorRulesData,
+      knowledgeData,
+      relationshipConfigData: {
+        familiaritySensitivity: 60,
+        affectionExpression: 'expressive',
+      },
+      memoryConfigData: {
+        memoryEnabled: true,
+      },
+      proactivityConfigData: {
+        enabled: true,
+      },
+      safetyConfigData: {
+        ageSuitability: 'TEEN_13_PLUS',
+      },
+      aiConfigData: {
+        preferredModelClass: 'creative',
+        temperature: 0.85,
+        maxOutputTokens: 400,
+      },
+    };
+
+    const compiled = CharacterCompiler.compile(versionDraft as any);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const createdChar = await tx.character.create({
+        data: {
+          name,
+          slug,
+          internalKey,
+          tagline,
+          shortDescription: tagline,
+          longDescription: input.domainFocus || tagline,
+          backstory: identityData.backstory,
+          avatarUrl,
+          coverImageUrl,
+          category,
+          archetype: input.archetype || 'Custom Companion',
+          age: 24,
+          gender: 'Female',
+          occupation: input.archetype || 'Companion',
+          status: 'PUBLISHED',
+          visibility: 'PUBLIC',
+          isFeatured: false,
+          sourceType: 'CREATOR',
+          moderationStatus: 'APPROVED',
+          accessType: 'free',
+          createdById: userId,
+        },
+      });
+
+      const version = await tx.characterVersion.create({
+        data: {
+          characterId: createdChar.id,
+          versionNumber: 1,
+          status: 'PUBLISHED',
+          publishedAt: new Date(),
+          createdById: userId,
+          changeSummary: 'Initial custom companion build',
+          identityData: identityData as any,
+          personalityData: personalityData as any,
+          communicationData: communicationData as any,
+          languageData: languageData as any,
+          behaviorRulesData: behaviorRulesData as any,
+          knowledgeData: knowledgeData as any,
+          relationshipConfigData: versionDraft.relationshipConfigData as any,
+          memoryConfigData: versionDraft.memoryConfigData as any,
+          proactivityConfigData: versionDraft.proactivityConfigData as any,
+          safetyConfigData: versionDraft.safetyConfigData as any,
+          aiConfigData: versionDraft.aiConfigData as any,
+          compiledPromptSnapshot: compiled.systemPrompt,
+        },
+      });
+
+      const updatedChar = await tx.character.update({
+        where: { id: createdChar.id },
+        data: {
+          currentPublishedVersionId: version.id,
+          currentVersionNumber: 1,
+        },
+      });
+
+      // Create initial conversation for this user and companion
+      const conv = await tx.conversation.create({
+        data: {
+          userId,
+          characterId: createdChar.id,
+          characterVersionId: version.id,
+          title: `Chat with ${name}`,
+          status: 'ACTIVE',
+        },
+      });
+
+      return {
+        character: updatedChar,
+        conversationId: conv.id,
+      };
+    });
+
+    return result;
   }
 
   /**

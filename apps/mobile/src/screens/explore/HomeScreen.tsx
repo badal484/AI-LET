@@ -234,6 +234,26 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
+        {/* Create Custom Companion Banner */}
+        <TouchableOpacity
+          style={styles.createCompanionBanner}
+          onPress={() => navigation.navigate('CreateCharacter')}
+          activeOpacity={0.88}
+        >
+          <View style={styles.createBannerLeft}>
+            <View style={styles.createSparkleIconBadge}>
+              <Text style={{ fontSize: 22 }}>✨</Text>
+            </View>
+            <View style={styles.createBannerTextCol}>
+              <Text style={styles.createBannerTitle}>Create Your Own AI Companion</Text>
+              <Text style={styles.createBannerSubtitle}>Customize avatar, personality, voice & domain</Text>
+            </View>
+          </View>
+          <View style={styles.createBannerBtn}>
+            <Text style={styles.createBannerBtnText}>+ Create</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Render 2-Column Category Grid Sections */}
         {sections.map((section: HomeFeedSection) => {
           return renderCategoryGridSection(section, handleOpenCharacter, handleOpenCategory);
@@ -634,5 +654,66 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#9CA3AF',
     fontWeight: '600',
+  },
+  createCompanionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E1535',
+    borderWidth: 1.5,
+    borderColor: '#7C3AED',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 14,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  createBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  createSparkleIconBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(124, 58, 237, 0.25)',
+    borderWidth: 1,
+    borderColor: '#A855F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createBannerTextCol: {
+    flex: 1,
+  },
+  createBannerTitle: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  createBannerSubtitle: {
+    fontSize: 11,
+    color: '#D8B4FE',
+    marginTop: 2,
+  },
+  createBannerBtn: {
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  createBannerBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
