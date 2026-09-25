@@ -58,16 +58,55 @@ export class AIOrchestrator {
   }
 
   public static getProvider(name: string): IAIProvider {
-    const provider = this.providers.get(name.toLowerCase());
-    if (!provider) {
-      const mock = this.providers.get('mock');
-      if (mock) {
-        logger.warn(`Provider ${name} not found, falling back to mock provider`);
-        return mock;
-      }
-      throw new AIProviderError(`AI Provider '${name}' is not registered`);
+    const key = name.toLowerCase();
+    if (this.providers.has(key)) {
+      return this.providers.get(key)!;
     }
-    return provider;
+
+    if (['google', 'openai', 'anthropic'].includes(key)) {
+      const adapter: IAIProvider = {
+        providerName: key,
+        generateText: async (model, messages, options) => {
+          return AIOrchestrator.executeText(key, model, messages, options);
+        },
+        streamText: async function* (model, messages, options) {
+          const systemMessage = messages.find((m) => m.role === 'system')?.content;
+          const conversationMessages = messages.filter((m) => m.role !== 'system');
+          for await (const evt of AIGateway.getInstance().stream(
+            {
+              model,
+              systemPrompt: systemMessage,
+              messages: conversationMessages.map((m) => ({
+                role: m.role as 'system' | 'user' | 'assistant',
+                content: m.content,
+              })),
+              temperature: options?.temperature,
+              maxTokens: options?.maxTokens,
+            },
+            key as any
+          )) {
+            if (evt.delta) {
+              yield { delta: evt.delta, isComplete: false };
+            }
+            if (evt.usage) {
+              yield { delta: '', isComplete: true, usage: evt.usage };
+            }
+          }
+        },
+        generateEmbedding: async (model: string, text: string) => {
+          return AIOrchestrator.generateEmbedding(key, model, text);
+        },
+      };
+      this.providers.set(key, adapter);
+      return adapter;
+    }
+
+    const mock = this.providers.get('mock');
+    if (mock) {
+      logger.warn(`Provider ${name} not found, falling back to mock provider`);
+      return mock;
+    }
+    throw new AIProviderError(`AI Provider '${name}' is not registered`);
   }
 
   public static async executeText(

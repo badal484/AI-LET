@@ -36,7 +36,9 @@ import type {
   StreamMessageFailedPayload,
   StreamMessageCancelledPayload,
   StreamHeartbeatPayload,
+  AIProviderName,
 } from '@ai-companion/types';
+import { AIGateway } from '../../ai/gateway/AIGateway.js';
 
 export class StreamingChatService {
   // Registry of active stream AbortControllers for real-time cancellation
@@ -291,13 +293,33 @@ export class StreamingChatService {
       });
 
       // 13. Execute Stream via AI Gateway & Model Provider
-      const provider = AIOrchestrator.getProvider((characterRuntime.aiConfig as any).provider || 'mock');
-      const modelName = characterRuntime.aiConfig.customModelName || characterRuntime.aiConfig.preferredModelClass || 'default-model';
+      const isTestEnv = process.env['NODE_ENV'] === 'test';
+      const defaultProvider = isTestEnv
+        ? 'mock'
+        : (process.env['GOOGLE_AI_API_KEY'] ? 'google' : process.env['OPENAI_API_KEY'] ? 'openai' : 'mock');
 
-      const stream = provider.streamText(modelName, builtContext.messages, {
-        temperature: characterRuntime.aiConfig.temperature || 0.7,
-        maxTokens: characterRuntime.aiConfig.maxOutputTokens || 1024,
-      });
+      const activeProvider: AIProviderName = ((characterRuntime.aiConfig as any)?.provider || defaultProvider).toLowerCase() as AIProviderName;
+
+      const activeModel = characterRuntime.aiConfig?.customModelName ||
+        (activeProvider === 'google' ? (process.env['DEFAULT_CHAT_MODEL'] || 'gemini-2.5-flash-lite') :
+         activeProvider === 'openai' ? 'gpt-4o-mini' : 'mock-gpt-4o');
+
+      const provider = AIOrchestrator.getProvider(activeProvider);
+      const modelName = activeModel;
+
+      const stream = AIGateway.getInstance().stream(
+        {
+          model: activeModel,
+          systemPrompt: builtContext.systemPrompt,
+          messages: builtContext.messages.map((m) => ({
+            role: m.role as 'system' | 'user' | 'assistant',
+            content: m.content,
+          })),
+          temperature: characterRuntime.aiConfig?.temperature || 0.7,
+          maxTokens: characterRuntime.aiConfig?.maxOutputTokens || 1024,
+        },
+        activeProvider
+      );
 
       let chunkIndex = 0;
       let totalUsage: any = null;
@@ -307,11 +329,18 @@ export class StreamingChatService {
           break;
         }
 
-        if (chunkIndex === 0) {
-          ttftMs = Date.now() - startTime;
+        if (chunk.type === 'failed') {
+          logger.error(`Stream generation error from ${activeProvider}: ${chunk.error}`);
+          if (!accumulatedContent) {
+            throw new Error(chunk.error || 'AI generation failed');
+          }
+          break;
         }
 
         if (chunk.delta) {
+          if (chunkIndex === 0) {
+            ttftMs = Date.now() - startTime;
+          }
           accumulatedContent += chunk.delta;
           this.emitSseEvent<StreamMessageDeltaPayload>(res, 'message.delta', {
             messageId: assistantMessage.id,

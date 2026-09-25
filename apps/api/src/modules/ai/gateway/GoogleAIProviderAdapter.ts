@@ -47,6 +47,45 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     return requested;
   }
 
+  private buildGeminiPayload(request: AIGenerateRequest) {
+    const systemPrompt = request.systemPrompt || request.messages.find((m) => m.role === 'system')?.content;
+    const nonSystemMessages = request.messages.filter((m) => m.role !== 'system');
+
+    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+
+    for (const m of nonSystemMessages) {
+      const role: 'user' | 'model' = m.role === 'assistant' ? 'model' : 'user';
+      const last = contents[contents.length - 1];
+      if (last && last.role === role && last.parts[0]) {
+        last.parts[0].text += `\n\n${m.content}`;
+      } else {
+        contents.push({ role, parts: [{ text: m.content }] });
+      }
+    }
+
+    if (contents.length === 0) {
+      contents.push({ role: 'user', parts: [{ text: 'Hello' }] });
+    } else if (contents[0]?.role === 'model') {
+      contents.unshift({ role: 'user', parts: [{ text: 'Hello' }] });
+    }
+
+    const body: Record<string, any> = {
+      contents,
+      generationConfig: {
+        temperature: request.temperature ?? 0.7,
+        maxOutputTokens: request.maxTokens ?? 1024,
+      },
+    };
+
+    if (systemPrompt) {
+      body['systemInstruction'] = {
+        parts: [{ text: systemPrompt }],
+      };
+    }
+
+    return body;
+  }
+
   public async generate(request: AIGenerateRequest): Promise<AIGenerateResponse> {
     if (!this.apiKey) {
       const mockRes = await this.mockFallback.generate(request);
@@ -60,24 +99,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     const modelName = this.resolveModelName(request.model);
 
     try {
-      const contents = request.messages.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
-
-      const body: Record<string, any> = {
-        contents,
-        generationConfig: {
-          temperature: request.temperature ?? 0.7,
-          maxOutputTokens: request.maxTokens ?? 1024,
-        },
-      };
-
-      if (request.systemPrompt) {
-        body['systemInstruction'] = {
-          parts: [{ text: request.systemPrompt }],
-        };
-      }
+      const body = this.buildGeminiPayload(request);
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${this.apiKey}`;
       const response = await fetch(url, {
@@ -139,24 +161,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     };
 
     try {
-      const contents = request.messages.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
-
-      const body: Record<string, any> = {
-        contents,
-        generationConfig: {
-          temperature: request.temperature ?? 0.7,
-          maxOutputTokens: request.maxTokens ?? 1024,
-        },
-      };
-
-      if (request.systemPrompt) {
-        body['systemInstruction'] = {
-          parts: [{ text: request.systemPrompt }],
-        };
-      }
+      const body = this.buildGeminiPayload(request);
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
       const response = await fetch(url, {
@@ -181,6 +186,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       let buffer = '';
       let accumulated = '';
       let ttftMs: number | undefined;
+      let lastUsage: any = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -197,6 +203,13 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
             try {
               const chunk = JSON.parse(dataStr);
+              if (chunk.usageMetadata) {
+                lastUsage = {
+                  promptTokens: chunk.usageMetadata.promptTokenCount || 0,
+                  completionTokens: chunk.usageMetadata.candidatesTokenCount || 0,
+                  totalTokens: chunk.usageMetadata.totalTokenCount || 0,
+                };
+              }
               const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
 
               if (text) {
@@ -221,7 +234,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         id: generationId,
         fullContent: accumulated,
         finishReason: 'stop',
-        usage: {
+        usage: lastUsage || {
           promptTokens: Math.ceil(request.messages.reduce((acc, m) => acc + m.content.length, 0) / 4),
           completionTokens: Math.ceil(accumulated.length / 4),
           totalTokens: Math.ceil((request.messages.reduce((acc, m) => acc + m.content.length, 0) + accumulated.length) / 4),
