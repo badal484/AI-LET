@@ -70,7 +70,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     startStreaming,
     appendDelta,
     finishStreaming,
-    cancelStreaming,
     setError: setStreamError,
     error: streamError,
   } = useChatStreamStore();
@@ -202,16 +201,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       },
       abortController.signal,
     );
-  };
-
-  const handleCancelGeneration = async () => {
-    if (effectiveConvId && streamingMessageId) {
-      cancelStreaming();
-      try {
-        await ConversationApi.cancelGeneration(effectiveConvId, streamingMessageId);
-      } catch {}
-      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-    }
   };
 
   const handleRetry = (content: string) => {
@@ -380,7 +369,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               }}
               activeOpacity={0.7}
             >
-              <Icon name="phone" size={20} color="#F43F5E" />
+              <Icon name="phone" size={20} color="#C084FC" />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -496,18 +485,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               />
             </View>
 
-            {/* Action Button: Stop if streaming, Send if text present, else Gift */}
-            {isStreaming ? (
-              <TouchableOpacity
-                style={[styles.circleActionButton, styles.stopActionButton]}
-                onPress={handleCancelGeneration}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Stop response"
-              >
-                <View style={styles.stopSquareIcon} />
-              </TouchableOpacity>
-            ) : inputText.trim().length > 0 ? (
+            {/* Action Button: Send if text present, else Gift */}
+            {inputText.trim().length > 0 ? (
               <TouchableOpacity
                 style={styles.circleActionButton}
                 onPress={() => handleSendMessage()}
@@ -841,18 +820,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 4,
     elevation: 4,
-  },
-  stopActionButton: {
-    backgroundColor: '#382238',
-    borderColor: '#F43F5E',
-    borderWidth: 1.5,
-    shadowColor: '#F43F5E',
-  },
-  stopSquareIcon: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
-    backgroundColor: '#F43F5E',
   },
   modalOverlay: {
     flex: 1,
