@@ -43,7 +43,11 @@ export type IconName =
   | 'ban'
   | 'thumbs-up'
   | 'thumbs-down'
-  | 'star';
+  | 'star'
+  | 'gift'
+  | 'more-vertical'
+  | 'chevron-down-double'
+  | 'check-double';
 
 export interface IconProps {
   name: IconName;
@@ -714,6 +718,92 @@ export const Icon: React.FC<IconProps> = ({
             <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: iconColor }} />
             <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: iconColor }} />
             <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: iconColor }} />
+          </View>
+        );
+      }
+
+      case 'more-vertical': {
+        return (
+          <View style={[styles.centerContainer, { width: size, height: size, flexDirection: 'column', gap: 3 }]}>
+            <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: iconColor }} />
+            <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: iconColor }} />
+            <View style={{ width: 3.5, height: 3.5, borderRadius: 2, backgroundColor: iconColor }} />
+          </View>
+        );
+      }
+
+      case 'chevron-down-double': {
+        const chevronSize = size * 0.28;
+        return (
+          <View style={[styles.centerContainer, { width: size, height: size, justifyContent: 'center' }]}>
+            <View
+              style={{
+                width: chevronSize,
+                height: chevronSize,
+                borderBottomWidth: 2,
+                borderRightWidth: 2,
+                borderColor: iconColor,
+                transform: [{ rotate: '45deg' }],
+                marginBottom: -3,
+              }}
+            />
+            <View
+              style={{
+                width: chevronSize,
+                height: chevronSize,
+                borderBottomWidth: 2,
+                borderRightWidth: 2,
+                borderColor: iconColor,
+                transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </View>
+        );
+      }
+
+      case 'check-double': {
+        return (
+          <View style={[styles.centerContainer, { width: size, height: size, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}>
+            <View
+              style={{
+                width: size * 0.22,
+                height: size * 0.42,
+                borderBottomWidth: 1.8,
+                borderRightWidth: 1.8,
+                borderColor: iconColor,
+                transform: [{ rotate: '45deg' }],
+                marginRight: -size * 0.08,
+              }}
+            />
+            <View
+              style={{
+                width: size * 0.22,
+                height: size * 0.42,
+                borderBottomWidth: 1.8,
+                borderRightWidth: 1.8,
+                borderColor: iconColor,
+                transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </View>
+        );
+      }
+
+      case 'gift': {
+        const boxWidth = size * 0.58;
+        const boxHeight = size * 0.42;
+        const lidWidth = size * 0.68;
+        const lidHeight = size * 0.14;
+        return (
+          <View style={[styles.centerContainer, { width: size, height: size }]}>
+            <View style={{ flexDirection: 'row', gap: 2, marginBottom: -1 }}>
+              <View style={{ width: size * 0.18, height: size * 0.14, borderRadius: size * 0.08, borderWidth: 1.5, borderColor: iconColor }} />
+              <View style={{ width: size * 0.18, height: size * 0.14, borderRadius: size * 0.08, borderWidth: 1.5, borderColor: iconColor }} />
+            </View>
+            <View style={{ width: lidWidth, height: lidHeight, backgroundColor: iconColor, borderRadius: 2 }} />
+            <View style={{ width: boxWidth, height: boxHeight, borderWidth: 1.5, borderColor: iconColor, borderTopWidth: 0, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, alignItems: 'center' }}>
+              <View style={{ width: 2, height: '100%', backgroundColor: iconColor }} />
+            </View>
           </View>
         );
       }

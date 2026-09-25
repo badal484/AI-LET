@@ -112,7 +112,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {isStreaming ? (
               <ActivityIndicator
                 size="small"
-                color={darkThemeColors.accent}
+                color="#A78BFA"
                 style={{ transform: [{ scale: 0.7 }] }}
               />
             ) : null}
@@ -124,6 +124,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             >
               {formattedTime}
             </Text>
+            {isUser && !isFailed && !isStreaming && (
+              <Icon name="check-double" size={13} color="#22C55E" style={{ marginLeft: 2 }} />
+            )}
           </View>
         </TouchableOpacity>
 
@@ -207,15 +210,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   userBubble: {
-    backgroundColor: darkThemeColors.accent,
+    backgroundColor: '#161420',
+    borderWidth: 1,
+    borderColor: '#2B233A',
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: darkThemeColors.surfaceElevated,
+    backgroundColor: '#32204E',
     borderBottomLeftRadius: 4,
   },
   streamingBubble: {
-    borderColor: darkThemeColors.borderGlass,
+    borderColor: '#6C3DC7',
     borderWidth: 1,
   },
   failedBubble: {
@@ -224,13 +229,13 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
   },
   userText: {
     color: '#FFFFFF',
   },
   assistantText: {
-    color: darkThemeColors.textPrimary,
+    color: '#FFFFFF',
   },
   cancelledLabel: {
     fontSize: 11,
@@ -262,10 +267,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   userTimestamp: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#8E82A8',
   },
   assistantTimestamp: {
-    color: darkThemeColors.textMuted,
+    color: '#8E82A8',
   },
   actionStrip: {
     flexDirection: 'row',
