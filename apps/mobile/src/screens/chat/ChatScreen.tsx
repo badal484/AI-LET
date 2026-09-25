@@ -5,7 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
   StyleSheet,
@@ -60,8 +60,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList<any>>(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      if (flatListRef.current) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }, 60);
+      }
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const {
     isStreaming,
@@ -308,10 +332,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       />
       <View style={styles.backgroundScrim} />
 
-      <KeyboardAvoidingView
-        style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+      <View
+        style={[
+          styles.container,
+          {
+            paddingBottom:
+              keyboardHeight > 0
+                ? keyboardHeight
+                : Math.max(insets.bottom, 8),
+          },
+        ]}
       >
         {/* Top App Bar with safe area paddingTop for edge-to-edge */}
         <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 4 : 12 }]}>
@@ -469,23 +499,44 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           />
         )}
 
-        {/* Bottom Composer Footer (Always visible) */}
+        {/* Bottom Composer Footer (WhatsApp-style floating pill + circular action) */}
         <View style={styles.composerContainer}>
           <View style={styles.inputRow}>
-            <View style={styles.textInputWrapper}>
+            {/* Pill Container */}
+            <View style={styles.pillInputContainer}>
+              <TouchableOpacity
+                style={styles.pillLeadingBtn}
+                onPress={() => {
+                  setInputText((prev) => (prev ? `${prev} 😊` : '😊 '));
+                }}
+                activeOpacity={0.7}
+                accessibilityLabel="Emoji"
+              >
+                <Text style={styles.pillEmojiIcon}>😊</Text>
+              </TouchableOpacity>
+
               <TextInput
                 style={styles.textInput}
-                placeholder={`Send message to ${companionFirstName}`}
-                placeholderTextColor="#776C90"
+                placeholder={`Message ${companionFirstName}...`}
+                placeholderTextColor="#8E85A8"
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
                 maxLength={4000}
                 selectionColor="#A78BFA"
               />
+
+              <TouchableOpacity
+                style={styles.pillTrailingBtn}
+                onPress={() => setIsGiftModalVisible(true)}
+                activeOpacity={0.7}
+                accessibilityLabel="Send gift or spark"
+              >
+                <Icon name="sparkles" size={18} color="#C084FC" />
+              </TouchableOpacity>
             </View>
 
-            {/* Action Button: Send if text present, else Gift */}
+            {/* Circular Action Button */}
             {inputText.trim().length > 0 ? (
               <TouchableOpacity
                 style={styles.circleActionButton}
@@ -494,17 +545,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 accessibilityRole="button"
                 accessibilityLabel="Send message"
               >
-                <Icon name="arrow-up" size={20} color="#FFFFFF" />
+                <Icon name="arrow-up" size={22} color="#FFFFFF" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={styles.circleActionButton}
+                style={[styles.circleActionButton, styles.giftCircleButton]}
                 onPress={() => setIsGiftModalVisible(true)}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Send gift"
               >
-                <Icon name="gift" size={22} color="#FFFFFF" />
+                <Text style={styles.giftActionEmoji}>🎁</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -604,7 +655,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             onClose={() => setFeedbackTarget(null)}
           />
         )}
-      </KeyboardAvoidingView>
+      </View>
     </ImageBackground>
   );
 };
@@ -784,42 +835,70 @@ const styles = StyleSheet.create({
   },
   composerContainer: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(12, 10, 20, 0.85)',
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: 'rgba(12, 10, 20, 0.92)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   inputRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    alignItems: 'flex-end',
+    gap: 8,
   },
-  textInputWrapper: {
+  pillInputContainer: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     minHeight: 46,
     maxHeight: 120,
     backgroundColor: '#1E192B',
     borderColor: '#382B4F',
     borderWidth: 1,
     borderRadius: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
+  },
+  pillLeadingBtn: {
+    padding: 6,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pillEmojiIcon: {
+    fontSize: 20,
   },
   textInput: {
+    flex: 1,
     color: '#FFFFFF',
     fontSize: 15,
     paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  pillTrailingBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   circleActionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#6C3DC7',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6C3DC7',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
+    marginBottom: 0,
+  },
+  giftCircleButton: {
+    backgroundColor: '#3B295A',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 132, 252, 0.3)',
+  },
+  giftActionEmoji: {
+    fontSize: 20,
   },
   modalOverlay: {
     flex: 1,
