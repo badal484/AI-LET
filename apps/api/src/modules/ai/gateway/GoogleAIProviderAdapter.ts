@@ -81,9 +81,16 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     const body: Record<string, any> = {
       contents,
       generationConfig: {
-        temperature: request.temperature ?? 0.7,
+        temperature: request.temperature ?? 0.85,
+        topP: 0.95,
         maxOutputTokens: request.maxTokens ?? 1024,
       },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ],
     };
 
     if (systemPrompt) {
@@ -249,19 +256,21 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
                   totalTokens: chunk.usageMetadata.totalTokenCount || 0,
                 };
               }
-              const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-
-              if (text) {
-                if (ttftMs === undefined) {
-                  ttftMs = Date.now() - startTime;
+              const parts = chunk.candidates?.[0]?.content?.parts || [];
+              for (const part of parts) {
+                const text = part.text;
+                if (text) {
+                  if (ttftMs === undefined) {
+                    ttftMs = Date.now() - startTime;
+                  }
+                  accumulated += text;
+                  yield {
+                    type: 'delta',
+                    id: generationId,
+                    delta: text,
+                    timestamp: Date.now(),
+                  };
                 }
-                accumulated += text;
-                yield {
-                  type: 'delta',
-                  id: generationId,
-                  delta: text,
-                  timestamp: Date.now(),
-                };
               }
             } catch {}
           }

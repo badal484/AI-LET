@@ -112,7 +112,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   const serverMessages = messagesData?.pages.flatMap((page) => page.items) || [];
   const serverMessageIds = new Set(serverMessages.map((m) => m.id));
-  const pendingOptimistic = optimisticMessages.filter((m) => !serverMessageIds.has(m.id));
+  const serverClientRequestIds = new Set(
+    serverMessages.map((m) => m.clientRequestId).filter(Boolean)
+  );
+  const pendingOptimistic = optimisticMessages.filter(
+    (m) => !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId)
+  );
   const allMessages = [...pendingOptimistic, ...serverMessages];
 
   // 3. Scroll Management
@@ -179,16 +184,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         },
         onCompleted: () => {
           finishStreaming();
+          setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
         },
         onFailed: (payload) => {
           setStreamError(payload.errorMessage);
           finishStreaming();
+          setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
         },
         onCancelled: () => {
           finishStreaming();
+          setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
         },
       },
@@ -429,7 +437,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                     conversationId: effectiveConvId || '',
                     senderType: 'CHARACTER',
                     role: 'assistant',
-                    content: accumulatedDelta || '...',
+                    content: accumulatedDelta || '',
                     status: 'STREAMING',
                     sequenceNumber: 0,
                     retryCount: 0,
@@ -472,52 +480,55 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           />
         )}
 
-        {/* Bottom Composer Footer */}
+        {/* Bottom Composer Footer (Always visible) */}
         <View style={styles.composerContainer}>
-          {isStreaming ? (
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={handleCancelGeneration}
-              accessibilityRole="button"
-            >
-              <Text style={styles.cancelButtonText}>■ Stop Generating</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.inputRow}>
-              <View style={styles.textInputWrapper}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder={`Send message to ${companionFirstName}`}
-                  placeholderTextColor="#776C90"
-                  value={inputText}
-                  onChangeText={setInputText}
-                  multiline
-                  maxLength={4000}
-                  selectionColor="#A78BFA"
-                />
-              </View>
-
-              {/* Action Button: Gift 🎁 or Send ➔ */}
-              {inputText.trim().length > 0 ? (
-                <TouchableOpacity
-                  style={styles.circleActionButton}
-                  onPress={() => handleSendMessage()}
-                  disabled={isStreaming}
-                  activeOpacity={0.8}
-                >
-                  <Icon name="arrow-up" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.circleActionButton}
-                  onPress={() => setIsGiftModalVisible(true)}
-                  activeOpacity={0.8}
-                >
-                  <Icon name="gift" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
+          <View style={styles.inputRow}>
+            <View style={styles.textInputWrapper}>
+              <TextInput
+                style={styles.textInput}
+                placeholder={`Send message to ${companionFirstName}`}
+                placeholderTextColor="#776C90"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={4000}
+                selectionColor="#A78BFA"
+              />
             </View>
-          )}
+
+            {/* Action Button: Stop if streaming, Send if text present, else Gift */}
+            {isStreaming ? (
+              <TouchableOpacity
+                style={[styles.circleActionButton, styles.stopActionButton]}
+                onPress={handleCancelGeneration}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Stop response"
+              >
+                <View style={styles.stopSquareIcon} />
+              </TouchableOpacity>
+            ) : inputText.trim().length > 0 ? (
+              <TouchableOpacity
+                style={styles.circleActionButton}
+                onPress={() => handleSendMessage()}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Send message"
+              >
+                <Icon name="arrow-up" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.circleActionButton}
+                onPress={() => setIsGiftModalVisible(true)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Send gift"
+              >
+                <Icon name="gift" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Virtual Gifts Modal */}
@@ -831,19 +842,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  cancelButton: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderColor: '#EF4444',
-    borderWidth: 1,
-    borderRadius: radius.xl,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  stopActionButton: {
+    backgroundColor: '#382238',
+    borderColor: '#F43F5E',
+    borderWidth: 1.5,
+    shadowColor: '#F43F5E',
   },
-  cancelButtonText: {
-    color: '#EF4444',
-    fontWeight: '600',
-    fontSize: 13,
+  stopSquareIcon: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    backgroundColor: '#F43F5E',
   },
   modalOverlay: {
     flex: 1,

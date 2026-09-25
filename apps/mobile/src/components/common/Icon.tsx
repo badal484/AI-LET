@@ -45,6 +45,7 @@ export type IconName =
   | 'thumbs-down'
   | 'star'
   | 'gift'
+  | 'diamond'
   | 'more-vertical'
   | 'chevron-down-double'
   | 'check-double';
@@ -554,6 +555,49 @@ export const Icon: React.FC<IconProps> = ({
                 top: size * 0.12,
                 right: size * 0.12,
                 transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </View>
+        );
+      }
+
+      case 'diamond': {
+        const topWidth = size * 0.7;
+        const topHeight = size * 0.25;
+        return (
+          <View style={[styles.centerContainer, { width: size, height: size }]}>
+            {/* Upper Facets */}
+            <View
+              style={{
+                width: topWidth,
+                height: topHeight,
+                borderWidth: 1.8,
+                borderColor: iconColor,
+                borderBottomWidth: 0,
+                borderTopLeftRadius: 3,
+                borderTopRightRadius: 3,
+                backgroundColor: focused ? `${iconColor}33` : 'transparent',
+                flexDirection: 'row',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{ width: 1.5, height: '100%', backgroundColor: iconColor }} />
+              <View style={{ width: 1.5, height: '100%', backgroundColor: iconColor }} />
+            </View>
+            {/* Lower V-point */}
+            <View
+              style={{
+                width: 0,
+                height: 0,
+                borderLeftWidth: topWidth * 0.5,
+                borderRightWidth: topWidth * 0.5,
+                borderTopWidth: size * 0.45,
+                borderLeftColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderTopColor: iconColor,
+                marginTop: -1,
+                alignItems: 'center',
               }}
             />
           </View>

@@ -47,7 +47,7 @@ REQUIREMENTS:
    */
   public static async checkAndSummarizeConversation(conversationId: string): Promise<ConversationSummaryData | null> {
     const totalMessages = await prisma.message.count({
-      where: { conversationId, status: 'SENT' },
+      where: { conversationId, status: { in: ['SENT', 'COMPLETED'] } },
     });
 
     if (totalMessages < SYSTEM_CONSTANTS.MEMORY.SUMMARIZATION_MESSAGE_THRESHOLD) {

@@ -2,9 +2,10 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type MainTabParamList = {
   Home: undefined;
-  Discover: undefined;
   Conversations: undefined;
+  BuyPro: undefined;
   Profile: undefined;
+  Discover?: undefined;
   // Legacy alias for backwards compatibility
   Explore?: undefined;
 };

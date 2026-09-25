@@ -481,7 +481,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
               <View style={styles.footer}>
                 <Text style={styles.footerText}>
                   Your privacy matters. Data processed in accordance with our Privacy Policy.
-                  For questions, contact privacy@ailovish.app
+                  For questions, contact privacy@lovira.ai
                 </Text>
               </View>
             </>

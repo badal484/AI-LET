@@ -237,12 +237,13 @@ export class StreamingChatService {
         timestamp: assistantMessage.createdAt.toISOString(),
       });
 
-      // 11. Fetch Recent Conversation History for Context Window
+      // 11. Fetch Recent Conversation History for Context Window (User SENT + Assistant COMPLETED)
       const recentMessages = await prisma.message.findMany({
         where: {
           conversationId,
           id: { notIn: [userMessage.id, assistantMessage.id] },
-          status: 'SENT',
+          status: { in: ['SENT', 'COMPLETED'] },
+          content: { not: '' },
         },
         take: SYSTEM_CONSTANTS.CHAT.SHORT_TERM_CONTEXT_LIMIT,
         orderBy: { sequenceNumber: 'desc' },
@@ -315,7 +316,7 @@ export class StreamingChatService {
             role: m.role as 'system' | 'user' | 'assistant',
             content: m.content,
           })),
-          temperature: characterRuntime.aiConfig?.temperature || 0.7,
+          temperature: Math.max(0.85, characterRuntime.aiConfig?.temperature || 0.85),
           maxTokens: Math.min(300, characterRuntime.aiConfig?.maxOutputTokens || 200),
         },
         activeProvider
@@ -378,6 +379,18 @@ export class StreamingChatService {
         .replace(/\[SYSTEM_MESSAGE_START\]/gi, '')
         .replace(/\[SYSTEM_MESSAGE_END\]/gi, '')
         .trim();
+
+      // Guard: Never save or return an empty assistant message
+      if (!accumulatedContent || accumulatedContent.length === 0) {
+        accumulatedContent = "Hmm, main samajh sakti hoon. Is baare mein thoda aur batao, main yahin hoon tumhare saath.";
+        this.emitSseEvent<StreamMessageDeltaPayload>(res, 'message.delta', {
+          messageId: assistantMessage.id,
+          conversationId,
+          delta: accumulatedContent,
+          accumulatedLength: accumulatedContent.length,
+          index: chunkIndex++,
+        });
+      }
 
       // 13B. Phase 16 — Output Safety Evaluation (post-generation)
       const NATURAL_FALLBACK = "Main abhi iss baare mein baat nahi kar sakti, par batao tumhara din kaisa chal raha hai?";

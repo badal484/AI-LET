@@ -64,7 +64,11 @@ export const useAuthStore = create<AuthState>((set) => {
 
     bootstrap: async () => {
       try {
-        const session = await SecureAuthStorage.getSession();
+        const session = await Promise.race([
+          SecureAuthStorage.getSession(),
+          new Promise<null>((res) => setTimeout(() => res(null), 2000)),
+        ]);
+
         if (!session || !session.accessToken) {
           set({ status: 'unauthenticated', user: null, isLoading: false });
           return;
@@ -72,9 +76,8 @@ export const useAuthStore = create<AuthState>((set) => {
 
         setApiAuthToken(session.accessToken);
 
-        // Fetch bootstrap payload with profile and onboarding status
         try {
-          const bootstrapRes = await api.get('/bootstrap');
+          const bootstrapRes = await api.get('/bootstrap', { timeout: 3000 });
           const boot = bootstrapRes.data.data;
 
           if (boot.user.status === 'SUSPENDED') {
@@ -89,25 +92,29 @@ export const useAuthStore = create<AuthState>((set) => {
             emailVerified: boot.user.emailVerified,
             profile: {
               ...boot.profile,
-              onboardingStatus: boot.onboarding.status,
-              onboardingCurrentStep: boot.onboarding.currentStep,
-              onboardingCompleted:
-                boot.onboarding.status === 'COMPLETED' || boot.onboarding.status === 'SKIPPED',
+              onboardingStatus: boot.onboarding?.status || 'COMPLETED',
+              onboardingCurrentStep: boot.onboarding?.currentStep || 'COMPLETED',
+              onboardingCompleted: true,
             },
           };
 
           set({ status: 'authenticated', user, isLoading: false });
         } catch {
-          // Fallback to /auth/me
-          const response = await api.get('/auth/me');
-          const user = response.data.data;
+          try {
+            const response = await api.get('/auth/me', { timeout: 3000 });
+            const user = response.data.data;
 
-          if (user.status === 'SUSPENDED') {
-            set({ status: 'account-suspended', user, isLoading: false });
-            return;
+            if (user.status === 'SUSPENDED') {
+              set({ status: 'account-suspended', user, isLoading: false });
+              return;
+            }
+
+            set({ status: 'authenticated', user, isLoading: false });
+          } catch {
+            await SecureAuthStorage.clearSession();
+            setApiAuthToken(null);
+            set({ status: 'unauthenticated', user: null, isLoading: false });
           }
-
-          set({ status: 'authenticated', user, isLoading: false });
         }
       } catch {
         await SecureAuthStorage.clearSession();

@@ -4,8 +4,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Share,
+  Animated,
 } from 'react-native';
 import { Avatar } from './Avatar.js';
 import { ToastService } from './Toast.js';
@@ -23,6 +23,47 @@ export interface MessageBubbleProps {
   onSelectMedia?: (mediaUrl: string) => void;
 }
 
+const TypingDotsIndicator: React.FC = () => {
+  const dot1 = React.useRef(new Animated.Value(0.3)).current;
+  const dot2 = React.useRef(new Animated.Value(0.3)).current;
+  const dot3 = React.useRef(new Animated.Value(0.3)).current;
+
+  React.useEffect(() => {
+    const createAnim = (dot: Animated.Value, delay: number) =>
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(dot, { toValue: 1, duration: 350, useNativeDriver: true }),
+            Animated.timing(dot, { toValue: 0.3, duration: 350, useNativeDriver: true }),
+          ]),
+        ),
+      ]);
+
+    const a1 = createAnim(dot1, 0);
+    const a2 = createAnim(dot2, 180);
+    const a3 = createAnim(dot3, 360);
+
+    a1.start();
+    a2.start();
+    a3.start();
+
+    return () => {
+      dot1.stopAnimation();
+      dot2.stopAnimation();
+      dot3.stopAnimation();
+    };
+  }, [dot1, dot2, dot3]);
+
+  return (
+    <View style={styles.typingContainer}>
+      <Animated.View style={[styles.typingDot, { opacity: dot1, transform: [{ scale: dot1 }] }]} />
+      <Animated.View style={[styles.typingDot, { opacity: dot2, transform: [{ scale: dot2 }] }]} />
+      <Animated.View style={[styles.typingDot, { opacity: dot3, transform: [{ scale: dot3 }] }]} />
+    </View>
+  );
+};
+
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   characterAvatarUrl,
@@ -35,6 +76,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isUser = message.role === 'user' || message.senderType === 'USER';
   const isFailed = message.status === 'FAILED';
   const isCancelled = message.status === 'CANCELLED';
+  const isTyping = isStreaming && (!message.content || message.content.trim() === '...' || message.content.trim() === '');
 
   const handleCopy = async () => {
     try {
@@ -72,63 +114,69 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
 
       <View style={styles.bubbleContainer}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onLongPress={() => setShowActions((prev) => !prev)}
-          style={[
-            styles.bubble,
-            isUser ? styles.userBubble : styles.assistantBubble,
-            isFailed && styles.failedBubble,
-            isStreaming && styles.streamingBubble,
-          ]}
-          accessibilityRole="text"
-          accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${message.content}`}
-        >
-          <Text
+        {isTyping ? (
+          <View
             style={[
-              styles.messageText,
-              isUser ? styles.userText : styles.assistantText,
+              styles.bubble,
+              styles.assistantBubble,
+              styles.streamingBubble,
+              styles.typingBubble,
             ]}
-            selectable
           >
-            {message.content}
-          </Text>
-
-          {isCancelled && (
-            <Text style={styles.cancelledLabel}>[Generation stopped]</Text>
-          )}
-
-          {isFailed && (
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => onRetry?.(message.content)}
-              accessibilityLabel="Retry sending message"
-            >
-              <Text style={styles.retryText}>Retry Sending</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.bubbleFooter}>
-            {isStreaming ? (
-              <ActivityIndicator
-                size="small"
-                color="#A78BFA"
-                style={{ transform: [{ scale: 0.7 }] }}
-              />
-            ) : null}
+            <TypingDotsIndicator />
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onLongPress={() => setShowActions((prev) => !prev)}
+            style={[
+              styles.bubble,
+              isUser ? styles.userBubble : styles.assistantBubble,
+              isFailed && styles.failedBubble,
+              isStreaming && styles.streamingBubble,
+            ]}
+            accessibilityRole="text"
+            accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${message.content}`}
+          >
             <Text
               style={[
-                styles.timestamp,
-                isUser ? styles.userTimestamp : styles.assistantTimestamp,
+                styles.messageText,
+                isUser ? styles.userText : styles.assistantText,
               ]}
+              selectable
             >
-              {formattedTime}
+              {message.content}
             </Text>
-            {isUser && !isFailed && !isStreaming && (
-              <Icon name="check-double" size={13} color="#22C55E" style={{ marginLeft: 2 }} />
+
+            {isCancelled && (
+              <Text style={styles.cancelledLabel}>[Generation stopped]</Text>
             )}
-          </View>
-        </TouchableOpacity>
+
+            {isFailed && (
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => onRetry?.(message.content)}
+                accessibilityLabel="Retry sending message"
+              >
+                <Text style={styles.retryText}>Retry Sending</Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.bubbleFooter}>
+              <Text
+                style={[
+                  styles.timestamp,
+                  isUser ? styles.userTimestamp : styles.assistantTimestamp,
+                ]}
+              >
+                {formattedTime}
+              </Text>
+              {isUser && !isFailed && !isStreaming && (
+                <Icon name="check-double" size={13} color="#22C55E" style={{ marginLeft: 2 }} />
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Contextual Action Strip */}
         {showActions && (
@@ -304,5 +352,23 @@ const styles = StyleSheet.create({
     color: darkThemeColors.textSecondary,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  typingBubble: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 14,
+  },
+  typingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#C4B5FD',
   },
 });

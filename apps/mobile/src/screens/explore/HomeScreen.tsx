@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,45 +8,67 @@ import {
   StyleSheet,
   RefreshControl,
   Dimensions,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import type { RootStackParamList } from '../../navigation/types.js';
-import {
-  IconButton,
-  Avatar,
-  Badge,
-  SectionHeader,
-  CharacterCard,
-  Skeleton,
-  ErrorState,
-} from '../../components/common/index.js';
-import { darkThemeColors, spacing, radius } from '../../theme/index.js';
+import { Skeleton, ErrorState } from '../../components/common/index.js';
 import type {
   CharacterCatalogItem,
-  ContinueConversationItem,
-  CuratedCollectionSummary,
-  CharacterCategorySummary,
   HomeFeedSection,
 } from '@ai-companion/types';
 
-import { useNotificationStore } from '../../stores/notificationStore.js';
-import { useDiscoveryStore } from '../../stores/discoveryStore.js';
-
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = (SCREEN_WIDTH - 44) / 2;
+const CARD_IMAGE_HEIGHT = CARD_WIDTH * 1.36;
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
-export const HomeScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp>();
-  const { unreadCount, fetchUnreadCount } = useNotificationStore();
-  const { favoriteIds, toggleFavoriteOptimistic } = useDiscoveryStore();
+const ENGAGEMENT_MAP: Record<string, string> = {
+  'dr-ananya': '3L',
+  'joel': '2.2L',
+  'anjali': '12L',
+  'tanu': '8L',
+  'sakshi': '4.1L',
+  'sangeeta': '3L',
+  'aman': '5.2L',
+  'raj': '3.8L',
+  'neha': '3.3L',
+  'nancy': '3.1L',
+  'renu': '5.4L',
+  'kavya': '4.2L',
+  'gita-gpt': '2.9L',
+  'krishna': '2.5L',
+  'indira': '4L',
+  'keerthana': '3.4L',
+  'luna': '15L',
+};
 
-  useEffect(() => {
-    fetchUnreadCount();
-  }, [fetchUnreadCount]);
+interface FilterChipDef {
+  slug: string;
+  label: string;
+  icon: string;
+}
+
+const FILTER_CHIPS: FilterChipDef[] = [
+  { slug: 'health', label: 'Health', icon: '🧘' },
+  { slug: 'love', label: 'Love', icon: '❤️' },
+  { slug: 'astrology', label: 'Astrology', icon: '🔮' },
+  { slug: 'learn-earn', label: 'Learn & Earn', icon: '🪙' },
+  { slug: 'professionals', label: 'Professionals', icon: '💼' },
+  { slug: 'neighbours', label: 'Neighbours', icon: '👥' },
+  { slug: 'wisdom', label: 'Wisdom', icon: '🌌' },
+  { slug: 'friendship', label: 'Friends', icon: '🫂' },
+];
+
+export const HomeScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp>();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data: homeFeed, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['discovery', 'home'],
@@ -60,48 +82,63 @@ export const HomeScreen: React.FC = () => {
     });
   };
 
-  const handleContinueChat = (item: ContinueConversationItem) => {
-    navigation.navigate('Chat', {
-      characterId: item.characterId,
-      conversationId: item.conversationId,
-    });
-  };
-
-  const handleOpenCategory = (cat: CharacterCategorySummary) => {
+  const handleOpenCategory = (categorySlug: string, categoryName?: string) => {
     navigation.navigate('CategoryBrowser', {
-      categorySlug: cat.slug,
-      categoryName: cat.displayName,
+      categorySlug,
+      categoryName: categoryName || categorySlug,
     });
   };
 
-  const handleOpenCollection = (col: CuratedCollectionSummary) => {
-    navigation.navigate('CollectionDetail', {
-      collectionSlug: col.slug,
-      title: col.title,
+  const handleOpenWallet = () => {
+    navigation.navigate('CreditWallet');
+  };
+
+  const handleSelectChip = (slug: string) => {
+    if (selectedCategory === slug) {
+      setSelectedCategory(null); // toggle off to show all
+    } else {
+      setSelectedCategory(slug);
+    }
+  };
+
+  // Filter sections by selected category chip
+  const sections = useMemo(() => {
+    if (!homeFeed?.sections) return [];
+    return homeFeed.sections.filter((section: HomeFeedSection) => {
+      if (section.sectionKey === 'CATEGORIES' || section.sectionKey === 'CONTINUE') return false;
+      if (!selectedCategory) return true;
+      return (
+        section.id.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+        section.sectionKey.toLowerCase().includes(selectedCategory.toLowerCase())
+      );
     });
-  };
-
-  const handleOpenSearch = () => {
-    navigation.navigate('Search');
-  };
-
-  const handleToggleFav = (char: CharacterCatalogItem) => {
-    toggleFavoriteOptimistic(char.id);
-  };
+  }, [homeFeed, selectedCategory]);
 
   if (isLoading && !homeFeed) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View>
-            <Skeleton.Line width={180} height={24} style={{ marginBottom: 6 }} />
-            <Skeleton.Line width={240} height={14} />
+      <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.topBar}>
+          <View style={styles.logoRow}>
+            <View style={styles.heartAiBadge}>
+              <Text style={styles.heartAiText}>Ai</Text>
+            </View>
+            <Text style={styles.logoLovira}>Lovira</Text>
+          </View>
+          <View style={styles.walletPill}>
+            <Text style={styles.coinIcon}>🪙</Text>
+            <Text style={styles.coinBalance}>0</Text>
+            <Text style={styles.coinPlus}>+</Text>
           </View>
         </View>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <Skeleton.Card height={140} />
-          <Skeleton.Card height={220} />
-          <Skeleton.Card height={160} />
+          <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginTop: 18 }}>
+            <Skeleton.Card height={280} style={{ flex: 1, borderRadius: 18 }} />
+            <Skeleton.Card height={280} style={{ flex: 1, borderRadius: 18 }} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 16, marginTop: 18 }}>
+            <Skeleton.Card height={280} style={{ flex: 1, borderRadius: 18 }} />
+            <Skeleton.Card height={280} style={{ flex: 1, borderRadius: 18 }} />
+          </View>
         </ScrollView>
       </View>
     );
@@ -109,10 +146,10 @@ export const HomeScreen: React.FC = () => {
 
   if (isError && !homeFeed) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
         <ErrorState
           type="network"
-          title="Unable to load discovery feed"
+          title="Unable to load Lovira feed"
           message="Please check your connection and reload."
           onRetry={() => refetch()}
         />
@@ -120,39 +157,71 @@ export const HomeScreen: React.FC = () => {
     );
   }
 
-  const greeting = homeFeed?.greeting || {
-    title: 'Discover Companions',
-    subtitle: 'Personalities with depth, warmth, and memory',
-    isReturningUser: false,
-  };
-
   return (
-    <View style={styles.container}>
-      {/* Editorial Header */}
-      <View style={styles.header}>
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greetingTitle}>{greeting.title}</Text>
-          <Text style={styles.greetingSubtitle}>{greeting.subtitle}</Text>
+    <View style={[styles.container, { paddingTop: insets.top + 6 }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* 1. Top Header Bar: Logo & Wallet */}
+      <View style={styles.topBar}>
+        <View style={styles.logoRow}>
+          {/* Glowing Heart Ai Icon */}
+          <View style={styles.heartBadgeContainer}>
+            <Text style={styles.heartIcon}>💖</Text>
+            <View style={styles.aiTag}>
+              <Text style={styles.aiTagText}>Ai</Text>
+            </View>
+          </View>
+
+          {/* Lovira Wordmark */}
+          <View style={styles.wordmarkRow}>
+            <Text style={styles.logoLo}>Lo</Text>
+            <Text style={styles.logoVira}>vira</Text>
+          </View>
         </View>
-        <View style={styles.headerActions}>
-          <IconButton
-            icon="bell"
-            size="md"
-            variant="surface"
-            badgeCount={unreadCount}
-            onPress={() => navigation.navigate('NotificationCenter')}
-            accessibilityLabel="Notifications"
-          />
-          <IconButton
-            icon="search"
-            size="md"
-            variant="surface"
-            onPress={handleOpenSearch}
-            accessibilityLabel="Search companions"
-          />
-        </View>
+
+        {/* Right Wallet Pill */}
+        <TouchableOpacity
+          style={styles.walletPill}
+          activeOpacity={0.8}
+          onPress={handleOpenWallet}
+          accessibilityRole="button"
+          accessibilityLabel="Wallet, 0 coins"
+        >
+          <Text style={styles.coinIcon}>🪙</Text>
+          <Text style={styles.coinBalance}>0</Text>
+          <Text style={styles.coinPlus}>+</Text>
+        </TouchableOpacity>
       </View>
 
+      {/* 2. Horizontal Category Filter Chips Bar */}
+      <View style={styles.filterBarContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChipsScroll}
+        >
+          {FILTER_CHIPS.map((chip) => {
+            const isSelected = selectedCategory === chip.slug;
+            return (
+              <TouchableOpacity
+                key={chip.slug}
+                style={[styles.filterChip, isSelected && styles.filterChipActive]}
+                activeOpacity={0.8}
+                onPress={() => handleSelectChip(chip.slug)}
+              >
+                <View style={styles.chipIconBadge}>
+                  <Text style={styles.chipIconText}>{chip.icon}</Text>
+                </View>
+                <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
+                  {chip.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* 3. Feed ScrollView */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -161,50 +230,13 @@ export const HomeScreen: React.FC = () => {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={() => refetch()}
-            tintColor={darkThemeColors.accent}
+            tintColor="#E02494"
           />
         }
       >
-        {/* Sections */}
-        {(homeFeed?.sections || []).map((section: HomeFeedSection) => {
-          switch (section.sectionKey) {
-            case 'CONTINUE':
-              return renderContinueSection(section, handleContinueChat);
-
-            case 'RECOMMENDED':
-              return renderRecommendedSection(
-                section,
-                handleOpenCharacter,
-                handleToggleFav,
-                favoriteIds,
-              );
-
-            case 'FEATURED':
-              return renderFeaturedSection(
-                section,
-                handleOpenCharacter,
-                handleToggleFav,
-                favoriteIds,
-              );
-
-            case 'COLLECTIONS':
-              return renderCollectionsSection(section, handleOpenCollection);
-
-            case 'CATEGORIES':
-              return renderCategoriesSection(section, handleOpenCategory);
-
-            case 'TRENDING':
-            case 'NEW':
-              return renderCharacterListSection(
-                section,
-                handleOpenCharacter,
-                handleToggleFav,
-                favoriteIds,
-              );
-
-            default:
-              return null;
-          }
+        {/* Render 2-Column Category Grid Sections */}
+        {sections.map((section: HomeFeedSection) => {
+          return renderCategoryGridSection(section, handleOpenCharacter, handleOpenCategory);
         })}
       </ScrollView>
     </View>
@@ -215,356 +247,392 @@ export const HomeScreen: React.FC = () => {
 // Section Renderers
 // ---------------------------------------------------------------------------
 
-function renderContinueSection(
+function renderCategoryGridSection(
   section: HomeFeedSection,
-  onContinue: (item: ContinueConversationItem) => void,
+  onOpen: (char: CharacterCatalogItem) => void,
+  onOpenCategory: (slug: string, name?: string) => void,
 ) {
-  const items: ContinueConversationItem[] = section.items || [];
+  const items: CharacterCatalogItem[] = section.items || [];
   if (items.length === 0) return null;
+
+  const categorySlug = section.id.replace('section_cat_', '');
+
+  // Extract icon and title cleanly
+  const titleParts = section.title.split(' ');
+  const icon = titleParts[0];
+  const titleText = titleParts.slice(1).join(' ') || section.title;
 
   return (
     <View key={section.id} style={styles.sectionContainer}>
-      <SectionHeader title={section.title} subtitle={section.subtitle} style={styles.sectionHeaderPadding} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-        {items.map((item) => (
-          <TouchableOpacity
-            key={item.conversationId}
-            style={styles.continueCard}
-            activeOpacity={0.85}
-            onPress={() => onContinue(item)}
-            accessibilityRole="button"
-            accessibilityLabel={`Continue conversation with ${item.characterName}`}
-          >
-            <Avatar uri={item.characterAvatarUrl} name={item.characterName} size="md" />
-            <View style={styles.continueInfo}>
-              <View style={styles.continueNameRow}>
-                <Text style={styles.continueName} numberOfLines={1}>
-                  {item.characterName}
+      {/* Category Section Header */}
+      <TouchableOpacity
+        style={styles.sectionHeaderRow}
+        activeOpacity={0.75}
+        onPress={() => onOpenCategory(categorySlug, section.title)}
+      >
+        <View style={styles.sectionTitleLeft}>
+          <View style={styles.categoryCircleBadge}>
+            <Text style={styles.categoryCircleIcon}>{icon}</Text>
+          </View>
+          <Text style={styles.sectionTitle}>{titleText}</Text>
+        </View>
+        <Text style={styles.sectionArrow}>→</Text>
+      </TouchableOpacity>
+
+      {/* 2-Column Grid */}
+      <View style={styles.gridContainer}>
+        {items.map((char) => {
+          const engagement = ENGAGEMENT_MAP[char.slug] || `${(char.age * 0.15).toFixed(1)}L`;
+          const isNew = char.highlightBadges?.includes('New') || char.slug === 'sakshi';
+          const tags = (char.tags || []).map((t) => (typeof t === 'string' ? t : t.displayName || t.name));
+
+          return (
+            <TouchableOpacity
+              key={char.id}
+              style={styles.cardContainer}
+              activeOpacity={0.88}
+              onPress={() => onOpen(char)}
+            >
+              {/* Card Portrait Image */}
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: char.coverImageUrl || char.avatarUrl }}
+                  style={styles.cardImage}
+                  resizeMode="cover"
+                />
+
+                {/* Top-left "New" Badge */}
+                {isNew && (
+                  <View style={styles.newBadge}>
+                    <Text style={styles.newBadgeText}>New</Text>
+                  </View>
+                )}
+
+                {/* Bottom-left Engagement Pill */}
+                <View style={styles.engagementPill}>
+                  <Text style={styles.engagementChatIcon}>💬</Text>
+                  <Text style={styles.engagementCountText}>{engagement}</Text>
+                </View>
+              </View>
+
+              {/* Character Details Inside Card */}
+              <View style={styles.detailsContainer}>
+                <Text style={styles.characterName} numberOfLines={1}>
+                  {char.name}
                 </Text>
-                {item.relationshipStage && (
-                  <Badge label={item.relationshipStage} variant="stage" size="sm" />
+
+                {/* Tags Row */}
+                {tags.length > 0 && (
+                  <View style={styles.tagsRow}>
+                    {tags.slice(0, 2).map((tagName, idx) => (
+                      <View key={idx} style={styles.tagChip}>
+                        <Text style={styles.tagChipText} numberOfLines={1}>
+                          {tagName}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 )}
               </View>
-              <Text style={styles.continueSnippet} numberOfLines={2}>
-                {item.lastMessageSnippet || 'Conversation open'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-function renderRecommendedSection(
-  section: HomeFeedSection,
-  onOpen: (char: CharacterCatalogItem) => void,
-  onFav: (char: CharacterCatalogItem) => void,
-  favoriteIds: Set<string>,
-) {
-  const items: CharacterCatalogItem[] = section.items || [];
-  if (items.length === 0) return null;
-
-  return (
-    <View key={section.id} style={styles.sectionContainer}>
-      <SectionHeader title={section.title} subtitle={section.subtitle} style={styles.sectionHeaderPadding} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-        {items.map((char) => (
-          <CharacterCard
-            key={char.id}
-            character={char}
-            variant="grid"
-            onPress={onOpen}
-            onFavoriteToggle={onFav}
-            isFavorited={favoriteIds.has(char.id) || char.isFavorite}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-function renderFeaturedSection(
-  section: HomeFeedSection,
-  onOpen: (char: CharacterCatalogItem) => void,
-  onFav: (char: CharacterCatalogItem) => void,
-  favoriteIds: Set<string>,
-) {
-  const items: CharacterCatalogItem[] = section.items || [];
-  if (items.length === 0) return null;
-  const hero = items[0];
-  if (!hero) return null;
-
-  return (
-    <View key={section.id} style={styles.sectionContainer}>
-      <SectionHeader title={section.title} subtitle={section.subtitle} style={styles.sectionHeaderPadding} />
-      <CharacterCard
-        character={hero}
-        variant="featured"
-        onPress={onOpen}
-        onFavoriteToggle={onFav}
-        isFavorited={favoriteIds.has(hero.id) || hero.isFavorite}
-      />
-    </View>
-  );
-}
-
-function renderCollectionsSection(
-  section: HomeFeedSection,
-  onOpenCollection: (col: CuratedCollectionSummary) => void,
-) {
-  const collections: CuratedCollectionSummary[] = section.items || [];
-  if (collections.length === 0) return null;
-
-  return (
-    <View key={section.id} style={styles.sectionContainer}>
-      <SectionHeader title={section.title} subtitle={section.subtitle} style={styles.sectionHeaderPadding} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-        {collections.map((col) => (
-          <TouchableOpacity
-            key={col.id}
-            style={styles.collectionCard}
-            activeOpacity={0.85}
-            onPress={() => onOpenCollection(col)}
-            accessibilityRole="button"
-            accessibilityLabel={`${col.title} collection`}
-          >
-            {col.heroImageUrl ? (
-              <Image source={{ uri: col.heroImageUrl }} style={styles.collectionImage} />
-            ) : (
-              <View style={[styles.collectionImage, styles.collectionPlaceholder]} />
-            )}
-            <View style={styles.collectionOverlay}>
-              {col.badgeText && (
-                <View style={styles.collectionBadge}>
-                  <Text style={styles.collectionBadgeText}>{col.badgeText}</Text>
-                </View>
-              )}
-              <Text style={styles.collectionTitle}>{col.title}</Text>
-              <Text style={styles.collectionSubtitle} numberOfLines={2}>
-                {col.subtitle || `${col.itemCount} Companions`}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-function renderCategoriesSection(
-  section: HomeFeedSection,
-  onOpenCategory: (cat: CharacterCategorySummary) => void,
-) {
-  const categories: CharacterCategorySummary[] = section.items || [];
-  if (categories.length === 0) return null;
-
-  return (
-    <View key={section.id} style={styles.sectionContainer}>
-      <SectionHeader title={section.title} subtitle={section.subtitle} style={styles.sectionHeaderPadding} />
-      <View style={styles.categoriesGrid}>
-        {categories.map((cat) => (
-          <TouchableOpacity
-            key={cat.id}
-            style={styles.categoryGridItem}
-            activeOpacity={0.8}
-            onPress={() => onOpenCategory(cat)}
-            accessibilityRole="button"
-            accessibilityLabel={`Category ${cat.displayName}`}
-          >
-            <Text style={styles.categoryItemTitle}>{cat.displayName}</Text>
-            <Text style={styles.categoryItemCount}>
-              {cat.characterCount !== undefined ? `${cat.characterCount} companions` : 'Explore'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
 }
 
-function renderCharacterListSection(
-  section: HomeFeedSection,
-  onOpen: (char: CharacterCatalogItem) => void,
-  onFav: (char: CharacterCatalogItem) => void,
-  favoriteIds: Set<string>,
-) {
-  const items: CharacterCatalogItem[] = section.items || [];
-  if (items.length === 0) return null;
-
-  return (
-    <View key={section.id} style={styles.sectionContainer}>
-      <SectionHeader title={section.title} subtitle={section.subtitle} style={styles.sectionHeaderPadding} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-        {items.map((char) => (
-          <CharacterCard
-            key={char.id}
-            character={char}
-            variant="compact"
-            onPress={onOpen}
-            onFavoriteToggle={onFav}
-            isFavorited={favoriteIds.has(char.id) || char.isFavorite}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
+// ---------------------------------------------------------------------------
+// Stylesheet
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: darkThemeColors.background,
+    backgroundColor: '#0A0612',
   },
-  header: {
+  // Top Header Bar
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xxl + spacing.xs,
-    paddingBottom: spacing.md,
-    backgroundColor: darkThemeColors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: darkThemeColors.borderSubtle,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#0A0612',
   },
-  greetingContainer: {
-    flex: 1,
-  },
-  greetingTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: darkThemeColors.textPrimary,
-    letterSpacing: -0.4,
-  },
-  greetingSubtitle: {
-    fontSize: 12,
-    color: darkThemeColors.textMuted,
-    marginTop: 2,
-  },
-  headerActions: {
+  logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
   },
+  heartBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  heartIcon: {
+    fontSize: 22,
+  },
+  aiTag: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    marginLeft: -6,
+    marginTop: -8,
+  },
+  aiTagText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  heartAiBadge: {
+    backgroundColor: '#F43F5E',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 6,
+  },
+  heartAiText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  wordmarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoLo: {
+    fontSize: 25,
+    fontWeight: '900',
+    color: '#FF6584', // Coral / Pink
+    letterSpacing: -0.4,
+  },
+  logoVira: {
+    fontSize: 25,
+    fontWeight: '900',
+    color: '#C084FC', // Violet / Purple
+    letterSpacing: -0.4,
+  },
+  logoLovira: {
+    fontSize: 25,
+    fontWeight: '900',
+    color: '#C084FC',
+    letterSpacing: -0.4,
+  },
+  walletPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#160E22',
+    borderWidth: 1.2,
+    borderColor: '#2B1C3D',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  coinIcon: {
+    fontSize: 15,
+  },
+  coinBalance: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  coinPlus: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    marginLeft: 2,
+  },
+  // Filter Bar
+  filterBarContainer: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#160D24',
+  },
+  filterChipsScroll: {
+    paddingHorizontal: 16,
+    gap: 10,
+    alignItems: 'center',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    backgroundColor: '#12091D',
+    borderWidth: 1.2,
+    borderColor: '#231733',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+  },
+  filterChipActive: {
+    backgroundColor: '#1C0B29',
+    borderColor: '#E02494',
+    borderWidth: 1.8,
+    shadowColor: '#E02494',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  chipIconBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1F1330',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  chipIconText: {
+    fontSize: 13,
+  },
+  filterChipText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#9E96AD',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: spacing.xxl * 2,
+    paddingBottom: 40,
   },
+  // Section
   sectionContainer: {
-    marginTop: spacing.xl,
+    marginTop: 22,
+    paddingHorizontal: 16,
   },
-  sectionHeaderPadding: {
-    paddingHorizontal: spacing.lg,
-  },
-  horizontalScroll: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-  },
-  // Continue Card
-  continueCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: SCREEN_WIDTH * 0.72,
-    backgroundColor: darkThemeColors.surfaceElevated,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-  },
-  continueInfo: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  continueNameRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
-    gap: spacing.xs,
+    marginBottom: 14,
   },
-  continueName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: darkThemeColors.textPrimary,
-    flex: 1,
+  sectionTitleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  continueSnippet: {
-    fontSize: 12,
-    color: darkThemeColors.textMuted,
-    lineHeight: 16,
+  categoryCircleBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#1A0E2B',
+    borderWidth: 1.2,
+    borderColor: '#2D1B48',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-  // Collections Card
-  collectionCard: {
-    width: SCREEN_WIDTH * 0.65,
-    height: 150,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    backgroundColor: darkThemeColors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-  },
-  collectionImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  collectionPlaceholder: {
-    backgroundColor: darkThemeColors.surfaceHover,
-  },
-  collectionOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: spacing.md,
-    backgroundColor: 'rgba(11, 13, 19, 0.75)',
-  },
-  collectionBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: darkThemeColors.accent,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  collectionBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: darkThemeColors.accentText,
-  },
-  collectionTitle: {
+  categoryCircleIcon: {
     fontSize: 16,
+  },
+  sectionTitle: {
+    fontSize: 18.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  sectionArrow: {
+    fontSize: 19,
     fontWeight: '700',
-    color: darkThemeColors.textPrimary,
+    color: '#B392F0',
   },
-  collectionSubtitle: {
-    fontSize: 12,
-    color: darkThemeColors.textMuted,
-    marginTop: 2,
-  },
-  // Categories Grid
-  categoriesGrid: {
+  // 2-Column Grid
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  categoryGridItem: {
-    width: (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm) / 2,
-    backgroundColor: darkThemeColors.surfaceElevated,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
+  cardContainer: {
+    width: CARD_WIDTH,
+    backgroundColor: '#120C1E',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: '#221535',
+    overflow: 'hidden',
+    paddingBottom: 12,
+    marginBottom: 6,
   },
-  categoryItemTitle: {
-    fontSize: 14,
+  imageContainer: {
+    width: '100%',
+    height: CARD_IMAGE_HEIGHT,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#1A1128',
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  newBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#7C3AED',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+  },
+  newBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  engagementPill: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.68)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    gap: 4,
+  },
+  engagementChatIcon: {
+    fontSize: 10,
+  },
+  engagementCountText: {
+    fontSize: 11.5,
     fontWeight: '700',
-    color: darkThemeColors.textPrimary,
+    color: '#FFFFFF',
   },
-  categoryItemCount: {
-    fontSize: 11,
-    color: darkThemeColors.textMuted,
-    marginTop: 2,
+  detailsContainer: {
+    paddingHorizontal: 10,
+    paddingTop: 10,
+  },
+  characterName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#F9FAFB',
+    letterSpacing: -0.2,
+    marginBottom: 6,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  tagChip: {
+    backgroundColor: '#1A1129',
+    borderWidth: 1,
+    borderColor: '#2C1C44',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  tagChipText: {
+    fontSize: 11.5,
+    color: '#9CA3AF',
+    fontWeight: '600',
   },
 });

@@ -31,7 +31,7 @@ export class HomeFeedService {
     } = {},
   ): Promise<HomeFeedResponse> {
     const limit = options.limit || 10;
-    const cacheKey = userId ? `home:user:${userId}:v18` : 'home:guest:v18';
+    const cacheKey = userId ? `home:user:${userId}:v26` : 'home:guest:v26';
 
     if (!options.refresh) {
       try {
@@ -171,16 +171,10 @@ export class HomeFeedService {
       });
       if (dedupeAcrossSections) popularRanked.forEach(i => globalShownIds.add(i.characterId));
 
-      // 6. Hydrate Characters with DB records
-      const allSelectedIds = Array.from(new Set([
-        ...forYouRanked.map(i => i.characterId),
-        ...trendingRanked.map(i => i.characterId),
-        ...newRanked.map(i => i.characterId),
-        ...popularRanked.map(i => i.characterId),
-        ...ranked.map(r => r.characterId),
-      ]));
+      // 6. Hydrate All Published Characters with DB records
       const characters = await prisma.character.findMany({
-        where: { id: { in: allSelectedIds } },
+        where: { status: 'PUBLISHED', deletedAt: null },
+        orderBy: [{ isFeatured: 'desc' }, { updatedAt: 'desc' }],
         include: {
           categoryRef: true,
           discoveryConfig: true,
@@ -193,7 +187,7 @@ export class HomeFeedService {
       let userFavorites = new Set<string>();
       if (userId && characters.length > 0) {
         const favs = await prisma.userFavorite.findMany({
-          where: { userId, characterId: { in: allSelectedIds } },
+          where: { userId, characterId: { in: characters.map(c => c.id) } },
           select: { characterId: true },
         });
         userFavorites = new Set(favs.map(f => f.characterId));
@@ -209,24 +203,7 @@ export class HomeFeedService {
         ]),
       );
 
-      const mapItems = (rankedList: any[], reasonCode: string, reasonText: string): CharacterCatalogItem[] => {
-        return rankedList
-          .map(r => {
-            const item = charMap.get(r.characterId);
-            if (!item) return null;
-            return {
-              ...item,
-              recommendationReasonCode: reasonCode,
-              recommendationReason: reasonText,
-            };
-          })
-          .filter(Boolean) as CharacterCatalogItem[];
-      };
-
-      const [collections, categories] = await Promise.all([
-        CatalogService.getCollections(userId),
-        CatalogService.getCategories(),
-      ]);
+      const categories = await CatalogService.getCategories();
 
       // 7. Assemble Feed Sections
       const sections: HomeFeedSection[] = [];
@@ -242,74 +219,64 @@ export class HomeFeedService {
         });
       }
 
-      const forYouItems = mapItems(forYouRanked, 'FOR_YOU', 'Personalized for you');
-      if (forYouItems.length > 0) {
-        sections.push({
-          id: 'section_for_you',
-          sectionKey: 'RECOMMENDED',
-          title: 'For You',
-          subtitle: 'Companions tailored to your personality and interests',
-          layoutStyle: 'HERO',
-          items: forYouItems,
-        });
-      }
-
-      const trendingItems = mapItems(trendingRanked, 'TRENDING', 'Trending velocity this week');
-      if (trendingItems.length > 0) {
-        sections.push({
-          id: 'section_trending',
-          sectionKey: 'TRENDING',
-          title: 'Trending Now',
-          subtitle: 'Rising in popularity across the community',
-          layoutStyle: 'CAROUSEL',
-          items: trendingItems,
-        });
-      }
-
       if (categories.length > 0) {
         sections.push({
           id: 'section_categories',
           sectionKey: 'CATEGORIES',
-          title: 'Explore Categories',
+          title: 'Categories',
           subtitle: 'Browse companions by interest and specialty',
           layoutStyle: 'CHIPS',
           items: categories,
         });
       }
 
-      const newItems = mapItems(newRanked, 'NEW', 'Recently introduced');
-      if (newItems.length > 0) {
-        sections.push({
-          id: 'section_new',
-          sectionKey: 'NEW',
-          title: 'New Characters',
-          subtitle: 'Fresh personalities and newly published creators',
-          layoutStyle: 'CAROUSEL',
-          items: newItems,
-        });
-      }
+      const CANONICAL_SLUG_ORDER = [
+        'dr-ananya',
+        'joel',
+        'anjali',
+        'tanu',
+        'sakshi',
+        'sangeeta',
+        'aman',
+        'raj',
+        'neha',
+        'nancy',
+        'renu',
+        'kavya',
+        'gita-gpt',
+        'krishna',
+        'indira',
+        'keerthana',
+      ];
 
-      if (collections.length > 0) {
-        sections.push({
-          id: 'section_collections',
-          sectionKey: 'COLLECTIONS',
-          title: 'Featured Collections',
-          subtitle: 'Editorially curated character storylines',
-          layoutStyle: 'CAROUSEL',
-          items: collections,
-        });
-      }
+      // Add Category-wise Sections for 2-column grid view
+      for (const cat of categories) {
+        const catChars = characters.filter(
+          c => c.categoryId === cat.id || c.category === cat.slug || c.category === cat.name,
+        );
+        if (catChars.length > 0) {
+          const catItems = catChars
+            .map(c => charMap.get(c.id))
+            .filter(Boolean) as CharacterCatalogItem[];
 
-      const popularItems = mapItems(popularRanked, 'POPULAR', 'Most active companions');
-      if (popularItems.length > 0) {
-        sections.push({
-          id: 'section_popular',
-          sectionKey: 'FEATURED',
-          title: 'All-Time Favorites',
-          subtitle: 'Highly rated and popular companions',
-          layoutStyle: 'GRID',
-          items: popularItems,
-        });
+          catItems.sort((a, b) => {
+            const idxA = CANONICAL_SLUG_ORDER.indexOf(a.slug);
+            const idxB = CANONICAL_SLUG_ORDER.indexOf(b.slug);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return 0;
+          });
+
+          sections.push({
+            id: `section_cat_${cat.slug}`,
+            sectionKey: `CATEGORY_${cat.slug.toUpperCase()}`,
+            title: `${cat.iconUrl ? cat.iconUrl + ' ' : ''}${cat.displayName}`,
+            subtitle: cat.description || '',
+            layoutStyle: 'GRID',
+            items: catItems,
+          });
+        }
       }
 
       const response: HomeFeedResponse = {
@@ -355,7 +322,7 @@ export class HomeFeedService {
 
     return {
       greeting: {
-        title: 'Welcome to AI Lovish',
+        title: 'Welcome to AI Lovira',
         subtitle: 'Discover intelligent companion characters',
         isReturningUser: false,
       },
