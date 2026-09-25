@@ -300,17 +300,37 @@ export class CharacterCompiler {
   }
 
   // Tier 8: Structured Behavior Rules
-  private static compileBehaviorRulesTier(rules?: BehaviorRuleItemData[]): string {
-    if (!rules || rules.length === 0) {
+  private static compileBehaviorRulesTier(rules?: BehaviorRuleItemData[] | any): string {
+    if (!rules) {
+      return '- Maintain character consistency and engaging conversational flow.';
+    }
+
+    if (!Array.isArray(rules)) {
+      if (typeof rules === 'object') {
+        const lines: string[] = [];
+        if (Array.isArray(rules.directives)) {
+          lines.push('MANDATORY BEHAVIORAL DIRECTIVES:');
+          lines.push(...rules.directives.map((d: string) => `  * DO: ${d}`));
+        }
+        if (Array.isArray(rules.boundaries)) {
+          lines.push('PROHIBITED BEHAVIORS:');
+          lines.push(...rules.boundaries.map((b: string) => `  * DO NOT: ${b}`));
+        }
+        if (lines.length > 0) return lines.join('\n');
+      }
+      return '- Maintain character consistency and engaging conversational flow.';
+    }
+
+    if (rules.length === 0) {
       return '- Maintain character consistency and engaging conversational flow.';
     }
 
     const enabledRules = rules
-      .filter(r => r.isEnabled)
-      .sort((a, b) => a.priority - b.priority);
+      .filter((r: any) => r && (r.isEnabled === undefined || r.isEnabled))
+      .sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0));
 
-    const dos = enabledRules.filter(r => r.type === 'DO').map(r => `  * DO: ${r.ruleText}`);
-    const doNots = enabledRules.filter(r => r.type === 'DO_NOT').map(r => `  * DO NOT: ${r.ruleText}`);
+    const dos = enabledRules.filter((r: any) => r.type === 'DO').map((r: any) => `  * DO: ${r.ruleText}`);
+    const doNots = enabledRules.filter((r: any) => r.type === 'DO_NOT').map((r: any) => `  * DO NOT: ${r.ruleText}`);
 
     const output: string[] = [];
     if (dos.length > 0) {
@@ -322,25 +342,43 @@ export class CharacterCompiler {
       output.push(...doNots);
     }
 
-    return output.join('\n');
+    return output.length > 0 ? output.join('\n') : '- Maintain character consistency and engaging conversational flow.';
   }
 
   // Tier 9: Canonical Knowledge & Lore
-  private static compileKnowledgeTier(items?: CharacterKnowledgeItemData[]): string {
-    if (!items || items.length === 0) {
+  private static compileKnowledgeTier(items?: CharacterKnowledgeItemData[] | any): string {
+    if (!items) {
+      return '- General world knowledge consistent with backstory.';
+    }
+
+    if (!Array.isArray(items)) {
+      if (typeof items === 'object') {
+        const lines: string[] = [];
+        if (Array.isArray(items.topics)) {
+          lines.push(`Key Lore Topics: ${items.topics.join(', ')}`);
+        }
+        if (Array.isArray(items.expertise)) {
+          lines.push(`Core Expertise: ${items.expertise.join(', ')}`);
+        }
+        if (lines.length > 0) return lines.join('\n');
+      }
+      return '- General world knowledge consistent with backstory.';
+    }
+
+    if (items.length === 0) {
       return '- General world knowledge consistent with backstory.';
     }
 
     const enabledItems = items
-      .filter(item => item.isEnabled)
-      .sort((a, b) => a.priority - b.priority);
+      .filter((item: any) => item && (item.isEnabled === undefined || item.isEnabled))
+      .sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0));
 
     if (enabledItems.length === 0) {
       return '- General world knowledge consistent with backstory.';
     }
 
     return enabledItems
-      .map(item => `[${item.type}] ${item.title}: ${item.content}`)
+      .map((item: any) => `[${item.type || 'LORE'}] ${item.title || ''}: ${item.content || item.topic || ''}`)
       .join('\n');
   }
 
