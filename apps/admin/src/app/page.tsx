@@ -61,8 +61,10 @@ export default function AdminCommandCenterPage() {
   };
 
   useEffect(() => {
-    fetchOverview();
-  }, []);
+    if (admin) {
+      fetchOverview();
+    }
+  }, [admin]);
 
   return (
     <AuthGuard>

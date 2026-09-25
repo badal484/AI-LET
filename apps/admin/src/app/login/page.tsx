@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdminAuthService } from '../../services/adminAuth';
+import { useAdminAuth } from '../../components/AuthGuard';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('admin@ai-companion.local');
@@ -10,7 +10,14 @@ export default function AdminLoginPage() {
   const [mfaCode, _setMfaCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { login, admin, isLoading: isAuthLoading } = useAdminAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthLoading && admin) {
+      router.push('/');
+    }
+  }, [admin, isAuthLoading, router]);
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -21,7 +28,7 @@ export default function AdminLoginPage() {
     setErrorMessage(null);
 
     try {
-      await AdminAuthService.login(loginEmail, loginPassword, mfaCode || undefined);
+      await login(loginEmail, loginPassword, mfaCode || undefined);
       router.push('/');
     } catch (err: unknown) {
       setErrorMessage((err as Error)?.message || 'Authentication failed.');

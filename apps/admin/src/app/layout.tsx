@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import '../styles/globals.css';
-import { Sidebar } from '../components/Sidebar';
-import { Header } from '../components/Header';
 import { AuthProvider } from '../components/AuthGuard';
+import { AdminShell } from '../components/AdminShell';
 
 export const metadata: Metadata = {
   title: 'AI Companion Operations Console',
@@ -18,13 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthProvider>
-          <div className="admin-layout">
-            <Sidebar />
-            <div className="admin-content-area">
-              <Header />
-              <main className="admin-main">{children}</main>
-            </div>
-          </div>
+          <AdminShell>{children}</AdminShell>
         </AuthProvider>
       </body>
     </html>

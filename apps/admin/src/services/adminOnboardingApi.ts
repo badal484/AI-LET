@@ -6,10 +6,10 @@ import type {
   OnboardingStepConfigItem,
 } from '@ai-companion/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('admin_access_token') : null;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -17,6 +17,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
   };
 
   const response = await fetch(`${API_BASE}${url}`, {
+    credentials: 'include',
     ...options,
     headers,
   });

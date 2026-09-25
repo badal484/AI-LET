@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AuthGuard } from '../../../components/AuthGuard';
+import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { adminAnalyticsApi } from '../../../services/adminAnalyticsApi';
 import type {
   OnboardingFunnelStep,
@@ -12,6 +12,7 @@ import type {
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 
 export default function GrowthAnalyticsPage() {
+  const { admin } = useAdminAuth();
   const [funnel, setFunnel] = useState<OnboardingFunnelStep[]>([]);
   const [channels, setChannels] = useState<AttributionChannelSummary[]>([]);
   const [cohorts, setCohorts] = useState<CohortRetentionItem[]>([]);
@@ -34,8 +35,10 @@ export default function GrowthAnalyticsPage() {
   };
 
   useEffect(() => {
-    fetchGrowthData();
-  }, []);
+    if (admin) {
+      fetchGrowthData();
+    }
+  }, [admin]);
 
   return (
     <AuthGuard>

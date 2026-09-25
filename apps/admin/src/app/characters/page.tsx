@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { AuthGuard } from '../../components/AuthGuard';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import { AdminCharacterApi } from '../../services/adminCharacterApi';
 import { Bot, Plus, Search, Filter, Sparkles, ArrowRight, X } from 'lucide-react';
 
 export default function CharactersDirectoryPage() {
+  const { admin } = useAdminAuth();
   const [characters, setCharacters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -34,6 +35,7 @@ export default function CharactersDirectoryPage() {
   });
 
   const loadCharacters = useCallback(async () => {
+    if (!admin) return;
     setLoading(true);
     try {
       const res = await AdminCharacterApi.listCharacters({
@@ -46,11 +48,13 @@ export default function CharactersDirectoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [admin, search, statusFilter]);
 
   useEffect(() => {
-    loadCharacters();
-  }, [loadCharacters]);
+    if (admin) {
+      loadCharacters();
+    }
+  }, [admin, loadCharacters]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;

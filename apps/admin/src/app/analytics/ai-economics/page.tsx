@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MetricCard } from '../../../components/MetricCard';
-import { AuthGuard } from '../../../components/AuthGuard';
+import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { adminAnalyticsApi } from '../../../services/adminAnalyticsApi';
 import type {
   AIUnitEconomicsSummary,
@@ -13,6 +13,7 @@ import type {
 import { ArrowLeft, RefreshCw, Cpu, Layers, AlertCircle, PlusCircle } from 'lucide-react';
 
 export default function AIEconomicsPage() {
+  const { admin } = useAdminAuth();
   const [days, setDays] = useState(30);
   const [economics, setEconomics] = useState<AIUnitEconomicsSummary | null>(null);
   const [pricing, setPricing] = useState<AIModelPricingItem[]>([]);
@@ -68,8 +69,10 @@ export default function AIEconomicsPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [days]);
+    if (admin) {
+      fetchData();
+    }
+  }, [admin, days]);
 
   return (
     <AuthGuard>

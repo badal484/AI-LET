@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AuthGuard } from '../../../components/AuthGuard';
+import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { adminAnalyticsApi } from '../../../services/adminAnalyticsApi';
 import type {
   ExperimentItem,
@@ -12,6 +12,7 @@ import type {
 import { ArrowLeft, RefreshCw, PlusCircle, CheckCircle, AlertTriangle, Play, Pause, Archive } from 'lucide-react';
 
 export default function ExperimentsPage() {
+  const { admin } = useAdminAuth();
   const [experiments, setExperiments] = useState<ExperimentItem[]>([]);
   const [selectedExpId, setSelectedExpId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<ExperimentAnalysisResult | null>(null);
@@ -90,14 +91,16 @@ export default function ExperimentsPage() {
   };
 
   useEffect(() => {
-    fetchExperiments();
-  }, []);
+    if (admin) {
+      fetchExperiments();
+    }
+  }, [admin]);
 
   useEffect(() => {
-    if (selectedExpId) {
+    if (admin && selectedExpId) {
       fetchAnalysis(selectedExpId);
     }
-  }, [selectedExpId]);
+  }, [admin, selectedExpId]);
 
   return (
     <AuthGuard>
