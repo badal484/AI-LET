@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { AuthGuard } from '../../../components/AuthGuard';
+import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { AdminCharacterApi } from '../../../services/adminCharacterApi';
 import { AdminVoiceApi } from '../../../services/adminVoiceApi';
 import { AdminDiscoveryApi } from '../../../services/adminDiscoveryApi';
@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 
 export default function CharacterStudioPage() {
+  const { admin } = useAdminAuth();
   const params = useParams();
   const characterId = params?.['id'] as string;
 
@@ -145,7 +146,7 @@ export default function CharacterStudioPage() {
   const [voicePreviewSampleText, setVoicePreviewSampleText] = useState('Hello! It is wonderful to speak with you today.');
 
   const loadCharacterData = useCallback(async () => {
-    if (!characterId) return;
+    if (!characterId || !admin) return;
     setLoading(true);
     try {
       const data = await AdminCharacterApi.getCharacterDetail(characterId);
@@ -162,11 +163,13 @@ export default function CharacterStudioPage() {
     } finally {
       setLoading(false);
     }
-  }, [characterId]);
+  }, [admin, characterId]);
 
   useEffect(() => {
-    loadCharacterData();
-  }, [loadCharacterData]);
+    if (admin) {
+      loadCharacterData();
+    }
+  }, [admin, loadCharacterData]);
 
   const handleVersionChange = async (verId: string) => {
     setSelectedVersionId(verId);

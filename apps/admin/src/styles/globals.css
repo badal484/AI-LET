@@ -1,18 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
   --bg-primary: #07090e;
-  --bg-secondary: #0d1117;
-  --surface-elevated: #161b22;
-  --surface-hover: #21262d;
-  --border-subtle: #21262d;
-  --border-glass: rgba(255, 255, 255, 0.12);
-  --text-primary: #f0f6fc;
-  --text-secondary: #c9d1d9;
-  --text-muted: #8b949e;
-  --accent-primary: #9d65ff;
-  --accent-hover: #b88bff;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #f87171;
+  --bg-secondary: #0c1019;
+  --surface-elevated: #121826;
+  --surface-hover: #1a2236;
+  --border-subtle: #1e293b;
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --accent-primary: #a855f7;
+  --accent-hover: #c084fc;
+  --accent-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
 }
 
 * {
@@ -27,10 +31,27 @@ body {
   overflow-x: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans',
-    'Helvetica Neue', sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }
 
 a {
@@ -41,10 +62,11 @@ a {
 .admin-layout {
   display: flex;
   min-height: 100vh;
+  background-color: var(--bg-primary);
 }
 
 .admin-sidebar {
-  width: 260px;
+  width: 270px;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-subtle);
   display: flex;
@@ -56,41 +78,104 @@ a {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.03) 0%, transparent 50%);
 }
 
 .admin-header {
-  height: 64px;
+  height: 68px;
   border-bottom: 1px solid var(--border-subtle);
-  background-color: var(--bg-secondary);
+  background-color: rgba(12, 16, 25, 0.85);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 28px;
 }
 
 .admin-main {
   flex: 1;
-  padding: 32px 24px;
-  background-color: var(--bg-primary);
+  padding: 32px 32px 64px 32px;
+  background-color: transparent;
 }
 
 .card {
   background-color: var(--surface-elevated);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 22px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .badge-success {
-  background-color: rgba(52, 211, 153, 0.15);
+  background-color: rgba(16, 185, 129, 0.15);
   color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.badge-danger {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-purple {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: var(--accent-hover);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.badge-blue {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--info);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse-dot {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

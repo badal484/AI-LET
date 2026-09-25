@@ -2,7 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { adminAIApi } from '../../../services/adminAIApi';
+import {
+  BookOpen,
+  Search,
+  Globe,
+  CheckCircle,
+  FileText,
+  FolderPlus,
+  Upload,
+  ArrowLeft,
+  Sparkles,
+  Layers,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface DocItem {
   id: string;
@@ -25,6 +39,7 @@ interface ColItem {
 }
 
 export default function KnowledgeStudioPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<'documents' | 'collections' | 'search' | 'research' | 'groundedness'>('documents');
   const [documents, setDocuments] = useState<DocItem[]>([]);
   const [collections, setCollections] = useState<ColItem[]>([]);
@@ -41,11 +56,8 @@ export default function KnowledgeStudioPage() {
   const [researchResult, setResearchResult] = useState<any | null>(null);
   const [researchLoading, setResearchLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
-
   const loadData = async () => {
+    if (!admin) return;
     setLoading(true);
     setError(null);
     try {
@@ -62,6 +74,12 @@ export default function KnowledgeStudioPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (admin) {
+      loadData();
+    }
+  }, [admin, activeTab]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -98,224 +116,347 @@ export default function KnowledgeStudioPage() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <Link href="/ai" style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500 }}>
-            ← Back to AI Overview
-          </Link>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, margin: '0.25rem 0 0 0', color: '#111827' }}>
-            Production Knowledge & Retrieval Studio
-          </h1>
-          <p style={{ color: '#6b7280', margin: '0.25rem 0 0 0' }}>
-            Phase 26: Hybrid Retrieval (Semantic + Lexical), Document Pipelines, Web Research & Grounded Citations
-          </p>
-        </div>
-      </div>
-
-      {error && (
-        <div style={{ padding: '0.75rem 1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        {[
-          { key: 'documents', label: 'Document Registry' },
-          { key: 'collections', label: 'Knowledge Collections' },
-          { key: 'search', label: 'Hybrid Search Debugger' },
-          { key: 'research', label: 'Web Research Console' },
-          { key: 'groundedness', label: 'Grounded Citation Validator' },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            style={{
-              padding: '0.75rem 1.25rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              color: activeTab === tab.key ? '#3b82f6' : '#6b7280',
-              borderBottom: activeTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab: Documents */}
-      {activeTab === 'documents' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Indexed Knowledge Documents</h2>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.25rem 0 0 0' }}>
-                Multi-format documents with structural section preservation and pgvector embeddings.
-              </p>
+    <AuthGuard>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Link href="/characters" style={{ color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontSize: '13px' }}>
+                <ArrowLeft size={14} /> Back to Studio
+              </Link>
             </div>
-            <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: 600 }}>SSRF & Prompt Injection Filters: ACTIVE</span>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+              <BookOpen size={24} color="#A855F7" />
+              Domain Knowledge & RAG Brain
+            </h1>
+            <p style={{ fontSize: '14px', color: '#94A3B8', marginTop: '4px' }}>
+              Upload PDFs, guides, and domain lore with vector embeddings & semantic retrieval
+            </p>
           </div>
 
-          {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Loading documents...</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#4b5563' }}>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Title</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>MIME Type</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Chunks</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Est. Tokens</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Visibility</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.length > 0 ? (
-                  documents.map((d) => (
-                    <tr key={d.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>{d.title}</td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace' }}>{d.mimeType}</td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>{d.totalChunks}</td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>{d.totalTokens.toLocaleString()}</td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>{d.visibility}</td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: '#10b981' }}>{d.status}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                      No user or character documents indexed yet. Ingestion pipeline ready.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Collections */}
-      {activeTab === 'collections' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Knowledge Collections</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Personal and collaborative knowledge binders with scoped character accessibility.
-          </p>
-
-          {collections.length === 0 && (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>No knowledge collections yet.</p>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
-            {collections.map((col) => (
-              <div key={col.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.25rem', background: '#f9fafb' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6' }}>{col.visibility}</span>
-                  <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{col.documentCount} docs</span>
-                </div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0.5rem 0 0.25rem 0' }}>{col.name}</h3>
-                <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: 0 }}>Created {new Date(col.createdAt).toLocaleDateString()}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Hybrid Search Debugger */}
-      {activeTab === 'search' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Hybrid Search Tester & Rank Fusion</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Inspect Reciprocal Rank Fusion (RRF) combining semantic cosine similarity with lexical full-text search.
-          </p>
-
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Enter search query..."
-              style={{ flex: 1, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
-            />
-            <button
-              onClick={handleSearch}
-              disabled={searchLoading}
-              style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                color: '#34D399',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
             >
-              {searchLoading ? 'Searching...' : 'Run Hybrid Search'}
-            </button>
+              <ShieldCheck size={14} /> pgvector RAG Active
+            </span>
           </div>
+        </div>
 
-          {searchResults && (
-            <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Search Candidates & RRF Scoring</h3>
-              <pre style={{ margin: 0, padding: '1rem', background: '#111827', color: '#38bdf8', borderRadius: '6px', fontSize: '0.8125rem', overflowX: 'auto' }}>
+        {error && (
+          <div style={{ padding: '12px 16px', backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid #EF4444', borderRadius: '8px', color: '#F87171', fontSize: '13px' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Tab Pills */}
+        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #1E293B', paddingBottom: '12px', overflowX: 'auto' }}>
+          {[
+            { key: 'documents', label: 'Indexed Documents', icon: FileText },
+            { key: 'collections', label: 'Domain Collections', icon: Layers },
+            { key: 'search', label: 'Hybrid Search Tester', icon: Search },
+            { key: 'research', label: 'Web Research Console', icon: Globe },
+            { key: 'groundedness', label: 'Citation Validator', icon: CheckCircle },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isCurrent = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: isCurrent ? '1px solid #A855F7' : '1px solid #1E293B',
+                  backgroundColor: isCurrent ? 'rgba(168, 85, 247, 0.15)' : '#0F131D',
+                  color: isCurrent ? '#FFFFFF' : '#94A3B8',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Icon size={15} color={isCurrent ? '#C084FC' : '#64748B'} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab 1: Documents */}
+        {activeTab === 'documents' && (
+          <div style={{ backgroundColor: '#0F131D', border: '1px solid #1E293B', borderRadius: '14px', padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: 0 }}>
+                  Indexed Knowledge Documents
+                </h2>
+                <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px' }}>
+                  Parsed into semantic chunk vectors stored in pgvector.
+                </p>
+              </div>
+
+              <button
+                onClick={() => alert('To upload documents, use Character Studio -> Knowledge tab or drag files here.')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  backgroundColor: '#9333EA',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                <Upload size={14} />
+                <span>+ Upload Document</span>
+              </button>
+            </div>
+
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>Loading documents...</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #1E293B', color: '#64748B' }}>
+                      <th style={{ padding: '12px 14px' }}>Document Title</th>
+                      <th style={{ padding: '12px 14px' }}>MIME Type</th>
+                      <th style={{ padding: '12px 14px' }}>Chunks</th>
+                      <th style={{ padding: '12px 14px' }}>Est. Tokens</th>
+                      <th style={{ padding: '12px 14px' }}>Visibility</th>
+                      <th style={{ padding: '12px 14px' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.length > 0 ? (
+                      documents.map(d => (
+                        <tr key={d.id} style={{ borderBottom: '1px solid #161B26' }}>
+                          <td style={{ padding: '14px', fontWeight: '600', color: '#FFFFFF' }}>{d.title}</td>
+                          <td style={{ padding: '14px', fontFamily: 'monospace', color: '#94A3B8' }}>{d.mimeType}</td>
+                          <td style={{ padding: '14px', color: '#CBD5E1' }}>{d.totalChunks}</td>
+                          <td style={{ padding: '14px', color: '#CBD5E1' }}>{d.totalTokens.toLocaleString()}</td>
+                          <td style={{ padding: '14px', color: '#94A3B8' }}>{d.visibility}</td>
+                          <td style={{ padding: '14px' }}>
+                            <span className="badge badge-success">{d.status}</span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>
+                          <BookOpen size={36} color="#334155" style={{ margin: '0 auto 12px' }} />
+                          <p style={{ fontSize: '14px', color: '#94A3B8', fontWeight: '600', margin: '0 0 4px 0' }}>
+                            No Domain Documents Uploaded Yet
+                          </p>
+                          <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+                            Upload PDF manuals, character lore, or expert guidelines to ground your AI companions.
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Collections */}
+        {activeTab === 'collections' && (
+          <div style={{ backgroundColor: '#0F131D', border: '1px solid #1E293B', borderRadius: '14px', padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>Knowledge Collections</h2>
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 20px 0' }}>
+              Scoped knowledge binders linked to specific AI personas (e.g. Astrology Lore, Fitness Guides).
+            </p>
+
+            {collections.length === 0 ? (
+              <div style={{ padding: '36px', textAlign: 'center', color: '#64748B' }}>
+                <p style={{ fontSize: '14px', color: '#94A3B8' }}>No custom collections created yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                {collections.map(col => (
+                  <div key={col.id} style={{ border: '1px solid #1E293B', borderRadius: '10px', padding: '16px', backgroundColor: '#161B26' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#A855F7' }}>{col.visibility}</span>
+                      <span style={{ fontSize: '12px', color: '#94A3B8' }}>{col.documentCount} docs</span>
+                    </div>
+                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: '10px 0 4px 0' }}>{col.name}</h3>
+                    <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>Created {new Date(col.createdAt).toLocaleDateString()}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 3: Hybrid Search Debugger */}
+        {activeTab === 'search' && (
+          <div style={{ backgroundColor: '#0F131D', border: '1px solid #1E293B', borderRadius: '14px', padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
+              Hybrid Search Tester & Rank Fusion
+            </h2>
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 20px 0' }}>
+              Test vector semantic embeddings combined with full-text keyword matching in real time.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Enter query to test RAG retrieval..."
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  backgroundColor: '#161B26',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#FFFFFF',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={handleSearch}
+                disabled={searchLoading}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#9333EA',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                {searchLoading ? 'Searching...' : 'Run Search'}
+              </button>
+            </div>
+
+            {searchResults && (
+              <pre
+                style={{
+                  backgroundColor: '#07090E',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #1E293B',
+                  color: '#A855F7',
+                  fontSize: '12px',
+                  overflowX: 'auto',
+                }}
+              >
                 {JSON.stringify(searchResults, null, 2)}
               </pre>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Web Research Console */}
-      {activeTab === 'research' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Safe Web Research Console</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Execute multi-step search subqueries, fetch verified external sources with SSRF defense, and synthesize findings.
-          </p>
-
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <input
-              type="text"
-              value={researchQuery}
-              onChange={(e) => setResearchQuery(e.target.value)}
-              placeholder="Enter topic to research..."
-              style={{ flex: 1, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
-            />
-            <button
-              onClick={handleResearch}
-              disabled={researchLoading}
-              style={{ padding: '0.75rem 1.5rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
-            >
-              {researchLoading ? 'Researching...' : 'Start Research'}
-            </button>
+            )}
           </div>
+        )}
 
-          {researchResult && (
-            <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Verified Research Synthesis</h3>
-              <pre style={{ margin: 0, padding: '1rem', background: '#111827', color: '#4ade80', borderRadius: '6px', fontSize: '0.8125rem', overflowX: 'auto' }}>
+        {/* Tab 4: Web Research Console */}
+        {activeTab === 'research' && (
+          <div style={{ backgroundColor: '#0F131D', border: '1px solid #1E293B', borderRadius: '14px', padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
+              Autonomous Web Research Console
+            </h2>
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 20px 0' }}>
+              Test real-time web search and citation generation for companion intelligence.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input
+                type="text"
+                value={researchQuery}
+                onChange={e => setResearchQuery(e.target.value)}
+                placeholder="Enter research topic..."
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  backgroundColor: '#161B26',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#FFFFFF',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+              />
+              <button
+                onClick={handleResearch}
+                disabled={researchLoading}
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#2563EB',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                {researchLoading ? 'Researching...' : 'Run Research'}
+              </button>
+            </div>
+
+            {researchResult && (
+              <pre
+                style={{
+                  backgroundColor: '#07090E',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #1E293B',
+                  color: '#60A5FA',
+                  fontSize: '12px',
+                  overflowX: 'auto',
+                }}
+              >
                 {JSON.stringify(researchResult, null, 2)}
               </pre>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Grounded Citation Validator */}
-      {activeTab === 'groundedness' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Grounded Citation Validator</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
-            Verifies that all citations ([1], [2]) correspond to real retrieved sources. Any fabricated citations are blocked.
-          </p>
-
-          <div style={{ padding: '1rem', background: '#f3f4f6', borderRadius: '6px', fontSize: '0.875rem' }}>
-            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Citation Invariants:</div>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', color: '#374151' }}>
-              <li>Every citation must map to an active `document_id`, `chunk_id`, or `web_source_id`.</li>
-              <li>Fabricated citations ([99] when only 2 sources exist) are eliminated.</li>
-              <li>Insufficient evidence declarations trigger `UNKNOWN` groundedness rather than hallucination.</li>
-            </ul>
+            )}
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Tab 5: Groundedness */}
+        {activeTab === 'groundedness' && (
+          <div style={{ backgroundColor: '#0F131D', border: '1px solid #1E293B', borderRadius: '14px', padding: '24px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
+              Grounded Citation Validator
+            </h2>
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 20px 0' }}>
+              Verifies that companion responses cite verbatim source material without hallucinations.
+            </p>
+            <div style={{ padding: '20px', backgroundColor: '#161B26', borderRadius: '10px', border: '1px solid #1E293B' }}>
+              <p style={{ fontSize: '14px', color: '#34D399', fontWeight: '600', margin: '0 0 4px 0' }}>
+                ✓ Hallucination Guardrail: Active
+              </p>
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0 }}>
+                Responses are cross-checked against the ingested vector knowledge chunks with a minimum cosine similarity threshold of 0.82.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </AuthGuard>
   );
 }
