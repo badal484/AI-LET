@@ -115,7 +115,7 @@ export class CharacterService {
 
     const character = await prisma.character.findFirst({
       where: {
-        OR: isUuid ? [{ id: identifier }] : [{ slug: identifier }],
+        ...(isUuid ? { id: identifier } : { slug: identifier }),
         status: 'PUBLISHED',
         deletedAt: null,
       },
@@ -124,11 +124,21 @@ export class CharacterService {
       },
     });
 
-    if (!character || !character.currentPublishedVersion) {
+    if (!character) {
       throw new NotFoundError('Character not found or not published', ErrorCode.CHARACTER_NOT_FOUND);
     }
 
-    const version = character.currentPublishedVersion;
+    let version = character.currentPublishedVersion;
+    if (!version) {
+      version = await prisma.characterVersion.findFirst({
+        where: { characterId: character.id },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!version) {
+      throw new NotFoundError('Character has no published version', ErrorCode.CHARACTER_NOT_FOUND);
+    }
     const personalityData = version.personalityData as any;
     const communicationData = version.communicationData as any;
     const languageData = version.languageData as any;

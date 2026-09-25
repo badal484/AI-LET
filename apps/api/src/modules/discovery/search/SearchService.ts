@@ -144,7 +144,7 @@ export class SearchService {
           } else if (docTags.includes(token)) {
             tokenMatches += 15;
           } else if (docTextLower.includes(token)) {
-            tokenMatches += 8;
+            tokenMatches += 15;
           }
         }
         score += tokenMatches;
@@ -167,12 +167,12 @@ export class SearchService {
         }
 
         // F. Popularity / Quality tie-breaker (only if there is lexical or semantic relevance)
-        if (score >= 10) {
+        if (score >= 5) {
           score += (doc.popularityScore * 0.1 + doc.qualityScore * 0.05);
         }
       }
 
-      if (normalizedQuery.length === 0 || score >= 10) {
+      if (normalizedQuery.length === 0 || score >= 5) {
         scoredDocs.push({ characterId: doc.characterId, totalScore: Number(score.toFixed(3)) });
       }
     }

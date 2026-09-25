@@ -403,10 +403,9 @@ export class CatalogService {
     userEntitlements: string[] = [],
   ): Promise<PublicCharacterDetailedProfile> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
-
     const character = await prisma.character.findFirst({
       where: {
-        OR: isUuid ? [{ id: slugOrId }] : [{ slug: slugOrId }],
+        ...(isUuid ? { id: slugOrId } : { slug: slugOrId }),
         status: 'PUBLISHED',
         deletedAt: null,
       },
@@ -420,11 +419,21 @@ export class CatalogService {
       },
     });
 
-    if (!character || !character.currentPublishedVersion) {
+    if (!character) {
       throw new NotFoundError('Character not found or is not published');
     }
 
-    const version = character.currentPublishedVersion;
+    let version = character.currentPublishedVersion;
+    if (!version) {
+      version = await prisma.characterVersion.findFirst({
+        where: { characterId: character.id },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!version) {
+      throw new NotFoundError('Character not found or has no published version');
+    }
     const personalityData = (version.personalityData as any) || {};
     const communicationData = (version.communicationData as any) || {};
     const languageData = (version.languageData as any) || {};

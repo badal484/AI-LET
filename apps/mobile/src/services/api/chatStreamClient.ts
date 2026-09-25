@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './client.js';
+import { ApiClient } from './client.js';
 import { SecureAuthStorage } from '../auth/SecureAuthStorage.js';
 import type {
   StreamEventType,
@@ -22,7 +22,8 @@ export interface ChatStreamCallbacks {
 
 export class ChatStreamClient {
   /**
-   * Opens an SSE streaming generation request to the API.
+   * Opens an SSE streaming generation request to the API using XMLHttpRequest
+   * which natively supports progressive chunk streaming in React Native (Hermes).
    */
   public static async streamMessage(
     conversationId: string,
@@ -33,137 +34,147 @@ export class ChatStreamClient {
   ): Promise<void> {
     const session = await SecureAuthStorage.getSession();
     const accessToken = session?.accessToken || null;
-    const url = `${API_BASE_URL}/conversations/${conversationId}/messages`;
+    const baseUrl = ApiClient.getBaseUrl();
+    const url = `${baseUrl}/conversations/${conversationId}/messages`;
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      'x-correlation-id': `mob-stream-${Date.now()}`,
-    };
+    return new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.setRequestHeader('x-correlation-id', `mob-stream-${Date.now()}`);
 
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          content,
-          clientRequestId,
-        }),
-        signal: abortSignal,
-      });
-
-      if (!response.ok) {
-        let errorMessage = `Stream request failed with HTTP ${response.status}`;
-        try {
-          const errJson = await response.json();
-          if (errJson?.error?.message) {
-            errorMessage = errJson.error.message;
-          }
-        } catch {}
-
-        callbacks.onFailed?.({
-          conversationId,
-          errorCode: 'HTTP_ERROR',
-          errorMessage,
-          retryable: response.status >= 500,
-        });
-        return;
+      if (accessToken) {
+        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
       }
 
-      // Read chunked response stream
-      if (response.body) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
+      if (abortSignal) {
+        abortSignal.addEventListener('abort', () => {
+          xhr.abort();
+          callbacks.onCancelled?.({
+            messageId: '',
+            conversationId,
+            partialContent: '',
+            reason: 'Generation cancelled',
+          });
+          resolve();
+        });
+      }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      let seenIndex = 0;
+      let buffer = '';
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n\n');
-          buffer = lines.pop() || '';
+      const processBlock = (block: string) => {
+        if (!block.trim()) return;
+        const blockLines = block.split('\n');
+        let currentEvent: StreamEventType = 'message.delta';
+        let dataStr = '';
 
-          for (const block of lines) {
-            if (!block.trim()) continue;
-
-            const blockLines = block.split('\n');
-            let currentEvent: StreamEventType = 'message.delta';
-            let dataStr = '';
-
-            for (const line of blockLines) {
-              if (line.startsWith('event: ')) {
-                currentEvent = line.substring(7).trim() as StreamEventType;
-              } else if (line.startsWith('data: ')) {
-                dataStr = line.substring(6).trim();
-              }
-            }
-
-            if (!dataStr) continue;
-
-            try {
-              const parsed = JSON.parse(dataStr);
-              switch (currentEvent) {
-                case 'message.started':
-                  callbacks.onStarted?.(parsed);
-                  break;
-                case 'message.delta':
-                  callbacks.onDelta?.(parsed);
-                  break;
-                case 'message.metadata':
-                  callbacks.onMetadata?.(parsed);
-                  break;
-                case 'message.completed':
-                  callbacks.onCompleted?.(parsed);
-                  break;
-                case 'message.failed':
-                  callbacks.onFailed?.(parsed);
-                  break;
-                case 'message.cancelled':
-                  callbacks.onCancelled?.(parsed);
-                  break;
-                case 'heartbeat':
-                  callbacks.onHeartbeat?.();
-                  break;
-              }
-            } catch (jsonErr) {
-              console.warn('Failed to parse SSE data block:', dataStr, jsonErr);
-            }
+        for (const line of blockLines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.substring(7).trim() as StreamEventType;
+          } else if (line.startsWith('data: ')) {
+            dataStr = line.substring(6).trim();
           }
         }
-      } else {
-        // Fallback if reader is unavailable
-        const fullText = await response.text();
-        callbacks.onCompleted?.({
-          messageId: `gen-${Date.now()}`,
-          conversationId,
-          finalContent: fullText,
-          totalTokens: 0,
-          status: 'SENT',
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } catch (err: any) {
-      if (err.name === 'AbortError' || abortSignal?.aborted) {
-        callbacks.onCancelled?.({
-          messageId: '',
-          conversationId,
-          partialContent: '',
-          reason: 'Generation cancelled',
-        });
-        return;
-      }
 
-      callbacks.onFailed?.({
-        conversationId,
-        errorCode: 'NETWORK_ERROR',
-        errorMessage: err.message || 'Network connection failed during streaming',
-        retryable: true,
-      });
-    }
+        if (!dataStr) return;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          switch (currentEvent) {
+            case 'message.started':
+              callbacks.onStarted?.(parsed);
+              break;
+            case 'message.delta':
+              callbacks.onDelta?.(parsed);
+              break;
+            case 'message.metadata':
+              callbacks.onMetadata?.(parsed);
+              break;
+            case 'message.completed':
+              callbacks.onCompleted?.(parsed);
+              break;
+            case 'message.failed':
+              callbacks.onFailed?.(parsed);
+              break;
+            case 'message.cancelled':
+              callbacks.onCancelled?.(parsed);
+              break;
+            case 'heartbeat':
+              callbacks.onHeartbeat?.();
+              break;
+          }
+        } catch (jsonErr) {
+          console.warn('Failed to parse SSE data block:', dataStr, jsonErr);
+        }
+      };
+
+      xhr.onprogress = () => {
+        const text = xhr.responseText || '';
+        const chunk = text.slice(seenIndex);
+        seenIndex = text.length;
+
+        buffer += chunk;
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          processBlock(part);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (buffer.trim()) {
+            processBlock(buffer);
+          }
+          resolve();
+        } else {
+          let errorMessage = `Stream request failed with HTTP ${xhr.status}`;
+          try {
+            const errJson = JSON.parse(xhr.responseText);
+            if (errJson?.error?.message) {
+              errorMessage = errJson.error.message;
+            }
+          } catch {}
+
+          callbacks.onFailed?.({
+            conversationId,
+            errorCode: 'HTTP_ERROR',
+            errorMessage,
+            retryable: xhr.status >= 500,
+          });
+          resolve();
+        }
+      };
+
+      xhr.onerror = () => {
+        callbacks.onFailed?.({
+          conversationId,
+          errorCode: 'NETWORK_ERROR',
+          errorMessage: 'Network connection failed during streaming',
+          retryable: true,
+        });
+        resolve();
+      };
+
+      try {
+        xhr.send(
+          JSON.stringify({
+            content,
+            clientRequestId,
+          }),
+        );
+      } catch (err: any) {
+        callbacks.onFailed?.({
+          conversationId,
+          errorCode: 'NETWORK_ERROR',
+          errorMessage: err?.message || 'Network request send failed',
+          retryable: true,
+        });
+        resolve();
+      }
+    });
   }
 }

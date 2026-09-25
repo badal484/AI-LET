@@ -38,6 +38,10 @@ export class ApiClient {
     onSessionExpiredCallback = handler;
   }
 
+  public static getBaseUrl(): string {
+    return ApiClient.instance?.defaults.baseURL || API_BASE_URL;
+  }
+
   public static getInstance(): AxiosInstance {
     if (!ApiClient.instance) {
       ApiClient.instance = axios.create({
@@ -150,6 +154,29 @@ export class ApiClient {
 
           if (error.response?.data?.error) {
             return Promise.reject(error.response.data.error);
+          }
+
+          // Network Error fallback (e.g. Wi-Fi <-> USB adb reverse switch)
+          const isDev = typeof __DEV__ !== 'undefined' ? Boolean(__DEV__) : process.env.NODE_ENV !== 'production';
+          if (!error.response && !(originalRequest as any)._networkRetried && isDev) {
+            (originalRequest as any)._networkRetried = true;
+            const currentBase = ApiClient.instance?.defaults.baseURL || API_BASE_URL;
+            let altBase = '';
+            if (currentBase.includes('192.168.1.45')) {
+              altBase = currentBase.replace('192.168.1.45', 'localhost');
+            } else if (currentBase.includes('localhost') || currentBase.includes('127.0.0.1')) {
+              altBase = currentBase.replace(/localhost|127\.0\.0\.1/, '192.168.1.45');
+            } else if (currentBase.includes('10.0.2.2')) {
+              altBase = currentBase.replace('10.0.2.2', '192.168.1.45');
+            }
+
+            if (altBase && altBase !== currentBase) {
+              if (ApiClient.instance) {
+                ApiClient.instance.defaults.baseURL = altBase;
+              }
+              originalRequest.baseURL = altBase;
+              return ApiClient.getInstance()(originalRequest);
+            }
           }
 
           const fallbackError = {
