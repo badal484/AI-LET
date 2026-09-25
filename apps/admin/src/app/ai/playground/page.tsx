@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { adminAIApi } from '../../../services/adminAIApi';
 import { AIModelData, AIPromptData, AIPlaygroundResult, ProductionReplayResult } from '@ai-companion/types';
+import { AuthGuard } from '../../../components/AuthGuard';
+import { Play, Sparkles, History, ArrowLeft, RefreshCw, Cpu, Sliders, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PlaygroundPage() {
@@ -79,176 +81,321 @@ export default function PlaygroundPage() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <Link href="/ai" style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500 }}>
-            ← Back to AI Hub
-          </Link>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: '0.25rem 0 0 0', color: '#111827' }}>AI Model Playground & Production Replay</h1>
-        </div>
-      </div>
-
-      {error && (
-        <div style={{ padding: '0.75rem 1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-        {/* Left: Playground Controls */}
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Sandbox Test Generation</h2>
-
+    <AuthGuard>
+      <div style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.3rem' }}>Select Model</label>
-            <select
-              value={selectedModelId}
-              onChange={(e) => setSelectedModelId(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db' }}
+            <Link
+              href="/ai"
+              style={{
+                color: 'var(--accent-primary)',
+                textDecoration: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: '8px',
+              }}
             >
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName} ({m.provider}) - {m.latencyClass}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.3rem' }}>Prompt Template Version</label>
-            <select
-              value={selectedPromptVersionId}
-              onChange={(e) => setSelectedPromptVersionId(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db' }}
+              <ArrowLeft size={14} /> Back to AI Hub
+            </Link>
+            <h1
+              style={{
+                fontSize: '28px',
+                fontWeight: 800,
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                margin: 0,
+              }}
             >
-              {prompts.flatMap((p) =>
-                (p.versions || []).map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {p.name} (V{v.versionNumber} - {v.status})
-                  </option>
-                ))
-              )}
-            </select>
+              <Play size={28} style={{ color: 'var(--accent-primary)' }} />
+              AI Model Playground & Production Replay
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+              Isolated sandbox for multi-model inference testing, prompt permutation, and exact production replay.
+            </p>
           </div>
+        </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.3rem' }}>User Test Message</label>
-            <textarea
-              rows={3}
-              value={userMessage}
-              onChange={(e) => setUserMessage(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.3rem' }}>Mock Memories (one per line)</label>
-            <textarea
-              rows={2}
-              value={mockMemories}
-              onChange={(e) => setMockMemories(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8125rem' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.3rem' }}>Temperature: {temperature}</label>
-              <input
-                type="range"
-                min="0"
-                max="1.5"
-                step="0.05"
-                value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.3rem' }}>Max Output Tokens</label>
-              <input
-                type="number"
-                value={maxTokens}
-                onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
-                style={{ width: '100%', padding: '0.4rem', borderRadius: '6px', border: '1px solid #d1d5db' }}
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleRunPlayground}
-            disabled={loading}
+        {error && (
+          <div
+            role="alert"
             style={{
-              padding: '0.6rem 1rem',
-              background: '#f59e0b',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
+              padding: '14px 18px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#fca5a5',
+              borderRadius: '10px',
+              marginBottom: '20px',
+              fontSize: '14px',
             }}
           >
-            {loading ? 'Running Playground...' : 'Run Playground Sandbox'}
-          </button>
-        </div>
+            {error}
+          </div>
+        )}
 
-        {/* Right: Results & Production Replay */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {/* Playground Output */}
-          {playgroundResult && (
-            <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Playground Output</h3>
-                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>{playgroundResult.latencyMs} ms</span>
-              </div>
-              <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '6px', border: '1px solid #e5e7eb', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
-                {playgroundResult.outputContent}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.75rem' }}>
-                <div>Tokens: {playgroundResult.totalTokens} (In: {playgroundResult.promptTokens} / Out: {playgroundResult.completionTokens})</div>
-                <div>Est Cost: ${playgroundResult.estimatedCostUsd?.toFixed(6) || '0.000000'}</div>
-                <div style={{ gridColumn: 'span 2' }}>Context Hash: {playgroundResult.contextHash}</div>
-              </div>
-            </div>
-          )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          {/* Left: Playground Controls */}
+          <div className="admin-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Sliders size={18} style={{ color: 'var(--accent-primary)' }} /> Sandbox Test Generation
+            </h2>
 
-          {/* Production Replay Box */}
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Production Generation Replay</h3>
-            <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: '0 0 0.75rem 0' }}>
-              Input a production request ID or trace ID to reproduce generation settings and compare outputs.
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              <input
-                type="text"
-                value={traceId}
-                onChange={(e) => setTraceId(e.target.value)}
-                placeholder="Enter traceId or requestId..."
-                style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8125rem' }}
-              />
-              <button
-                onClick={handleRunReplay}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 500, cursor: 'pointer' }}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                Select AI Model
+              </label>
+              <select
+                value={selectedModelId}
+                onChange={(e) => setSelectedModelId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--surface-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
               >
-                Replay
-              </button>
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName} ({m.provider}) - {m.latencyClass}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {replayResult && (
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', padding: '0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
-                <div style={{ fontWeight: 600, color: '#166534' }}>Replay Status: {replayResult.matchAssessment.divergenceNotes}</div>
-                <div style={{ marginTop: '0.5rem', color: '#374151' }}>
-                  <strong>Replay Output:</strong> {replayResult.replayOutput}
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                Prompt Template Version
+              </label>
+              <select
+                value={selectedPromptVersionId}
+                onChange={(e) => setSelectedPromptVersionId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--surface-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px',
+                  outline: 'none',
+                }}
+              >
+                {prompts.flatMap((p) =>
+                  (p.versions || []).map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {p.name} (V{v.versionNumber} - {v.status})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                User Test Message
+              </label>
+              <textarea
+                rows={3}
+                value={userMessage}
+                onChange={(e) => setUserMessage(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--surface-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: '14px',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                Mock Context Memories (one per line)
+              </label>
+              <textarea
+                rows={2}
+                value={mockMemories}
+                onChange={(e) => setMockMemories(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--surface-elevated)',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  outline: 'none',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  Temperature: {temperature}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1.5"
+                  step="0.05"
+                  value={temperature}
+                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                  Max Output Tokens
+                </label>
+                <input
+                  type="number"
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--surface-elevated)',
+                    color: 'var(--text-primary)',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleRunPlayground}
+              disabled={loading}
+              style={{
+                marginTop: '8px',
+                padding: '12px 20px',
+                background: 'var(--accent-primary)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '14px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              <Sparkles size={16} />
+              {loading ? 'Running Inference...' : 'Run Playground Sandbox'}
+            </button>
+          </div>
+
+          {/* Right: Results & Production Replay */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Playground Output */}
+            {playgroundResult && (
+              <div className="admin-card" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Playground Output</h3>
+                  <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 700, backgroundColor: 'rgba(16, 185, 129, 0.15)', padding: '4px 10px', borderRadius: '12px' }}>
+                    ⚡ {playgroundResult.latencyMs} ms
+                  </span>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
-                  Latency: {replayResult.replayLatencyMs} ms | Original Latency: {replayResult.originalMetadata.latencyMs} ms
+                <div
+                  style={{
+                    background: 'var(--surface-subtle)',
+                    padding: '16px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-subtle)',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {playgroundResult.outputContent}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px', color: 'var(--text-muted)', marginTop: '14px' }}>
+                  <div>Tokens: <strong style={{ color: 'var(--text-primary)' }}>{playgroundResult.totalTokens}</strong> (In: {playgroundResult.promptTokens} / Out: {playgroundResult.completionTokens})</div>
+                  <div>Est Cost: <strong style={{ color: 'var(--text-primary)' }}>${playgroundResult.estimatedCostUsd?.toFixed(6) || '0.000000'}</strong></div>
+                  <div style={{ gridColumn: 'span 2', fontFamily: 'monospace', fontSize: '12px' }}>Context Hash: {playgroundResult.contextHash}</div>
                 </div>
               </div>
             )}
+
+            {/* Production Replay Box */}
+            <div className="admin-card" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <History size={18} style={{ color: 'var(--accent-primary)' }} /> Production Generation Replay
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '0 0 16px 0' }}>
+                Input a production request ID or trace ID to reproduce generation settings and compare outputs.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  value={traceId}
+                  onChange={(e) => setTraceId(e.target.value)}
+                  placeholder="Enter traceId or requestId..."
+                  style={{
+                    flex: 1,
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--surface-elevated)',
+                    color: 'var(--text-primary)',
+                    fontSize: '14px',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={handleRunReplay}
+                  disabled={loading}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'var(--surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                  }}
+                >
+                  Replay
+                </button>
+              </div>
+
+              {replayResult && (
+                <div style={{ border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '16px', background: 'var(--surface-subtle)', fontSize: '13px' }}>
+                  <div style={{ fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={16} /> Replay Status: {replayResult.matchAssessment.divergenceNotes}
+                  </div>
+                  <div style={{ marginTop: '10px', color: 'var(--text-primary)', lineHeight: '1.5' }}>
+                    <strong>Replay Output:</strong> {replayResult.replayOutput}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '10px' }}>
+                    Latency: {replayResult.replayLatencyMs} ms | Original Latency: {replayResult.originalMetadata.latencyMs} ms
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </AuthGuard>
   );
 }

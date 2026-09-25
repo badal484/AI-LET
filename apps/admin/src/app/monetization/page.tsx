@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import {
   CreditCard,
   TrendingUp,
@@ -22,6 +23,7 @@ import type {
 } from '@ai-companion/types';
 
 export default function MonetizationPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<
     'overview' | 'plans' | 'economics' | 'webhooks' | 'reconciliation' | 'grants' | 'simulator'
   >('overview');
@@ -57,10 +59,13 @@ export default function MonetizationPage() {
   const [reconcileResult, setReconcileResult] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (admin) {
+      loadAllData();
+    }
+  }, [admin]);
 
   const loadAllData = async () => {
+    if (!admin) return;
     setLoading(true);
     setError(null);
     try {
@@ -176,7 +181,8 @@ export default function MonetizationPage() {
   };
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: '1440px', margin: '0 auto' }}>
+    <AuthGuard>
+      <div style={{ padding: '24px 32px', maxWidth: '1440px', margin: '0 auto' }}>
       {/* Header */}
       <div
         style={{
@@ -1335,6 +1341,7 @@ export default function MonetizationPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

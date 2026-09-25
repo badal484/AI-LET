@@ -476,12 +476,16 @@ export class CharacterService {
    */
   public static async invalidateCharacterCache(characterId: string, slug?: string): Promise<void> {
     try {
-      const keysToDelete = [`char:pub:id:${characterId}`];
+      const keysToDelete = [
+        `char:pub:id:${characterId}`,
+        'discovery:categories:all',
+        'home:guest:v26',
+      ];
       if (slug) {
         keysToDelete.push(`char:pub:slug:${slug}`);
       }
       await redis.del(...keysToDelete);
-      logger.info(`Invalidated public character cache for character ${characterId} (${slug || ''})`);
+      logger.info(`Invalidated public character & home discovery cache for character ${characterId} (${slug || ''})`);
     } catch (err) {
       logger.warn(`Failed to invalidate character cache: ${(err as Error).message}`);
     }

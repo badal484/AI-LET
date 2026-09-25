@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import { AdminDiscoveryApi } from '../../services/adminDiscoveryApi';
 import type {
   CharacterCategorySummary,
@@ -15,6 +16,7 @@ import type {
 } from '@ai-companion/types';
 
 export default function DiscoveryAdminPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<
     'overview' | 'synonyms' | 'ranking' | 'index_health' | 'categories' | 'collections' | 'home_layout' | 'simulator'
   >('overview');
@@ -86,10 +88,13 @@ export default function DiscoveryAdminPage() {
   const [reindexing, setReindexing] = useState<boolean>(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (admin) {
+      loadData();
+    }
+  }, [admin]);
 
   const loadData = async () => {
+    if (!admin) return;
     setLoading(true);
     setError(null);
     try {
@@ -264,14 +269,17 @@ export default function DiscoveryAdminPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px', color: '#94a3b8' }}>
-        <h2>Loading Discovery Management Hub...</h2>
-      </div>
+      <AuthGuard>
+        <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+          <h2>Loading Discovery Management Hub...</h2>
+        </div>
+      </AuthGuard>
     );
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', color: '#f8fafc' }}>
+    <AuthGuard>
+      <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', color: '#f8fafc' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
@@ -1020,5 +1028,6 @@ export default function DiscoveryAdminPage() {
         </div>
       )}
     </div>
+    </AuthGuard>
   );
 }

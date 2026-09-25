@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import {
   Bell,
   Send,
@@ -21,6 +22,7 @@ import type {
 } from '@ai-companion/types';
 
 export default function AdminNotificationsPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<'analytics' | 'simulator' | 'campaigns' | 'actions' | 'test'>('analytics');
   const [analytics, setAnalytics] = useState<NotificationAnalyticsOverview | null>(null);
   const [campaigns, setCampaigns] = useState<NotificationCampaignData[]>([]);
@@ -53,6 +55,7 @@ export default function AdminNotificationsPage() {
   const [sendingTest, setSendingTest] = useState(false);
 
   const loadData = useCallback(async () => {
+    if (!admin) return;
     try {
       const [analyticsData, campaignList, actionsData] = await Promise.all([
         AdminNotificationApi.getAnalytics().catch(() => null),
@@ -69,11 +72,13 @@ export default function AdminNotificationsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [admin]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (admin) {
+      loadData();
+    }
+  }, [admin, loadData]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -159,7 +164,8 @@ export default function AdminNotificationsPage() {
   };
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', color: 'var(--text-primary)' }}>
+    <AuthGuard>
+      <div style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
@@ -746,5 +752,6 @@ export default function AdminNotificationsPage() {
         </div>
       )}
     </div>
+    </AuthGuard>
   );
 }

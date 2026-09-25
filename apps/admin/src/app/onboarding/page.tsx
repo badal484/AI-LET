@@ -12,6 +12,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { adminOnboardingApi } from '../../services/adminOnboardingApi';
+import { AuthGuard } from '../../components/AuthGuard';
 import type {
   ActivationFunnelOverview,
   OnboardingDropoffMetrics,
@@ -96,7 +97,8 @@ export default function OnboardingAdminPage() {
     : [];
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto' }}>
+    <AuthGuard>
+      <div style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
@@ -439,6 +441,7 @@ export default function OnboardingAdminPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

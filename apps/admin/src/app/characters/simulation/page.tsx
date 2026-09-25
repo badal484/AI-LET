@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { adminAIApi } from '../../../services/adminAIApi';
 
 type SimulationTab =
@@ -18,6 +19,7 @@ type SimulationTab =
   | 'governance';
 
 export default function CharacterSimulationStudioPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<SimulationTab>('overview');
   const [characterId, setCharacterId] = useState('char-aria');
   const [userId, setUserId] = useState('');
@@ -70,6 +72,7 @@ export default function CharacterSimulationStudioPage() {
   });
 
   const loadData = async () => {
+    if (!admin) return;
     setLoading(true);
     setError(null);
     try {
@@ -102,8 +105,10 @@ export default function CharacterSimulationStudioPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [characterId, userId]);
+    if (admin) {
+      loadData();
+    }
+  }, [admin, characterId, userId]);
 
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,7 +283,8 @@ export default function CharacterSimulationStudioPage() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1440px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#111827' }}>
+    <AuthGuard>
+      <div style={{ padding: '2rem', maxWidth: '1440px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif', color: 'var(--text-primary)' }}>
       {/* Top Breadcrumb & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
@@ -1222,5 +1228,6 @@ export default function CharacterSimulationStudioPage() {
         </div>
       )}
     </div>
+    </AuthGuard>
   );
 }

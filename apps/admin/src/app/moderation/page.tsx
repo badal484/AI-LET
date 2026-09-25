@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import {
   ShieldAlert,
   CheckCircle,
@@ -13,6 +14,7 @@ import { AdminModerationApi } from '../../services/adminModerationApi';
 import type { CharacterModerationQueueItem } from '@ai-companion/types';
 
 export default function ModerationPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<'PENDING' | 'HIGH_RISK' | 'IN_REVIEW'>('PENDING');
   const [items, setItems] = useState<CharacterModerationQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +29,13 @@ export default function ModerationPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    loadQueue();
-  }, [activeTab]);
+    if (admin) {
+      loadQueue();
+    }
+  }, [admin, activeTab]);
 
   const loadQueue = async () => {
+    if (!admin) return;
     try {
       setLoading(true);
       const riskLevel = activeTab === 'HIGH_RISK' ? 'HIGH' : undefined;
@@ -85,7 +90,8 @@ export default function ModerationPage() {
   };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', color: '#f3f4f6' }}>
+    <AuthGuard>
+      <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', color: '#f3f4f6' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
         <div>
@@ -501,5 +507,6 @@ export default function ModerationPage() {
         </div>
       )}
     </div>
+    </AuthGuard>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, FlaskConical, Power, RefreshCw, Search, ShieldAlert, SlidersHorizontal, Users2, Bot, History, type LucideIcon } from 'lucide-react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import type { SocialModerationCaseItem, SocialOverviewMetrics, SocialPolicyVersionItem, SocialSimulationResult } from '@ai-companion/types';
 import { AdminSocialApi, type SocialPolicySnapshot } from '../../services/adminSocialApi';
 import { MetricCard } from '../../components/MetricCard';
@@ -541,6 +542,7 @@ const TABS: Array<{ key: Tab; label: string; icon: LucideIcon }> = [
 ];
 
 export default function SocialStudioPage() {
+  const { admin } = useAdminAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const [toastState, setToastState] = useState<{ message: string; tone: 'ok' | 'error' } | null>(null);
   const [nonce, setNonce] = useState(0);
@@ -550,7 +552,8 @@ export default function SocialStudioPage() {
   }, []);
 
   return (
-    <div style={{ padding: 32, maxWidth: 1400, margin: '0 auto', color: 'var(--text-primary)' }}>
+    <AuthGuard>
+      <div style={{ padding: 32, maxWidth: 1400, margin: '0 auto', color: 'var(--text-primary)' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700 }}>Social Studio</h1>
@@ -598,5 +601,6 @@ export default function SocialStudioPage() {
         {tab === 'ai' && <AiActionsTab toast={toast} />}
       </div>
     </div>
+    </AuthGuard>
   );
 }

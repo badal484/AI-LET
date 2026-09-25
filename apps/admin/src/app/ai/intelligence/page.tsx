@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminAIApi } from '../../../services/adminAIApi';
+import { AuthGuard } from '../../../components/AuthGuard';
+import { Sparkles, Brain, Cpu, Terminal, ArrowLeft, RefreshCw, Layers, ShieldCheck, Activity } from 'lucide-react';
 
 interface SkillItem {
   id: string;
@@ -100,7 +102,6 @@ export default function AIIntelligenceStudioPage() {
     if (!simInput.trim()) return;
     setSimLoading(true);
     setSimResult(null);
-    // Client-side simulation preview
     setTimeout(() => {
       let detectedIntent = 'casual_conversation';
       let confidence = 0.5;
@@ -142,265 +143,300 @@ export default function AIIntelligenceStudioPage() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <Link href="/ai" style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '0.875rem', fontWeight: 500 }}>
-            ← Back to AI Overview
-          </Link>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, margin: '0.25rem 0 0 0', color: '#111827' }}>
-            AI Character Intelligence & Agent Studio
-          </h1>
-          <p style={{ color: '#6b7280', margin: '0.25rem 0 0 0' }}>
-            Phase 25: Skills Registry, Guided Experiences, Intent Engines, Task Checkpoints & Explainability
-          </p>
+    <AuthGuard>
+      <div style={{ padding: '32px 40px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+          <div>
+            <Link
+              href="/ai"
+              style={{
+                color: 'var(--accent-primary)',
+                textDecoration: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: '8px',
+              }}
+            >
+              <ArrowLeft size={14} /> Back to AI Overview
+            </Link>
+            <h1
+              style={{
+                fontSize: '28px',
+                fontWeight: 800,
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                margin: 0,
+              }}
+            >
+              <Brain size={28} style={{ color: 'var(--accent-primary)' }} />
+              AI Character Intelligence & Agent Studio
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '4px' }}>
+              Skills Registry, Guided Experiences, Intent Classification, Multi-Step Tasks & Explainability
+            </p>
+          </div>
         </div>
-      </div>
 
-      {error && (
-        <div style={{ padding: '0.75rem 1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px', marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        {[
-          { key: 'skills', label: 'Skills Registry' },
-          { key: 'experiences', label: 'Guided Experiences' },
-          { key: 'tasks', label: 'Agent Tasks & Checkpoints' },
-          { key: 'explainability', label: 'Generation Explainability' },
-          { key: 'simulator', label: 'Agent Sandbox Simulator' },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+        {error && (
+          <div
+            role="alert"
             style={{
-              padding: '0.75rem 1.25rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.9375rem',
-              color: activeTab === tab.key ? '#3b82f6' : '#6b7280',
-              borderBottom: activeTab === tab.key ? '3px solid #3b82f6' : '3px solid transparent',
+              padding: '14px 18px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#fca5a5',
+              borderRadius: '10px',
+              marginBottom: '20px',
+              fontSize: '14px',
             }}
           >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab: Skills Registry */}
-      {activeTab === 'skills' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>Registered Character Skills</h2>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.25rem 0 0 0' }}>
-                Bounded capabilities with strict step limits and sandbox cost controls.
-              </p>
-            </div>
-            <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: 600 }}>Creator Sandboxing: ACTIVE</span>
+            {error}
           </div>
+        )}
 
-          {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Loading skills...</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#4b5563' }}>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Slug</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Name</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Category</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Risk Level</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Bounds</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {skills.length > 0 ? (
-                  skills.map((s) => (
-                    <tr key={s.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace', fontWeight: 600 }}>{s.slug}</td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>{s.name}</td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>{s.category}</td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>
-                        <span
-                          style={{
-                            padding: '0.2rem 0.5rem',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            background: s.riskLevel === 'LOW' ? '#dcfce7' : s.riskLevel === 'MEDIUM' ? '#fef3c7' : '#fee2e2',
-                            color: s.riskLevel === 'LOW' ? '#166534' : s.riskLevel === 'MEDIUM' ? '#92400e' : '#991b1b',
-                          }}
-                        >
-                          {s.riskLevel}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.75rem 0.5rem', color: '#6b7280' }}>
-                        Max {s.maxSteps} steps | ${s.maxCostUsd.toFixed(2)}
-                      </td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: '#10b981' }}>{s.status}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '1.5rem', textAlign: 'center', color: '#6b7280' }}>
-                      System skills ready (general_research, travel_planning, coding_mentor, study_buddy).
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px' }}>
+          {[
+            { key: 'skills', label: '🛠️ Skills Registry' },
+            { key: 'experiences', label: '✨ Guided Experiences' },
+            { key: 'tasks', label: '📋 Agent Tasks & Checkpoints' },
+            { key: 'explainability', label: '🔍 Generation Explainability' },
+            { key: 'simulator', label: '🧪 Agent Sandbox Simulator' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              style={{
+                padding: '12px 20px',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '14px',
+                color: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                borderBottom: activeTab === tab.key ? '2px solid var(--accent-primary)' : '2px solid transparent',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* Tab: Guided Experiences */}
-      {activeTab === 'experiences' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Pre-configured Experiences</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Multi-turn structured interaction templates linking characters, user goals, and required skills.
-          </p>
-
-          {experiences.length === 0 && (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>No published experiences.</p>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-            {experiences.map((exp) => (
-              <div key={exp.slug} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.25rem', background: '#f9fafb' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>{exp.category}</span>
-                  <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', background: '#dcfce7', color: '#166534', fontWeight: 600 }}>{exp.status.toUpperCase()} · v{exp.version}</span>
-                </div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0.5rem 0 0.25rem 0' }}>{exp.name}</h3>
-                <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: '0 0 1rem 0' }}>{exp.description}</p>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                  <strong>Bound Skills:</strong> {exp.requiredSkillSlugs.length ? exp.requiredSkillSlugs.join(', ') : 'none'}
-                </div>
+        {/* Tab: Skills Registry */}
+        {activeTab === 'skills' && (
+          <div className="admin-card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Registered Character Skills</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  Bounded capabilities with strict step limits and sandbox cost controls.
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+              <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700, backgroundColor: 'rgba(16, 185, 129, 0.15)', padding: '4px 10px', borderRadius: '12px' }}>
+                ● Creator Sandboxing: ACTIVE
+              </span>
+            </div>
 
-      {/* Tab: Agent Tasks */}
-      {activeTab === 'tasks' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Agent Task Lifecycle & Checkpoints</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Inspect task state transitions, step checkpoints, execution logs, and kill switch activations.
-          </p>
-
-          {tasks.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#4b5563' }}>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Task ID</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Objective</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Type</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Progress</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Actual Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((t) => (
-                  <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'monospace' }}>{t.id.slice(0, 16)}...</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>{t.objective}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>{t.taskType}</td>
-                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>{t.status}</td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>
-                      Step {t.currentStepIndex} / {t.maxSteps}
-                    </td>
-                    <td style={{ padding: '0.75rem 0.5rem' }}>${(t.actualCostUsd || 0).toFixed(4)}</td>
+            {loading ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading skills...</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '12px 14px' }}>Slug</th>
+                    <th style={{ padding: '12px 14px' }}>Name</th>
+                    <th style={{ padding: '12px 14px' }}>Category</th>
+                    <th style={{ padding: '12px 14px' }}>Risk Level</th>
+                    <th style={{ padding: '12px 14px' }}>Bounds</th>
+                    <th style={{ padding: '12px 14px' }}>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-              No active background tasks running. All task workers healthy.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Generation Explainability */}
-      {activeTab === 'explainability' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Generation Explainability Inspector</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Look up any generation by message ID to inspect its immutable snapshot: character version, prompt version, retrieved memories, safety policy hash, and tool invocations.
-          </p>
-
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <input
-              type="text"
-              placeholder="Enter message ID (e.g. msg_123456789)"
-              value={explainMessageId}
-              onChange={(e) => setExplainMessageId(e.target.value)}
-              style={{ flex: 1, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
-            />
-            <button
-              onClick={handleExplain}
-              disabled={explainLoading}
-              style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
-            >
-              {explainLoading ? 'Inspecting...' : 'Inspect Generation'}
-            </button>
+                </thead>
+                <tbody>
+                  {skills.length > 0 ? (
+                    skills.map((s) => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <td style={{ padding: '14px', fontFamily: 'monospace', fontWeight: 600, color: 'var(--accent-primary)' }}>{s.slug}</td>
+                        <td style={{ padding: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{s.name}</td>
+                        <td style={{ padding: '14px', color: 'var(--text-secondary)' }}>{s.category}</td>
+                        <td style={{ padding: '14px' }}>
+                          <span
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: s.riskLevel === 'LOW' ? 'rgba(16, 185, 129, 0.15)' : s.riskLevel === 'MEDIUM' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                              color: s.riskLevel === 'LOW' ? '#10b981' : s.riskLevel === 'MEDIUM' ? '#eab308' : '#ef4444',
+                            }}
+                          >
+                            {s.riskLevel}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px', color: 'var(--text-muted)' }}>
+                          Max {s.maxSteps} steps | ${s.maxCostUsd.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '14px', fontWeight: 700, color: '#10b981', fontSize: '12px' }}>● {s.status}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        System skills active (general_research, travel_planning, coding_mentor, study_buddy).
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
+        )}
 
-          {explainResult && (
-            <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0' }}>Generation Snapshot Metadata</h3>
-              <pre style={{ margin: 0, padding: '1rem', background: '#111827', color: '#38bdf8', borderRadius: '6px', fontSize: '0.8125rem', overflowX: 'auto' }}>
-                {JSON.stringify(explainResult, null, 2)}
-              </pre>
+        {/* Tab: Guided Experiences */}
+        {activeTab === 'experiences' && (
+          <div className="admin-card" style={{ padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>Pre-configured Experiences</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+              Multi-turn structured interaction templates linking characters, user goals, and required skills.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {experiences.map((exp) => (
+                <div key={exp.slug} style={{ border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '18px', background: 'var(--surface-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase' }}>{exp.category}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700 }}>{exp.status.toUpperCase()} · v{exp.version}</span>
+                  </div>
+                  <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '8px 0 4px 0', color: 'var(--text-primary)' }}>{exp.name}</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>{exp.description}</p>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <strong>Bound Skills:</strong> {exp.requiredSkillSlugs.length ? exp.requiredSkillSlugs.join(', ') : 'none'}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Agent Sandbox Simulator */}
-      {activeTab === 'simulator' && (
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>Safe Agent & Intent Simulator</h2>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1.5rem 0' }}>
-            Simulate user message parsing, intent classification, skill discovery, and sandboxed plan generation with zero side effects.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <textarea
-              rows={3}
-              value={simInput}
-              onChange={(e) => setSimInput(e.target.value)}
-              style={{ padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontFamily: 'inherit' }}
-            />
-            <button
-              onClick={handleSimulate}
-              disabled={simLoading}
-              style={{ alignSelf: 'flex-start', padding: '0.75rem 1.5rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
-            >
-              {simLoading ? 'Simulating...' : 'Run Simulation'}
-            </button>
           </div>
+        )}
 
-          {simResult && (
-            <div style={{ background: '#f9fafb', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 1rem 0', color: '#111827' }}>Simulation Trace Output</h3>
-              <pre style={{ margin: 0, padding: '1rem', background: '#111827', color: '#4ade80', borderRadius: '6px', fontSize: '0.8125rem', overflowX: 'auto' }}>
-                {JSON.stringify(simResult, null, 2)}
-              </pre>
+        {/* Tab: Agent Tasks */}
+        {activeTab === 'tasks' && (
+          <div className="admin-card" style={{ padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>Agent Task Lifecycle & Checkpoints</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+              Inspect task state transitions, step checkpoints, execution logs, and kill switch activations.
+            </p>
+
+            {tasks.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', fontSize: '12px', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '12px 14px' }}>Task ID</th>
+                    <th style={{ padding: '12px 14px' }}>Objective</th>
+                    <th style={{ padding: '12px 14px' }}>Type</th>
+                    <th style={{ padding: '12px 14px' }}>Status</th>
+                    <th style={{ padding: '12px 14px' }}>Progress</th>
+                    <th style={{ padding: '12px 14px' }}>Actual Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((t) => (
+                    <tr key={t.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td style={{ padding: '14px', fontFamily: 'monospace', color: 'var(--accent-primary)' }}>{t.id.slice(0, 16)}...</td>
+                      <td style={{ padding: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>{t.objective}</td>
+                      <td style={{ padding: '14px', color: 'var(--text-secondary)' }}>{t.taskType}</td>
+                      <td style={{ padding: '14px', fontWeight: 700, color: '#10b981', fontSize: '12px' }}>● {t.status}</td>
+                      <td style={{ padding: '14px', color: 'var(--text-secondary)' }}>
+                        Step {t.currentStepIndex} / {t.maxSteps}
+                      </td>
+                      <td style={{ padding: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>${(t.actualCostUsd || 0).toFixed(4)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No active background tasks running. All task workers healthy.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Generation Explainability */}
+        {activeTab === 'explainability' && (
+          <div className="admin-card" style={{ padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>Generation Explainability Inspector</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+              Look up any generation by message ID to inspect its immutable snapshot: character version, prompt version, retrieved memories, safety policy hash, and tool invocations.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input
+                type="text"
+                placeholder="Enter message ID (e.g. msg_123456789)"
+                value={explainMessageId}
+                onChange={(e) => setExplainMessageId(e.target.value)}
+                style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--surface-elevated)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none' }}
+              />
+              <button
+                onClick={handleExplain}
+                disabled={explainLoading}
+                style={{ padding: '10px 20px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}
+              >
+                {explainLoading ? 'Inspecting...' : 'Inspect Generation'}
+              </button>
             </div>
-          )}
-        </div>
-      )}
-    </div>
+
+            {explainResult && (
+              <div style={{ background: 'var(--surface-subtle)', padding: '18px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px 0', color: 'var(--text-primary)' }}>Generation Snapshot Metadata</h3>
+                <pre style={{ margin: 0, padding: '16px', background: '#090d16', color: '#38bdf8', borderRadius: '8px', fontSize: '13px', overflowX: 'auto' }}>
+                  {JSON.stringify(explainResult, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Agent Sandbox Simulator */}
+        {activeTab === 'simulator' && (
+          <div className="admin-card" style={{ padding: '24px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--text-primary)' }}>Safe Agent & Intent Simulator</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+              Simulate user message parsing, intent classification, skill discovery, and sandboxed plan generation with zero side effects.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
+              <textarea
+                rows={3}
+                value={simInput}
+                onChange={(e) => setSimInput(e.target.value)}
+                style={{ padding: '12px 14px', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--surface-elevated)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}
+              />
+              <button
+                onClick={handleSimulate}
+                disabled={simLoading}
+                style={{ alignSelf: 'flex-start', padding: '10px 20px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '14px' }}
+              >
+                {simLoading ? 'Simulating...' : 'Run Simulation'}
+              </button>
+            </div>
+
+            {simResult && (
+              <div style={{ background: 'var(--surface-subtle)', padding: '18px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px 0', color: 'var(--text-primary)' }}>Simulation Trace Output</h3>
+                <pre style={{ margin: 0, padding: '16px', background: '#090d16', color: '#4ade80', borderRadius: '8px', fontSize: '13px', overflowX: 'auto' }}>
+                  {JSON.stringify(simResult, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </AuthGuard>
   );
 }

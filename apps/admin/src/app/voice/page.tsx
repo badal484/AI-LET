@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import { AdminVoiceApi } from '../../services/adminVoiceApi';
 import type { VoiceQualityMetrics, VoiceCostOverview } from '@ai-companion/types';
 
 export default function VoiceDashboardPage() {
+  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'preview' | 'sessions'>('overview');
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<VoiceQualityMetrics | null>(null);
@@ -22,8 +24,10 @@ export default function VoiceDashboardPage() {
   const [previewLatencyMs, setPreviewLatencyMs] = useState<number | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (admin) {
+      loadData();
+    }
+  }, [admin]);
 
   const loadData = async () => {
     try {
@@ -68,7 +72,8 @@ export default function VoiceDashboardPage() {
   };
 
   return (
-    <div style={{ padding: '28px', maxWidth: '1400px', margin: '0 auto', color: '#F3F4F6' }}>
+    <AuthGuard>
+      <div style={{ padding: '28px', maxWidth: '1400px', margin: '0 auto', color: '#F3F4F6' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
@@ -402,6 +407,7 @@ export default function VoiceDashboardPage() {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Users, Search, ShieldAlert, ShieldCheck, ScrollText } from 'lucide-react';
+import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import { AdminAuthService } from '../../services/adminAuth';
 
 type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'DELETED';
@@ -38,6 +39,7 @@ const STATUS_COLORS: Record<UserStatus, { bg: string; fg: string }> = {
 const formatDate = (value: string | null) => (value ? new Date(value).toLocaleString() : '—');
 
 export default function UsersAdminPage() {
+  const { admin } = useAdminAuth();
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([]);
   const [search, setSearch] = useState('');
@@ -49,6 +51,7 @@ export default function UsersAdminPage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!admin) return;
     setLoading(true);
     setError(null);
     try {
@@ -101,7 +104,8 @@ export default function UsersAdminPage() {
   const cell: React.CSSProperties = { padding: '14px 18px', verticalAlign: 'top' };
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', color: '#f3f4f6' }}>
+    <AuthGuard>
+      <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto', color: '#f3f4f6' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '26px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Users size={28} color="#6366f1" /> Users
@@ -272,6 +276,7 @@ export default function UsersAdminPage() {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
