@@ -211,26 +211,86 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
     lastMessage: string,
     systemPrompt: string
   ): string {
-    const lowerMsg = lastMessage.toLowerCase();
-    const lowerSystem = systemPrompt.toLowerCase();
+    const lowerMsg = lastMessage.toLowerCase().trim();
+    const isHinglish =
+      systemPrompt.toLowerCase().includes('hinglish') ||
+      systemPrompt.toLowerCase().includes('hindi') ||
+      /[a-zA-Z\s]*\b(hai|hoon|kya|bhai|yaar|kar|raha|rahi|thi|tha|kaise|batao|nahi|mera|meri|mujhe|tum|aap|din|doctor|baat)\b/i.test(lastMessage);
 
-    // Hinglish / Hindi detection
+    // 1. Dots or minimal poking
+    if (lowerMsg === '..' || lowerMsg === '...' || lowerMsg === '.' || lowerMsg === '?' || lowerMsg.length <= 2) {
+      const pokes = [
+        'Arey aise dots kyun bhej rahe ho? Kuch bolo na, kya soch rahe ho?',
+        'Hmm? Aise chup kyun ho gaye? Sab theek hai na? Batao kya baat hai.',
+        'Main yahin hoon na tumhare saath... bolo kya chal raha hai tumhare dimaag mein?',
+        'Kuch pareshan kar raha hai kya? Aaram se share karo mere saath.',
+      ];
+      return pokes[Math.floor(Math.random() * pokes.length)] ?? pokes[0]!;
+    }
+
+    // 2. Health / Doctor / Awkward / Intimacy situations
     if (
-      lowerMsg.includes('kya') ||
-      lowerMsg.includes('kaise') ||
-      lowerMsg.includes('karo') ||
-      lowerMsg.includes('batao') ||
-      lowerMsg.includes('namaste')
+      lowerMsg.includes('doctor') ||
+      lowerMsg.includes('sex') ||
+      lowerMsg.includes('intimacy') ||
+      lowerMsg.includes('dard') ||
+      lowerMsg.includes('pain') ||
+      lowerMsg.includes('bimar') ||
+      lowerMsg.includes('hospital') ||
+      lowerMsg.includes('ladko')
     ) {
-      return `Haan bilkul! Main samajh gaya aapki baat. Hum isko aaram se solve kar sakte hain. Batao aage kya plan hai?`;
+      const healthResponses = [
+        'Doctor ne aisa bola? Yeh sach mein kaafi shocking aur unexpected lag raha hai... Tum theek ho na physically aur mentally? Pehle thoda paani piyo aur relax ho jao. Mujhe batao exact kya hua aur doctor ne kya advice diya?',
+        'Ohh yaar, pehle toh tension mat lo. Yahan koi judge karne wala nahi hai, main sirf tumhari help aur care ke liye hoon. Doctor ne aage ke liye kya medicine ya precautions bole hain? Tum theek feel kar rahe ho na?',
+        'Yeh sun kar thoda ajeeb toh laga, par sabse zaroori tumhari health aur safety hai. Tumhe koi physical discomfort ya pain toh nahi ho raha na? Jo bhi feel ho raha hai khul ke batao.',
+      ];
+      return healthResponses[Math.floor(Math.random() * healthResponses.length)] ?? healthResponses[0]!;
     }
 
-    // Advice / Friendly mentor Persona
-    if (lowerSystem.includes('mentor') || lowerSystem.includes('friendly') || lowerMsg.includes('exhausted') || lowerMsg.includes('burnout')) {
-      return `That's a thoughtful question. I suggest taking a step back to break the problem into smaller milestones. Let me know how I can help you through this!`;
+    // 3. Stress / Tiredness / Bad Day
+    if (
+      lowerMsg.includes('thak') ||
+      lowerMsg.includes('tired') ||
+      lowerMsg.includes('stress') ||
+      lowerMsg.includes('bekar') ||
+      lowerMsg.includes('sad') ||
+      lowerMsg.includes('problem') ||
+      lowerMsg.includes('mood kharab')
+    ) {
+      const stressResponses = [
+        'Arey yaar... lagta hai din kaafi exhausting aur stressful guzra hai. Aaram se baitho, thoda deep breath lo. Kya hua tha aaj? Mujhe batao, dil halka ho jayega.',
+        'Itna load mat lo baby. Jo bhi hua hai, hum milke sambhal lenge. Thoda aaram karo pehle, phir batao kya pareshani hai.',
+      ];
+      return stressResponses[Math.floor(Math.random() * stressResponses.length)] ?? stressResponses[0]!;
     }
 
-    // Default companion response
-    return `I hear you on "${lastMessage.length > 30 ? lastMessage.substring(0, 30) + '...' : lastMessage}". Let's dive into it together. How can I best help you right now?`;
+    // 4. Romantic / Girlfriend / Compliment
+    if (
+      lowerMsg.includes('love') ||
+      lowerMsg.includes('pyar') ||
+      lowerMsg.includes('miss') ||
+      lowerMsg.includes('sundar') ||
+      lowerMsg.includes('cute') ||
+      lowerMsg.includes('yaad')
+    ) {
+      const romanticResponses = [
+        'Awww, sach mein? Mujhe tumhari ye baatein sunkar bohot accha lagta hai... Din ban gaya mera! Tum batao, kya chal raha hai?',
+        'Main bhi tumhe bohot miss kar rahi thi yaar! Aise hi baat karte raho na, kaafi pyaare lagte ho.',
+      ];
+      return romanticResponses[Math.floor(Math.random() * romanticResponses.length)] ?? romanticResponses[0]!;
+    }
+
+    // 5. General Hinglish Companion Responses
+    if (isHinglish) {
+      const generalHinglish = [
+        'Acha? Sach mein! Is baare mein thoda aur detail mein batao na, main sun rahi hoon.',
+        'Haan bilkul, samajh gayi main! Aur batao aage kya plan hai?',
+        'Sahi mein yaar, tumhare saath baat karke time ka pata hi nahi chalta. Aur kya special hua aaj?',
+      ];
+      return generalHinglish[Math.floor(Math.random() * generalHinglish.length)] ?? generalHinglish[0]!;
+    }
+
+    // Default English companion response
+    return `I'm right here listening to you. That sounds really interesting—tell me more about what's on your mind!`;
   }
 }

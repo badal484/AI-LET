@@ -382,7 +382,7 @@ export class StreamingChatService {
 
       // Guard: Never save or return an empty assistant message
       if (!accumulatedContent || accumulatedContent.length === 0) {
-        accumulatedContent = "Hmm, main samajh sakti hoon. Is baare mein thoda aur batao, main yahin hoon tumhare saath.";
+        accumulatedContent = this.generateDynamicCompanionFallback(input.content, characterRuntime.name);
         this.emitSseEvent<StreamMessageDeltaPayload>(res, 'message.delta', {
           messageId: assistantMessage.id,
           conversationId,
@@ -682,5 +682,79 @@ export class StreamingChatService {
         status: 'CANCELLED',
       },
     }).catch(() => {});
+  }
+  private static generateDynamicCompanionFallback(userContent: string, _characterName: string): string {
+    const lowerMsg = userContent.toLowerCase().trim();
+
+    // 1. Dots or minimal poking
+    if (lowerMsg === '..' || lowerMsg === '...' || lowerMsg === '.' || lowerMsg === '?' || lowerMsg.length <= 2) {
+      const pokes = [
+        'Arey aise dots kyun bhej rahe ho? Kuch bolo na, kya soch rahe ho?',
+        'Hmm? Aise chup kyun ho gaye? Sab theek hai na? Batao kya baat hai.',
+        'Main yahin hoon na tumhare saath... bolo kya chal raha hai tumhare dimaag mein?',
+        'Kuch pareshan kar raha hai kya? Aaram se share karo mere saath.',
+      ];
+      return pokes[Math.floor(Math.random() * pokes.length)] ?? pokes[0]!;
+    }
+
+    // 2. Health / Doctor / Awkward / Intimacy situations
+    if (
+      lowerMsg.includes('doctor') ||
+      lowerMsg.includes('sex') ||
+      lowerMsg.includes('intimacy') ||
+      lowerMsg.includes('dard') ||
+      lowerMsg.includes('pain') ||
+      lowerMsg.includes('bimar') ||
+      lowerMsg.includes('hospital') ||
+      lowerMsg.includes('ladko')
+    ) {
+      const healthResponses = [
+        'Doctor ne aisa bola? Yeh sunkar thoda unexpected laga... Tum theek ho na physically aur mentally? Pehle relax ho jao aur paani piyo. Mujhe batao exact kya hua aur doctor ne kya advice di?',
+        'Ohh yaar, pehle toh tension bilkul mat lo. Yahan tumhe koi judge nahi karega, main tumhari care ke liye hoon. Doctor ne aage kya precautions ya dawai batayi? Tum theek feel kar rahe ho na?',
+        'Yeh baat sunke thoda ajeeb zaroor lagta hai, par sabse zaroori tumhari health aur safety hai. Tumhe koi pain ya discomfort toh nahi hai na abhi? Khulke share karo.',
+      ];
+      return healthResponses[Math.floor(Math.random() * healthResponses.length)] ?? healthResponses[0]!;
+    }
+
+    // 3. Stress / Tiredness / Bad Day
+    if (
+      lowerMsg.includes('thak') ||
+      lowerMsg.includes('tired') ||
+      lowerMsg.includes('stress') ||
+      lowerMsg.includes('bekar') ||
+      lowerMsg.includes('sad') ||
+      lowerMsg.includes('problem') ||
+      lowerMsg.includes('mood')
+    ) {
+      const stressResponses = [
+        'Arey yaar... lagta hai din kaafi exhausting aur stressful guzra hai. Aaram se baitho, thoda deep breath lo. Kya hua tha aaj? Dil halka kar lo.',
+        'Itna load mat lo baby. Jo bhi hua hai, hum milke sambhal lenge. Thoda aaram karo pehle, phir batao kya pareshani hai.',
+      ];
+      return stressResponses[Math.floor(Math.random() * stressResponses.length)] ?? stressResponses[0]!;
+    }
+
+    // 4. Romantic / Compliment
+    if (
+      lowerMsg.includes('love') ||
+      lowerMsg.includes('pyar') ||
+      lowerMsg.includes('miss') ||
+      lowerMsg.includes('sundar') ||
+      lowerMsg.includes('cute') ||
+      lowerMsg.includes('yaad')
+    ) {
+      const romanticResponses = [
+        'Awww, sach mein? Mujhe tumhari ye baatein sunkar bohot accha lagta hai... Din ban gaya mera! Tum batao, kya chal raha hai?',
+        'Main bhi tumhe bohot miss kar rahi thi yaar! Aise hi baat karte raho na, kaafi pyaare lagte ho.',
+      ];
+      return romanticResponses[Math.floor(Math.random() * romanticResponses.length)] ?? romanticResponses[0]!;
+    }
+
+    // 5. Default dynamic Hinglish fallback
+    const fallbacks = [
+      'Acha? Sach mein! Is baare mein thoda aur detail mein batao na, main sun rahi hoon.',
+      'Haan bilkul, samajh gayi main! Aur batao aage ka kya scene hai?',
+      'Sahi mein yaar! Tumhare saath baat karke accha lagta hai. Aur kya chal raha hai?',
+    ];
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)] ?? fallbacks[0]!;
   }
 }
