@@ -317,7 +317,7 @@ export class StreamingChatService {
             content: m.content,
           })),
           temperature: Math.max(0.85, characterRuntime.aiConfig?.temperature || 0.85),
-          maxTokens: characterRuntime.aiConfig?.maxOutputTokens || 220,
+          maxTokens: Math.min(characterRuntime.aiConfig?.maxOutputTokens || 90, 100),
         },
         activeProvider
       );

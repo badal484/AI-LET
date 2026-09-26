@@ -297,7 +297,7 @@ Ritika Sharma: "Hadd hai! 🙈 Aise direct bolte hue sharam nahi aati tumhein?\\
       },
       aiConfigData: {
         temperature: 0.85,
-        maxOutputTokens: 220,
+        maxOutputTokens: 90,
         provider: 'google',
         customModelName: 'gemini-3.5-flash-lite',
       },
