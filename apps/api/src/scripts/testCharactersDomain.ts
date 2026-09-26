@@ -3,8 +3,15 @@ import { CharacterService } from '../modules/characters/services/character.servi
 import { ContextBuilder } from '../modules/conversations/engine/contextBuilder.js';
 import { AIGateway } from '../modules/ai/gateway/AIGateway.js';
 
-async function testCharacter(slug: string, prompt: string) {
+async function testPersonalizedCharacter(slug: string, prompt: string, userMemories: string) {
   const runtime = await CharacterService.resolveRuntime(slug);
+
+  const mockMemoryProvider = {
+    getMemoryContext: async () => ({
+      memoriesText: userMemories,
+      retrievedMemoryIds: ['mem-1', 'mem-2'],
+    }),
+  };
   
   const builtContext = await ContextBuilder.buildModelContext({
     characterRuntime: runtime,
@@ -16,6 +23,7 @@ async function testCharacter(slug: string, prompt: string) {
       preferredLanguage: 'en',
     },
     conversationId: 'test-conv-id',
+    memoryProvider: mockMemoryProvider as any,
   });
 
   const activeProvider = (runtime.aiConfig as any)?.provider || 'google';
@@ -37,6 +45,10 @@ async function testCharacter(slug: string, prompt: string) {
   );
 
   for await (const chunk of stream) {
+    if (chunk.type === 'failed') {
+      console.error('Stream failure:', chunk.error);
+      break;
+    }
     if (chunk.delta) {
       reply += chunk.delta;
     }
@@ -46,28 +58,39 @@ async function testCharacter(slug: string, prompt: string) {
 }
 
 async function main() {
-  console.log('🧪 Testing all 4 characters across their specialized domains...\n');
+  console.log('🧪 Testing Domain-Anchored Personalization across all 5 characters...\n');
+
+  const userMemories = `- User Name: Lovish
+- Profession: Software Engineer (works long hours on laptop, gets lower back tightness)
+- Diet: Vegetarian
+- Zodiac / Rashi: Leo (Singh Rashi)
+- Habits: Often stays up late debugging code and drinking black coffee`;
 
   const tests = [
     {
       slug: 'joel-antony',
-      name: 'Joel Antony (Fat Loss & Spot Reduction Science)',
-      prompt: 'Belly fat kaise kam karoon? koi specific exercise batao',
+      name: 'Joel Antony (Fitness Coach)',
+      prompt: 'Bhai bohot thak gaya hoon aaj office se, body puri stiff lag rahi hai',
     },
     {
-      slug: 'joel-antony',
-      name: 'Joel Antony (Creatine & Supplement Science)',
-      prompt: 'Creatine lena safe hai kya? Hair fall toh nahi hoga na?',
+      slug: 'dr-shradha',
+      name: 'Dr. Shradha (Psychologist)',
+      prompt: 'Bohot heavy lag raha hai dimaag, lagta hai burnout ho raha hai',
     },
     {
-      slug: 'joel-antony',
-      name: 'Joel Antony (Arm Hypertrophy & Plateaus)',
-      prompt: 'Arms ka size nahi badh raha, 14 inch pe stuck hai',
+      slug: 'riya',
+      name: 'Riya (Romantic Crush)',
+      prompt: 'Bohot late ho gaya aaj, par bas tumhari yaad aa rahi thi',
     },
     {
-      slug: 'joel-antony',
-      name: 'Joel Antony (Bench Press Shoulder Pain & Form)',
-      prompt: 'Bench press lagate time front shoulder mein pain hota hai, kya galti ho rahi hai?',
+      slug: 'sakshi',
+      name: 'Sakshi (Astrologer & Tarot)',
+      prompt: 'Aaj ka din kaisa rahega mere liye?',
+    },
+    {
+      slug: 'neha',
+      name: 'Neha (Chatty Neighbour)',
+      prompt: 'Arey Neha, abhi ghar aaya hoon bohot der baad',
     },
   ];
 
@@ -76,8 +99,8 @@ async function main() {
     console.log(`👤 Character: ${t.name} [${t.slug}]`);
     console.log(`💬 User Prompt: "${t.prompt}"`);
     try {
-      const response = await testCharacter(t.slug, t.prompt);
-      console.log(`🤖 Response:\n${response}`);
+      const response = await testPersonalizedCharacter(t.slug, t.prompt, userMemories);
+      console.log(`🤖 Personalized Response:\n${response}`);
     } catch (err: any) {
       console.error(`❌ Error: ${err.message}`);
     }
