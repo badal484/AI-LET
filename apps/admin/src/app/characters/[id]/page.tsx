@@ -185,13 +185,25 @@ export default function CharacterStudioPage() {
   };
 
   const handleSaveDraft = async () => {
-    if (!versionSnapshot || versionSnapshot.status === 'PUBLISHED') return;
+    if (!versionSnapshot) return;
     setSaving(true);
     setActionError('');
     setSaveSuccess(false);
     try {
+      let targetVersionId = selectedVersionId;
+      // If active version is already published, seamlessly create a new draft version to hold the changes
+      if (versionSnapshot.status === 'PUBLISHED') {
+        const newDraft = await AdminCharacterApi.createVersionDraft(
+          characterId,
+          selectedVersionId,
+          `Draft based on v${versionSnapshot.versionNumber}`,
+        );
+        targetVersionId = newDraft.id;
+        setSelectedVersionId(newDraft.id);
+      }
+
       const [updated] = await Promise.all([
-        AdminCharacterApi.updateVersionDraft(characterId, selectedVersionId, {
+        AdminCharacterApi.updateVersionDraft(characterId, targetVersionId, {
           identityData: versionSnapshot.identityData,
           personalityData: versionSnapshot.personalityData,
           communicationData: versionSnapshot.communicationData,
@@ -221,6 +233,7 @@ export default function CharacterStudioPage() {
       ]);
       setVersionSnapshot(updated);
       setSaveSuccess(true);
+      await loadCharacterData();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       setActionError(err.message || 'Failed to save draft changes');
@@ -398,48 +411,49 @@ export default function CharacterStudioPage() {
               <Plus size={14} /> New Draft
             </button>
 
-            {!isVersionImmutable && (
-              <button
-                onClick={handleSaveDraft}
-                disabled={saving}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 16px',
-                  backgroundColor: '#3B82F6',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
-                <Save size={14} /> {saving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Draft'}
-              </button>
-            )}
+            <button
+              onClick={handleSaveDraft}
+              disabled={saving}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                backgroundColor: saveSuccess ? '#059669' : '#3B82F6',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s ease',
+              }}
+            >
+              <Save size={14} /> {saving ? 'Saving...' : saveSuccess ? 'Saved ✓' : isVersionImmutable ? 'Save (Create Draft)' : 'Save Draft'}
+            </button>
 
-            {!isVersionImmutable && (
-              <button
-                onClick={handlePublish}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 18px',
-                  backgroundColor: 'var(--accent-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
-                <Sparkles size={14} /> Publish v{versionSnapshot?.versionNumber}
-              </button>
-            )}
+            <button
+              onClick={handlePublish}
+              disabled={saving || versionSnapshot?.status === 'PUBLISHED'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 18px',
+                background: versionSnapshot?.status === 'PUBLISHED'
+                  ? 'rgba(16, 185, 129, 0.2)'
+                  : 'linear-gradient(135deg, #A855F7, #6366F1)',
+                color: versionSnapshot?.status === 'PUBLISHED' ? '#34D399' : '#fff',
+                border: versionSnapshot?.status === 'PUBLISHED' ? '1px solid rgba(52, 211, 153, 0.4)' : 'none',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: versionSnapshot?.status === 'PUBLISHED' ? 'default' : 'pointer',
+                boxShadow: versionSnapshot?.status === 'PUBLISHED' ? 'none' : '0 4px 12px rgba(168, 85, 247, 0.3)',
+              }}
+            >
+              <Sparkles size={14} /> {versionSnapshot?.status === 'PUBLISHED' ? `Live on Mobile (v${versionSnapshot?.versionNumber})` : `Publish v${versionSnapshot?.versionNumber}`}
+            </button>
           </div>
         </div>
 
