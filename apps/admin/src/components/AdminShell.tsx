@@ -5,9 +5,11 @@ import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { CommandPalette } from './CommandPalette';
+import { useAdminAuth } from './AuthGuard';
 
 export const AdminShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const pathname = usePathname();
+  const { admin } = useAdminAuth();
   const [isOmnibarOpen, setIsOmnibarOpen] = useState(false);
   const isLoginPage = pathname === '/login';
 
@@ -22,7 +24,7 @@ export const AdminShell: React.FC<{ children: React.ReactNode }> = ({ children }
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  if (isLoginPage) {
+  if (isLoginPage || !admin) {
     return <main>{children}</main>;
   }
 
