@@ -85,9 +85,56 @@ export class ConversationService {
       },
     });
 
-    logger.info(`Created conversation ${newConversation.id} for user ${userId} with character ${character.name}`);
+    // 4. Seed Companion's Dynamic First Opening Message
+    const v = character.currentPublishedVersion;
+    const commData = (v?.communicationData as any) || {};
+    const charName = character.name;
+    const charFirstName = character.name.replace(/^(Dr\.\s*|Dr\s*)/i, '').split(' ')[0] || character.name;
+    const currentHour = new Date().getHours();
+    const isMorning = currentHour >= 5 && currentHour < 12;
+    const isEvening = currentHour >= 17 && currentHour < 22;
+
+    const dynamicPool: string[] = [
+      `Hello, Lovish pe aapse milkar accha laga. Mera naam ${charFirstName} hai, aap kaise hain?`,
+      isMorning
+        ? `Good morning! Dr. ${charFirstName} here ☀️ Aaj ka din kaisa start hua aapka?`
+        : isEvening
+        ? `Good evening! Main ${charName} hoon. Aaj ka poora din kaisa raha aapka? 🌿`
+        : `Hi! Main ${charName} hoon. Kaisa feel kar rahe hain aap aaj?`,
+      `Hey! ${charName} here. Main bas free hui thi... agar koi bhi baat mann mein ho, we can talk freely 🤍`,
+    ];
+
+    const greetingPool: string[] = Array.isArray(commData.initialGreetings) && commData.initialGreetings.length > 0
+      ? commData.initialGreetings
+      : (commData.initialGreeting ? [commData.initialGreeting, ...dynamicPool] : dynamicPool);
+
+    const initialGreeting = greetingPool[Math.floor(Math.random() * greetingPool.length)];
+
+    await prisma.message.create({
+      data: {
+        conversationId: newConversation.id,
+        senderType: 'CHARACTER',
+        senderId: character.id,
+        role: 'assistant',
+        content: initialGreeting,
+        status: 'SENT',
+        sequenceNumber: 1,
+        characterVersionId: character.currentPublishedVersionId,
+      },
+    });
+
+    await prisma.conversation.update({
+      where: { id: newConversation.id },
+      data: {
+        lastMessageSnippet: initialGreeting,
+        lastMessageAt: new Date(),
+        messageCount: 1,
+      },
+    });
+
+    logger.info(`Created conversation ${newConversation.id} with opening greeting for user ${userId} with ${character.name}`);
     return {
-      detail: this.mapToConversationDetail(newConversation, 0),
+      detail: this.mapToConversationDetail(newConversation, 1),
       isCreated: true,
     };
   }

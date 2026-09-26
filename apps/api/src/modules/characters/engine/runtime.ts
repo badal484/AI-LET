@@ -40,10 +40,20 @@ export class CharacterRuntimeBuilder {
         fallbackLanguages: Object.freeze([...(version.languageData?.fallbackLanguages || ['en'])]),
       }),
       behaviorRules: Object.freeze(
-        (version.behaviorRulesData || []).map(r => Object.freeze({ ...r })),
+        (Array.isArray(version.behaviorRulesData)
+          ? version.behaviorRulesData
+          : Array.isArray((version.behaviorRulesData as any)?.rules)
+          ? (version.behaviorRulesData as any).rules
+          : []
+        ).map(r => Object.freeze({ ...r })),
       ),
       knowledge: Object.freeze(
-        (version.knowledgeData || []).map(k =>
+        (Array.isArray(version.knowledgeData)
+          ? version.knowledgeData
+          : Array.isArray((version.knowledgeData as any)?.items)
+          ? (version.knowledgeData as any).items
+          : []
+        ).map(k =>
           Object.freeze({ ...k, tags: Object.freeze([...(k.tags || [])]) }),
         ),
       ),

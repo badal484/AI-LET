@@ -75,6 +75,18 @@ export class CharacterValidationService {
       errors.push('Age suitability classification is required');
     }
 
+    const rawRules = Array.isArray(state.behaviorRulesData)
+      ? state.behaviorRulesData
+      : Array.isArray((state.behaviorRulesData as any)?.rules)
+      ? (state.behaviorRulesData as any).rules
+      : [];
+
+    const rawKnowledge = Array.isArray(state.knowledgeData)
+      ? state.knowledgeData
+      : Array.isArray((state.knowledgeData as any)?.items)
+      ? (state.knowledgeData as any).items
+      : [];
+
     const allText = [
       state.name,
       state.tagline,
@@ -84,8 +96,8 @@ export class CharacterValidationService {
       state.identityData?.locationWorld || '',
       state.identityData?.lifeContext || '',
       state.identityData?.personalitySummary || '',
-      ...(state.behaviorRulesData || []).map(r => r.ruleText || ''),
-      ...(state.knowledgeData || []).map(k => `${k.title}: ${k.content}`),
+      ...rawRules.map((r: any) => r.ruleText || r.directive || ''),
+      ...rawKnowledge.map((k: any) => `${k.title}: ${k.content}`),
     ].join('\n');
 
     if (this.SEVERE_HARM_REGEX.test(allText)) {
@@ -170,12 +182,24 @@ export class CharacterValidationService {
       });
     }
 
+    const scanRules = Array.isArray(version.behaviorRulesData)
+      ? version.behaviorRulesData
+      : Array.isArray((version.behaviorRulesData as any)?.rules)
+      ? (version.behaviorRulesData as any).rules
+      : [];
+
+    const scanKnowledge = Array.isArray(version.knowledgeData)
+      ? version.knowledgeData
+      : Array.isArray((version.knowledgeData as any)?.items)
+      ? (version.knowledgeData as any).items
+      : [];
+
     const allTextToScan = [
       id?.name || '',
       id?.backstory || '',
       id?.personalitySummary || '',
-      ...(version.behaviorRulesData || []).map(r => r.ruleText || ''),
-      ...(version.knowledgeData || []).map(k => `${k.title}: ${k.content}`),
+      ...scanRules.map((r: any) => r.ruleText || r.directive || ''),
+      ...scanKnowledge.map((k: any) => `${k.title}: ${k.content}`),
     ].join('\n');
 
     if (this.SEVERE_HARM_REGEX.test(allTextToScan)) {

@@ -249,14 +249,32 @@ export class HomeFeedService {
         'keerthana',
       ];
 
+      // Track which characters have been placed in category sections
+      const assignedCharIds = new Set<string>();
+
       // Add Category-wise Sections for 2-column grid view
       for (const cat of categories) {
-        const catChars = characters.filter(
-          c => c.categoryId === cat.id || c.category === cat.slug || c.category === cat.name,
-        );
+        const catSlug = (cat.slug || '').toLowerCase().trim();
+        const catName = (cat.name || '').toLowerCase().trim();
+        const catDisplay = (cat.displayName || '').toLowerCase().trim();
+
+        const catChars = characters.filter((c) => {
+          if (c.categoryId && c.categoryId === cat.id) return true;
+          const charCat = (c.category || '').toLowerCase().trim();
+          return (
+            charCat === catSlug ||
+            charCat === catName ||
+            charCat === catDisplay ||
+            charCat.includes(catSlug) ||
+            catSlug.includes(charCat) ||
+            catName.includes(charCat)
+          );
+        });
+
         if (catChars.length > 0) {
+          catChars.forEach((c) => assignedCharIds.add(c.id));
           const catItems = catChars
-            .map(c => charMap.get(c.id))
+            .map((c) => charMap.get(c.id))
             .filter(Boolean) as CharacterCatalogItem[];
 
           catItems.sort((a, b) => {
@@ -277,6 +295,23 @@ export class HomeFeedService {
             items: catItems,
           });
         }
+      }
+
+      // Catch-all: Any published characters that didn't match a predefined category
+      const unassignedChars = characters.filter((c) => !assignedCharIds.has(c.id));
+      if (unassignedChars.length > 0) {
+        const unassignedItems = unassignedChars
+          .map((c) => charMap.get(c.id))
+          .filter(Boolean) as CharacterCatalogItem[];
+
+        sections.push({
+          id: 'section_cat_custom',
+          sectionKey: 'CATEGORY_ALL',
+          title: '✨ Featured Companions',
+          subtitle: 'Discover new and popular AI companions',
+          layoutStyle: 'GRID',
+          items: unassignedItems,
+        });
       }
 
       const response: HomeFeedResponse = {

@@ -269,9 +269,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   assistantBubble: {
-    backgroundColor: '#1C152B',
+    backgroundColor: '#332052',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(168, 85, 247, 0.25)',
     borderBottomLeftRadius: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

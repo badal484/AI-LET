@@ -1342,7 +1342,7 @@ export default function CharacterStudioPage() {
                             simulateRecentInteractionHours: proSimRecentHours,
                             userMessageContext: proSimContext,
                           });
-                          setProSimResult(res.data);
+                          setProSimResult(res);
                         } catch (err: any) {
                           setProSimError(err.message || 'Simulation failed');
                         } finally {

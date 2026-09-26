@@ -9,6 +9,7 @@ import {
   Share,
   TextInput,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -379,10 +380,28 @@ export const CharacterDetailScreen: React.FC = () => {
 
           {/* About / Lore */}
           <View style={styles.sectionBlock}>
-            <Text style={styles.sectionHeading}>About {profile.name.split(' ')[0]}</Text>
             <Text style={styles.descriptionText}>
               {profile.longDescription || profile.shortDescription}
             </Text>
+          </View>
+
+          {/* A Sneak Peek into My Life */}
+          <View style={styles.sectionBlock}>
+            <Text style={styles.sneakPeekHeading}>A Sneak Peek into My Life</Text>
+            <View style={styles.galleryGrid}>
+              {[
+                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[0] || profile.coverImageUrl || profile.avatarUrl,
+                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[1] || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80',
+                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[2] || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=600&q=80',
+                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[3] || 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80',
+                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[4] || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[5] || 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
+              ].map((imgUrl, idx) => (
+                <View key={idx} style={styles.galleryCard}>
+                  <Image source={{ uri: imgUrl }} style={styles.galleryImage} resizeMode="cover" />
+                </View>
+              ))}
+            </View>
           </View>
 
           {/* Tags */}
@@ -469,19 +488,19 @@ export const CharacterDetailScreen: React.FC = () => {
 
       {/* Primary Sticky Bottom CTA */}
       <View style={styles.bottomBar}>
-        <Button
-          label={
-            profile.isLockedForUser
+        <TouchableOpacity
+          style={styles.startChattingBtn}
+          onPress={() => handleStartChat()}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.startChattingBtnText}>
+            {profile.isLockedForUser
               ? 'Unlock Companion with PRO'
               : profile.existingConversationId
-              ? `Continue Chat with ${profile.name.split(' ')[0]}`
-              : `Start Conversation with ${profile.name.split(' ')[0]}`
-          }
-          variant={profile.isLockedForUser ? 'gold' : 'primary'}
-          size="lg"
-          fullWidth
-          onPress={() => handleStartChat()}
-        />
+              ? 'Continue Chatting'
+              : 'Start Chatting'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -762,11 +781,55 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: darkThemeColors.surface,
+    backgroundColor: '#0B0713',
     borderTopWidth: 1,
-    borderTopColor: darkThemeColors.borderSubtle,
+    borderTopColor: '#1F142E',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
+    paddingTop: 12,
+    paddingBottom: 28,
+  },
+  startChattingBtn: {
+    backgroundColor: '#7C3AED',
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  startChattingBtnText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  sneakPeekHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 14,
+    letterSpacing: -0.3,
+  },
+  galleryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  galleryCard: {
+    width: (Dimensions.get('window').width - 44) / 2,
+    height: 220,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#160E26',
+    borderWidth: 1,
+    borderColor: '#26173E',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
   },
 });
