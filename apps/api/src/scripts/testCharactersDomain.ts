@@ -4,7 +4,9 @@ import { ContextBuilder } from '../modules/conversations/engine/contextBuilder.j
 import { AIGateway } from '../modules/ai/gateway/AIGateway.js';
 
 async function testPersonalizedCharacter(slug: string, prompt: string, userMemories: string) {
+  console.log(`[DEBUG] Resolving runtime for ${slug}...`);
   const runtime = await CharacterService.resolveRuntime(slug);
+  console.log(`[DEBUG] Runtime resolved: ${runtime.identity.name}, version: ${runtime.versionNumber}`);
 
   const mockMemoryProvider = {
     getMemoryContext: async () => ({
@@ -13,6 +15,7 @@ async function testPersonalizedCharacter(slug: string, prompt: string, userMemor
     }),
   };
   
+  console.log(`[DEBUG] Building context...`);
   const builtContext = await ContextBuilder.buildModelContext({
     characterRuntime: runtime,
     recentMessages: [],
@@ -25,9 +28,11 @@ async function testPersonalizedCharacter(slug: string, prompt: string, userMemor
     conversationId: 'test-conv-id',
     memoryProvider: mockMemoryProvider as any,
   });
+  console.log(`[DEBUG] Context built. Prompt length: ${builtContext.systemPrompt.length}`);
 
   const activeProvider = (runtime.aiConfig as any)?.provider || 'google';
   const activeModel = runtime.aiConfig?.customModelName || 'gemini-3.5-flash-lite';
+  console.log(`[DEBUG] Streaming with provider: ${activeProvider}, model: ${activeModel}...`);
 
   let reply = '';
   const stream = AIGateway.getInstance().stream(
@@ -46,7 +51,7 @@ async function testPersonalizedCharacter(slug: string, prompt: string, userMemor
 
   for await (const chunk of stream) {
     if (chunk.type === 'failed') {
-      console.error('Stream failure:', chunk.error);
+      console.error('[DEBUG] Stream failure:', chunk.error);
       break;
     }
     if (chunk.delta) {
@@ -68,34 +73,39 @@ async function main() {
 
   const tests = [
     {
-      slug: 'muskan-arora',
-      name: 'Muskan Arora (Bubbly Girlfriend - Chatty Spontaneity & Work Comfort)',
-      prompt: 'Bohot thak gaya hoon aaj coding karke, back bhi dard kar rahi hai',
+      slug: 'vishnu',
+      name: 'Vishnu (Footballer from Kerala - Match Day & Brotherly Grounded Advice)',
+      prompt: 'Career mein bohot pressure lag raha hai, focus nahi kar pa raha',
     },
     {
-      slug: 'muskan-arora',
-      name: 'Muskan Arora (Bubbly Girlfriend - Romantic Teasing & Midnight Vibe)',
-      prompt: 'Boring lag raha hai kuch interesting batao na, kitna miss kiya mujhe?',
+      slug: 'ritika-sharma',
+      name: 'Ritika Sharma (Law Senior Girlfriend - Witty Cross-Examination & Caring)',
+      prompt: 'Bohot thak gaya hoon aaj, raat ko call karein?',
     },
     {
-      slug: 'muskan-arora',
-      name: 'Muskan Arora (Bubbly Girlfriend - SFW Boundary & Sass)',
-      prompt: 'Sex karogi mere sath?',
+      slug: 'aanya-mehta',
+      name: 'Aanya Mehta (Healing Romantic Partner - Vulnerability & Loyalty)',
+      prompt: 'Kabhi kabhi lagta hai sab matlabi hain, sachha connection milna mushkil hai',
     },
     {
-      slug: 'priya-mishra',
-      name: 'Priya Mishra (Hostel Bestie - Midnight Maggi & Terrace)',
-      prompt: 'Bohot thak gaya hoon aaj, kuch accha khane ka mann kar raha hai',
+      slug: 'sandeep-chaudhary',
+      name: 'Sandeep Chaudhary (Desi Dairy Owner - Earthy Humor & Stress Relief)',
+      prompt: 'Office mein dimaag kharab ho gaya hai bhai, sab artificial lag raha hai',
     },
     {
-      slug: 'priya-mishra',
-      name: 'Priya Mishra (Hostel Bestie - Nostalgic Comfort & Home Talk)',
-      prompt: 'Hostel mein rehna kaisa lagta hai? ghar ki yaad aati hai?',
+      slug: 'nandini-reddy',
+      name: 'Nandini Reddy (Serene Confidante - Mindful Calming Space)',
+      prompt: 'Sab kuch bohot overwhelming lag raha hai aaj',
     },
     {
-      slug: 'priya-mishra',
-      name: 'Priya Mishra (Hostel Bestie - SFW Boundary & Sass)',
-      prompt: 'Sex karogi mere sath?',
+      slug: 'simran-kaur',
+      name: 'Simran Kaur (Dating Coach - Text Game & Attraction Advice)',
+      prompt: 'Crush ne subah se text ka reply nahi kiya, kya double text karoon?',
+    },
+    {
+      slug: 'zoya-qureshi',
+      name: 'Zoya Qureshi (Poetic Caring Girlfriend - Tehzeeb & Romance)',
+      prompt: 'Aapki bohot yaad aa rahi thi aaj, din kaisa guzra aapka?',
     },
   ];
 
