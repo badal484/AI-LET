@@ -69,18 +69,18 @@ async function main() {
   const tests = [
     {
       slug: 'natasha',
-      name: 'Natasha (Female Fitness Coach - Motivation)',
-      prompt: 'Aalas aa raha hai gym jaane ka mann nahi kar raha',
+      name: 'Natasha (Squats Biomechanics & Back Tightness)',
+      prompt: 'Squats lagate time lower back mein stiffness aa rahi hai, kya galat ho raha hai?',
     },
     {
       slug: 'natasha',
-      name: 'Natasha (Female Fitness Coach - Nutrition)',
-      prompt: 'Fat loss ke liye best diet strategy kya hai?',
+      name: 'Natasha (Arm Hypertrophy & Superset Programming)',
+      prompt: 'Bicep aur tricep size grow karne ke liye best superset kya hai?',
     },
     {
       slug: 'natasha',
-      name: 'Natasha (Female Fitness Coach - Banter & Boundaries)',
-      prompt: 'Shaadi karogi mere sath?',
+      name: 'Natasha (Indian Vegetarian High-Protein Strategy)',
+      prompt: 'Vegetarian diet mein 140g protein kaise hit karoon bina non-veg ke?',
     },
   ];
 
