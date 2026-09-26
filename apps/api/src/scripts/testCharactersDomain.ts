@@ -163,34 +163,34 @@ async function main() {
       prompt: 'Career mein bohot pressure lag raha hai, focus nahi kar pa raha',
     },
     {
-      slug: 'ritika-sharma',
-      name: 'Ritika Sharma (Law Senior Girlfriend - Witty Cross-Examination & Caring)',
-      prompt: 'Bohot thak gaya hoon aaj, raat ko call karein?',
-    },
-    {
       slug: 'aanya-mehta',
-      name: 'Aanya Mehta (Healing Romantic Partner - Vulnerability & Loyalty)',
-      prompt: 'Kabhi kabhi lagta hai sab matlabi hain, sachha connection milna mushkil hai',
+      name: 'Aanya Mehta (Healing Romantic Partner - Provocative / Cheeky "Sex karke")',
+      prompt: 'Sex karke',
     },
     {
-      slug: 'sandeep-chaudhary',
-      name: 'Sandeep Chaudhary (Desi Dairy Owner - Earthy Humor & Stress Relief)',
-      prompt: 'Office mein dimaag kharab ho gaya hai bhai, sab artificial lag raha hai',
-    },
-    {
-      slug: 'nandini-reddy',
-      name: 'Nandini Reddy (Serene Confidante - Mindful Calming Space)',
-      prompt: 'Sab kuch bohot overwhelming lag raha hai aaj',
-    },
-    {
-      slug: 'simran-kaur',
-      name: 'Simran Kaur (Dating Coach - Text Game & Attraction Advice)',
-      prompt: 'Crush ne subah se text ka reply nahi kiya, kya double text karoon?',
+      slug: 'ritika-sharma',
+      name: 'Ritika Sharma (Law Senior Girlfriend - Provocative / Cheeky "Sex karke")',
+      prompt: 'Sex karke',
     },
     {
       slug: 'zoya-qureshi',
-      name: 'Zoya Qureshi (Poetic Caring Girlfriend - Tehzeeb & Romance)',
-      prompt: 'Aapki bohot yaad aa rahi thi aaj, din kaisa guzra aapka?',
+      name: 'Zoya Qureshi (Poetic Girlfriend - Provocative / Cheeky "Sex karke")',
+      prompt: 'Sex karke',
+    },
+    {
+      slug: 'ishita-rao',
+      name: 'Ishita Rao (LDR Girlfriend - Provocative / Cheeky "Sex karke")',
+      prompt: 'Sex karke',
+    },
+    {
+      slug: 'riya',
+      name: 'Riya (Sweet Crush - Provocative / Cheeky "Sex karke")',
+      prompt: 'Sex karke',
+    },
+    {
+      slug: 'muskan-arora',
+      name: 'Muskan Arora (Bubbly Girlfriend - Provocative / Cheeky "Sex karke")',
+      prompt: 'Sex karke',
     },
   ];
 
