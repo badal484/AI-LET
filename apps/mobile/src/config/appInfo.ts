@@ -14,14 +14,14 @@ function getDevHost(): string {
     const scriptURL: string | undefined = (NativeModules as any)?.SourceCode?.scriptURL;
     if (scriptURL) {
       const match = scriptURL.match(/^https?:\/\/([^:/]+)/);
-      if (match && match[1] && match[1] !== '127.0.0.1' && match[1] !== 'localhost') {
+      if (match && match[1]) {
         return match[1];
       }
     }
   } catch {}
 
-  // 192.168.1.45 is Mac Wi-Fi LAN IP reachable from physical Android device
-  return '192.168.1.45';
+  // Fallback to localhost (works with adb reverse and iOS simulator)
+  return 'localhost';
 }
 
 const PRODUCTION_API_ORIGIN = 'https://api.aicompanion.app';
