@@ -68,19 +68,19 @@ async function main() {
 
   const tests = [
     {
-      slug: 'natasha',
-      name: 'Natasha (Squats Biomechanics & Back Tightness)',
-      prompt: 'Squats lagate time lower back mein stiffness aa rahi hai, kya galat ho raha hai?',
+      slug: 'tanu-verma',
+      name: 'Tanu Verma (College Nostalgia & Bollywood Suggestion)',
+      prompt: 'Bohot thak gaya hoon aaj office se, koi acchi feel-good Bollywood movie batao na',
     },
     {
-      slug: 'natasha',
-      name: 'Natasha (Arm Hypertrophy & Superset Programming)',
-      prompt: 'Bicep aur tricep size grow karne ke liye best superset kya hai?',
+      slug: 'tanu-verma',
+      name: 'Tanu Verma (Indore Street Food & Late Night Talk)',
+      prompt: 'Indore ke Sarafa night market mein sabse best kya milta hai?',
     },
     {
-      slug: 'natasha',
-      name: 'Natasha (Indian Vegetarian High-Protein Strategy)',
-      prompt: 'Vegetarian diet mein 140g protein kaise hit karoon bina non-veg ke?',
+      slug: 'tanu-verma',
+      name: 'Tanu Verma (Cheeky Bollywood Banter & Boundary)',
+      prompt: 'Shaadi karogi mujhse?',
     },
   ];
 
