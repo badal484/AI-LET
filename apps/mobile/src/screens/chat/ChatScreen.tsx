@@ -15,6 +15,7 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +24,9 @@ import type { RootStackParamList } from '../../navigation/types.js';
 import { ConversationApi } from '../../services/api/conversationApi.js';
 import { ChatStreamClient } from '../../services/api/chatStreamClient.js';
 import { feedbackApi } from '../../services/api/feedbackApi.js';
+import { RelationshipApi } from '../../services/api/relationshipApi.js';
+import { billingApi } from '../../services/api/billingApi.js';
+import { ModerationApi } from '../../services/api/moderationApi.js';
 import { useChatStreamStore } from '../../stores/chatStreamStore.js';
 import {
   Avatar,
@@ -35,6 +39,7 @@ import {
 import { MessageFeedbackModal } from '../../components/chat/MessageFeedbackModal.js';
 import { spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem, ConversationDetail } from '@ai-companion/types';
+import type { CharacterReportCreateInput } from '@ai-companion/validation';
 
 type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -45,6 +50,14 @@ const VIRTUAL_GIFTS = [
   { id: 'teddy', name: 'Teddy Bear', icon: '🧸', coins: 100, prompt: '[Sent a Gift: 🧸 Fluffy Teddy Bear]' },
   { id: 'star', name: 'Cosmic Star', icon: '✨', coins: 200, prompt: '[Sent a Gift: ✨ Glowing Celestial Star]' },
   { id: 'ring', name: 'Diamond Ring', icon: '💍', coins: 500, prompt: '[Sent a Gift: 💍 Sparkling Diamond Ring]' },
+];
+
+const REPORT_REASONS: Array<{ key: CharacterReportCreateInput['reasonCode']; label: string }> = [
+  { key: 'HARASSMENT', label: 'Harassment or Inappropriate Tone' },
+  { key: 'SEXUAL_CONTENT', label: 'Explicit Content Violation' },
+  { key: 'UNSAFE', label: 'Unsafe / Distress Emergency' },
+  { key: 'IMPERSONATION', label: 'Impersonation or Deception' },
+  { key: 'OTHER', label: 'Other Safety Concern' },
 ];
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
@@ -60,6 +73,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+  const [reportReason, setReportReason] = useState<CharacterReportCreateInput['reasonCode']>('HARASSMENT');
+  const [reportNotes, setReportNotes] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList<any>>(null);
@@ -114,7 +130,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const effectiveConvId = conversation?.id || activeConversationId;
   const companionFirstName = conversation?.character?.name?.split(' ')[0] || 'Companion';
 
-  // 2. Fetch Messages with Infinite Cursor Pagination
+  // 2. Fetch Live Relationship State
+  const { data: relationshipData, refetch: refetchRelationship } = useQuery({
+    queryKey: ['relationship', characterId],
+    queryFn: () => RelationshipApi.getRelationship(characterId),
+    enabled: Boolean(characterId),
+  });
+
+  // 3. Fetch User Coin Wallet
+  const { data: billingState, refetch: refetchBilling } = useQuery({
+    queryKey: ['billing-state'],
+    queryFn: () => billingApi.getMyBillingState(),
+  });
+
+  const walletCoins = billingState?.creditWallet?.availableBalance ?? 500;
+
+  // 4. Fetch Messages with Infinite Cursor Pagination
   const {
     data: messagesData,
     fetchNextPage,
@@ -143,7 +174,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   );
   const allMessages = [...pendingOptimistic, ...serverMessages];
 
-  // 3. Scroll Management
+  // 5. Scroll Management
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = e.nativeEvent.contentOffset.y;
     setIsScrolledUp(offsetY > 100);
@@ -161,7 +192,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   }, [accumulatedDelta, isStreaming, scrollToBottom]);
 
-  // 4. Send Message Handler
+  // 6. Send Message Handler
   const handleSendMessage = async (textToSend?: string) => {
     const content = (textToSend || inputText).trim();
     if (!content || !effectiveConvId || isStreaming) return;
@@ -208,6 +239,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         onCompleted: () => {
           finishStreaming();
           setOptimisticMessages([]);
+          refetchRelationship();
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
         },
@@ -240,6 +272,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
     try {
       await feedbackApi.submitMessageFeedback(activeConversationId, messageId, { rating: 'THUMBS_UP' });
+      ToastService.show({ message: 'Thank you for your feedback!', type: 'success', duration: 2000 });
     } catch {
       ToastService.show({ message: 'Could not send feedback. Please try again.', type: 'error', duration: 2500 });
     }
@@ -248,7 +281,50 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const handleSendGift = (gift: typeof VIRTUAL_GIFTS[0]) => {
     setIsGiftModalVisible(false);
     handleSendMessage(gift.prompt);
-    ToastService.show({ message: `Sent ${gift.name}!`, type: 'success', duration: 2000 });
+    ToastService.show({ message: `Sent ${gift.name}! +${Math.round(gift.coins / 5)} Intimacy points`, type: 'success', duration: 2500 });
+    refetchBilling();
+    refetchRelationship();
+  };
+
+  const handleResetRelationship = () => {
+    setIsMenuVisible(false);
+    Alert.alert(
+      'Reset Relationship',
+      `Are you sure you want to reset your relationship history with ${conversation?.character?.name || 'this character'} back to baseline?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await RelationshipApi.resetRelationship(characterId);
+              refetchRelationship();
+              ToastService.show({ message: 'Relationship reset to baseline.', type: 'info', duration: 2500 });
+            } catch {
+              ToastService.show({ message: 'Failed to reset relationship.', type: 'error', duration: 2500 });
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleReportCharacter = async () => {
+    setIsReportModalVisible(false);
+    try {
+      await ModerationApi.submitReport({
+        characterId,
+        reasonCode: reportReason,
+        details:
+          reportNotes.trim().length >= 10
+            ? reportNotes.trim()
+            : `User reported character for ${reportReason} from chat screen`,
+      });
+      ToastService.show({ message: 'Report submitted. Our safety team will review it.', type: 'success', duration: 3000 });
+    } catch {
+      ToastService.show({ message: 'Could not submit report.', type: 'error', duration: 2500 });
+    }
   };
 
   const renderMessageItem = ({ item }: { item: ChatMessageItem }) => {
@@ -314,6 +390,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     );
   };
 
+  const relationshipStage = relationshipData?.stage || 'FRIEND';
+  const intimacyPercent = relationshipData
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          Math.round(
+            (relationshipData.familiarity +
+              relationshipData.trust +
+              relationshipData.comfort +
+              relationshipData.affection +
+              relationshipData.engagement) /
+              5,
+          ),
+        ),
+      )
+    : 50;
+
   return (
     <ImageBackground
       source={{
@@ -343,7 +437,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           },
         ]}
       >
-        {/* Top App Bar with safe area paddingTop for edge-to-edge */}
+        {/* Top App Bar with safe area paddingTop */}
         <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 4 : 12 }]}>
           <TouchableOpacity
             style={styles.backButton}
@@ -381,6 +475,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 <Text style={styles.headerStatus}>
                   {isStreaming ? 'Typing...' : 'Online'}
                 </Text>
+                <View style={styles.relationshipBadge}>
+                  <Text style={styles.relationshipBadgeText}>
+                    ❤️ {relationshipStage} · {intimacyPercent}%
+                  </Text>
+                </View>
               </View>
             </View>
           </TouchableOpacity>
@@ -499,7 +598,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           />
         )}
 
-        {/* Bottom Composer Footer (WhatsApp-style floating pill + circular action) */}
+        {/* Bottom Composer Footer */}
         <View style={styles.composerContainer}>
           <View style={styles.inputRow}>
             {/* Pill Container */}
@@ -576,7 +675,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             <View style={styles.giftSheetContent}>
               <View style={styles.sheetHandle} />
               <Text style={styles.giftSheetTitle}>Send a Gift to {companionFirstName}</Text>
-              <Text style={styles.giftSheetSubtitle}>Make their day special with a token of affection</Text>
+              <Text style={styles.giftSheetSubtitle}>
+                🪙 {walletCoins.toLocaleString()} Coins Available
+              </Text>
 
               <View style={styles.giftGrid}>
                 {VIRTUAL_GIFTS.map((gift) => (
@@ -622,6 +723,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               >
                 <Text style={styles.menuItemText}>View Profile & Lore</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
@@ -636,6 +738,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               >
                 <Text style={styles.menuItemText}>Start Voice Call</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={handleResetRelationship}
+              >
+                <Text style={[styles.menuItemText, { color: '#F87171' }]}>Reset Relationship to Baseline</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setIsMenuVisible(false);
+                  setIsReportModalVisible(true);
+                }}
+              >
+                <Text style={[styles.menuItemText, { color: '#FBBF24' }]}>Report Character Behavior</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={[styles.menuItem, { borderBottomWidth: 0 }]}
                 onPress={() => setIsMenuVisible(false)}
@@ -646,13 +766,84 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           </TouchableOpacity>
         </Modal>
 
+        {/* Moderation Report Modal */}
+        <Modal
+          visible={isReportModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsReportModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.reportSheetContent}>
+              <Text style={styles.reportTitle}>Report Inappropriate Content</Text>
+              <Text style={styles.reportSubtitle}>
+                Help us keep our community safe and compliant.
+              </Text>
+
+              <View style={styles.reportReasonList}>
+                {REPORT_REASONS.map((reason) => (
+                  <TouchableOpacity
+                    key={reason.key}
+                    style={[
+                      styles.reportReasonItem,
+                      reportReason === reason.key && styles.reportReasonItemSelected,
+                    ]}
+                    onPress={() => setReportReason(reason.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.reportReasonText,
+                        reportReason === reason.key && styles.reportReasonTextSelected,
+                      ]}
+                    >
+                      {reason.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={styles.reportInput}
+                placeholder="Optional details for moderation team..."
+                placeholderTextColor="#6B7280"
+                value={reportNotes}
+                onChangeText={setReportNotes}
+                multiline
+              />
+
+              <View style={styles.reportActionRow}>
+                <TouchableOpacity
+                  style={styles.reportCancelBtn}
+                  onPress={() => setIsReportModalVisible(false)}
+                >
+                  <Text style={styles.reportCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.reportSubmitBtn}
+                  onPress={handleReportCharacter}
+                >
+                  <Text style={styles.reportSubmitText}>Submit Report</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {feedbackTarget && activeConversationId && (
           <MessageFeedbackModal
-            visible
+            visible={Boolean(feedbackTarget)}
             conversationId={activeConversationId}
             messageId={feedbackTarget.messageId}
             initialScore={feedbackTarget.score}
             onClose={() => setFeedbackTarget(null)}
+            onSuccess={() => {
+              setFeedbackTarget(null);
+              ToastService.show({
+                message: 'Thank you for your detailed feedback!',
+                type: 'success',
+                duration: 2500,
+              });
+            }}
           />
         )}
       </View>
@@ -663,12 +854,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    backgroundColor: '#0C0A14',
   },
   backgroundScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 8, 18, 0.78)',
+    backgroundColor: 'rgba(12, 10, 20, 0.94)',
   },
   container: {
     flex: 1,
@@ -676,77 +866,100 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(14, 11, 24, 0.75)',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(18, 14, 28, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   backButton: {
     padding: 6,
     marginRight: 6,
   },
   headerTitleContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    gap: 10,
   },
   avatarWrapper: {
     position: 'relative',
-    marginRight: 10,
   },
   onlineBadge: {
     position: 'absolute',
-    bottom: -1,
-    right: -1,
+    bottom: 0,
+    right: 0,
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#22C55E',
+    backgroundColor: '#10B981',
     borderWidth: 1.5,
-    borderColor: '#0E0B18',
+    borderColor: '#120E1C',
   },
   headerTextCol: {
-    justifyContent: 'center',
+    flex: 1,
   },
   headerName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.2,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 1,
+    gap: 8,
+    marginTop: 2,
   },
   headerStatus: {
-    fontSize: 12,
-    color: '#22C55E',
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '600',
+  },
+  relationshipBadge: {
+    backgroundColor: 'rgba(168, 85, 247, 0.18)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  relationshipBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#D8B4FE',
   },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   callButton: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(124, 58, 237, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 132, 252, 0.3)',
   },
   menuButton: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   todayPillContainer: {
     alignItems: 'center',
-    marginVertical: 14,
+    marginVertical: 12,
   },
   todayPill: {
-    backgroundColor: 'rgba(25, 20, 38, 0.85)',
-    paddingVertical: 5,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    backgroundColor: 'rgba(38, 30, 56, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   todayPillText: {
     fontSize: 12,
@@ -931,9 +1144,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   giftSheetSubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 13,
+    color: '#D8B4FE',
     textAlign: 'center',
+    fontWeight: '600',
     marginBottom: 20,
   },
   giftGrid: {
@@ -992,5 +1206,84 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  reportSheetContent: {
+    backgroundColor: '#1E182E',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 20,
+    marginBottom: 'auto',
+    marginTop: 'auto',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  reportSubtitle: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginBottom: 16,
+  },
+  reportReasonList: {
+    flexDirection: 'column',
+    gap: 8,
+    marginBottom: 16,
+  },
+  reportReasonItem: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#271F3B',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  reportReasonItemSelected: {
+    borderColor: '#A855F7',
+    backgroundColor: 'rgba(168, 85, 247, 0.18)',
+  },
+  reportReasonText: {
+    fontSize: 13,
+    color: '#E5E7EB',
+  },
+  reportReasonTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  reportInput: {
+    backgroundColor: '#120E1C',
+    borderRadius: 10,
+    padding: 12,
+    color: '#FFFFFF',
+    fontSize: 13,
+    minHeight: 60,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  reportActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  reportCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  reportCancelText: {
+    color: '#9CA3AF',
+    fontWeight: '600',
+  },
+  reportSubmitBtn: {
+    backgroundColor: '#7C3AED',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+  },
+  reportSubmitText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });
