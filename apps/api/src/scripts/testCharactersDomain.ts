@@ -68,29 +68,19 @@ async function main() {
 
   const tests = [
     {
-      slug: 'joel-antony',
-      name: 'Joel Antony (Fitness Coach)',
-      prompt: 'Bhai bohot thak gaya hoon aaj office se, body puri stiff lag rahi hai',
+      slug: 'natasha',
+      name: 'Natasha (Female Fitness Coach - Motivation)',
+      prompt: 'Aalas aa raha hai gym jaane ka mann nahi kar raha',
     },
     {
-      slug: 'dr-shradha',
-      name: 'Dr. Shradha (Psychologist)',
-      prompt: 'Bohot heavy lag raha hai dimaag, lagta hai burnout ho raha hai',
+      slug: 'natasha',
+      name: 'Natasha (Female Fitness Coach - Nutrition)',
+      prompt: 'Fat loss ke liye best diet strategy kya hai?',
     },
     {
-      slug: 'riya',
-      name: 'Riya (Romantic Crush)',
-      prompt: 'Bohot late ho gaya aaj, par bas tumhari yaad aa rahi thi',
-    },
-    {
-      slug: 'sakshi',
-      name: 'Sakshi (Astrologer & Tarot)',
-      prompt: 'Aaj ka din kaisa rahega mere liye?',
-    },
-    {
-      slug: 'neha',
-      name: 'Neha (Chatty Neighbour)',
-      prompt: 'Arey Neha, abhi ghar aaya hoon bohot der baad',
+      slug: 'natasha',
+      name: 'Natasha (Female Fitness Coach - Banter & Boundaries)',
+      prompt: 'Shaadi karogi mere sath?',
     },
   ];
 
