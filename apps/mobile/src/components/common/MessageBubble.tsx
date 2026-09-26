@@ -126,56 +126,65 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <TypingDotsIndicator />
           </View>
         ) : (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onLongPress={() => setShowActions((prev) => !prev)}
-            style={[
-              styles.bubble,
-              isUser ? styles.userBubble : styles.assistantBubble,
-              isFailed && styles.failedBubble,
-              isStreaming && styles.streamingBubble,
-            ]}
-            accessibilityRole="text"
-            accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${message.content}`}
-          >
-            <Text
-              style={[
-                styles.messageText,
-                isUser ? styles.userText : styles.assistantText,
-              ]}
-              selectable
-            >
-              {message.content}
-            </Text>
-
-            {isCancelled && (
-              <Text style={styles.cancelledLabel}>[Generation stopped]</Text>
-            )}
-
-            {isFailed && (
+          <View style={styles.bubblesStack}>
+            {(!isUser && !isStreaming && message.content.includes('\n')
+              ? message.content.split(/\n\s*\n|\n/).map((s) => s.trim()).filter(Boolean)
+              : [message.content]
+            ).map((paragraph, pIdx, arr) => (
               <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => onRetry?.(message.content)}
-                accessibilityLabel="Retry sending message"
-              >
-                <Text style={styles.retryText}>Retry Sending</Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.bubbleFooter}>
-              <Text
+                key={pIdx}
+                activeOpacity={0.9}
+                onLongPress={() => setShowActions((prev) => !prev)}
                 style={[
-                  styles.timestamp,
-                  isUser ? styles.userTimestamp : styles.assistantTimestamp,
+                  styles.bubble,
+                  isUser ? styles.userBubble : styles.assistantBubble,
+                  isFailed && styles.failedBubble,
+                  isStreaming && styles.streamingBubble,
+                  arr.length > 1 && pIdx < arr.length - 1 && { marginBottom: 6 },
                 ]}
+                accessibilityRole="text"
+                accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${paragraph}`}
               >
-                {formattedTime}
-              </Text>
-              {isUser && !isFailed && !isStreaming && (
-                <Icon name="check-double" size={13} color="#22C55E" style={{ marginLeft: 2 }} />
-              )}
-            </View>
-          </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.messageText,
+                    isUser ? styles.userText : styles.assistantText,
+                  ]}
+                  selectable
+                >
+                  {paragraph}
+                </Text>
+
+                {isCancelled && pIdx === arr.length - 1 && (
+                  <Text style={styles.cancelledLabel}>[Generation stopped]</Text>
+                )}
+
+                {isFailed && pIdx === arr.length - 1 && (
+                  <TouchableOpacity
+                    style={styles.retryButton}
+                    onPress={() => onRetry?.(message.content)}
+                    accessibilityLabel="Retry sending message"
+                  >
+                    <Text style={styles.retryText}>Retry Sending</Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={styles.bubbleFooter}>
+                  <Text
+                    style={[
+                      styles.timestamp,
+                      isUser ? styles.userTimestamp : styles.assistantTimestamp,
+                    ]}
+                  >
+                    {formattedTime}
+                  </Text>
+                  {isUser && !isFailed && !isStreaming && pIdx === arr.length - 1 && (
+                    <Icon name="check-double" size={13} color="#22C55E" style={{ marginLeft: 2 }} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
 
         {/* Contextual Action Strip */}
@@ -251,6 +260,10 @@ const styles = StyleSheet.create({
   },
   bubbleContainer: {
     flexShrink: 1,
+  },
+  bubblesStack: {
+    flexShrink: 1,
+    flexDirection: 'column',
   },
   bubble: {
     paddingHorizontal: 15,
