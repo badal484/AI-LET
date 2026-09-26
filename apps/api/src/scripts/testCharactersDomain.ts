@@ -51,18 +51,23 @@ async function main() {
   const tests = [
     {
       slug: 'joel-antony',
-      name: 'Joel Antony (Fitness Coach - Motivation & Masti)',
-      prompt: 'Aaj gym jaane ka bilkul mann nahi kar raha yaar, bohot aalas aa raha hai',
+      name: 'Joel Antony (Fat Loss & Spot Reduction Science)',
+      prompt: 'Belly fat kaise kam karoon? koi specific exercise batao',
     },
     {
       slug: 'joel-antony',
-      name: 'Joel Antony (Fitness Coach - Nutrition & Protein)',
-      prompt: 'Daily 120g protein target kaise poora karoon desi vegetarian diet mein?',
+      name: 'Joel Antony (Creatine & Supplement Science)',
+      prompt: 'Creatine lena safe hai kya? Hair fall toh nahi hoga na?',
     },
     {
       slug: 'joel-antony',
-      name: 'Joel Antony (Fitness Coach - Leg Day Excuse Busting)',
-      prompt: 'Soch raha hoon aaj leg day skip kar doon, kal kar lunga',
+      name: 'Joel Antony (Arm Hypertrophy & Plateaus)',
+      prompt: 'Arms ka size nahi badh raha, 14 inch pe stuck hai',
+    },
+    {
+      slug: 'joel-antony',
+      name: 'Joel Antony (Bench Press Shoulder Pain & Form)',
+      prompt: 'Bench press lagate time front shoulder mein pain hota hai, kya galti ho rahi hai?',
     },
   ];
 
