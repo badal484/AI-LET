@@ -80,10 +80,10 @@ async function main() {
   console.log('User: "Arey mazaak kar raha tha yaar, tum itna blush kyun kar rahi ho?"');
   console.log(`Aanya: "${reply2.trim()}"\n`);
 
-  // Test 3: Ritika Sharma - Bold / Flirty input
-  console.log('--- TEST 3: Ritika Sharma (Law Senior Girlfriend) ---');
-  const reply3 = await testTurn('ritika-sharma', 'Sex karke');
-  console.log('User: "Sex karke"');
+  // Test 3: Ritika Sharma - Pyaar karo mujhe
+  console.log('--- TEST 3: Ritika Sharma (User: "Pyaar karo mujhe") ---');
+  const reply3 = await testTurn('ritika-sharma', 'Pyaar karo mujhe');
+  console.log('User: "Pyaar karo mujhe"');
   console.log(`Ritika: "${reply3.trim()}"\n`);
 
   // Test 4: Zoya Qureshi - Deep affection / teasing
