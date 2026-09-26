@@ -10,7 +10,6 @@ import type { AdminAnalyticsOverviewData } from '@ai-companion/types';
 import {
   TrendingUp,
   DollarSign,
-  FlaskConical,
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
@@ -21,14 +20,10 @@ import {
   Compass,
   Sparkles,
   Users,
-  ShieldCheck,
   CreditCard,
-  ArrowRight,
   Zap,
   ChevronRight,
-  Sliders,
   Cpu,
-  Radio,
 } from 'lucide-react';
 
 export default function AdminCommandCenterPage() {
