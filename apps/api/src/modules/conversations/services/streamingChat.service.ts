@@ -302,7 +302,7 @@ export class StreamingChatService {
       const activeProvider: AIProviderName = ((characterRuntime.aiConfig as any)?.provider || defaultProvider).toLowerCase() as AIProviderName;
 
       const activeModel = characterRuntime.aiConfig?.customModelName ||
-        (activeProvider === 'google' ? (process.env['DEFAULT_CHAT_MODEL'] || 'gemini-2.5-flash-lite') :
+        (activeProvider === 'google' ? (process.env['DEFAULT_CHAT_MODEL'] || 'gemini-3.5-flash-lite') :
          activeProvider === 'openai' ? 'gpt-4o-mini' : 'mock-gpt-4o');
 
       const provider = AIOrchestrator.getProvider(activeProvider);

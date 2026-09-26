@@ -21,15 +21,21 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
   private static readonly RESILIENT_MODELS = [
     'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
     'gemini-3.6-flash',
-    'gemini-3.1-flash-lite',
     'gemini-flash-lite-latest',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash-lite',
     'gemini-flash-latest',
   ];
 
   constructor() {
-    this.apiKey = process.env['GOOGLE_AI_API_KEY'];
+    this.apiKey = process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY'];
     this.mockFallback = new MockAIProviderAdapter();
+  }
+
+  private getApiKey(): string | undefined {
+    return process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY'] || this.apiKey;
   }
 
   public getCapabilities(): AIModelCapability[] {
@@ -50,9 +56,11 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       !requested ||
       requested.includes('mock') ||
       requested.includes('gpt') ||
+      requested.includes('gemini-1.') ||
+      requested.includes('gemini-2.0') ||
       requested.includes('gemini-2.5-flash') && !requested.includes('lite')
     ) {
-      return GoogleAIProviderAdapter.RESILIENT_MODELS[0] || 'gemini-3.5-flash-lite';
+      return GoogleAIProviderAdapter.RESILIENT_MODELS[0] || 'gemini-3.8-flash';
     }
     if (requested.startsWith('models/')) {
       return requested.replace('models/', '');
@@ -127,7 +135,8 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
   }
 
   public async generate(request: AIGenerateRequest): Promise<AIGenerateResponse> {
-    if (!this.apiKey) {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
       const mockRes = await this.mockFallback.generate(request);
       return {
         ...mockRes,
@@ -146,7 +155,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
     for (const modelName of candidateModels) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${this.apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -209,7 +218,8 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
   }
 
   public async *stream(request: AIGenerateRequest): AsyncIterable<AIStreamEvent> {
-    if (!this.apiKey) {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
       for await (const evt of this.mockFallback.stream(request)) {
         yield evt;
       }
@@ -236,7 +246,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
     for (const modelName of candidateModels) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${apiKey}`;
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -356,13 +366,14 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
   }
 
   public async embed(request: EmbeddingRequest): Promise<EmbeddingResponse> {
-    if (!this.apiKey) {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
       return this.mockFallback.embed(request);
     }
     try {
       const inputs = Array.isArray(request.input) ? request.input : [request.input];
       const model = request.model || 'gemini-embedding-001';
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:batchEmbedContents?key=${this.apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:batchEmbedContents?key=${apiKey}`;
 
       const requests = inputs.map((text) => ({
         model: `models/${model}`,
@@ -400,6 +411,6 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
   }
 
   public async isHealthy(): Promise<boolean> {
-    return !!this.apiKey;
+    return !!this.getApiKey();
   }
 }
