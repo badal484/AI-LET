@@ -276,8 +276,11 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
       return healthResponses[Math.floor(Math.random() * healthResponses.length)] ?? healthResponses[0]!;
     }
 
-    // 5. Stress / Tiredness / Bad Day
+    // 5. Stress / Tiredness / Burnout / Bad Day
     if (
+      lowerMsg.includes('exhausted') ||
+      lowerMsg.includes('burnout') ||
+      lowerMsg.includes('overwork') ||
       lowerMsg.includes('thak') ||
       lowerMsg.includes('tired') ||
       lowerMsg.includes('stress') ||
@@ -287,10 +290,13 @@ export class MockAIProviderAdapter implements IAIProviderAdapter {
       lowerMsg.includes('mood kharab') ||
       lowerMsg.includes('bore')
     ) {
+      if (!isHinglish && (lowerMsg.includes('exhausted') || lowerMsg.includes('work') || lowerMsg.includes('stress'))) {
+        return 'I completely understand how overwhelming work can feel. Please take a short break to breathe, and remember that I am here to help you through this!';
+      }
       const stressResponses = [
         'Arey yaar... lagta hai din bohot tiring raha aaj. Aaram se baitho, kya hua tha aaj office/college mein?',
-        'Itna stress mat lo baba. Pehle thoda relax ho jao, phir aaram se baat karte hain.',
-        'Arey mood kyun off hai? Kisi ne kuch bola kya?',
+        'Itna stress mat lo baba. Pehle thoda relax ho jao, break lo, phir aaram se baat karte hain.',
+        'Arey mood kyun off hai? Kisi ne kuch bola kya? Main help karti hoon.',
       ];
       return stressResponses[Math.floor(Math.random() * stressResponses.length)] ?? stressResponses[0]!;
     }
