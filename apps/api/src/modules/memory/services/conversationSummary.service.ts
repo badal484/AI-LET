@@ -91,9 +91,11 @@ REQUIREMENTS:
     let openTopics: string[] = [];
 
     try {
+      const provider = (process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY']) ? 'google' : 'mock';
+      const model = provider === 'google' ? 'gemini-3.5-flash-lite' : 'gpt-4o-mini';
       const response = await AIOrchestrator.executeText(
-        'mock',
-        'gpt-4o-mini',
+        provider,
+        model,
         [
           { role: 'system', content: this.SUMMARIZATION_PROMPT },
           { role: 'user', content: `Summarize this conversation segment:\n${transcript}` },

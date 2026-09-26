@@ -101,6 +101,10 @@ export class ContextBuilder {
       : '';
     systemPrompt += `\n\n[CONVERSATION_PARTICIPANT_CONTEXT]\n- User Name: ${userContext.userName}\n- User Preferred Language: ${userContext.preferredLanguage || 'en'}${styleSnippet}\n[END_PARTICIPANT_CONTEXT]`;
 
+    // Tier 9B — Circadian & Temporal Gap Awareness (Real-Time Human Perception)
+    const temporalSnippet = this.calculateTemporalContext(recentMessages, userContext.locale);
+    systemPrompt += temporalSnippet;
+
     // Direct Mobile Messenger Dynamics (Ultra-Realistic WhatsApp / Lovish Messaging Style)
     systemPrompt += `\n\n[NATURAL_HUMAN_MESSAGING_RULES]
 CRITICAL CONVERSATIONAL TEXTING RULES (FEEL 100% LIKE A REAL HUMAN COMPANION ON WHATSAPP / INSTAGRAM):
@@ -267,5 +271,72 @@ CRITICAL CONVERSATIONAL TEXTING RULES (FEEL 100% LIKE A REAL HUMAN COMPANION ON 
       activeRelationshipStage: relationshipResult.relationshipState?.stage || null,
       contextAttribution: attribution,
     };
+  }
+
+  /**
+   * Calculates circadian time of day, day of week, and elapsed gap since last message.
+   */
+  private static calculateTemporalContext(
+    recentMessages: Array<{ role: string; content: string; createdAt?: Date | string }>,
+    locale = 'en-IN',
+  ): string {
+    const now = new Date();
+    const timeZone = 'Asia/Kolkata';
+
+    const timeStr = now.toLocaleTimeString(locale, {
+      timeZone,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    const dayStr = now.toLocaleDateString(locale, {
+      timeZone,
+      weekday: 'long',
+    });
+
+    const hour = parseInt(
+      now.toLocaleTimeString('en-US', { timeZone, hour: 'numeric', hour12: false }),
+      10,
+    );
+
+    let period = 'Day';
+    if (hour >= 0 && hour < 5) period = 'Late Night (Past Midnight)';
+    else if (hour >= 5 && hour < 12) period = 'Morning';
+    else if (hour >= 12 && hour < 17) period = 'Afternoon';
+    else if (hour >= 17 && hour < 21) period = 'Evening';
+    else period = 'Night';
+
+    // Calculate delta since last message
+    let gapContext = 'FIRST_INTERACTION: First time chatting with this user.';
+    const prevMsg = recentMessages[0];
+    if (prevMsg?.createdAt) {
+      const prevTime = new Date(prevMsg.createdAt).getTime();
+      const diffMs = Math.max(0, now.getTime() - prevTime);
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 5) {
+        gapContext = 'ACTIVE_FLOW: Rapid continuous real-time conversation (replied under 5 mins). Maintain back-and-forth flow. DO NOT greet or reset conversational context.';
+      } else if (diffMins < 60) {
+        gapContext = `SHORT_PAUSE: User replied after ${diffMins} minutes. Natural continuation of the current thread.`;
+      } else if (diffHours < 6) {
+        gapContext = `SAME_DAY_RETURN: User returning after ${diffHours} hours earlier today.`;
+      } else if (diffHours < 24) {
+        gapContext = `NEXT_SESSION: User returning after ${diffHours} hours (e.g. morning after last night, or tonight after daytime). Natural seamless greeting or follow-up.`;
+      } else if (diffDays === 1) {
+        gapContext = `YESTERDAY_LAST_SEEN: Last spoke yesterday. Natural continuity.`;
+      } else {
+        gapContext = `LONG_ABSENCE: User returning after ${diffDays} days away. Acknowledge casually with warmth (e.g. "Arey itne din baad?", "Where were you lost?").`;
+      }
+    }
+
+    return `\n\n[TEMPORAL_CIRCADIAN_AWARENESS]
+- User Current Local Time: ${dayStr}, ${timeStr} IST (${period})
+- Interaction Timing State: ${gapContext}
+- Temporal Behavioral Instructions:
+  * Reflect the real-time context naturally (e.g., if it's 2 AM Late Night, recognize late hours; if it's daytime/evening, align your casual vibe).
+  * If in ACTIVE_FLOW (< 5m), never repeat greetings like "Hello" or "Good morning/evening".
+[END_TEMPORAL_CIRCADIAN_AWARENESS]`;
   }
 }
