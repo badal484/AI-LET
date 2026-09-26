@@ -759,7 +759,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         )}
 
         {/* Bottom Composer Footer */}
-        <View style={styles.composerContainer}>
+        <View
+          style={[
+            styles.composerContainer,
+            {
+              paddingBottom:
+                keyboardHeight > 0
+                  ? keyboardHeight + (Platform.OS === 'android' ? 6 : 4)
+                  : Math.max(insets.bottom, 12),
+            },
+          ]}
+        >
           <View style={styles.inputRow}>
             {/* Pill Container */}
             <View style={styles.pillInputContainer}>
