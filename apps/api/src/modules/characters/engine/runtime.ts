@@ -83,7 +83,7 @@ export class CharacterRuntimeBuilder {
       }),
       aiConfig: Object.freeze({ ...version.aiConfigData }),
       voiceConfig: version.voiceConfigData ? Object.freeze({ ...version.voiceConfigData }) : null,
-      compiledSystemPrompt: compiledResult.systemPrompt,
+      compiledSystemPrompt: version.compiledPromptSnapshot || compiledResult.systemPrompt,
     };
 
     return Object.freeze(runtime) as unknown as CharacterRuntimeObject;
