@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MetricCard } from '../components/MetricCard';
 import { AuthGuard, useAdminAuth } from '../components/AuthGuard';
 import { adminAnalyticsApi } from '../services/adminAnalyticsApi';
+import { AdminCharacterApi } from '../services/adminCharacterApi';
 import type { AdminAnalyticsOverviewData } from '@ai-companion/types';
 import {
   TrendingUp,
@@ -24,11 +25,16 @@ import {
   CreditCard,
   ArrowRight,
   Zap,
+  ChevronRight,
+  Sliders,
+  Cpu,
+  Radio,
 } from 'lucide-react';
 
 export default function AdminCommandCenterPage() {
   const { admin } = useAdminAuth();
   const [data, setData] = useState<AdminAnalyticsOverviewData | null>(null);
+  const [topCharacters, setTopCharacters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +43,12 @@ export default function AdminCommandCenterPage() {
     try {
       setLoading(true);
       setError(null);
-      const overview = await adminAnalyticsApi.getOverview();
+      const [overview, charRes] = await Promise.all([
+        adminAnalyticsApi.getOverview().catch(() => null),
+        AdminCharacterApi.listCharacters({ limit: 6 }).catch(() => ({ characters: [] })),
+      ]);
       setData(overview);
+      setTopCharacters(charRes.characters || []);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || err.message || 'Failed to load command center data');
     } finally {
@@ -82,49 +92,82 @@ export default function AdminCommandCenterPage() {
 
   return (
     <AuthGuard>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Top Smart Greeting & Live Ops Bar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '1440px', margin: '0 auto' }}>
+        {/* 🌟 Elegant Hero Operations Banner */}
         <div
           style={{
-            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(99, 102, 241, 0.08) 100%)',
+            position: 'relative',
+            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(99, 102, 241, 0.08) 50%, rgba(236, 72, 153, 0.04) 100%)',
             border: '1px solid rgba(168, 85, 247, 0.25)',
             borderRadius: '16px',
-            padding: '24px 28px',
+            padding: '28px 32px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: '20px',
+            gap: '24px',
+            boxShadow: '0 8px 32px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            overflow: 'hidden',
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#FFFFFF', margin: 0 }}>
-                AI Companion Smart Studio
-              </h1>
+          {/* Subtle background glow circle */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '-40px',
+              right: '-40px',
+              width: '240px',
+              height: '240px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
               <span
                 style={{
                   fontSize: '11px',
                   fontWeight: '700',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
                   padding: '3px 8px',
                   borderRadius: '12px',
-                  backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                  color: '#4ADE80',
+                  backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                  color: '#D8B4FE',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                }}
+              >
+                Operational Command
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  color: '#34D399',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '5px',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
                 }}
               >
-                <Activity size={12} /> Live Ops Online
+                <Activity size={12} /> All Systems Nominal
               </span>
             </div>
-            <p style={{ fontSize: '14px', color: '#94A3B8', marginTop: '6px', margin: '6px 0 0 0' }}>
-              Platform is active with <strong style={{ color: '#E2E8F0' }}>{data?.activeConversations ?? 7} live conversations</strong> and{' '}
-              <strong style={{ color: '#E2E8F0' }}>{data?.totalMessagesToday ?? 81} messages today</strong>.
+
+            <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#FFFFFF', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
+              AI Companion Control Center
+            </h1>
+            <p style={{ fontSize: '14px', color: '#94A3B8', margin: 0 }}>
+              Live engine monitoring for multi-modal dialogue, voice latency, discovery curation, and user engagement.
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative', zIndex: 1 }}>
             <button
               onClick={handleTriggerAggregation}
               disabled={refreshing}
@@ -132,19 +175,25 @@ export default function AdminCommandCenterPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 16px',
-                backgroundColor: '#1E293B',
-                border: '1px solid #334155',
+                padding: '9px 16px',
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '8px',
                 color: '#F1F5F9',
-                cursor: 'pointer',
+                cursor: refreshing ? 'not-allowed' : 'pointer',
                 fontSize: '13px',
                 fontWeight: '600',
                 transition: 'all 0.15s ease',
               }}
+              onMouseEnter={e => {
+                if (!refreshing) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+              }}
+              onMouseLeave={e => {
+                if (!refreshing) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+              }}
             >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-              {refreshing ? 'Refreshing...' : 'Refresh Metrics'}
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} style={{ color: '#A855F7' }} />
+              {refreshing ? 'Aggregating...' : 'Refresh Telemetry'}
             </button>
 
             <Link
@@ -153,15 +202,18 @@ export default function AdminCommandCenterPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 18px',
-                backgroundColor: '#9333EA',
+                padding: '9px 18px',
+                background: 'linear-gradient(135deg, #A855F7 0%, #6366F1 100%)',
                 borderRadius: '8px',
                 color: '#FFFFFF',
                 fontSize: '13px',
                 fontWeight: '600',
                 textDecoration: 'none',
-                boxShadow: '0 4px 14px rgba(147, 51, 234, 0.4)',
+                boxShadow: '0 4px 16px rgba(168, 85, 247, 0.4)',
+                transition: 'transform 0.15s ease, opacity 0.15s ease',
               }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.94')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
             >
               <Bot size={16} />
               <span>+ Create Companion</span>
@@ -177,76 +229,79 @@ export default function AdminCommandCenterPage() {
               border: '1px solid rgba(239, 68, 68, 0.3)',
               borderRadius: '10px',
               color: '#F87171',
-              fontSize: '14px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
             }}
           >
-            {error}
+            <AlertTriangle size={16} />
+            <span>{error}</span>
           </div>
         )}
 
-        {/* ⚡ SMART 1-CLICK ACTIONS HUB */}
+        {/* ⚡ SMART ACTION SHORTCUTS */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-            <Zap size={18} color="#A855F7" />
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
-              Quick Action Hub
-            </h2>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>— Instant workflows</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Zap size={16} color="#A855F7" />
+              <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#F1F5F9', margin: 0 }}>
+                Core Engine Studios
+              </h2>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {/* Card 1: Characters */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+            {/* Card 1: Character Studio */}
             <Link
               href="/characters"
               style={{
                 padding: '20px',
-                backgroundColor: '#0F131D',
-                borderRadius: '14px',
-                border: '1px solid #1E293B',
+                backgroundColor: '#0F121C',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.07)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 textDecoration: 'none',
                 color: 'inherit',
-                transition: 'all 0.2s ease',
+                transition: 'transform 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               <div>
                 <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(168, 85, 247, 0.12)',
                     color: '#C084FC',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '14px',
+                    marginBottom: '12px',
                   }}
                 >
-                  <Bot size={22} />
+                  <Bot size={18} />
                 </div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
-                  Characters & Avatars
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 4px 0' }}>
+                  Character Studio
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-                  Create, edit backstory, tune personality sliders, and publish companions.
+                <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0, lineHeight: 1.4 }}>
+                  Draft backstories, emotional policy engines, and live version releases.
                 </p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '16px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#A855F7',
-                }}
-              >
-                <span>Open Character Studio</span>
-                <ArrowRight size={14} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '14px', fontSize: '12px', fontWeight: '600', color: '#A855F7' }}>
+                <span>Launch Studio</span>
+                <ChevronRight size={13} />
               </div>
             </Link>
 
@@ -255,235 +310,356 @@ export default function AdminCommandCenterPage() {
               href="/ai/knowledge"
               style={{
                 padding: '20px',
-                backgroundColor: '#0F131D',
-                borderRadius: '14px',
-                border: '1px solid #1E293B',
+                backgroundColor: '#0F121C',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.07)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 textDecoration: 'none',
                 color: 'inherit',
-                transition: 'all 0.2s ease',
+                transition: 'transform 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               <div>
                 <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(59, 130, 246, 0.12)',
                     color: '#60A5FA',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '14px',
+                    marginBottom: '12px',
                   }}
                 >
-                  <BookOpen size={22} />
+                  <BookOpen size={18} />
                 </div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
-                  Domain Training (RAG)
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 4px 0' }}>
+                  Knowledge & Vector RAG
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-                  Upload PDFs, lore & custom guides so companions become domain experts.
+                <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0, lineHeight: 1.4 }}>
+                  Embed documents, memories, and domain guides with hybrid retrieval.
                 </p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '16px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#60A5FA',
-                }}
-              >
-                <span>Upload & Train Docs</span>
-                <ArrowRight size={14} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '14px', fontSize: '12px', fontWeight: '600', color: '#60A5FA' }}>
+                <span>Manage Collections</span>
+                <ChevronRight size={13} />
               </div>
             </Link>
 
-            {/* Card 3: Mobile Discovery */}
+            {/* Card 3: Discovery Feed */}
             <Link
               href="/discovery"
               style={{
                 padding: '20px',
-                backgroundColor: '#0F131D',
-                borderRadius: '14px',
-                border: '1px solid #1E293B',
+                backgroundColor: '#0F121C',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.07)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 textDecoration: 'none',
                 color: 'inherit',
-                transition: 'all 0.2s ease',
+                transition: 'transform 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               <div>
                 <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(245, 158, 11, 0.12)',
                     color: '#FBBF24',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '14px',
+                    marginBottom: '12px',
                   }}
                 >
-                  <Compass size={22} />
+                  <Compass size={18} />
                 </div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
-                  Mobile App Discovery
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 4px 0' }}>
+                  Discovery & Home Feed
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-                  Curate the mobile home screen, feature hero banners & rank trending avatars.
+                <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0, lineHeight: 1.4 }}>
+                  Curate banners, rank trending categories, and tune discovery algorithms.
                 </p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '16px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#FBBF24',
-                }}
-              >
-                <span>Curate Mobile Feed</span>
-                <ArrowRight size={14} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '14px', fontSize: '12px', fontWeight: '600', color: '#FBBF24' }}>
+                <span>Configure Feeds</span>
+                <ChevronRight size={13} />
               </div>
             </Link>
 
-            {/* Card 4: Voice Studio */}
+            {/* Card 4: Voice Telemetry */}
             <Link
               href="/voice"
               style={{
                 padding: '20px',
-                backgroundColor: '#0F131D',
-                borderRadius: '14px',
-                border: '1px solid #1E293B',
+                backgroundColor: '#0F121C',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.07)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 textDecoration: 'none',
                 color: 'inherit',
-                transition: 'all 0.2s ease',
+                transition: 'transform 0.2s ease, border-color 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               <div>
                 <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                    color: '#4ADE80',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                    color: '#34D399',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    marginBottom: '14px',
+                    marginBottom: '12px',
                   }}
                 >
-                  <Mic size={22} />
+                  <Mic size={18} />
                 </div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
-                  Voice & Speech
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 4px 0' }}>
+                  Voice & Telemetry
                 </h3>
-                <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
-                  Assign ElevenLabs / Cartesia voice presets and test instant audio previews.
+                <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0, lineHeight: 1.4 }}>
+                  ElevenLabs/Cartesia bindings, TTFT latency tracking, and speech models.
                 </p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginTop: '16px',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  color: '#4ADE80',
-                }}
-              >
-                <span>Configure Voices</span>
-                <ArrowRight size={14} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '14px', fontSize: '12px', fontWeight: '600', color: '#34D399' }}>
+                <span>Monitor Voice</span>
+                <ChevronRight size={13} />
               </div>
             </Link>
           </div>
         </div>
 
-        {/* Executive KPI Overview Grid */}
+        {/* 📊 Live KPI Overview Grid */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-            <TrendingUp size={18} color="#60A5FA" />
-            <h2 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
-              Live Platform Metrics
+            <TrendingUp size={16} color="#60A5FA" />
+            <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#F1F5F9', margin: 0 }}>
+              Live Platform Telemetry
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
             <MetricCard
               title="Daily Active Users"
               value={loading ? '...' : (data?.dau ?? 0).toLocaleString()}
               change={`WAU: ${(data?.wau ?? 0).toLocaleString()}`}
               isPositive={true}
+              icon={Users}
+              iconColor="#A855F7"
+              iconBg="rgba(168, 85, 247, 0.12)"
+              badge="Growth"
             />
             <MetricCard
               title="New Users Today"
               value={loading ? '...' : (data?.newUsersToday ?? 0).toLocaleString()}
               change={`Activation: ${data?.activationRate ?? 0}%`}
               isPositive={(data?.activationRate ?? 0) >= 30}
+              icon={Sparkles}
+              iconColor="#3B82F6"
+              iconBg="rgba(59, 130, 246, 0.12)"
+              badge="Acquisition"
             />
             <MetricCard
-              title="Conversations & Msgs"
-              value={loading ? '...' : `${data?.activeConversations ?? 0} / ${data?.totalMessagesToday ?? 0}`}
-              change="Live interactions"
+              title="Active Conversations"
+              value={loading ? '...' : `${data?.activeConversations ?? 0} chats`}
+              change={`${data?.totalMessagesToday ?? 0} msgs today`}
               isPositive={true}
+              icon={Bot}
+              iconColor="#10B981"
+              iconBg="rgba(16, 185, 129, 0.12)"
+              badge="Realtime"
             />
             <MetricCard
               title="Daily Revenue"
               value={loading ? '...' : `$${(data?.dailyRevenue ?? 0).toFixed(2)}`}
-              change="Purchases & VIP"
+              change="Credits & VIP"
               isPositive={true}
+              icon={DollarSign}
+              iconColor="#F59E0B"
+              iconBg="rgba(245, 158, 11, 0.12)"
+              badge="Billing"
             />
             <MetricCard
-              title="Daily AI Token Cost"
+              title="Daily AI Compute"
               value={loading ? '...' : `$${(data?.dailyAICost ?? 0).toFixed(4)}`}
-              change="Model compute"
+              change="LLM inference"
               isPositive={(data?.dailyAICost ?? 0) < 50}
+              icon={Cpu}
+              iconColor="#EC4899"
+              iconBg="rgba(236, 72, 153, 0.12)"
+              badge="Cost"
             />
             <MetricCard
               title="Gross Margin"
-              value={loading ? '...' : `$${(data?.estimatedGrossMargin ?? 0).toFixed(4)}`}
-              change="Revenue - AI"
+              value={loading ? '...' : `$${(data?.estimatedGrossMargin ?? 0).toFixed(2)}`}
+              change="Net Profit"
               isPositive={(data?.estimatedGrossMargin ?? 0) >= 0}
+              icon={CreditCard}
+              iconColor="#8B5CF6"
+              iconBg="rgba(139, 92, 246, 0.12)"
+              badge="Margin"
             />
           </div>
         </div>
 
-        {/* Live Operational Alerts & Signals */}
-        <div className="card" style={{ backgroundColor: '#0F131D', border: '1px solid #1E293B', borderRadius: '14px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        {/* 🎭 Top Performing Companions Showcase */}
+        <div
+          style={{
+            backgroundColor: '#0F121C',
+            border: '1px solid rgba(255, 255, 255, 0.07)',
+            borderRadius: '14px',
+            padding: '22px 24px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: 0 }}>
+                Active Production Companions
+              </h3>
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '3px 0 0 0' }}>
+                Companions currently published and active on the mobile application feed.
+              </p>
+            </div>
+            <Link
+              href="/characters"
+              style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#A855F7',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <span>View All Directory</span>
+              <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+            {topCharacters.slice(0, 4).map((char: any) => (
+              <div
+                key={char.id}
+                style={{
+                  backgroundColor: '#131826',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <img
+                  src={char.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                  alt={char.name}
+                  style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#FFFFFF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {char.name}
+                    </h4>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        backgroundColor: char.status === 'PUBLISHED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                        color: char.status === 'PUBLISHED' ? '#34D399' : '#FBBF24',
+                        fontWeight: '700',
+                      }}
+                    >
+                      {char.status}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#94A3B8', margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {char.tagline || char.category || 'AI Companion'}
+                  </p>
+                </div>
+                <Link
+                  href={`/characters/${char.id}`}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    color: '#C084FC',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Tune
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 🛡️ Operational Alerts & Health Sentinel */}
+        <div
+          style={{
+            backgroundColor: '#0F121C',
+            border: '1px solid rgba(255, 255, 255, 0.07)',
+            borderRadius: '14px',
+            padding: '22px 24px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', color: '#FFFFFF', margin: 0 }}>
-                <AlertTriangle size={17} style={{ color: '#F59E0B' }} /> Operational Signals & Cluster Health
+                <AlertTriangle size={16} style={{ color: '#F59E0B' }} /> Operational Signals & Cluster Health
               </h3>
-              <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px', margin: '4px 0 0 0' }}>
-                Continuous monitoring for LLM latency, cost spikes, and safety flags
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '3px 0 0 0' }}>
+                Continuous monitoring for LLM latency, cost spikes, and safety flags.
               </p>
             </div>
             <span
               style={{
                 fontSize: '11px',
-                fontWeight: '600',
+                fontWeight: '700',
                 padding: '3px 8px',
                 borderRadius: '6px',
-                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                backgroundColor: 'rgba(34, 197, 94, 0.12)',
                 color: '#4ADE80',
               }}
             >
@@ -492,13 +668,13 @@ export default function AdminCommandCenterPage() {
           </div>
 
           {!data?.activeAlerts || data.activeAlerts.length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', backgroundColor: '#0A0E17', borderRadius: '10px', border: '1px solid #161B26' }}>
-              <CheckCircle2 size={26} style={{ color: '#4ADE80', margin: '0 auto 8px' }} />
-              <p style={{ fontSize: '14px', color: '#FFFFFF', fontWeight: '600', margin: '0 0 4px 0' }}>
+            <div style={{ padding: '22px', textAlign: 'center', backgroundColor: '#090B10', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
+              <CheckCircle2 size={24} style={{ color: '#10B981', margin: '0 auto 6px' }} />
+              <p style={{ fontSize: '13px', color: '#FFFFFF', fontWeight: '600', margin: '0 0 2px 0' }}>
                 All Platform Systems Operational
               </p>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-                No active cost anomalies, security violations, or infrastructure errors detected.
+              <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
+                Zero active cost anomalies, security violations, or infrastructure errors detected across cluster.
               </p>
             </div>
           ) : (
@@ -523,12 +699,13 @@ export default function AdminCommandCenterPage() {
                   <button
                     onClick={() => handleAcknowledgeAlert(alert.id)}
                     style={{
-                      padding: '6px 12px',
+                      padding: '5px 12px',
                       backgroundColor: '#1E293B',
                       border: '1px solid #334155',
                       borderRadius: '6px',
                       color: '#E2E8F0',
-                      fontSize: '12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
                       cursor: 'pointer',
                     }}
                   >

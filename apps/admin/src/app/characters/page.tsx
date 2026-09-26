@@ -4,7 +4,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { AuthGuard, useAdminAuth } from '../../components/AuthGuard';
 import { AdminCharacterApi } from '../../services/adminCharacterApi';
-import { Bot, Plus, Search, Filter, Sparkles, ArrowRight, X } from 'lucide-react';
+import {
+  Bot,
+  Plus,
+  Search,
+  Filter,
+  Sparkles,
+  ArrowRight,
+  X,
+  Sliders,
+  Play,
+  Globe,
+  Lock,
+  Layers,
+} from 'lucide-react';
 
 export default function CharactersDirectoryPage() {
   const { admin } = useAdminAuth();
@@ -80,16 +93,29 @@ export default function CharactersDirectoryPage() {
 
   return (
     <AuthGuard>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1440px', margin: '0 auto' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Bot size={26} style={{ color: 'var(--accent-primary)' }} />
-              Character Studio & Engine
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                  color: '#C084FC',
+                }}
+              >
+                COMPANION ENGINE
+              </span>
+            </div>
+            <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#FFFFFF', margin: '6px 0 2px 0', letterSpacing: '-0.02em' }}>
+              AI Characters & Persona Directory
             </h1>
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              Create, configure, test, version, and publish production AI personas
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0 }}>
+              Create, configure backstories, train vector memories, tune voices, and publish live companions.
             </p>
           </div>
 
@@ -100,50 +126,93 @@ export default function CharactersDirectoryPage() {
               alignItems: 'center',
               gap: '8px',
               padding: '10px 18px',
-              backgroundColor: 'var(--accent-primary)',
+              background: 'linear-gradient(135deg, #A855F7 0%, #6366F1 100%)',
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600',
               cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(168, 85, 247, 0.4)',
+              transition: 'transform 0.15s ease, opacity 0.15s ease',
             }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.92')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
           >
-            <Plus size={18} />
-            Create Character
+            <Plus size={16} />
+            <span>Create Companion</span>
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="card" style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '260px', backgroundColor: 'var(--bg-secondary)', padding: '8px 14px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
-            <Search size={16} style={{ color: 'var(--text-muted)' }} />
+        {/* Filter Toolbar */}
+        <div
+          style={{
+            backgroundColor: '#0F121C',
+            border: '1px solid rgba(255, 255, 255, 0.07)',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            display: 'flex',
+            gap: '14px',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              flex: 1,
+              minWidth: '260px',
+              backgroundColor: '#080A10',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            <Search size={15} color="#A855F7" />
             <input
               type="text"
-              placeholder="Search by name, slug, tagline..."
+              placeholder="Search companions by name, slug, archetype, or category..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', width: '100%', fontSize: '13px' }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: '#FFFFFF',
+                width: '100%',
+                fontSize: '13px',
+              }}
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Filter size={16} style={{ color: 'var(--text-muted)' }} />
+            <Filter size={15} style={{ color: '#64748B' }} />
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
               style={{
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
+                backgroundColor: '#080A10',
+                color: '#CBD5E1',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '8px',
                 padding: '8px 12px',
                 fontSize: '13px',
                 outline: 'none',
+                cursor: 'pointer',
               }}
             >
               <option value="">All Statuses</option>
-              <option value="PUBLISHED">Published</option>
+              <option value="PUBLISHED">Published (Live)</option>
               <option value="DRAFT">Draft</option>
               <option value="REVIEW">In Review</option>
               <option value="UNPUBLISHED">Unpublished</option>
@@ -154,119 +223,217 @@ export default function CharactersDirectoryPage() {
 
         {/* Characters Grid */}
         {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            Loading characters from engine...
+          <div style={{ padding: '80px', textAlign: 'center', color: '#64748B' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                border: '3px solid rgba(168, 85, 247, 0.2)',
+                borderTopColor: '#A855F7',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 12px',
+              }}
+            />
+            <p style={{ fontSize: '13px' }}>Loading characters from engine...</p>
           </div>
         ) : characters.length === 0 ? (
-          <div className="card" style={{ padding: '60px', textAlign: 'center' }}>
-            <Bot size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px', display: 'block' }} />
-            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>No Characters Found</h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-              Create your first AI character to begin configuring personality, behavior, and testing.
+          <div
+            style={{
+              padding: '60px 20px',
+              textAlign: 'center',
+              backgroundColor: '#0F121C',
+              borderRadius: '14px',
+              border: '1px solid rgba(255, 255, 255, 0.07)',
+            }}
+          >
+            <Bot size={40} style={{ color: '#475569', margin: '0 auto 12px', display: 'block' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 6px 0' }}>
+              No Characters Found
+            </h3>
+            <p style={{ fontSize: '13px', color: '#94A3B8', margin: '0 0 18px 0', maxWidth: '400px', marginInline: 'auto' }}>
+              Create your first companion persona to configure memory, proactivity, voices, and launch on mobile.
             </p>
             <button
               onClick={() => setIsCreateModalOpen(true)}
               style={{
-                padding: '8px 16px',
-                backgroundColor: 'var(--accent-primary)',
+                padding: '9px 18px',
+                background: 'linear-gradient(135deg, #A855F7, #6366F1)',
                 color: '#fff',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 border: 'none',
                 cursor: 'pointer',
                 fontWeight: '600',
+                fontSize: '13px',
               }}
             >
-              Create Character
+              + Create Character
             </button>
           </div>
         ) : (
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-              gap: '20px',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '18px',
             }}
           >
             {characters.map(char => (
               <div
                 key={char.id}
-                className="card"
                 style={{
+                  backgroundColor: '#0F121C',
+                  border: char.status === 'PUBLISHED' ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid rgba(255, 255, 255, 0.07)',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '16px',
+                  transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
                   position: 'relative',
-                  border: char.status === 'PUBLISHED' ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid var(--border-subtle)',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 12px 28px -10px rgba(0, 0, 0, 0.6)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = char.status === 'PUBLISHED' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(255, 255, 255, 0.07)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                  <img
-                    src={char.avatarUrl}
-                    alt={char.name}
+                {/* Header Cover Banner */}
+                <div
+                  style={{
+                    height: '70px',
+                    backgroundImage: `url(${char.coverImageUrl || char.avatarUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative',
+                  }}
+                >
+                  <div
                     style={{
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '12px',
-                      objectFit: 'cover',
-                      border: '1px solid var(--border-subtle)',
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(to bottom, rgba(15, 18, 28, 0.2), rgba(15, 18, 28, 0.95))',
                     }}
                   />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {char.name}
-                      </h3>
-                      <span
-                        className={`badge ${
-                          char.status === 'PUBLISHED'
-                            ? 'badge-success'
-                            : char.status === 'DRAFT'
-                            ? 'badge-warning'
-                            : 'badge-danger'
-                        }`}
-                      >
-                        {char.status}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      @{char.slug} • {char.category}
+
+                  {/* Status badge pill top right */}
+                  <div style={{ position: 'absolute', top: '10px', right: '12px' }}>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: '700',
+                        padding: '2px 7px',
+                        borderRadius: '6px',
+                        backgroundColor: char.status === 'PUBLISHED' ? 'rgba(16, 185, 129, 0.85)' : 'rgba(245, 158, 11, 0.85)',
+                        color: '#FFFFFF',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                    >
+                      {char.status === 'PUBLISHED' ? 'LIVE' : char.status}
                     </span>
                   </div>
                 </div>
 
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                  {char.tagline}
-                </p>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingTop: '12px',
-                    borderTop: '1px solid var(--border-subtle)',
-                    fontSize: '12px',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sparkles size={14} style={{ color: 'var(--accent-primary)' }} />
-                    <span>Version v{char.currentVersionNumber}</span>
+                {/* Body Content with Overlaid Avatar */}
+                <div style={{ padding: '0 18px 18px 18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '-32px', marginBottom: '10px' }}>
+                    <img
+                      src={char.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                      alt={char.name}
+                      style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '12px',
+                        objectFit: 'cover',
+                        border: '3px solid #0F121C',
+                        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5)',
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: '#94A3B8',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      v{char.currentVersionNumber || 1}
+                    </span>
                   </div>
 
-                  <Link
-                    href={`/characters/${char.id}`}
+                  <div style={{ marginBottom: '8px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 2px 0' }}>
+                      {char.name}
+                    </h3>
+                    <span style={{ fontSize: '11px', color: '#64748B', fontFamily: 'monospace' }}>
+                      @{char.slug} • {char.category || 'Companion'}
+                    </span>
+                  </div>
+
+                  <p
+                    style={{
+                      fontSize: '12px',
+                      color: '#94A3B8',
+                      lineHeight: 1.4,
+                      margin: '0 0 16px 0',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      flex: 1,
+                    }}
+                  >
+                    {char.tagline || char.shortDescription || 'Authentic multi-turn companion persona.'}
+                  </p>
+
+                  <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      color: 'var(--accent-primary)',
-                      fontWeight: '600',
-                      textDecoration: 'none',
+                      justifyContent: 'space-between',
+                      paddingTop: '12px',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                     }}
                   >
-                    Open Studio <ArrowRight size={14} />
-                  </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748B' }}>
+                      <Globe size={12} color="#10B981" />
+                      <span>{char.visibility || 'Public'}</span>
+                    </div>
+
+                    <Link
+                      href={`/characters/${char.id}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(168, 85, 247, 0.12)',
+                        color: '#C084FC',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = '#A855F7';
+                        e.currentTarget.style.color = '#FFFFFF';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = 'rgba(168, 85, 247, 0.12)';
+                        e.currentTarget.style.color = '#C084FC';
+                      }}
+                    >
+                      <span>Open Studio</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
@@ -282,7 +449,8 @@ export default function CharactersDirectoryPage() {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.75)',
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              backdropFilter: 'blur(8px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -291,63 +459,71 @@ export default function CharactersDirectoryPage() {
             }}
           >
             <div
-              className="card"
               style={{
                 width: '100%',
                 maxWidth: '540px',
                 maxHeight: '90vh',
                 overflowY: 'auto',
-                padding: '24px',
+                backgroundColor: '#0F121C',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                padding: '28px',
+                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.7)',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                  Create New AI Character
-                </h3>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#FFFFFF', margin: 0 }}>
+                    Create New AI Companion
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#94A3B8', margin: '3px 0 0 0' }}>
+                    Bootstrap identity and baseline version config.
+                  </p>
+                </div>
                 <button
                   onClick={() => setIsCreateModalOpen(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}
                 >
                   <X size={20} />
                 </button>
               </div>
 
               {createError && (
-                <div style={{ padding: '10px 14px', backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#F87171', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>
+                <div style={{ padding: '10px 14px', backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#F87171', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>
                   {createError}
                 </div>
               )}
 
               <form onSubmit={handleCreateCharacter} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    Character Name *
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#CBD5E1', marginBottom: '5px' }}>
+                    Companion Name *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Luna, Marcus, Aria"
+                    placeholder="e.g. Maya, Marcus, Aria, Kabir"
                     value={formData.name}
                     onChange={handleNameChange}
-                    style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                    className="form-input"
                   />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                      Slug *
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#CBD5E1', marginBottom: '5px' }}>
+                      Slug Identifier *
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.slug}
                       onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                      className="form-input"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#CBD5E1', marginBottom: '5px' }}>
                       Category *
                     </label>
                     <input
@@ -355,65 +531,85 @@ export default function CharactersDirectoryPage() {
                       required
                       value={formData.category}
                       onChange={e => setFormData({ ...formData, category: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                      className="form-input"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#CBD5E1', marginBottom: '5px' }}>
                     Tagline *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Empathetic Astrologer & Celestial Muse"
+                    placeholder="e.g. Empathetic Friend & Astrology Muse"
                     value={formData.tagline}
                     onChange={e => setFormData({ ...formData, tagline: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                    className="form-input"
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    Short Description *
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#CBD5E1', marginBottom: '5px' }}>
+                    Short Summary *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="1-2 sentences summarizing character essence"
+                    placeholder="1-2 sentences capturing personality"
                     value={formData.shortDescription}
                     onChange={e => setFormData({ ...formData, shortDescription: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                    className="form-input"
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                    Backstory / Core Context *
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#CBD5E1', marginBottom: '5px' }}>
+                    Backstory / Core Persona Lore *
                   </label>
                   <textarea
                     required
                     rows={3}
-                    placeholder="Detailed backstory, origins, life world..."
+                    placeholder="Describe character origins, speaking tone, and backstory..."
                     value={formData.longDescription}
                     onChange={e => setFormData({ ...formData, longDescription: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px', resize: 'vertical' }}
+                    className="form-input"
+                    style={{ resize: 'vertical' }}
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    style={{ padding: '8px 16px', backgroundColor: '#1E293B', color: '#94A3B8', border: '1px solid #334155', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: 'transparent',
+                      color: '#94A3B8',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                    }}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    style={{ padding: '8px 18px', backgroundColor: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                    style={{
+                      padding: '8px 18px',
+                      background: 'linear-gradient(135deg, #A855F7, #6366F1)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      boxShadow: '0 4px 14px rgba(168, 85, 247, 0.4)',
+                    }}
                   >
                     {isSubmitting ? 'Creating...' : 'Create & Open Studio'}
                   </button>
