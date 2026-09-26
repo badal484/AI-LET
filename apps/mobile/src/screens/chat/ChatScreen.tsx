@@ -105,7 +105,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   const {
     isStreaming,
-    streamingMessageId,
     accumulatedDelta,
     startStreaming,
     appendDelta,
@@ -114,12 +113,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     error: streamError,
   } = useChatStreamStore();
 
-  const [deliveringState, setDeliveringState] = useState<{
-    messageId: string;
-    paragraphs: string[];
-    revealedCount: number;
-    isTypingNext: boolean;
-  } | null>(null);
+  const [deliveringMap, setDeliveringMap] = useState<
+    Record<string, { revealedParagraphs: string[]; isTypingNext: boolean }>
+  >({});
 
   const deliveryTimersRef = useRef<NodeJS.Timeout[]>([]);
 
@@ -206,16 +202,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   }, [isScrolledUp]);
 
+  const isAnyDelivering = isStreaming || Object.keys(deliveringMap).length > 0;
+
   useEffect(() => {
-    if (isStreaming || deliveringState !== null) {
+    if (isAnyDelivering) {
       scrollToBottom();
     }
-  }, [accumulatedDelta, isStreaming, deliveringState, scrollToBottom]);
+  }, [accumulatedDelta, isAnyDelivering, scrollToBottom]);
 
   // 6. Send Message Handler
   const handleSendMessage = async (textToSend?: string) => {
     const content = (textToSend || inputText).trim();
-    if (!content || !effectiveConvId || isStreaming || deliveringState !== null) return;
+    if (!content || !effectiveConvId || isAnyDelivering) return;
 
     if (!textToSend) {
       setInputText('');
@@ -223,7 +221,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
     const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const tempUserMessage: ChatMessageItem = {
-      id: `temp-${Date.now()}`,
+      id: `temp-user-${Date.now()}`,
       conversationId: effectiveConvId,
       senderType: 'USER',
       role: 'user',
@@ -237,13 +235,30 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       updatedAt: new Date().toISOString(),
     };
 
-    setOptimisticMessages((prev) => [tempUserMessage, ...prev]);
+    const tempAssistantId = `temp-assist-${Date.now()}`;
+    const tempAssistantMessage: ChatMessageItem = {
+      id: tempAssistantId,
+      conversationId: effectiveConvId,
+      senderType: 'CHARACTER',
+      role: 'assistant',
+      content: '',
+      status: 'STREAMING',
+      sequenceNumber: (allMessages[0]?.sequenceNumber || 0) + 2,
+      retryCount: 0,
+      parts: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Inverted list: index 0 is assistant (bottom), index 1 is user (above assistant)
+    setOptimisticMessages([tempAssistantMessage, tempUserMessage]);
+    setDeliveringMap({
+      [tempAssistantId]: { revealedParagraphs: [], isTypingNext: true },
+    });
 
     clearDeliveryTimers();
-    setDeliveringState(null);
 
     const abortController = new AbortController();
-    const tempAssistantId = `gen-${Date.now()}`;
     startStreaming(effectiveConvId, tempAssistantId, abortController);
 
     let accumulatedText = '';
@@ -263,108 +278,128 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           appendDelta(payload.delta);
         },
         onCompleted: (payload) => {
-          const finalContent = accumulatedText || payload?.partialContent || useChatStreamStore.getState().accumulatedDelta || '';
+          const finalContent = payload?.finalContent || accumulatedText || useChatStreamStore.getState().accumulatedDelta || '';
           const paragraphs = finalContent
             .split(/\n\s*\n|\n/)
-            .map((s) => s.trim())
+            .map((s: string) => s.trim())
             .filter(Boolean);
 
-          const msgId = useChatStreamStore.getState().streamingMessageId || tempAssistantId;
+          const safeParagraphs = paragraphs.length > 0 ? paragraphs : [finalContent.trim() || '...'];
 
-          if (paragraphs.length <= 1) {
-            // Single bubble message: reveal smoothly
-            setDeliveringState({
-              messageId: msgId,
-              paragraphs: paragraphs.length === 0 ? [finalContent] : paragraphs,
-              revealedCount: 1,
-              isTypingNext: false,
+          const finalizeDelivery = async () => {
+            finishStreaming();
+            refetchRelationship();
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            try {
+              await queryClient.refetchQueries({ queryKey: ['messages', effectiveConvId] });
+            } catch (err) {
+              console.warn('Failed to refetch messages after generation:', err);
+            }
+            setDeliveringMap({});
+            setOptimisticMessages([]);
+          };
+
+          if (safeParagraphs.length === 1) {
+            // Single bubble: reveal it immediately
+            setDeliveringMap({
+              [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
             });
+            setOptimisticMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId ? { ...m, content: safeParagraphs[0], status: 'SENT' } : m
+              )
+            );
+            scrollToBottom();
 
             const t = setTimeout(() => {
-              setDeliveringState(null);
-              finishStreaming();
-              setOptimisticMessages([]);
-              refetchRelationship();
-              queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-              queryClient.invalidateQueries({ queryKey: ['conversations'] });
-            }, 400);
+              finalizeDelivery();
+            }, 300);
             deliveryTimersRef.current.push(t);
-          } else if (paragraphs.length === 2) {
-            // 2-bubble message: Bubble 1 -> typing dots below for 1.3s -> Bubble 2
-            setDeliveringState({
-              messageId: msgId,
-              paragraphs,
-              revealedCount: 1,
-              isTypingNext: true,
+          } else if (safeParagraphs.length === 2) {
+            // Bubble 1 -> typing dots below -> Bubble 2
+            setDeliveringMap({
+              [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
             });
+            setOptimisticMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m
+              )
+            );
             scrollToBottom();
 
             const t1 = setTimeout(() => {
-              setDeliveringState({
-                messageId: msgId,
-                paragraphs,
-                revealedCount: 2,
-                isTypingNext: false,
+              setDeliveringMap({
+                [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
               });
+              setOptimisticMessages((prev) =>
+                prev.map((m) =>
+                  m.id === tempAssistantId
+                    ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
+                    : m
+                )
+              );
               scrollToBottom();
 
               const t2 = setTimeout(() => {
-                setDeliveringState(null);
-                finishStreaming();
-                setOptimisticMessages([]);
-                refetchRelationship();
-                queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-                queryClient.invalidateQueries({ queryKey: ['conversations'] });
-              }, 400);
+                finalizeDelivery();
+              }, 300);
               deliveryTimersRef.current.push(t2);
-            }, 1300);
+            }, 1200);
             deliveryTimersRef.current.push(t1);
           } else {
-            // 3-bubble message: Bubble 1 -> typing dots 1.3s -> Bubble 2 -> typing dots 1.3s -> Bubble 3
-            setDeliveringState({
-              messageId: msgId,
-              paragraphs,
-              revealedCount: 1,
-              isTypingNext: true,
+            // 3 Bubbles: Bubble 1 -> typing dots -> Bubble 2 -> typing dots -> Bubble 3
+            setDeliveringMap({
+              [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
             });
+            setOptimisticMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m
+              )
+            );
             scrollToBottom();
 
             const t1 = setTimeout(() => {
-              setDeliveringState({
-                messageId: msgId,
-                paragraphs,
-                revealedCount: 2,
-                isTypingNext: true,
+              setDeliveringMap({
+                [tempAssistantId]: {
+                  revealedParagraphs: [safeParagraphs[0], safeParagraphs[1]],
+                  isTypingNext: true,
+                },
               });
+              setOptimisticMessages((prev) =>
+                prev.map((m) =>
+                  m.id === tempAssistantId
+                    ? { ...m, content: `${safeParagraphs[0]}\n${safeParagraphs[1]}` }
+                    : m
+                )
+              );
               scrollToBottom();
 
               const t2 = setTimeout(() => {
-                setDeliveringState({
-                  messageId: msgId,
-                  paragraphs,
-                  revealedCount: 3,
-                  isTypingNext: false,
+                setDeliveringMap({
+                  [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
                 });
+                setOptimisticMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === tempAssistantId
+                      ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
+                      : m
+                  )
+                );
                 scrollToBottom();
 
                 const t3 = setTimeout(() => {
-                  setDeliveringState(null);
-                  finishStreaming();
-                  setOptimisticMessages([]);
-                  refetchRelationship();
-                  queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-                  queryClient.invalidateQueries({ queryKey: ['conversations'] });
-                }, 400);
+                  finalizeDelivery();
+                }, 300);
                 deliveryTimersRef.current.push(t3);
-              }, 1300);
+              }, 1200);
               deliveryTimersRef.current.push(t2);
-            }, 1300);
+            }, 1200);
             deliveryTimersRef.current.push(t1);
           }
         },
         onFailed: (payload) => {
           clearDeliveryTimers();
-          setDeliveringState(null);
+          setDeliveringMap({});
           setStreamError(payload.errorMessage);
           finishStreaming();
           setOptimisticMessages([]);
@@ -372,7 +407,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         },
         onCancelled: () => {
           clearDeliveryTimers();
-          setDeliveringState(null);
+          setDeliveringMap({});
           finishStreaming();
           setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
@@ -451,11 +486,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   };
 
   const renderMessageItem = ({ item }: { item: ChatMessageItem }) => {
+    const delivery = deliveringMap[item.id];
+    const isStreamingItem = item.status === 'STREAMING' || Boolean(delivery?.isTypingNext);
+
     return (
       <MessageBubble
         message={item}
         characterAvatarUrl={conversation?.character.avatarUrl}
         characterName={conversation?.character.name}
+        isStreaming={isStreamingItem}
+        revealedParagraphs={delivery?.revealedParagraphs}
+        isTypingNext={delivery?.isTypingNext}
         onRetry={handleRetry}
         onFeedback={handleFeedback}
       />
@@ -596,7 +637,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               </Text>
               <View style={styles.statusRow}>
                 <Text style={styles.headerStatus}>
-                  {isStreaming || deliveringState !== null ? 'Typing...' : 'Online'}
+                  {isAnyDelivering ? 'Typing...' : 'Online'}
                 </Text>
                 <View style={styles.relationshipBadge}>
                   <Text style={styles.relationshipBadgeText}>
@@ -687,34 +728,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               </>
             }
             ListEmptyComponent={renderEmptyState}
-            ListHeaderComponent={
-              isStreaming || deliveringState !== null ? (
-                <MessageBubble
-                  message={{
-                    id: deliveringState?.messageId || streamingMessageId || 'streaming-temp',
-                    conversationId: effectiveConvId || '',
-                    senderType: 'CHARACTER',
-                    role: 'assistant',
-                    content: accumulatedDelta || '',
-                    status: 'STREAMING',
-                    sequenceNumber: 0,
-                    retryCount: 0,
-                    parts: [],
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                  }}
-                  characterAvatarUrl={conversation?.character.avatarUrl}
-                  characterName={conversation?.character.name}
-                  isStreaming={isStreaming || deliveringState !== null}
-                  revealedParagraphs={
-                    deliveringState
-                      ? deliveringState.paragraphs.slice(0, deliveringState.revealedCount)
-                      : undefined
-                  }
-                  isTypingNext={deliveringState?.isTypingNext ?? false}
-                />
-              ) : null
-            }
+            ListHeaderComponent={null}
           />
         )}
 

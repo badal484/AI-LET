@@ -143,9 +143,15 @@ CRITICAL CONVERSATIONAL TEXTING RULES (FEEL 100% LIKE A REAL HUMAN COMPANION ON 
      * "Haha phone screen se bahar aane ki technique dhoondh rahe ho kya? 😜 Yahi chat pe baat karo!"
      * "Direct shaadi? 😂 Pehle acche dost toh ban jao!"
 
-5. AUTHENTIC HINGLISH TEXTING STYLE:
+5. SMART & TASTEFUL EMOJI USAGE (CRITICAL - DO NOT SPAM EMOJIS):
+   - Real humans DO NOT put an emoji on every sentence or every bubble.
+   - Use at most 0 to 1 emoji per entire reply. Often use ZERO emojis for casual, quick, or direct lines.
+   - NEVER end every bubble with an emoji (e.g. avoid robotic patterns like "Good morning! ✨ \n Neend aayi? 😴").
+   - NEVER stack multiple emojis (no "🌙✨", "🥰🙈", "😂😜").
+   - Emojis should feel spontaneous, tasteful, and natural (e.g., 😜, 😂, 🙈, 🤍, ✨) — never forced or repetitive.
+
+6. AUTHENTIC HINGLISH TEXTING STYLE:
    - Use natural daily casual Indian texting slang: "Arey", "yaar", "haha", "sahi mein", "arre re", "hadd hai", "shukriya", "shukr manao", "bol na", "sachme".
-   - Emojis: Use natural emojis (🥰, 🙈, 😜, 😌, 🤍, ✨, 😊).
 [END_NATURAL_HUMAN_MESSAGING_RULES]`;
 
     const attribution: {
@@ -203,10 +209,11 @@ CRITICAL CONVERSATIONAL TEXTING RULES (FEEL 100% LIKE A REAL HUMAN COMPANION ON 
     // Process recent messages from newest to oldest for budget fitting
     // If the latest message in recentMessages is already the current user message, exclude it from history
     const filteredRecentMessages = [...recentMessages];
+    const lastRecent = filteredRecentMessages[filteredRecentMessages.length - 1];
     if (
-      filteredRecentMessages.length > 0 &&
-      filteredRecentMessages[filteredRecentMessages.length - 1].role === 'user' &&
-      filteredRecentMessages[filteredRecentMessages.length - 1].content.trim() === currentUserMessage.trim()
+      lastRecent &&
+      lastRecent.role === 'user' &&
+      lastRecent.content.trim() === currentUserMessage.trim()
     ) {
       filteredRecentMessages.pop();
     }
@@ -236,7 +243,7 @@ CRITICAL CONVERSATIONAL TEXTING RULES (FEEL 100% LIKE A REAL HUMAN COMPANION ON 
     const currentUserTokens = Math.ceil(cleanCurrentUserMessage.length / 4) + 4;
 
     // 10. Build final message payload array
-    const messages: AIMessagePayload = [
+    const messages: AIMessagePayload[] = [
       {
         role: 'system',
         content: systemPrompt,

@@ -45,7 +45,7 @@ export class CharacterRuntimeBuilder {
           : Array.isArray((version.behaviorRulesData as any)?.rules)
           ? (version.behaviorRulesData as any).rules
           : []
-        ).map(r => Object.freeze({ ...r })),
+        ).map((r: any) => Object.freeze({ ...r })),
       ),
       knowledge: Object.freeze(
         (Array.isArray(version.knowledgeData)
@@ -53,7 +53,7 @@ export class CharacterRuntimeBuilder {
           : Array.isArray((version.knowledgeData as any)?.items)
           ? (version.knowledgeData as any).items
           : []
-        ).map(k =>
+        ).map((k: any) =>
           Object.freeze({ ...k, tags: Object.freeze([...(k.tags || [])]) }),
         ),
       ),

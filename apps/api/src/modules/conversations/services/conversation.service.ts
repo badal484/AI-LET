@@ -127,7 +127,7 @@ export class ConversationService {
       ? commData.initialGreetings
       : (commData.initialGreeting ? [commData.initialGreeting, ...dynamicPool] : dynamicPool);
 
-    const initialGreeting = greetingPool[Math.floor(Math.random() * greetingPool.length)];
+    const initialGreeting = greetingPool[Math.floor(Math.random() * greetingPool.length)] || "Hey there! How's your day going?";
 
     await prisma.message.create({
       data: {
@@ -147,7 +147,6 @@ export class ConversationService {
       data: {
         lastMessageSnippet: initialGreeting,
         lastMessageAt: new Date(),
-        messageCount: 1,
       },
     });
 
@@ -364,7 +363,6 @@ export class ConversationService {
             data: {
               lastMessageSnippet: followUpContent,
               lastMessageAt: new Date(),
-              messageCount: { increment: 1 },
             },
           });
         }
