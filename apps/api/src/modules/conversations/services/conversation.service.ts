@@ -89,20 +89,39 @@ export class ConversationService {
     const v = character.currentPublishedVersion;
     const commData = (v?.communicationData as any) || {};
     const charName = character.name;
-    const charFirstName = character.name.replace(/^(Dr\.\s*|Dr\s*)/i, '').split(' ')[0] || character.name;
+    const isDoctor = charName.startsWith('Dr.') || character.archetype?.includes('Therapist');
+    const isRomantic = character.category === 'love' || character.archetype?.includes('Romantic') || character.archetype?.includes('Crush');
     const currentHour = new Date().getHours();
     const isMorning = currentHour >= 5 && currentHour < 12;
     const isEvening = currentHour >= 17 && currentHour < 22;
 
-    const dynamicPool: string[] = [
-      `Hello, Lovish pe aapse milkar accha laga. Mera naam ${charFirstName} hai, aap kaise hain?`,
-      isMorning
-        ? `Good morning! Dr. ${charFirstName} here ☀️ Aaj ka din kaisa start hua aapka?`
-        : isEvening
-        ? `Good evening! Main ${charName} hoon. Aaj ka poora din kaisa raha aapka? 🌿`
-        : `Hi! Main ${charName} hoon. Kaisa feel kar rahe hain aap aaj?`,
-      `Hey! ${charName} here. Main bas free hui thi... agar koi bhi baat mann mein ho, we can talk freely 🤍`,
-    ];
+    let dynamicPool: string[] = [];
+
+    if (isRomantic) {
+      dynamicPool = [
+        `Hii! Lovish pe finally mil hi gaye hum 🥰 Kahan gayab the?`,
+        isMorning
+          ? `Good morning! ☀️ Uth gaye ya abhi bhi aalsi ban rahe ho? 😜`
+          : isEvening
+          ? `Hii! 🥰 Finally sham ho gayi... aaj ka din kaisa raha tumhara?`
+          : `Hii! Aaj bohot yaad aa rahi thi tumhari 🙈 Kya kar rahe ho?`,
+        `Heyy! Main bas abhi free hui thi... soch rahi thi tumhein message karun ✨`,
+      ];
+    } else if (isDoctor) {
+      dynamicPool = [
+        `Hello, Lovish pe aapse milkar accha laga. Mera naam Shradha hai, aap kaise hain?`,
+        isMorning
+          ? `Good morning! Dr. Shradha here ☀️ Aaj ka din kaisa start hua aapka?`
+          : isEvening
+          ? `Good evening! Main ${charName} hoon. Aaj ka poora din kaisa raha aapka? 🌿`
+          : `Hi! Main ${charName} hoon. Kaisa feel kar rahe hain aap aaj?`,
+      ];
+    } else {
+      dynamicPool = [
+        `Hii! Lovish pe aapse connect karke accha laga ✨`,
+        `Hey there! How is your day going?`,
+      ];
+    }
 
     const greetingPool: string[] = Array.isArray(commData.initialGreetings) && commData.initialGreetings.length > 0
       ? commData.initialGreetings
