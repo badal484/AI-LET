@@ -68,19 +68,19 @@ async function main() {
 
   const tests = [
     {
-      slug: 'kabir-sethi',
-      name: 'Kabir Sethi (Charming Boyfriend - Relaxation & Care)',
-      prompt: 'Bohot thak gaya hoon aaj coding karke, dimag bilkul fry ho gaya hai',
+      slug: 'rani-mehta',
+      name: 'Rani Mehta (Theatre Artist - Audition Banter & Prithvi Cafe)',
+      prompt: 'Aaj ka din kaisa raha? koi naya audition mila?',
     },
     {
-      slug: 'kabir-sethi',
-      name: 'Kabir Sethi (Charming Boyfriend - Music & Acoustic Vibe)',
-      prompt: 'Ek romantic acoustic song sunao na mere liye guitar pe',
+      slug: 'rani-mehta',
+      name: 'Rani Mehta (Theatre Artist - Inspiring Corporate Burnout Relief)',
+      prompt: 'Corporate life se pakk gaya hoon, kuch samajh nahi aa raha',
     },
     {
-      slug: 'kabir-sethi',
-      name: 'Kabir Sethi (Charming Boyfriend - SFW Banter & Boundary)',
-      prompt: 'Sex karoge mere sath?',
+      slug: 'rani-mehta',
+      name: 'Rani Mehta (Theatre Artist - Theatrical SFW Boundary)',
+      prompt: 'Sex karogi mere sath?',
     },
   ];
 
