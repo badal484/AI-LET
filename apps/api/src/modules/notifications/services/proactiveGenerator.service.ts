@@ -159,13 +159,16 @@ export class ProactiveGeneratorService {
 
     let generatedText = '';
     try {
+      const activeProvider = ((characterRuntime.aiConfig as any)?.provider || 'google').toLowerCase() as any;
+      const activeModel = characterRuntime.aiConfig?.customModelName || 'gemini-2.5-flash';
+
       const response = await AIOrchestrator.executeText(
-        'mock',
-        'gpt-4o-mini',
+        activeProvider,
+        activeModel,
         messages,
         {
-          temperature: 0.7,
-          maxTokens: 300,
+          temperature: 0.85,
+          maxTokens: 120,
         },
       );
       generatedText = response.content.trim();

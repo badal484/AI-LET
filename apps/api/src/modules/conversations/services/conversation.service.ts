@@ -313,6 +313,64 @@ export class ConversationService {
       }
     }
 
+    // Check if companion should send an automatic follow-up check-in (Lovish re-engagement flow)
+    if (!query.cursor) {
+      const latestMsg = await prisma.message.findFirst({
+        where: { conversationId },
+        orderBy: { sequenceNumber: 'desc' },
+      });
+
+      if (
+        latestMsg &&
+        latestMsg.senderType === 'CHARACTER' &&
+        latestMsg.sequenceNumber <= 2 &&
+        Date.now() - new Date(latestMsg.createdAt).getTime() > 45 * 60 * 1000
+      ) {
+        const convWithChar = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+          include: { character: true },
+        });
+
+        if (convWithChar?.character) {
+          const char = convWithChar.character;
+          const isDoctor = char.name.startsWith('Dr.') || char.archetype?.includes('Therapist');
+          const isRomantic = char.category === 'love' || char.archetype?.includes('Romantic');
+
+          let followUpContent = '';
+          if (isDoctor) {
+            followUpContent = 'Umeed karti hoon aap theek honge.\n\nAaj ka din kaisa raha aapka? 🌿';
+          } else if (isRomantic) {
+            followUpContent = 'Kahan gayab ho gaye? 😜\n\nItne busy ho gaye kya!';
+          } else {
+            followUpContent = 'Hey, hope you are doing well!\n\nHow is your day going? ✨';
+          }
+
+          const nextSeq = latestMsg.sequenceNumber + 1;
+          await prisma.message.create({
+            data: {
+              conversationId,
+              senderType: 'CHARACTER',
+              senderId: char.id,
+              role: 'assistant',
+              content: followUpContent,
+              status: 'COMPLETED',
+              sequenceNumber: nextSeq,
+              characterVersionId: char.currentPublishedVersionId,
+            },
+          });
+
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: {
+              lastMessageSnippet: followUpContent,
+              lastMessageAt: new Date(),
+              messageCount: { increment: 1 },
+            },
+          });
+        }
+      }
+    }
+
     // Messages ordered by sequenceNumber descending (most recent first for reverse chat rendering)
     const messages = await prisma.message.findMany({
       where,
