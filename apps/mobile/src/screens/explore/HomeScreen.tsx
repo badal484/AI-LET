@@ -234,9 +234,9 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
-        {/* Render 2-Column Category Grid Sections */}
+        {/* Render Horizontal Right-Scrolling Category Carousels */}
         {sections.map((section: HomeFeedSection) => {
-          return renderCategoryGridSection(section, handleOpenCharacter, handleOpenCategory);
+          return renderCategoryCarouselSection(section, handleOpenCharacter, handleOpenCategory);
         })}
 
         {sections.length === 0 && !isLoading && (
@@ -255,7 +255,7 @@ export const HomeScreen: React.FC = () => {
 // Section Renderers
 // ---------------------------------------------------------------------------
 
-function renderCategoryGridSection(
+function renderCategoryCarouselSection(
   section: HomeFeedSection,
   onOpen: (char: CharacterCatalogItem) => void,
   onOpenCategory: (slug: string, name?: string) => void,
@@ -284,11 +284,17 @@ function renderCategoryGridSection(
           </View>
           <Text style={styles.sectionTitle}>{titleText}</Text>
         </View>
-        <Text style={styles.sectionArrow}>→</Text>
+        <View style={styles.seeAllBadge}>
+          <Text style={styles.sectionArrow}>→</Text>
+        </View>
       </TouchableOpacity>
 
-      {/* 2-Column Grid */}
-      <View style={styles.gridContainer}>
+      {/* Horizontal Right-Scrolling Carousel */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.carouselScrollContent}
+      >
         {items.map((char) => {
           const engagement = ENGAGEMENT_MAP[char.slug] || `${(char.age * 0.15).toFixed(1)}L`;
           const isNew = char.highlightBadges?.includes('New') || char.slug === 'sakshi';
@@ -345,7 +351,7 @@ function renderCategoryGridSection(
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -514,13 +520,13 @@ const styles = StyleSheet.create({
   // Section
   sectionContainer: {
     marginTop: 22,
-    paddingHorizontal: 16,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   sectionTitleLeft: {
     flexDirection: 'row',
@@ -546,31 +552,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
+  seeAllBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
   sectionArrow: {
     fontSize: 19,
     fontWeight: '700',
     color: '#B392F0',
   },
-  // 2-Column Grid
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  // Horizontal Right-Scrolling Carousel
+  carouselScrollContent: {
+    paddingHorizontal: 16,
     gap: 12,
   },
   cardContainer: {
-    width: CARD_WIDTH,
+    width: 154,
     backgroundColor: '#120C1E',
     borderRadius: 16,
     borderWidth: 1.2,
     borderColor: '#221535',
     overflow: 'hidden',
-    paddingBottom: 12,
-    marginBottom: 6,
+    paddingBottom: 10,
   },
   imageContainer: {
     width: '100%',
-    height: CARD_IMAGE_HEIGHT,
+    height: 205,
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#1A1128',
