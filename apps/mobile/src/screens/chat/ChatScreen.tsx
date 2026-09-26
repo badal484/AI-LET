@@ -114,6 +114,26 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     error: streamError,
   } = useChatStreamStore();
 
+  const [deliveringState, setDeliveringState] = useState<{
+    messageId: string;
+    paragraphs: string[];
+    revealedCount: number;
+    isTypingNext: boolean;
+  } | null>(null);
+
+  const deliveryTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  const clearDeliveryTimers = () => {
+    deliveryTimersRef.current.forEach((t) => clearTimeout(t));
+    deliveryTimersRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      clearDeliveryTimers();
+    };
+  }, []);
+
   // 1. Resolve or Create Conversation
   const { data: conversation, isLoading: isConvLoading } = useQuery({
     queryKey: ['conversation', activeConversationId || characterId],
@@ -187,15 +207,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   }, [isScrolledUp]);
 
   useEffect(() => {
-    if (isStreaming) {
+    if (isStreaming || deliveringState !== null) {
       scrollToBottom();
     }
-  }, [accumulatedDelta, isStreaming, scrollToBottom]);
+  }, [accumulatedDelta, isStreaming, deliveringState, scrollToBottom]);
 
   // 6. Send Message Handler
   const handleSendMessage = async (textToSend?: string) => {
     const content = (textToSend || inputText).trim();
-    if (!content || !effectiveConvId || isStreaming) return;
+    if (!content || !effectiveConvId || isStreaming || deliveringState !== null) return;
 
     if (!textToSend) {
       setInputText('');
@@ -219,9 +239,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
     setOptimisticMessages((prev) => [tempUserMessage, ...prev]);
 
+    clearDeliveryTimers();
+    setDeliveringState(null);
+
     const abortController = new AbortController();
     const tempAssistantId = `gen-${Date.now()}`;
     startStreaming(effectiveConvId, tempAssistantId, abortController);
+
+    let accumulatedText = '';
 
     await ChatStreamClient.streamMessage(
       effectiveConvId,
@@ -234,22 +259,120 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           }
         },
         onDelta: (payload) => {
+          accumulatedText += payload.delta;
           appendDelta(payload.delta);
         },
-        onCompleted: () => {
-          finishStreaming();
-          setOptimisticMessages([]);
-          refetchRelationship();
-          queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        onCompleted: (payload) => {
+          const finalContent = accumulatedText || payload?.partialContent || useChatStreamStore.getState().accumulatedDelta || '';
+          const paragraphs = finalContent
+            .split(/\n\s*\n|\n/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          const msgId = useChatStreamStore.getState().streamingMessageId || tempAssistantId;
+
+          if (paragraphs.length <= 1) {
+            // Single bubble message: reveal smoothly
+            setDeliveringState({
+              messageId: msgId,
+              paragraphs: paragraphs.length === 0 ? [finalContent] : paragraphs,
+              revealedCount: 1,
+              isTypingNext: false,
+            });
+
+            const t = setTimeout(() => {
+              setDeliveringState(null);
+              finishStreaming();
+              setOptimisticMessages([]);
+              refetchRelationship();
+              queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+              queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            }, 400);
+            deliveryTimersRef.current.push(t);
+          } else if (paragraphs.length === 2) {
+            // 2-bubble message: Bubble 1 -> typing dots below for 1.3s -> Bubble 2
+            setDeliveringState({
+              messageId: msgId,
+              paragraphs,
+              revealedCount: 1,
+              isTypingNext: true,
+            });
+            scrollToBottom();
+
+            const t1 = setTimeout(() => {
+              setDeliveringState({
+                messageId: msgId,
+                paragraphs,
+                revealedCount: 2,
+                isTypingNext: false,
+              });
+              scrollToBottom();
+
+              const t2 = setTimeout(() => {
+                setDeliveringState(null);
+                finishStreaming();
+                setOptimisticMessages([]);
+                refetchRelationship();
+                queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+                queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              }, 400);
+              deliveryTimersRef.current.push(t2);
+            }, 1300);
+            deliveryTimersRef.current.push(t1);
+          } else {
+            // 3-bubble message: Bubble 1 -> typing dots 1.3s -> Bubble 2 -> typing dots 1.3s -> Bubble 3
+            setDeliveringState({
+              messageId: msgId,
+              paragraphs,
+              revealedCount: 1,
+              isTypingNext: true,
+            });
+            scrollToBottom();
+
+            const t1 = setTimeout(() => {
+              setDeliveringState({
+                messageId: msgId,
+                paragraphs,
+                revealedCount: 2,
+                isTypingNext: true,
+              });
+              scrollToBottom();
+
+              const t2 = setTimeout(() => {
+                setDeliveringState({
+                  messageId: msgId,
+                  paragraphs,
+                  revealedCount: 3,
+                  isTypingNext: false,
+                });
+                scrollToBottom();
+
+                const t3 = setTimeout(() => {
+                  setDeliveringState(null);
+                  finishStreaming();
+                  setOptimisticMessages([]);
+                  refetchRelationship();
+                  queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+                  queryClient.invalidateQueries({ queryKey: ['conversations'] });
+                }, 400);
+                deliveryTimersRef.current.push(t3);
+              }, 1300);
+              deliveryTimersRef.current.push(t2);
+            }, 1300);
+            deliveryTimersRef.current.push(t1);
+          }
         },
         onFailed: (payload) => {
+          clearDeliveryTimers();
+          setDeliveringState(null);
           setStreamError(payload.errorMessage);
           finishStreaming();
           setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
         },
         onCancelled: () => {
+          clearDeliveryTimers();
+          setDeliveringState(null);
           finishStreaming();
           setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
@@ -473,7 +596,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               </Text>
               <View style={styles.statusRow}>
                 <Text style={styles.headerStatus}>
-                  {isStreaming ? 'Typing...' : 'Online'}
+                  {isStreaming || deliveringState !== null ? 'Typing...' : 'Online'}
                 </Text>
                 <View style={styles.relationshipBadge}>
                   <Text style={styles.relationshipBadgeText}>
@@ -565,10 +688,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             }
             ListEmptyComponent={renderEmptyState}
             ListHeaderComponent={
-              isStreaming ? (
+              isStreaming || deliveringState !== null ? (
                 <MessageBubble
                   message={{
-                    id: streamingMessageId || 'streaming-temp',
+                    id: deliveringState?.messageId || streamingMessageId || 'streaming-temp',
                     conversationId: effectiveConvId || '',
                     senderType: 'CHARACTER',
                     role: 'assistant',
@@ -582,7 +705,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   }}
                   characterAvatarUrl={conversation?.character.avatarUrl}
                   characterName={conversation?.character.name}
-                  isStreaming
+                  isStreaming={isStreaming || deliveringState !== null}
+                  revealedParagraphs={
+                    deliveringState
+                      ? deliveringState.paragraphs.slice(0, deliveringState.revealedCount)
+                      : undefined
+                  }
+                  isTypingNext={deliveringState?.isTypingNext ?? false}
                 />
               ) : null
             }

@@ -18,6 +18,8 @@ export interface MessageBubbleProps {
   characterAvatarUrl?: string | null;
   characterName?: string;
   isStreaming?: boolean;
+  revealedParagraphs?: string[];
+  isTypingNext?: boolean;
   onRetry?: (content: string) => void;
   onFeedback?: (messageId: string, rating: 'positive' | 'negative') => void;
   onSelectMedia?: (mediaUrl: string) => void;
@@ -69,6 +71,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   characterAvatarUrl,
   characterName,
   isStreaming = false,
+  revealedParagraphs,
+  isTypingNext = false,
   onRetry,
   onFeedback,
 }) => {
@@ -76,7 +80,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isUser = message.role === 'user' || message.senderType === 'USER';
   const isFailed = message.status === 'FAILED';
   const isCancelled = message.status === 'CANCELLED';
-  const isTyping = isStreaming && (!message.content || message.content.trim() === '...' || message.content.trim() === '');
+
+  const paragraphsToRender = revealedParagraphs && revealedParagraphs.length > 0
+    ? revealedParagraphs
+    : (!isUser && !isStreaming && message.content && message.content.includes('\n')
+        ? message.content.split(/\n\s*\n|\n/).map((s) => s.trim()).filter(Boolean)
+        : [message.content].filter(Boolean)
+      );
+
+  const isInitialTyping = isStreaming && paragraphsToRender.length === 0;
 
   const handleCopy = async () => {
     try {
@@ -114,7 +126,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
 
       <View style={styles.bubbleContainer}>
-        {isTyping ? (
+        {isInitialTyping ? (
           <View
             style={[
               styles.bubble,
@@ -127,10 +139,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         ) : (
           <View style={styles.bubblesStack}>
-            {(!isUser && !isStreaming && message.content.includes('\n')
-              ? message.content.split(/\n\s*\n|\n/).map((s) => s.trim()).filter(Boolean)
-              : [message.content]
-            ).map((paragraph, pIdx, arr) => (
+            {paragraphsToRender.map((paragraph, pIdx, arr) => (
               <TouchableOpacity
                 key={pIdx}
                 activeOpacity={0.9}
@@ -140,7 +149,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   isUser ? styles.userBubble : styles.assistantBubble,
                   isFailed && styles.failedBubble,
                   isStreaming && styles.streamingBubble,
-                  arr.length > 1 && pIdx < arr.length - 1 && { marginBottom: 6 },
+                  ((arr.length > 1 && pIdx < arr.length - 1) || isTypingNext) && { marginBottom: 6 },
                 ]}
                 accessibilityRole="text"
                 accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${paragraph}`}
@@ -184,6 +193,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </View>
               </TouchableOpacity>
             ))}
+
+            {isTypingNext && (
+              <View
+                style={[
+                  styles.bubble,
+                  styles.assistantBubble,
+                  styles.streamingBubble,
+                  styles.typingBubble,
+                  { marginTop: 4 },
+                ]}
+              >
+                <TypingDotsIndicator />
+              </View>
+            )}
           </View>
         )}
 
