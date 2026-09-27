@@ -27,10 +27,8 @@ function getDevHost(): string {
   return 'localhost';
 }
 
-const PRODUCTION_API_ORIGIN = 'https://api.aicompanion.app';
 const DEV_API_ORIGIN = `http://${getDevHost()}:4000`;
 
-const isDev = typeof __DEV__ !== 'undefined' ? Boolean(__DEV__) : process.env.NODE_ENV !== 'production';
-export const API_ORIGIN = isDev ? DEV_API_ORIGIN : PRODUCTION_API_ORIGIN;
+export const API_ORIGIN = DEV_API_ORIGIN;
 export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 export const WS_ORIGIN = API_ORIGIN.replace(/^http/, 'ws');
