@@ -79,6 +79,12 @@ const FILTER_CHIPS: FilterChipDef[] = [
   { slug: 'neighbours', label: 'Neighbours', icon: '👥' },
 ];
 
+const getSafeFirstName = (name?: string): string => {
+  if (!name || typeof name !== 'string') return 'AI';
+  const parts = name.trim().split(' ');
+  return parts[0] || 'AI';
+};
+
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
@@ -117,9 +123,11 @@ export const HomeScreen: React.FC = () => {
     return homeFeed.sections.filter((section: HomeFeedSection) => {
       if (section.sectionKey === 'CATEGORIES' || section.sectionKey === 'CONTINUE') return false;
       if (!selectedCategory) return true;
+      const secId = section.id || '';
+      const secKey = section.sectionKey || '';
       return (
-        section.id.toLowerCase().includes(selectedCategory.toLowerCase()) ||
-        section.sectionKey.toLowerCase().includes(selectedCategory.toLowerCase())
+        secId.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+        secKey.toLowerCase().includes(selectedCategory.toLowerCase())
       );
     });
   }, [homeFeed, selectedCategory]);
@@ -130,11 +138,12 @@ export const HomeScreen: React.FC = () => {
     const list: CharacterCatalogItem[] = [];
     const seen = new Set<string>();
     for (const sec of homeFeed.sections) {
-      if (sec.items) {
+      if (sec.sectionKey === 'CATEGORIES' || sec.sectionKey === 'CONTINUE') continue;
+      if (sec.items && Array.isArray(sec.items)) {
         for (const it of sec.items) {
-          if (!seen.has(it.id)) {
+          if (it && it.id && it.name && !seen.has(it.id)) {
             seen.add(it.id);
-            list.push(it);
+            list.push(it as CharacterCatalogItem);
           }
         }
       }
@@ -151,7 +160,7 @@ export const HomeScreen: React.FC = () => {
     );
   }, [allCharacters]);
 
-  // Online Avatars (first 8 unique companions)
+  // Online Avatars (first 9 unique companions)
   const onlineAvatars = useMemo(() => {
     return allCharacters.slice(0, 9);
   }, [allCharacters]);
@@ -311,7 +320,7 @@ export const HomeScreen: React.FC = () => {
                     <View style={styles.pulseLiveDot} />
                   </View>
                   <Text style={styles.onlineAvatarName} numberOfLines={1}>
-                    {item.name.split(' ')[0]}
+                    {getSafeFirstName(item.name)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -341,11 +350,11 @@ export const HomeScreen: React.FC = () => {
                 </View>
 
                 <Text style={styles.heroName} numberOfLines={1}>
-                  {featuredHero.name}
+                  {featuredHero.name || 'Featured Companion'}
                 </Text>
 
                 <Text style={styles.heroTagline} numberOfLines={2}>
-                  {featuredHero.tagline || featuredHero.shortDescription}
+                  {featuredHero.tagline || featuredHero.shortDescription || 'Your caring companion'}
                 </Text>
 
                 {/* Direct Action CTA Button */}
@@ -405,18 +414,19 @@ function renderCategoryCarouselSection(
   const items: CharacterCatalogItem[] = section.items || [];
   if (items.length === 0) return null;
 
-  const categorySlug = section.id.replace('section_cat_', '');
+  const categorySlug = (section.id || '').replace('section_cat_', '');
   const theme = CATEGORY_THEME[categorySlug] || {
     badgeBg: '#221133',
     border: '#A855F7',
     icon: '✨',
   };
 
-  // Clean title & icon
-  const titleParts = section.title.split(' ');
+  // Clean title & icon safely
+  const rawTitle = section.title || 'Category';
+  const titleParts = rawTitle.split(' ');
   const rawIcon = titleParts[0];
-  const titleText = titleParts.slice(1).join(' ') || section.title;
-  const icon = theme.icon || rawIcon;
+  const titleText = titleParts.slice(1).join(' ') || rawTitle;
+  const icon = theme.icon || rawIcon || '✨';
 
   return (
     <View key={section.id} style={styles.sectionContainer}>
@@ -453,7 +463,7 @@ function renderCategoryCarouselSection(
         contentContainerStyle={styles.carouselScrollContent}
       >
         {items.map((char) => {
-          const engagement = ENGAGEMENT_MAP[char.slug] || `${(char.age * 0.18).toFixed(1)}L`;
+          const engagement = (char.slug && ENGAGEMENT_MAP[char.slug]) || `${((char.age || 21) * 0.18).toFixed(1)}L`;
           const isNew = char.highlightBadges?.includes('New') || char.slug === 'sakshi';
           const isHot = char.slug === 'ritika-sharma' || char.slug === 'anjali' || char.slug === 'tanu';
           const tags = (char.tags || []).map((t) => (typeof t === 'string' ? t : t.displayName || t.name));
