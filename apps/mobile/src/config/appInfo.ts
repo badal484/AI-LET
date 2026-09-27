@@ -1,7 +1,7 @@
 /** Keep in sync with `version` in apps/mobile/package.json (and the native build versionName). */
 export const APP_VERSION = '0.1.0';
 
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 /**
  * Determine development host IP dynamically:
@@ -9,6 +9,10 @@ import { NativeModules } from 'react-native';
  * 2. If running standalone on device, extract from Metro bundle scriptURL
  */
 function getDevHost(): string {
+  if (Platform.OS === 'android') {
+    return 'localhost';
+  }
+
   try {
     const scriptURL: string | undefined = (NativeModules as any)?.SourceCode?.scriptURL;
     if (scriptURL) {
