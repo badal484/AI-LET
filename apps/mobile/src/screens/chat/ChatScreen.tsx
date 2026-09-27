@@ -45,6 +45,60 @@ import type { CharacterReportCreateInput } from '@ai-companion/validation';
 
 type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
 
+const getStageDetails = (stage?: string) => {
+  switch (stage) {
+    case 'STRANGER':
+      return {
+        label: 'First Spark',
+        icon: '🌱',
+        level: 'Lvl 1',
+        description: 'You are just getting to know each other. Keep chatting to build comfort and familiarity.',
+      };
+    case 'ACQUAINTANCE':
+      return {
+        label: 'Casual Friends',
+        icon: '💬',
+        level: 'Lvl 2',
+        description: 'A friendly rapport is developing. You communicate easily with mutual comfort.',
+      };
+    case 'FRIEND':
+      return {
+        label: 'Close Friends',
+        icon: '🌟',
+        level: 'Lvl 3',
+        description: 'Strong trust and warm affinity. Conversations are relaxed, open, and authentic.',
+      };
+    case 'CLOSE_FRIEND':
+      return {
+        label: 'Deep Companions',
+        icon: '✨',
+        level: 'Lvl 4',
+        description: 'A deep emotional connection with high comfort, care, and mutual vulnerability.',
+      };
+    case 'CONFIDANT':
+      return {
+        label: 'Trusted Confidant',
+        icon: '💫',
+        level: 'Lvl 5',
+        description: 'Profound mutual understanding and unconditional emotional support.',
+      };
+    case 'ROMANTIC_PARTNER':
+      return {
+        label: 'Romantic Partner',
+        icon: '💖',
+        level: 'Lvl 6',
+        description: 'A devoted romantic bond with heartfelt closeness and tender affection.',
+      };
+    default:
+      return {
+        label: 'First Spark',
+        icon: '🌱',
+        level: 'Lvl 1',
+        description: 'Enjoying meaningful conversations and getting to know each other.',
+      };
+  }
+};
+
 const VIRTUAL_GIFTS = [
   { id: 'rose', name: 'Red Rose', icon: '🌹', coins: 10, prompt: '[Sent a Gift: 🌹 Red Rose]' },
   {
@@ -114,6 +168,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isBondModalVisible, setIsBondModalVisible] = useState(false);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
   const [reportReason, setReportReason] =
     useState<CharacterReportCreateInput['reasonCode']>('HARASSMENT');
@@ -722,7 +777,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   // failed to load (that looked like the conversation had vanished).
   const hasHistoryLoaded = Boolean(messagesData);
   const isHistoryLoading = isConvLoading || (Boolean(effectiveConvId) && isMessagesPending && !hasHistoryLoaded);
-  const isHistoryError = (isConvError && !conversation) || (isMessagesError && !hasHistoryLoaded);
+  const isHistoryError = (isConvError && !conversation) || (Boolean(effectiveConvId) && isMessagesError && !hasHistoryLoaded);
 
   const renderEmptyState = () => {
     if (isHistoryLoading || allMessages.length > 0) return null;
@@ -761,7 +816,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     );
   };
 
-  const relationshipStage = relationshipData?.stage || 'FRIEND';
+  const relationshipStage = relationshipData?.stage || 'STRANGER';
+  const stageInfo = getStageDetails(relationshipStage);
   const intimacyPercent = relationshipData
     ? Math.min(
         100,
@@ -777,7 +833,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           ),
         ),
       )
-    : 50;
+    : 20;
 
   return (
     <ImageBackground
@@ -838,14 +894,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               <Text style={styles.headerName} numberOfLines={1}>
                 {characterName}
               </Text>
-              <View style={styles.statusRow}>
-                <Text style={styles.headerStatus}>{isAnyDelivering ? 'Typing...' : 'Online'}</Text>
-                <View style={styles.relationshipBadge}>
-                  <Text style={styles.relationshipBadgeText}>
-                    ❤️ {relationshipStage} · {intimacyPercent}%
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.headerStatus}>{isAnyDelivering ? 'Typing...' : 'Online'}</Text>
             </View>
           </TouchableOpacity>
 
@@ -1111,6 +1160,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 style={styles.menuItem}
                 onPress={() => {
                   setIsMenuVisible(false);
+                  setTimeout(() => setIsBondModalVisible(true), 150);
+                }}
+              >
+                <Text style={styles.menuItemText}>
+                  {stageInfo.icon} Chemistry & Bond ({intimacyPercent}%)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setIsMenuVisible(false);
                   if (characterEffectiveId) {
                     navigation.navigate('CharacterDetail', {
                       characterId: characterEffectiveId,
@@ -1147,7 +1208,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 style={styles.menuItem}
                 onPress={() => {
                   setIsMenuVisible(false);
-                  setIsReportModalVisible(true);
+                  setTimeout(() => setIsReportModalVisible(true), 150);
                 }}
               >
                 <Text style={[styles.menuItemText, { color: '#FBBF24' }]}>
@@ -1162,6 +1223,162 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 <Text style={[styles.menuItemText, { color: '#9CA3AF' }]}>Close</Text>
               </TouchableOpacity>
             </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Bond & Chemistry Modal */}
+        <Modal
+          visible={isBondModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setIsBondModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setIsBondModalVisible(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={styles.bondSheetContent}
+              onPress={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <View style={styles.bondHeader}>
+                <Avatar uri={characterAvatarUrl} name={characterName} size="md" />
+                <View style={styles.bondHeaderTextCol}>
+                  <Text style={styles.bondTitle}>{characterName}</Text>
+                  <View style={styles.bondStageBadge}>
+                    <Text style={styles.bondStageBadgeText}>
+                      {stageInfo.icon} {stageInfo.level} · {stageInfo.label}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={styles.bondDescription}>{stageInfo.description}</Text>
+
+              {/* Main Intimacy Meter */}
+              <View style={styles.bondMeterCard}>
+                <View style={styles.bondMeterHeader}>
+                  <Text style={styles.bondMeterLabel}>Connection Level</Text>
+                  <Text style={styles.bondMeterValue}>{intimacyPercent}%</Text>
+                </View>
+                <View style={styles.bondProgressBarBg}>
+                  <View style={[styles.bondProgressBarFill, { width: `${intimacyPercent}%` }]} />
+                </View>
+              </View>
+
+              {/* Dimensions Breakdown */}
+              <View style={styles.bondDimensionsContainer}>
+                <View style={styles.bondDimensionRow}>
+                  <Text style={styles.bondDimensionName}>🧠 Familiarity</Text>
+                  <View style={styles.bondMiniBarBg}>
+                    <View
+                      style={[
+                        styles.bondMiniBarFill,
+                        {
+                          width: `${Math.min(100, Math.max(0, relationshipData?.familiarity || 0))}%`,
+                          backgroundColor: '#818CF8',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.bondDimensionVal}>{relationshipData?.familiarity || 0}%</Text>
+                </View>
+
+                <View style={styles.bondDimensionRow}>
+                  <Text style={styles.bondDimensionName}>🤝 Trust</Text>
+                  <View style={styles.bondMiniBarBg}>
+                    <View
+                      style={[
+                        styles.bondMiniBarFill,
+                        {
+                          width: `${Math.min(100, Math.max(0, relationshipData?.trust || 20))}%`,
+                          backgroundColor: '#34D399',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.bondDimensionVal}>{relationshipData?.trust || 20}%</Text>
+                </View>
+
+                <View style={styles.bondDimensionRow}>
+                  <Text style={styles.bondDimensionName}>🛋️ Comfort</Text>
+                  <View style={styles.bondMiniBarBg}>
+                    <View
+                      style={[
+                        styles.bondMiniBarFill,
+                        {
+                          width: `${Math.min(100, Math.max(0, relationshipData?.comfort || 20))}%`,
+                          backgroundColor: '#38BDF8',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.bondDimensionVal}>{relationshipData?.comfort || 20}%</Text>
+                </View>
+
+                <View style={styles.bondDimensionRow}>
+                  <Text style={styles.bondDimensionName}>❤️ Affection</Text>
+                  <View style={styles.bondMiniBarBg}>
+                    <View
+                      style={[
+                        styles.bondMiniBarFill,
+                        {
+                          width: `${Math.min(100, Math.max(0, relationshipData?.affection || 10))}%`,
+                          backgroundColor: '#F472B6',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.bondDimensionVal}>{relationshipData?.affection || 10}%</Text>
+                </View>
+
+                <View style={styles.bondDimensionRow}>
+                  <Text style={styles.bondDimensionName}>⚡ Engagement</Text>
+                  <View style={styles.bondMiniBarBg}>
+                    <View
+                      style={[
+                        styles.bondMiniBarFill,
+                        {
+                          width: `${Math.min(100, Math.max(0, relationshipData?.engagement || 50))}%`,
+                          backgroundColor: '#FBBF24',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.bondDimensionVal}>{relationshipData?.engagement || 50}%</Text>
+                </View>
+              </View>
+
+              {/* Tip box */}
+              <View style={styles.bondTipBox}>
+                <Text style={styles.bondTipText}>
+                  💡 Chat daily and share stories to level up your bond and unlock deeper responses.
+                </Text>
+              </View>
+
+              {/* Actions */}
+              <View style={styles.bondActionsRow}>
+                <TouchableOpacity
+                  style={styles.bondResetBtn}
+                  onPress={() => {
+                    setIsBondModalVisible(false);
+                    handleResetRelationship();
+                  }}
+                >
+                  <Text style={styles.bondResetBtnText}>Reset Baseline</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.bondCloseBtn}
+                  onPress={() => setIsBondModalVisible(false)}
+                >
+                  <Text style={styles.bondCloseBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
 
@@ -1765,6 +1982,160 @@ const styles = StyleSheet.create({
   },
   reportSubmitText: {
     color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  bondSheetContent: {
+    backgroundColor: '#161026',
+    borderRadius: 24,
+    padding: 22,
+    marginHorizontal: 20,
+    marginBottom: 'auto',
+    marginTop: 'auto',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    maxWidth: 420,
+    width: '90%',
+    alignSelf: 'center',
+  },
+  bondHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 12,
+  },
+  bondHeaderTextCol: {
+    flex: 1,
+    gap: 4,
+  },
+  bondTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  bondStageBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.4)',
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  bondStageBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E9D5FF',
+  },
+  bondDescription: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  bondMeterCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  bondMeterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bondMeterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  bondMeterValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#C084FC',
+  },
+  bondProgressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  bondProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#9333EA',
+    borderRadius: 4,
+  },
+  bondDimensionsContainer: {
+    gap: 9,
+    marginBottom: 14,
+  },
+  bondDimensionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bondDimensionName: {
+    fontSize: 12,
+    color: '#CBD5E1',
+    width: 105,
+    fontWeight: '500',
+  },
+  bondMiniBarBg: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    overflow: 'hidden',
+  },
+  bondMiniBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  bondDimensionVal: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+    width: 32,
+    textAlign: 'right',
+  },
+  bondTipBox: {
+    backgroundColor: 'rgba(168, 85, 247, 0.08)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.2)',
+  },
+  bondTipText: {
+    fontSize: 11,
+    color: '#D8B4FE',
+    lineHeight: 16,
+  },
+  bondActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bondResetBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  bondResetBtnText: {
+    fontSize: 12,
+    color: '#F87171',
+    fontWeight: '600',
+  },
+  bondCloseBtn: {
+    backgroundColor: '#7C3AED',
+    paddingVertical: 9,
+    paddingHorizontal: 22,
+    borderRadius: 20,
+  },
+  bondCloseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
   },
 });

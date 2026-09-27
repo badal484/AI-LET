@@ -57,7 +57,18 @@ export class ApiClient {
 
       // Request Interceptor: Attach bearer token and tracing correlation IDs
       ApiClient.instance.interceptors.request.use(
-        (config: InternalAxiosRequestConfig) => {
+        async (config: InternalAxiosRequestConfig) => {
+          if (!ApiClient.authToken) {
+            try {
+              const session = await SecureAuthStorage.getSession();
+              if (session?.accessToken) {
+                ApiClient.authToken = session.accessToken;
+              }
+            } catch {
+              // Ignore storage read error
+            }
+          }
+
           if (ApiClient.authToken && config.headers) {
             config.headers.Authorization = `Bearer ${ApiClient.authToken}`;
           }

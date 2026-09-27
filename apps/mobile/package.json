@@ -9,7 +9,8 @@
     "ios": "react-native run-ios",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "usb:keep": "bash scripts/adb-reverse-keeper.sh"
   },
   "dependencies": {
     "@ai-companion/config": "workspace:*",

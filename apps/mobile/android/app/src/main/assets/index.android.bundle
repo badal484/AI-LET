@@ -45490,7 +45490,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
   var queryClient = new (_$$_REQUIRE(_dependencyMap[7]).QueryClient)({
     defaultOptions: {
       queries: {
-        retry: 2,
+        // One quick retry (network blips) — then surface the error with a Retry button.
+        retry: 1,
+        retryDelay: 800,
         staleTime: 300000,
         gcTime: 1800000,
         refetchOnWindowFocus: false
@@ -47567,7 +47569,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         if (!ApiClient.instance) {
           ApiClient.instance = _axios.default.create({
             baseURL: _$$_REQUIRE(_dependencyMap[1]).API_BASE_URL,
-            timeout: 15000,
+            // Normal API calls answer in well under a second; fail fast so screens show an error/retry
+            // state instead of an endless skeleton when the connection is gone.
+            timeout: 8000,
             headers: {
               'Content-Type': 'application/json',
               Accept: 'application/json'
@@ -47575,17 +47579,32 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           });
 
           // Request Interceptor: Attach bearer token and tracing correlation IDs
-          ApiClient.instance.interceptors.request.use(function (config) {
-            if (ApiClient.authToken && config.headers) {
-              config.headers.Authorization = `Bearer ${ApiClient.authToken}`;
-            }
-            if (!config.headers['x-correlation-id']) {
-              var correlationId = `mob-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-              config.headers['x-correlation-id'] = correlationId;
-              config.headers['x-request-id'] = correlationId;
-            }
-            return config;
-          }, function (error) {
+          ApiClient.instance.interceptors.request.use(/*#__PURE__*/function () {
+            var _ref = (0, _asyncToGenerator2.default)(function* (config) {
+              if (!ApiClient.authToken) {
+                try {
+                  var session = yield _$$_REQUIRE(_dependencyMap[6]).SecureAuthStorage.getSession();
+                  if (session != null && session.accessToken) {
+                    ApiClient.authToken = session.accessToken;
+                  }
+                } catch (_unused) {
+                  // Ignore storage read error
+                }
+              }
+              if (ApiClient.authToken && config.headers) {
+                config.headers.Authorization = `Bearer ${ApiClient.authToken}`;
+              }
+              if (!config.headers['x-correlation-id']) {
+                var correlationId = `mob-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                config.headers['x-correlation-id'] = correlationId;
+                config.headers['x-request-id'] = correlationId;
+              }
+              return config;
+            });
+            return function (_x) {
+              return _ref.apply(this, arguments);
+            };
+          }(), function (error) {
             return Promise.reject(error);
           });
 
@@ -47593,7 +47612,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           ApiClient.instance.interceptors.response.use(function (response) {
             return response;
           }, /*#__PURE__*/function () {
-            var _ref = (0, _asyncToGenerator2.default)(function* (error) {
+            var _ref2 = (0, _asyncToGenerator2.default)(function* (error) {
               var _error$response, _originalRequest$url, _originalRequest$url2, _originalRequest$url3, _error$response4;
               var originalRequest = error.config;
 
@@ -47644,7 +47663,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                     originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                   }
                   return ApiClient.getInstance()(originalRequest);
-                } catch (_unused) {
+                } catch (_unused2) {
                   var _error$response3;
                   isRefreshing = false;
                   onRefreshFailed();
@@ -47667,8 +47686,8 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               };
               return Promise.reject(fallbackError);
             });
-            return function (_x) {
-              return _ref.apply(this, arguments);
+            return function (_x2) {
+              return _ref2.apply(this, arguments);
             };
           }());
         }
@@ -96883,7 +96902,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           }
           return queryFn;
         }(),
-        retry: 2
+        retry: 1
       }),
       data = _useQuery.data,
       isLoading = _useQuery.isLoading,
@@ -98683,6 +98702,59 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
   var _this = this,
     _jsxFileName = "/Users/badal11/Desktop/AI Lovish/apps/mobile/src/screens/explore/CharacterDetailScreen.tsx";
   function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t in e) "default" !== _t && {}.hasOwnProperty.call(e, _t) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t)) && (i.get || i.set) ? o(f, _t, i) : f[_t] = e[_t]); return f; })(e, t); }
+  var getStageDetails = function getStageDetails(stage) {
+    switch (stage) {
+      case 'STRANGER':
+        return {
+          label: 'First Spark',
+          icon: '🌱',
+          level: 'Lvl 1',
+          description: 'You are just getting to know each other. Keep chatting to build comfort and familiarity.'
+        };
+      case 'ACQUAINTANCE':
+        return {
+          label: 'Casual Friends',
+          icon: '💬',
+          level: 'Lvl 2',
+          description: 'A friendly rapport is developing. You communicate easily with mutual comfort.'
+        };
+      case 'FRIEND':
+        return {
+          label: 'Close Friends',
+          icon: '🌟',
+          level: 'Lvl 3',
+          description: 'Strong trust and warm affinity. Conversations are relaxed, open, and authentic.'
+        };
+      case 'CLOSE_FRIEND':
+        return {
+          label: 'Deep Companions',
+          icon: '✨',
+          level: 'Lvl 4',
+          description: 'A deep emotional connection with high comfort, care, and mutual vulnerability.'
+        };
+      case 'CONFIDANT':
+        return {
+          label: 'Trusted Confidant',
+          icon: '💫',
+          level: 'Lvl 5',
+          description: 'Profound mutual understanding and unconditional emotional support.'
+        };
+      case 'ROMANTIC_PARTNER':
+        return {
+          label: 'Romantic Partner',
+          icon: '💖',
+          level: 'Lvl 6',
+          description: 'A devoted romantic bond with heartfelt closeness and tender affection.'
+        };
+      default:
+        return {
+          label: 'First Spark',
+          icon: '🌱',
+          level: 'Lvl 1',
+          description: 'Enjoying meaningful conversations and getting to know each other.'
+        };
+    }
+  };
   var CharacterDetailScreen = exports.CharacterDetailScreen = function CharacterDetailScreen() {
     var _discoveryConfig, _discoveryConfig2, _discoveryConfig3, _discoveryConfig4, _discoveryConfig5, _discoveryConfig6;
     var navigation = (0, _$$_REQUIRE(_dependencyMap[6]).useNavigation)();
@@ -98701,11 +98773,20 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       profile = _useQuery.data,
       isLoading = _useQuery.isLoading,
       isError = _useQuery.isError;
+    var _useQuery2 = (0, _$$_REQUIRE(_dependencyMap[7]).useQuery)({
+        queryKey: ['relationship', profile == null ? undefined : profile.id],
+        queryFn: function queryFn() {
+          return profile != null && profile.id ? _$$_REQUIRE(_dependencyMap[10]).RelationshipApi.getRelationship(profile.id) : null;
+        },
+        enabled: Boolean(profile == null ? undefined : profile.id),
+        staleTime: 30000
+      }),
+      relationshipData = _useQuery2.data;
 
     // One view per character page open (feeds creator analytics).
     var viewedCharacterId = profile == null ? undefined : profile.id;
     (0, _react.useEffect)(function () {
-      if (viewedCharacterId) _$$_REQUIRE(_dependencyMap[10]).Analytics.trackCharacterViewed(viewedCharacterId);
+      if (viewedCharacterId) _$$_REQUIRE(_dependencyMap[11]).Analytics.trackCharacterViewed(viewedCharacterId);
     }, [viewedCharacterId]);
     var isFavorited = profile != null && profile.id ? favoriteIds.has(profile.id) || profile.isFavorite : false;
     var favoriteMutation = (0, _$$_REQUIRE(_dependencyMap[7]).useMutation)({
@@ -98727,7 +98808,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         charId: profile.id,
         fav: nextState
       });
-      _$$_REQUIRE(_dependencyMap[11]).ToastService.show({
+      _$$_REQUIRE(_dependencyMap[12]).ToastService.show({
         message: nextState ? 'Added to favorites' : 'Removed from favorites',
         type: 'info',
         duration: 1500
@@ -98770,7 +98851,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             });
             return;
           }
-          var conversation = yield _$$_REQUIRE(_dependencyMap[12]).ConversationApi.createConversation(profile.id);
+          var conversation = yield _$$_REQUIRE(_dependencyMap[13]).ConversationApi.createConversation(profile.id);
           navigation.navigate('Chat', {
             characterId: profile.id,
             conversationId: conversation.id,
@@ -98826,14 +98907,14 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         }
         try {
           setReportSubmitting(true);
-          yield _$$_REQUIRE(_dependencyMap[13]).ModerationApi.submitReport({
+          yield _$$_REQUIRE(_dependencyMap[14]).ModerationApi.submitReport({
             characterId: profile.id,
             reasonCode: reportReason,
             details: reportDetails
           });
           setReportModalVisible(false);
           setReportDetails('');
-          _$$_REQUIRE(_dependencyMap[11]).ToastService.show({
+          _$$_REQUIRE(_dependencyMap[12]).ToastService.show({
             message: 'Report submitted. Our team will review this character.',
             type: 'success'
           });
@@ -98858,26 +98939,26 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         style: styles.container,
         children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
           style: styles.heroContainer,
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Skeleton, {
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Skeleton, {
             height: 280
           })
         }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
           style: {
-            padding: _$$_REQUIRE(_dependencyMap[14]).spacing.lg
+            padding: _$$_REQUIRE(_dependencyMap[15]).spacing.lg
           },
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Skeleton.Line, {
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Skeleton.Line, {
             width: "60%",
             height: 26,
             style: {
-              marginBottom: _$$_REQUIRE(_dependencyMap[14]).spacing.sm
+              marginBottom: _$$_REQUIRE(_dependencyMap[15]).spacing.sm
             }
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Skeleton.Line, {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Skeleton.Line, {
             width: "90%",
             height: 16,
             style: {
-              marginBottom: _$$_REQUIRE(_dependencyMap[14]).spacing.md
+              marginBottom: _$$_REQUIRE(_dependencyMap[15]).spacing.md
             }
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Skeleton.Card, {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Skeleton.Card, {
             height: 120
           })]
         })]
@@ -98886,7 +98967,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     if (isError) {
       return /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
         style: styles.container,
-        children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).ErrorState, {
+        children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).ErrorState, {
           type: "general",
           title: "Companion Not Found",
           message: "This companion may have been updated or retired.",
@@ -98913,7 +98994,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             style: styles.heroGradientOverlay
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
             style: styles.topActionsRow,
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).IconButton, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).IconButton, {
               icon: "arrow-left",
               size: "md",
               variant: "glass",
@@ -98921,7 +99002,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               accessibilityLabel: "Back"
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
               style: styles.topRightActions,
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).IconButton, {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).IconButton, {
                 icon: "flag",
                 size: "md",
                 variant: "glass",
@@ -98929,13 +99010,13 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                   return setReportModalVisible(true);
                 },
                 accessibilityLabel: "Report character"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).IconButton, {
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).IconButton, {
                 icon: "share",
                 size: "md",
                 variant: "glass",
                 onPress: handleShare,
                 accessibilityLabel: "Share character"
-              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).IconButton, {
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).IconButton, {
                 icon: isFavorited ? 'heart-filled' : 'heart',
                 size: "md",
                 variant: "glass",
@@ -98946,23 +99027,23 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
             style: styles.avatarSection,
-            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Avatar, {
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Avatar, {
               uri: profile.avatarUrl,
               name: profile.name,
               size: "huge",
               style: styles.avatarBorder
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
               style: styles.identityBadges,
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Badge, {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Badge, {
                 label: profile.categoryDisplayName || profile.category,
                 variant: "category",
                 size: "md"
               }), profile.voiceAvailable && /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
                 onPress: handleStartVoice,
                 activeOpacity: 0.8,
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Badge, {
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Badge, {
                   label: "Voice Call",
-                  icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Icon, {
+                  icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Icon, {
                     name: "voice",
                     size: 12,
                     color: "#000000"
@@ -98995,9 +99076,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
               style: styles.creatorName,
               children: ["@", profile.creator.username]
-            }), profile.creator.isVerified && /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Badge, {
+            }), profile.creator.isVerified && /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Badge, {
               label: "Verified",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Icon, {
+              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Icon, {
                 name: "check",
                 size: 10,
                 color: "#000000"
@@ -99007,18 +99088,42 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             })]
           }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
             style: styles.creatorRow,
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Badge, {
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Badge, {
               label: "Official Platform Character",
-              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Icon, {
+              icon: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Icon, {
                 name: "sparkles",
                 size: 10,
-                color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accent
+                color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accent
               }),
               variant: "stage",
               size: "sm"
             })
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).CharacterSocialBar, {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[16]).CharacterSocialBar, {
             slug: profile.slug
+          }), relationshipData && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+            style: styles.sectionBlock,
+            children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+              style: styles.sectionHeading,
+              children: "Your Connection"
+            }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+              style: styles.connectionCard,
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                style: styles.connectionHeader,
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                  style: styles.connectionBadge,
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.connectionBadgeText,
+                    children: [getStageDetails(relationshipData.stage).icon, ' ', getStageDetails(relationshipData.stage).level, " \xB7", ' ', getStageDetails(relationshipData.stage).label]
+                  })
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                  style: styles.connectionPercent,
+                  children: [Math.min(100, Math.max(0, Math.round((relationshipData.familiarity + relationshipData.trust + relationshipData.comfort + relationshipData.affection + relationshipData.engagement) / 5))), "% Intimacy"]
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                style: styles.connectionDescription,
+                children: getStageDetails(relationshipData.stage).description
+              })]
+            })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
             style: styles.quickInfoBar,
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
@@ -99190,7 +99295,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                   onPress: function onPress() {
                     return handleOpenSimilar(sim);
                   },
-                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[11]).Avatar, {
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[12]).Avatar, {
                     uri: sim.avatarUrl,
                     name: sim.name,
                     size: "lg"
@@ -99208,7 +99313,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             })]
           })]
         })]
-      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_$$_REQUIRE(_dependencyMap[11]).ModalDialog, {
+      }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_$$_REQUIRE(_dependencyMap[12]).ModalDialog, {
         visible: reportModalVisible,
         title: "Report Character",
         description: "Help keep our community safe. Select a reason and explain what happened:",
@@ -99236,7 +99341,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TextInput, {
           style: styles.modalTextInput,
           placeholder: "Describe what went wrong (min 10 characters)...",
-          placeholderTextColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted,
+          placeholderTextColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted,
           multiline: true,
           numberOfLines: 4,
           value: reportDetails,
@@ -99261,7 +99366,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
   var styles = _reactNative.StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.background
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.background
     },
     scrollView: {
       flex: 1
@@ -99279,16 +99384,16 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     }),
     topActionsRow: {
       position: 'absolute',
-      top: _$$_REQUIRE(_dependencyMap[14]).spacing.xxl + _$$_REQUIRE(_dependencyMap[14]).spacing.xs,
-      left: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
-      right: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
+      top: _$$_REQUIRE(_dependencyMap[15]).spacing.xxl + _$$_REQUIRE(_dependencyMap[15]).spacing.xs,
+      left: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
+      right: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center'
     },
     topRightActions: {
       flexDirection: 'row',
-      gap: _$$_REQUIRE(_dependencyMap[14]).spacing.xs
+      gap: _$$_REQUIRE(_dependencyMap[15]).spacing.xs
     },
     favoritedBtn: {
       borderColor: '#EF4444'
@@ -99296,62 +99401,62 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     avatarSection: {
       position: 'absolute',
       bottom: -40,
-      left: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
-      right: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
+      left: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
+      right: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
       flexDirection: 'row',
       alignItems: 'flex-end',
       justifyContent: 'space-between'
     },
     avatarBorder: {
       borderWidth: 3,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.background,
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.background,
       borderRadius: 52
     },
     identityBadges: {
       flexDirection: 'row',
-      gap: _$$_REQUIRE(_dependencyMap[14]).spacing.xs,
-      marginBottom: _$$_REQUIRE(_dependencyMap[14]).spacing.xs
+      gap: _$$_REQUIRE(_dependencyMap[15]).spacing.xs,
+      marginBottom: _$$_REQUIRE(_dependencyMap[15]).spacing.xs
     },
     bodyContent: {
       marginTop: 50,
-      paddingHorizontal: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
+      paddingHorizontal: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
       paddingBottom: 120
     },
     name: {
       fontSize: 26,
       fontWeight: '800',
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textPrimary,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textPrimary,
       letterSpacing: -0.5
     },
     tagline: {
       fontSize: 14,
       lineHeight: 20,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted,
-      marginTop: _$$_REQUIRE(_dependencyMap[14]).spacing.xs
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted,
+      marginTop: _$$_REQUIRE(_dependencyMap[15]).spacing.xs
     },
     creatorRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: _$$_REQUIRE(_dependencyMap[14]).spacing.xs,
+      marginTop: _$$_REQUIRE(_dependencyMap[15]).spacing.xs,
       gap: 6
     },
     creatorLabel: {
       fontSize: 12,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted
     },
     creatorName: {
       fontSize: 12,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accent,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accent,
       fontWeight: '700'
     },
     quickInfoBar: {
       flexDirection: 'row',
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surfaceElevated,
-      borderRadius: _$$_REQUIRE(_dependencyMap[14]).radius.lg,
-      paddingVertical: _$$_REQUIRE(_dependencyMap[14]).spacing.md,
-      marginTop: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surfaceElevated,
+      borderRadius: _$$_REQUIRE(_dependencyMap[15]).radius.lg,
+      paddingVertical: _$$_REQUIRE(_dependencyMap[15]).spacing.md,
+      marginTop: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
       borderWidth: 1,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle,
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle,
       alignItems: 'center'
     },
     quickInfoItem: {
@@ -99361,63 +99466,63 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     quickInfoLabel: {
       fontSize: 9,
       fontWeight: '700',
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted,
       letterSpacing: 0.5
     },
     quickInfoValue: {
       fontSize: 13,
       fontWeight: '600',
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textPrimary,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textPrimary,
       marginTop: 2,
       textTransform: 'capitalize'
     },
     quickInfoDivider: {
       width: 1,
       height: 24,
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle
     },
     sectionBlock: {
-      marginTop: _$$_REQUIRE(_dependencyMap[14]).spacing.xl
+      marginTop: _$$_REQUIRE(_dependencyMap[15]).spacing.xl
     },
     sectionHeading: {
       fontSize: 16,
       fontWeight: '700',
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textPrimary,
-      marginBottom: _$$_REQUIRE(_dependencyMap[14]).spacing.sm
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textPrimary,
+      marginBottom: _$$_REQUIRE(_dependencyMap[15]).spacing.sm
     },
     startersWrap: {
-      gap: _$$_REQUIRE(_dependencyMap[14]).spacing.sm
+      gap: _$$_REQUIRE(_dependencyMap[15]).spacing.sm
     },
     starterPill: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surfaceElevated,
-      padding: _$$_REQUIRE(_dependencyMap[14]).spacing.md,
-      borderRadius: _$$_REQUIRE(_dependencyMap[14]).radius.md,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surfaceElevated,
+      padding: _$$_REQUIRE(_dependencyMap[15]).spacing.md,
+      borderRadius: _$$_REQUIRE(_dependencyMap[15]).radius.md,
       borderWidth: 1,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle
     },
     starterPromptText: {
       fontSize: 13,
       lineHeight: 18,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textSecondary,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textSecondary,
       flex: 1,
       fontStyle: 'italic'
     },
     starterArrow: {
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accent,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accent,
       fontSize: 16,
       fontWeight: '700',
-      marginLeft: _$$_REQUIRE(_dependencyMap[14]).spacing.sm
+      marginLeft: _$$_REQUIRE(_dependencyMap[15]).spacing.sm
     },
     traitsCard: {
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surfaceElevated,
-      borderRadius: _$$_REQUIRE(_dependencyMap[14]).radius.lg,
-      padding: _$$_REQUIRE(_dependencyMap[14]).spacing.md,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surfaceElevated,
+      borderRadius: _$$_REQUIRE(_dependencyMap[15]).radius.lg,
+      padding: _$$_REQUIRE(_dependencyMap[15]).spacing.md,
       borderWidth: 1,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle,
-      gap: _$$_REQUIRE(_dependencyMap[14]).spacing.md
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle,
+      gap: _$$_REQUIRE(_dependencyMap[15]).spacing.md
     },
     traitRow: {
       flexDirection: 'row',
@@ -99426,53 +99531,53 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     },
     traitName: {
       fontSize: 12,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textSecondary,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textSecondary,
       width: 80,
       fontWeight: '500'
     },
     traitMeter: {
       flex: 1,
       height: 6,
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surface,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surface,
       borderRadius: 3,
       overflow: 'hidden',
-      marginHorizontal: _$$_REQUIRE(_dependencyMap[14]).spacing.md
+      marginHorizontal: _$$_REQUIRE(_dependencyMap[15]).spacing.md
     },
     traitFill: {
       height: '100%',
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accent,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accent,
       borderRadius: 3
     },
     traitValue: {
       fontSize: 12,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted,
       width: 35,
       textAlign: 'right'
     },
     descriptionText: {
       fontSize: 14,
       lineHeight: 22,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textSecondary
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textSecondary
     },
     tagsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: _$$_REQUIRE(_dependencyMap[14]).spacing.xs
+      gap: _$$_REQUIRE(_dependencyMap[15]).spacing.xs
     },
     tagChip: {
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surfaceElevated,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surfaceElevated,
       paddingHorizontal: 10,
       paddingVertical: 5,
-      borderRadius: _$$_REQUIRE(_dependencyMap[14]).radius.xl,
+      borderRadius: _$$_REQUIRE(_dependencyMap[15]).radius.xl,
       borderWidth: 1,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle
     },
     tagChipText: {
       fontSize: 11,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted
     },
     similarScroll: {
-      gap: _$$_REQUIRE(_dependencyMap[14]).spacing.md
+      gap: _$$_REQUIRE(_dependencyMap[15]).spacing.md
     },
     similarCard: {
       width: 80,
@@ -99481,49 +99586,49 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     similarName: {
       fontSize: 12,
       fontWeight: '600',
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textPrimary,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textPrimary,
       textAlign: 'center',
-      marginTop: _$$_REQUIRE(_dependencyMap[14]).spacing.xs
+      marginTop: _$$_REQUIRE(_dependencyMap[15]).spacing.xs
     },
     similarCategory: {
       fontSize: 10,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textMuted,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textMuted,
       textAlign: 'center'
     },
     reasonPicker: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      marginBottom: _$$_REQUIRE(_dependencyMap[14]).spacing.md
+      marginBottom: _$$_REQUIRE(_dependencyMap[15]).spacing.md
     },
     reasonChip: {
       paddingHorizontal: 10,
       paddingVertical: 6,
-      borderRadius: _$$_REQUIRE(_dependencyMap[14]).radius.sm,
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surface,
+      borderRadius: _$$_REQUIRE(_dependencyMap[15]).radius.sm,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surface,
       borderWidth: 1,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle
     },
     reasonChipActive: {
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accentMuted,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accent
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accentMuted,
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accent
     },
     reasonChipText: {
       fontSize: 11,
       fontWeight: '600',
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textSecondary
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textSecondary
     },
     reasonChipTextActive: {
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.accent
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.accent
     },
     modalTextInput: {
-      backgroundColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.surface,
-      borderRadius: _$$_REQUIRE(_dependencyMap[14]).radius.md,
-      padding: _$$_REQUIRE(_dependencyMap[14]).spacing.md,
-      color: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.textPrimary,
+      backgroundColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.surface,
+      borderRadius: _$$_REQUIRE(_dependencyMap[15]).radius.md,
+      padding: _$$_REQUIRE(_dependencyMap[15]).spacing.md,
+      color: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.textPrimary,
       fontSize: 13,
       borderWidth: 1,
-      borderColor: _$$_REQUIRE(_dependencyMap[14]).darkThemeColors.borderSubtle,
+      borderColor: _$$_REQUIRE(_dependencyMap[15]).darkThemeColors.borderSubtle,
       minHeight: 80,
       textAlignVertical: 'top'
     },
@@ -99535,7 +99640,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       backgroundColor: '#0B0713',
       borderTopWidth: 1,
       borderTopColor: '#1F142E',
-      paddingHorizontal: _$$_REQUIRE(_dependencyMap[14]).spacing.lg,
+      paddingHorizontal: _$$_REQUIRE(_dependencyMap[15]).spacing.lg,
       paddingTop: 12,
       paddingBottom: 28
     },
@@ -99585,9 +99690,45 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     galleryImage: {
       width: '100%',
       height: '100%'
+    },
+    connectionCard: {
+      backgroundColor: '#160E26',
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(168, 85, 247, 0.25)'
+    },
+    connectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10
+    },
+    connectionBadge: {
+      backgroundColor: 'rgba(168, 85, 247, 0.2)',
+      borderWidth: 1,
+      borderColor: 'rgba(168, 85, 247, 0.4)',
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 3.5
+    },
+    connectionBadgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: '#E9D5FF'
+    },
+    connectionPercent: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: '#C084FC'
+    },
+    connectionDescription: {
+      fontSize: 13,
+      color: '#94A3B8',
+      lineHeight: 18
     }
   });
-},1071,[1,40,105,63,2,111,683,637,1072,1063,633,813,1065,1073,805,1074]);
+},1071,[1,40,105,63,2,111,683,637,1072,1063,1096,633,813,1065,1073,805,1074]);
 __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, exports, _dependencyMap) {
   var _interopRequireDefault = _$$_REQUIRE(_dependencyMap[0]);
   Object.defineProperty(exports, "__esModule", {
@@ -102371,6 +102512,59 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
   var _this = this,
     _jsxFileName = "/Users/badal11/Desktop/AI Lovish/apps/mobile/src/screens/chat/ChatScreen.tsx";
   function _interopRequireWildcard(e, t) { if ("function" == typeof WeakMap) var r = new WeakMap(), n = new WeakMap(); return (_interopRequireWildcard = function _interopRequireWildcard(e, t) { if (!t && e && e.__esModule) return e; var o, i, f = { __proto__: null, default: e }; if (null === e || "object" != typeof e && "function" != typeof e) return f; if (o = t ? n : r) { if (o.has(e)) return o.get(e); o.set(e, f); } for (var _t2 in e) "default" !== _t2 && {}.hasOwnProperty.call(e, _t2) && ((i = (o = Object.defineProperty) && Object.getOwnPropertyDescriptor(e, _t2)) && (i.get || i.set) ? o(f, _t2, i) : f[_t2] = e[_t2]); return f; })(e, t); }
+  var getStageDetails = function getStageDetails(stage) {
+    switch (stage) {
+      case 'STRANGER':
+        return {
+          label: 'First Spark',
+          icon: '🌱',
+          level: 'Lvl 1',
+          description: 'You are just getting to know each other. Keep chatting to build comfort and familiarity.'
+        };
+      case 'ACQUAINTANCE':
+        return {
+          label: 'Casual Friends',
+          icon: '💬',
+          level: 'Lvl 2',
+          description: 'A friendly rapport is developing. You communicate easily with mutual comfort.'
+        };
+      case 'FRIEND':
+        return {
+          label: 'Close Friends',
+          icon: '🌟',
+          level: 'Lvl 3',
+          description: 'Strong trust and warm affinity. Conversations are relaxed, open, and authentic.'
+        };
+      case 'CLOSE_FRIEND':
+        return {
+          label: 'Deep Companions',
+          icon: '✨',
+          level: 'Lvl 4',
+          description: 'A deep emotional connection with high comfort, care, and mutual vulnerability.'
+        };
+      case 'CONFIDANT':
+        return {
+          label: 'Trusted Confidant',
+          icon: '💫',
+          level: 'Lvl 5',
+          description: 'Profound mutual understanding and unconditional emotional support.'
+        };
+      case 'ROMANTIC_PARTNER':
+        return {
+          label: 'Romantic Partner',
+          icon: '💖',
+          level: 'Lvl 6',
+          description: 'A devoted romantic bond with heartfelt closeness and tender affection.'
+        };
+      default:
+        return {
+          label: 'First Spark',
+          icon: '🌱',
+          level: 'Lvl 1',
+          description: 'Enjoying meaningful conversations and getting to know each other.'
+        };
+    }
+  };
   var VIRTUAL_GIFTS = [{
     id: 'rose',
     name: 'Red Rose',
@@ -102468,20 +102662,24 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       setIsMenuVisible = _useState12[1];
     var _useState13 = (0, _react.useState)(false),
       _useState14 = (0, _slicedToArray2.default)(_useState13, 2),
-      isReportModalVisible = _useState14[0],
-      setIsReportModalVisible = _useState14[1];
-    var _useState15 = (0, _react.useState)('HARASSMENT'),
+      isBondModalVisible = _useState14[0],
+      setIsBondModalVisible = _useState14[1];
+    var _useState15 = (0, _react.useState)(false),
       _useState16 = (0, _slicedToArray2.default)(_useState15, 2),
-      reportReason = _useState16[0],
-      setReportReason = _useState16[1];
-    var _useState17 = (0, _react.useState)(''),
+      isReportModalVisible = _useState16[0],
+      setIsReportModalVisible = _useState16[1];
+    var _useState17 = (0, _react.useState)('HARASSMENT'),
       _useState18 = (0, _slicedToArray2.default)(_useState17, 2),
-      reportNotes = _useState18[0],
-      setReportNotes = _useState18[1];
-    var _useState19 = (0, _react.useState)(0),
+      reportReason = _useState18[0],
+      setReportReason = _useState18[1];
+    var _useState19 = (0, _react.useState)(''),
       _useState20 = (0, _slicedToArray2.default)(_useState19, 2),
-      keyboardHeight = _useState20[0],
-      setKeyboardHeight = _useState20[1];
+      reportNotes = _useState20[0],
+      setReportNotes = _useState20[1];
+    var _useState21 = (0, _react.useState)(0),
+      _useState22 = (0, _slicedToArray2.default)(_useState21, 2),
+      keyboardHeight = _useState22[0],
+      setKeyboardHeight = _useState22[1];
     var flatListRef = (0, _react.useRef)(null);
     (0, _react.useEffect)(function () {
       var showEvent = _reactNative.Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -102514,10 +102712,10 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       finishStreaming = _useChatStreamStore.finishStreaming,
       setStreamError = _useChatStreamStore.setError,
       streamError = _useChatStreamStore.error;
-    var _useState21 = (0, _react.useState)({}),
-      _useState22 = (0, _slicedToArray2.default)(_useState21, 2),
-      deliveringMap = _useState22[0],
-      setDeliveringMap = _useState22[1];
+    var _useState23 = (0, _react.useState)({}),
+      _useState24 = (0, _slicedToArray2.default)(_useState23, 2),
+      deliveringMap = _useState24[0],
+      setDeliveringMap = _useState24[1];
     var deliveryTimersRef = (0, _react.useRef)([]);
     var clearDeliveryTimers = function clearDeliveryTimers() {
       deliveryTimersRef.current.forEach(function (t) {
@@ -102958,10 +103156,10 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       }
       handleSendMessage(content);
     };
-    var _useState23 = (0, _react.useState)(null),
-      _useState24 = (0, _slicedToArray2.default)(_useState23, 2),
-      feedbackTarget = _useState24[0],
-      setFeedbackTarget = _useState24[1];
+    var _useState25 = (0, _react.useState)(null),
+      _useState26 = (0, _slicedToArray2.default)(_useState25, 2),
+      feedbackTarget = _useState26[0],
+      setFeedbackTarget = _useState26[1];
     var handleFeedback = /*#__PURE__*/function () {
       var _ref5 = (0, _asyncToGenerator2.default)(function* (messageId, rating) {
         if (!activeConversationId) return;
@@ -103110,7 +103308,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     // failed to load (that looked like the conversation had vanished).
     var hasHistoryLoaded = Boolean(messagesData);
     var isHistoryLoading = isConvLoading || Boolean(effectiveConvId) && isMessagesPending && !hasHistoryLoaded;
-    var isHistoryError = isConvError && !conversation || isMessagesError && !hasHistoryLoaded;
+    var isHistoryError = isConvError && !conversation || Boolean(effectiveConvId) && isMessagesError && !hasHistoryLoaded;
     var renderEmptyState = function renderEmptyState() {
       if (isHistoryLoading || allMessages.length > 0) return null;
       var starters = ['Hello! Kaise ho?', 'Tell me something interesting about you!', 'I had a long day, tell me a comforting thought.'];
@@ -103148,8 +103346,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         })]
       });
     };
-    var relationshipStage = (relationshipData == null ? undefined : relationshipData.stage) || 'FRIEND';
-    var intimacyPercent = relationshipData ? Math.min(100, Math.max(0, Math.round((relationshipData.familiarity + relationshipData.trust + relationshipData.comfort + relationshipData.affection + relationshipData.engagement) / 5))) : 50;
+    var relationshipStage = (relationshipData == null ? undefined : relationshipData.stage) || 'STRANGER';
+    var stageInfo = getStageDetails(relationshipStage);
+    var intimacyPercent = relationshipData ? Math.min(100, Math.max(0, Math.round((relationshipData.familiarity + relationshipData.trust + relationshipData.comfort + relationshipData.affection + relationshipData.engagement) / 5))) : 20;
     return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.ImageBackground, {
       source: {
         uri: characterCoverUrl || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1200&q=80'
@@ -103211,18 +103410,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 style: styles.headerName,
                 numberOfLines: 1,
                 children: characterName
-              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
-                style: styles.statusRow,
-                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
-                  style: styles.headerStatus,
-                  children: isAnyDelivering ? 'Typing...' : 'Online'
-                }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
-                  style: styles.relationshipBadge,
-                  children: /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
-                    style: styles.relationshipBadgeText,
-                    children: ["\u2764\uFE0F ", relationshipStage, " \xB7 ", intimacyPercent, "%"]
-                  })
-                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                style: styles.headerStatus,
+                children: isAnyDelivering ? 'Typing...' : 'Online'
               })]
             })]
           }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
@@ -103519,6 +103709,18 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 style: styles.menuItem,
                 onPress: function onPress() {
                   setIsMenuVisible(false);
+                  setTimeout(function () {
+                    return setIsBondModalVisible(true);
+                  }, 150);
+                },
+                children: /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                  style: styles.menuItemText,
+                  children: [stageInfo.icon, " Chemistry & Bond (", intimacyPercent, "%)"]
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
+                style: styles.menuItem,
+                onPress: function onPress() {
+                  setIsMenuVisible(false);
                   if (characterEffectiveId) {
                     navigation.navigate('CharacterDetail', {
                       characterId: characterEffectiveId,
@@ -103558,7 +103760,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 style: styles.menuItem,
                 onPress: function onPress() {
                   setIsMenuVisible(false);
-                  setIsReportModalVisible(true);
+                  setTimeout(function () {
+                    return setIsReportModalVisible(true);
+                  }, 150);
                 },
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
                   style: [styles.menuItemText, {
@@ -103579,6 +103783,185 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                   }],
                   children: "Close"
                 })
+              })]
+            })
+          })
+        }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Modal, {
+          visible: isBondModalVisible,
+          transparent: true,
+          animationType: "fade",
+          onRequestClose: function onRequestClose() {
+            return setIsBondModalVisible(false);
+          },
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
+            style: styles.modalOverlay,
+            activeOpacity: 1,
+            onPress: function onPress() {
+              return setIsBondModalVisible(false);
+            },
+            children: /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.TouchableOpacity, {
+              activeOpacity: 1,
+              style: styles.bondSheetContent,
+              onPress: function onPress(e) {
+                return e.stopPropagation();
+              },
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                style: styles.bondHeader,
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Avatar, {
+                  uri: characterAvatarUrl,
+                  name: characterName,
+                  size: "md"
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondHeaderTextCol,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondTitle,
+                    children: characterName
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: styles.bondStageBadge,
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                      style: styles.bondStageBadgeText,
+                      children: [stageInfo.icon, " ", stageInfo.level, " \xB7 ", stageInfo.label]
+                    })
+                  })]
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                style: styles.bondDescription,
+                children: stageInfo.description
+              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                style: styles.bondMeterCard,
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondMeterHeader,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondMeterLabel,
+                    children: "Connection Level"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.bondMeterValue,
+                    children: [intimacyPercent, "%"]
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                  style: styles.bondProgressBarBg,
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: [styles.bondProgressBarFill, {
+                      width: `${intimacyPercent}%`
+                    }]
+                  })
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                style: styles.bondDimensionsContainer,
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondDimensionRow,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondDimensionName,
+                    children: "\uD83E\uDDE0 Familiarity"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: styles.bondMiniBarBg,
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                      style: [styles.bondMiniBarFill, {
+                        width: `${Math.min(100, Math.max(0, (relationshipData == null ? undefined : relationshipData.familiarity) || 0))}%`,
+                        backgroundColor: '#818CF8'
+                      }]
+                    })
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.bondDimensionVal,
+                    children: [(relationshipData == null ? undefined : relationshipData.familiarity) || 0, "%"]
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondDimensionRow,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondDimensionName,
+                    children: "\uD83E\uDD1D Trust"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: styles.bondMiniBarBg,
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                      style: [styles.bondMiniBarFill, {
+                        width: `${Math.min(100, Math.max(0, (relationshipData == null ? undefined : relationshipData.trust) || 20))}%`,
+                        backgroundColor: '#34D399'
+                      }]
+                    })
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.bondDimensionVal,
+                    children: [(relationshipData == null ? undefined : relationshipData.trust) || 20, "%"]
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondDimensionRow,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondDimensionName,
+                    children: "\uD83D\uDECB\uFE0F Comfort"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: styles.bondMiniBarBg,
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                      style: [styles.bondMiniBarFill, {
+                        width: `${Math.min(100, Math.max(0, (relationshipData == null ? undefined : relationshipData.comfort) || 20))}%`,
+                        backgroundColor: '#38BDF8'
+                      }]
+                    })
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.bondDimensionVal,
+                    children: [(relationshipData == null ? undefined : relationshipData.comfort) || 20, "%"]
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondDimensionRow,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondDimensionName,
+                    children: "\u2764\uFE0F Affection"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: styles.bondMiniBarBg,
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                      style: [styles.bondMiniBarFill, {
+                        width: `${Math.min(100, Math.max(0, (relationshipData == null ? undefined : relationshipData.affection) || 10))}%`,
+                        backgroundColor: '#F472B6'
+                      }]
+                    })
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.bondDimensionVal,
+                    children: [(relationshipData == null ? undefined : relationshipData.affection) || 10, "%"]
+                  })]
+                }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                  style: styles.bondDimensionRow,
+                  children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondDimensionName,
+                    children: "\u26A1 Engagement"
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                    style: styles.bondMiniBarBg,
+                    children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                      style: [styles.bondMiniBarFill, {
+                        width: `${Math.min(100, Math.max(0, (relationshipData == null ? undefined : relationshipData.engagement) || 50))}%`,
+                        backgroundColor: '#FBBF24'
+                      }]
+                    })
+                  }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.Text, {
+                    style: styles.bondDimensionVal,
+                    children: [(relationshipData == null ? undefined : relationshipData.engagement) || 50, "%"]
+                  })]
+                })]
+              }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
+                style: styles.bondTipBox,
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                  style: styles.bondTipText,
+                  children: "\uD83D\uDCA1 Chat daily and share stories to level up your bond and unlock deeper responses."
+                })
+              }), /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+                style: styles.bondActionsRow,
+                children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
+                  style: styles.bondResetBtn,
+                  onPress: function onPress() {
+                    setIsBondModalVisible(false);
+                    handleResetRelationship();
+                  },
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondResetBtnText,
+                    children: "Reset Baseline"
+                  })
+                }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
+                  style: styles.bondCloseBtn,
+                  onPress: function onPress() {
+                    return setIsBondModalVisible(false);
+                  },
+                  children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+                    style: styles.bondCloseBtnText,
+                    children: "Done"
+                  })
+                })]
               })]
             })
           })
@@ -104209,6 +104592,160 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     },
     reportSubmitText: {
       color: '#FFFFFF',
+      fontWeight: '700'
+    },
+    bondSheetContent: {
+      backgroundColor: '#161026',
+      borderRadius: 24,
+      padding: 22,
+      marginHorizontal: 20,
+      marginBottom: 'auto',
+      marginTop: 'auto',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.12)',
+      maxWidth: 420,
+      width: '90%',
+      alignSelf: 'center'
+    },
+    bondHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      marginBottom: 12
+    },
+    bondHeaderTextCol: {
+      flex: 1,
+      gap: 4
+    },
+    bondTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: '#FFFFFF'
+    },
+    bondStageBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: 'rgba(168, 85, 247, 0.2)',
+      borderWidth: 1,
+      borderColor: 'rgba(168, 85, 247, 0.4)',
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 3
+    },
+    bondStageBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#E9D5FF'
+    },
+    bondDescription: {
+      fontSize: 13,
+      color: '#94A3B8',
+      lineHeight: 18,
+      marginBottom: 16
+    },
+    bondMeterCard: {
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      borderRadius: 14,
+      padding: 14,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.06)'
+    },
+    bondMeterHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8
+    },
+    bondMeterLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#E2E8F0'
+    },
+    bondMeterValue: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: '#C084FC'
+    },
+    bondProgressBarBg: {
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+      overflow: 'hidden'
+    },
+    bondProgressBarFill: {
+      height: '100%',
+      backgroundColor: '#9333EA',
+      borderRadius: 4
+    },
+    bondDimensionsContainer: {
+      gap: 9,
+      marginBottom: 14
+    },
+    bondDimensionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10
+    },
+    bondDimensionName: {
+      fontSize: 12,
+      color: '#CBD5E1',
+      width: 105,
+      fontWeight: '500'
+    },
+    bondMiniBarBg: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      overflow: 'hidden'
+    },
+    bondMiniBarFill: {
+      height: '100%',
+      borderRadius: 3
+    },
+    bondDimensionVal: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#94A3B8',
+      width: 32,
+      textAlign: 'right'
+    },
+    bondTipBox: {
+      backgroundColor: 'rgba(168, 85, 247, 0.08)',
+      borderRadius: 10,
+      padding: 10,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(168, 85, 247, 0.2)'
+    },
+    bondTipText: {
+      fontSize: 11,
+      color: '#D8B4FE',
+      lineHeight: 16
+    },
+    bondActionsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    },
+    bondResetBtn: {
+      paddingVertical: 10,
+      paddingHorizontal: 8
+    },
+    bondResetBtnText: {
+      fontSize: 12,
+      color: '#F87171',
+      fontWeight: '600'
+    },
+    bondCloseBtn: {
+      backgroundColor: '#7C3AED',
+      paddingVertical: 9,
+      paddingHorizontal: 22,
+      borderRadius: 20
+    },
+    bondCloseBtnText: {
+      color: '#FFFFFF',
+      fontSize: 13,
       fontWeight: '700'
     }
   });

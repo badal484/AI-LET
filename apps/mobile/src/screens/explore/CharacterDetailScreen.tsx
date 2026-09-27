@@ -17,6 +17,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import { ConversationApi } from '../../services/api/conversationApi.js';
 import { ModerationApi } from '../../services/api/moderationApi.js';
+import { RelationshipApi } from '../../services/api/relationshipApi.js';
 import { useDiscoveryStore } from '../../stores/discoveryStore.js';
 import type { RootStackParamList } from '../../navigation/types.js';
 import {
@@ -37,6 +38,60 @@ import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type DetailRouteProp = RouteProp<RootStackParamList, 'CharacterDetail'>;
 
+const getStageDetails = (stage?: string) => {
+  switch (stage) {
+    case 'STRANGER':
+      return {
+        label: 'First Spark',
+        icon: '🌱',
+        level: 'Lvl 1',
+        description: 'You are just getting to know each other. Keep chatting to build comfort and familiarity.',
+      };
+    case 'ACQUAINTANCE':
+      return {
+        label: 'Casual Friends',
+        icon: '💬',
+        level: 'Lvl 2',
+        description: 'A friendly rapport is developing. You communicate easily with mutual comfort.',
+      };
+    case 'FRIEND':
+      return {
+        label: 'Close Friends',
+        icon: '🌟',
+        level: 'Lvl 3',
+        description: 'Strong trust and warm affinity. Conversations are relaxed, open, and authentic.',
+      };
+    case 'CLOSE_FRIEND':
+      return {
+        label: 'Deep Companions',
+        icon: '✨',
+        level: 'Lvl 4',
+        description: 'A deep emotional connection with high comfort, care, and mutual vulnerability.',
+      };
+    case 'CONFIDANT':
+      return {
+        label: 'Trusted Confidant',
+        icon: '💫',
+        level: 'Lvl 5',
+        description: 'Profound mutual understanding and unconditional emotional support.',
+      };
+    case 'ROMANTIC_PARTNER':
+      return {
+        label: 'Romantic Partner',
+        icon: '💖',
+        level: 'Lvl 6',
+        description: 'A devoted romantic bond with heartfelt closeness and tender affection.',
+      };
+    default:
+      return {
+        label: 'First Spark',
+        icon: '🌱',
+        level: 'Lvl 1',
+        description: 'Enjoying meaningful conversations and getting to know each other.',
+      };
+  }
+};
+
 export const CharacterDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<DetailRouteProp>();
@@ -48,6 +103,13 @@ export const CharacterDetailScreen: React.FC = () => {
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['discovery', 'character', identifier],
     queryFn: () => DiscoveryApi.getCharacterProfile(identifier),
+  });
+
+  const { data: relationshipData } = useQuery({
+    queryKey: ['relationship', profile?.id],
+    queryFn: () => (profile?.id ? RelationshipApi.getRelationship(profile.id) : null),
+    enabled: Boolean(profile?.id),
+    staleTime: 30_000,
   });
 
   // One view per character page open (feeds creator analytics).
@@ -317,6 +379,44 @@ export const CharacterDetailScreen: React.FC = () => {
 
           {/* Social: follow (distinct from favorite) + public posts; hidden if social is unavailable */}
           <CharacterSocialBar slug={profile.slug} />
+
+          {/* Relationship Connection Card (if existing interaction) */}
+          {relationshipData && (
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionHeading}>Your Connection</Text>
+              <View style={styles.connectionCard}>
+                <View style={styles.connectionHeader}>
+                  <View style={styles.connectionBadge}>
+                    <Text style={styles.connectionBadgeText}>
+                      {getStageDetails(relationshipData.stage).icon}{' '}
+                      {getStageDetails(relationshipData.stage).level} ·{' '}
+                      {getStageDetails(relationshipData.stage).label}
+                    </Text>
+                  </View>
+                  <Text style={styles.connectionPercent}>
+                    {Math.min(
+                      100,
+                      Math.max(
+                        0,
+                        Math.round(
+                          (relationshipData.familiarity +
+                            relationshipData.trust +
+                            relationshipData.comfort +
+                            relationshipData.affection +
+                            relationshipData.engagement) /
+                            5,
+                        ),
+                      ),
+                    )}
+                    % Intimacy
+                  </Text>
+                </View>
+                <Text style={styles.connectionDescription}>
+                  {getStageDetails(relationshipData.stage).description}
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Quick Info Bar */}
           <View style={styles.quickInfoBar}>
@@ -839,5 +939,41 @@ const styles = StyleSheet.create({
   galleryImage: {
     width: '100%',
     height: '100%',
+  },
+  connectionCard: {
+    backgroundColor: '#160E26',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.25)',
+  },
+  connectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  connectionBadge: {
+    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.4)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3.5,
+  },
+  connectionBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E9D5FF',
+  },
+  connectionPercent: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#C084FC',
+  },
+  connectionDescription: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 18,
   },
 });
