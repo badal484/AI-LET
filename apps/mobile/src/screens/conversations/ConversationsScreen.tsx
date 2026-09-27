@@ -7,7 +7,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ConversationApi } from '../../services/api/conversationApi.js';
@@ -39,10 +39,30 @@ export const ConversationsScreen: React.FC = () => {
       }
       return ConversationApi.listConversations({ limit: 50 });
     },
-    retry: 2,
+    retry: 1,
   });
 
+  const queryClient = useQueryClient();
+
+  // Start loading the chat on touch-down, so history is usually ready by the time the screen opens.
+  // Keys and params mirror ChatScreen's queries so it reuses this cache.
+  const prefetchConversation = (conversation: ConversationSummary) => {
+    queryClient.prefetchQuery({
+      queryKey: ['conversation', conversation.id],
+      queryFn: () => ConversationApi.getConversation(conversation.id),
+      staleTime: 30_000,
+    });
+    queryClient.prefetchInfiniteQuery({
+      queryKey: ['messages', conversation.id],
+      queryFn: ({ pageParam }) =>
+        ConversationApi.getMessages(conversation.id, { cursor: pageParam as string | undefined, limit: 30, direction: 'before' }),
+      initialPageParam: undefined as string | undefined,
+      staleTime: 30_000,
+    });
+  };
+
   const handleOpenConversation = (conversation: ConversationSummary) => {
+    prefetchConversation(conversation);
     navigation.navigate('Chat', {
       characterId: conversation.character.id,
       conversationId: conversation.id,
@@ -68,6 +88,7 @@ export const ConversationsScreen: React.FC = () => {
       <TouchableOpacity
         style={styles.itemContainer}
         activeOpacity={0.75}
+        onPressIn={() => prefetchConversation(item)}
         onPress={() => handleOpenConversation(item)}
         accessibilityRole="button"
         accessibilityLabel={`Chat with ${item.character.name}: ${item.lastMessageSnippet || 'Conversation open'}`}

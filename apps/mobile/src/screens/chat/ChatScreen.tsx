@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   FlatList,
   Keyboard,
   Platform,
@@ -185,7 +186,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   });
 
   // 1. Resolve or Create Conversation
-  const { data: conversation, isLoading: isConvLoading } = useQuery({
+  const {
+    data: conversation,
+    isLoading: isConvLoading,
+    isError: isConvError,
+    refetch: refetchConversation,
+  } = useQuery({
     queryKey: ['conversation', activeConversationId || characterId],
     queryFn: async (): Promise<ConversationDetail> => {
       if (activeConversationId) {
@@ -245,6 +251,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isPending: isMessagesPending,
+    isError: isMessagesError,
+    refetch: refetchMessages,
   } = useInfiniteQuery({
     queryKey: ['messages', effectiveConvId],
     queryFn: ({ pageParam }) =>
@@ -709,8 +718,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     );
   };
 
+  // Distinct screen states: never show the "new chat" screen while history is still loading or
+  // failed to load (that looked like the conversation had vanished).
+  const hasHistoryLoaded = Boolean(messagesData);
+  const isHistoryLoading = isConvLoading || (Boolean(effectiveConvId) && isMessagesPending && !hasHistoryLoaded);
+  const isHistoryError = (isConvError && !conversation) || (isMessagesError && !hasHistoryLoaded);
+
   const renderEmptyState = () => {
-    if (isConvLoading || allMessages.length > 0) return null;
+    if (isHistoryLoading || allMessages.length > 0) return null;
 
     const starters = [
       'Hello! Kaise ho?',
@@ -879,12 +894,33 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         </View>
 
         {/* Message Stream */}
-        {isConvLoading ? (
+        {isHistoryLoading ? (
           <View style={styles.loadingContainer}>
             <Skeleton.Card height={90} />
             <Skeleton.Card height={70} />
             <Skeleton.Card height={100} />
           </View>
+        ) : isHistoryError ? (
+          <View style={styles.historyErrorContainer}>
+            <Text style={styles.historyErrorTitle}>Couldn't load this chat</Text>
+            <Text style={styles.historyErrorText}>Check your connection and try again.</Text>
+            <TouchableOpacity
+              style={styles.historyErrorButton}
+              onPress={() => {
+                if (!conversation) refetchConversation();
+                else refetchMessages();
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.historyErrorButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : allMessages.length === 0 ? (
+          // Rendered outside the inverted list: an inverted FlatList flips its empty component,
+          // which is why the welcome text appeared mirrored.
+          <ScrollView contentContainerStyle={styles.emptyScrollContent} keyboardShouldPersistTaps="handled">
+            {renderEmptyState()}
+          </ScrollView>
         ) : (
           <FlatList
             ref={flatListRef}
@@ -909,7 +945,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 {renderListHeader()}
               </>
             }
-            ListEmptyComponent={renderEmptyState}
             ListHeaderComponent={null}
           />
         )}
@@ -1213,6 +1248,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 };
 
 const styles = StyleSheet.create({
+  historyErrorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 8,
+  },
+  historyErrorTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  historyErrorText: { color: '#A1A1AA', fontSize: 14, textAlign: 'center' },
+  historyErrorButton: {
+    marginTop: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: '#7C3AED',
+  },
+  historyErrorButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  emptyScrollContent: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
   backgroundImage: {
     flex: 1,
     backgroundColor: '#07050E',

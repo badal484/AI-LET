@@ -30,7 +30,9 @@ Analytics.initialize({ appVersion: APP_VERSION }).catch(() => undefined);
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
+      // One quick retry (network blips) — then surface the error with a Retry button.
+      retry: 1,
+      retryDelay: 800,
       staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,

@@ -96890,7 +96890,34 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       isError = _useQuery.isError,
       refetch = _useQuery.refetch,
       isRefetching = _useQuery.isRefetching;
+    var queryClient = (0, _$$_REQUIRE(_dependencyMap[6]).useQueryClient)();
+
+    // Start loading the chat on touch-down, so history is usually ready by the time the screen opens.
+    // Keys and params mirror ChatScreen's queries so it reuses this cache.
+    var prefetchConversation = function prefetchConversation(conversation) {
+      queryClient.prefetchQuery({
+        queryKey: ['conversation', conversation.id],
+        queryFn: function queryFn() {
+          return _$$_REQUIRE(_dependencyMap[9]).ConversationApi.getConversation(conversation.id);
+        },
+        staleTime: 30000
+      });
+      queryClient.prefetchInfiniteQuery({
+        queryKey: ['messages', conversation.id],
+        queryFn: function queryFn(_ref) {
+          var pageParam = _ref.pageParam;
+          return _$$_REQUIRE(_dependencyMap[9]).ConversationApi.getMessages(conversation.id, {
+            cursor: pageParam,
+            limit: 30,
+            direction: 'before'
+          });
+        },
+        initialPageParam: undefined,
+        staleTime: 30000
+      });
+    };
     var handleOpenConversation = function handleOpenConversation(conversation) {
+      prefetchConversation(conversation);
       navigation.navigate('Chat', {
         characterId: conversation.character.id,
         conversationId: conversation.id,
@@ -96908,11 +96935,14 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
       return `${Math.floor(diffSec / 86400)}d`;
     };
-    var renderConversationItem = function renderConversationItem(_ref) {
-      var item = _ref.item;
+    var renderConversationItem = function renderConversationItem(_ref2) {
+      var item = _ref2.item;
       return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.TouchableOpacity, {
         style: styles.itemContainer,
         activeOpacity: 0.75,
+        onPressIn: function onPressIn() {
+          return prefetchConversation(item);
+        },
         onPress: function onPress() {
           return handleOpenConversation(item);
         },
@@ -102536,7 +102566,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         }()
       }),
       conversation = _useQuery2.data,
-      isConvLoading = _useQuery2.isLoading;
+      isConvLoading = _useQuery2.isLoading,
+      isConvError = _useQuery2.isError,
+      refetchConversation = _useQuery2.refetch;
     var effectiveConvId = (conversation == null ? undefined : conversation.id) || activeConversationId;
     var characterName = (conversation == null || (_conversation$charact = conversation.character) == null ? undefined : _conversation$charact.name) || routeCharacterName || (characterProfile == null ? undefined : characterProfile.name) || 'Ritika Sharma';
     var characterAvatarUrl = (conversation == null || (_conversation$charact2 = conversation.character) == null ? undefined : _conversation$charact2.avatarUrl) || routeCharacterAvatarUrl || (characterProfile == null ? undefined : characterProfile.avatarUrl);
@@ -102588,7 +102620,10 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       messagesData = _useInfiniteQuery.data,
       fetchNextPage = _useInfiniteQuery.fetchNextPage,
       hasNextPage = _useInfiniteQuery.hasNextPage,
-      isFetchingNextPage = _useInfiniteQuery.isFetchingNextPage;
+      isFetchingNextPage = _useInfiniteQuery.isFetchingNextPage,
+      isMessagesPending = _useInfiniteQuery.isPending,
+      isMessagesError = _useInfiniteQuery.isError,
+      refetchMessages = _useInfiniteQuery.refetch;
     var serverMessages = (messagesData == null ? undefined : messagesData.pages.flatMap(function (page) {
       return page.items;
     })) || [];
@@ -103070,8 +103105,14 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         })
       });
     };
+
+    // Distinct screen states: never show the "new chat" screen while history is still loading or
+    // failed to load (that looked like the conversation had vanished).
+    var hasHistoryLoaded = Boolean(messagesData);
+    var isHistoryLoading = isConvLoading || Boolean(effectiveConvId) && isMessagesPending && !hasHistoryLoaded;
+    var isHistoryError = isConvError && !conversation || isMessagesError && !hasHistoryLoaded;
     var renderEmptyState = function renderEmptyState() {
-      if (isConvLoading || allMessages.length > 0) return null;
+      if (isHistoryLoading || allMessages.length > 0) return null;
       var starters = ['Hello! Kaise ho?', 'Tell me something interesting about you!', 'I had a long day, tell me a comforting thought.'];
       return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
         style: styles.emptyContainer,
@@ -103241,7 +103282,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               })]
             })]
           })]
-        }), isConvLoading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+        }), isHistoryLoading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
           style: styles.loadingContainer,
           children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Skeleton.Card, {
             height: 90
@@ -103250,6 +103291,33 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Skeleton.Card, {
             height: 100
           })]
+        }) : isHistoryError ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
+          style: styles.historyErrorContainer,
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+            style: styles.historyErrorTitle,
+            children: "Couldn't load this chat"
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+            style: styles.historyErrorText,
+            children: "Check your connection and try again."
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
+            style: styles.historyErrorButton,
+            onPress: function onPress() {
+              if (!conversation) refetchConversation();else refetchMessages();
+            },
+            accessibilityRole: "button",
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
+              style: styles.historyErrorButtonText,
+              children: "Retry"
+            })
+          })]
+        }) : allMessages.length === 0 ?
+        /*#__PURE__*/
+        // Rendered outside the inverted list: an inverted FlatList flips its empty component,
+        // which is why the welcome text appeared mirrored.
+        (0, _jsxRuntime.jsx)(_reactNative.ScrollView, {
+          contentContainerStyle: styles.emptyScrollContent,
+          keyboardShouldPersistTaps: "handled",
+          children: renderEmptyState()
         }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.FlatList, {
           ref: flatListRef,
           data: allMessages,
@@ -103276,7 +103344,6 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               }
             }) : null, renderListHeader()]
           }),
-          ListEmptyComponent: renderEmptyState,
           ListHeaderComponent: null
         }), isScrolledUp && /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
           style: styles.scrollToBottomBtn,
@@ -103596,6 +103663,40 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     });
   };
   var styles = _reactNative.StyleSheet.create({
+    historyErrorContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
+      gap: 8
+    },
+    historyErrorTitle: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '700'
+    },
+    historyErrorText: {
+      color: '#A1A1AA',
+      fontSize: 14,
+      textAlign: 'center'
+    },
+    historyErrorButton: {
+      marginTop: 12,
+      paddingHorizontal: 28,
+      paddingVertical: 12,
+      borderRadius: 24,
+      backgroundColor: '#7C3AED'
+    },
+    historyErrorButtonText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '600'
+    },
+    emptyScrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingVertical: 24
+    },
     backgroundImage: {
       flex: 1,
       backgroundColor: '#07050E'

@@ -46,7 +46,9 @@ export class ApiClient {
     if (!ApiClient.instance) {
       ApiClient.instance = axios.create({
         baseURL: API_BASE_URL,
-        timeout: 15000,
+        // Normal API calls answer in well under a second; fail fast so screens show an error/retry
+        // state instead of an endless skeleton when the connection is gone.
+        timeout: 8000,
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
