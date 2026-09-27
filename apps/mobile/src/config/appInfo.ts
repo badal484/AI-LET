@@ -1,15 +1,18 @@
 /** Keep in sync with `version` in apps/mobile/package.json (and the native build versionName). */
 export const APP_VERSION = '0.1.0';
 
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 /**
  * Determine development host IP dynamically:
- * 1. From Metro bundle scriptURL if available (supports whatever IP Metro served to the phone)
- * 2. Fallback to Mac Wi-Fi LAN IP (192.168.1.45) for physical Android devices
- * 3. Fallback to localhost for iOS simulator or when adb reverse is active
+ * 1. For Android with adb reverse (or iOS simulator), localhost routes directly over USB tunnel
+ * 2. If running standalone on device, extract from Metro bundle scriptURL
  */
 function getDevHost(): string {
+  if (Platform.OS === 'android') {
+    return 'localhost';
+  }
+
   try {
     const scriptURL: string | undefined = (NativeModules as any)?.SourceCode?.scriptURL;
     if (scriptURL) {
@@ -20,7 +23,7 @@ function getDevHost(): string {
     }
   } catch {}
 
-  // Fallback to localhost (works with adb reverse and iOS simulator)
+  // Fallback to localhost
   return 'localhost';
 }
 

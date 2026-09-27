@@ -22,6 +22,9 @@ import {
 } from '../../components/common/index.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 
+import { ApiClient } from '../../services/api/client.js';
+import { SecureAuthStorage } from '../../services/auth/SecureAuthStorage.js';
+
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export const ConversationsScreen: React.FC = () => {
@@ -29,7 +32,14 @@ export const ConversationsScreen: React.FC = () => {
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['conversations', 'list'],
-    queryFn: () => ConversationApi.listConversations({ limit: 50 }),
+    queryFn: async () => {
+      const session = await SecureAuthStorage.getSession();
+      if (session?.accessToken) {
+        ApiClient.setAuthToken(session.accessToken);
+      }
+      return ConversationApi.listConversations({ limit: 50 });
+    },
+    retry: 2,
   });
 
   const handleOpenConversation = (conversation: ConversationSummary) => {
