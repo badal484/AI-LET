@@ -306,6 +306,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     });
 
     clearDeliveryTimers();
+    setStreamError(null);
 
     const abortController = new AbortController();
     startStreaming(effectiveConvId, tempAssistantId, abortController);
@@ -318,15 +319,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       clientRequestId,
       {
         onStarted: (payload) => {
+          setStreamError(null);
           if (payload.messageId) {
             useChatStreamStore.setState({ streamingMessageId: payload.messageId });
           }
         },
         onDelta: (payload) => {
+          setStreamError(null);
           accumulatedText += payload.delta;
           appendDelta(payload.delta);
         },
         onCompleted: (payload) => {
+          setStreamError(null);
           const finalContent = payload?.finalContent || accumulatedText || useChatStreamStore.getState().accumulatedDelta || '';
           const paragraphs = finalContent
             .split(/\n\s*\n|\n/)
@@ -337,6 +341,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
           const finalizeDelivery = async () => {
             finishStreaming();
+            setStreamError(null);
             refetchRelationship();
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
             try {
@@ -447,9 +452,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           }
         },
         onFailed: (payload) => {
+          if (!accumulatedText.trim()) {
+            setStreamError(payload.errorMessage);
+          }
           clearDeliveryTimers();
           setDeliveringMap({});
-          setStreamError(payload.errorMessage);
           finishStreaming();
           setOptimisticMessages([]);
           queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
@@ -464,6 +471,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       },
       abortController.signal,
     );
+
   };
 
   const handleRetry = (content: string) => {

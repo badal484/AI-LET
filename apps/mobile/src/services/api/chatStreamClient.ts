@@ -48,22 +48,26 @@ export class ChatStreamClient {
         xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
       }
 
+      let seenIndex = 0;
+      let buffer = '';
+      let isCompleted = false;
+      let accumulatedDelta = '';
+      let currentAssistantMessageId = '';
+
       if (abortSignal) {
         abortSignal.addEventListener('abort', () => {
-          xhr.abort();
+          try {
+            xhr.abort();
+          } catch {}
           callbacks.onCancelled?.({
-            messageId: '',
+            messageId: currentAssistantMessageId,
             conversationId,
-            partialContent: '',
+            partialContent: accumulatedDelta,
             reason: 'Generation cancelled',
           });
           resolve();
         });
       }
-
-      let seenIndex = 0;
-      let buffer = '';
-      let isCompleted = false;
 
       const processBlock = (block: string) => {
         if (!block.trim()) return;
@@ -85,9 +89,15 @@ export class ChatStreamClient {
           const parsed = JSON.parse(dataStr);
           switch (currentEvent) {
             case 'message.started':
+              if (parsed?.messageId) {
+                currentAssistantMessageId = parsed.messageId;
+              }
               callbacks.onStarted?.(parsed);
               break;
             case 'message.delta':
+              if (parsed?.delta) {
+                accumulatedDelta += parsed.delta;
+              }
               callbacks.onDelta?.(parsed);
               break;
             case 'message.metadata':
@@ -112,6 +122,23 @@ export class ChatStreamClient {
         }
       };
 
+      const flushRemainingBuffer = () => {
+        const text = xhr.responseText || '';
+        if (text.length > seenIndex) {
+          const chunk = text.slice(seenIndex);
+          seenIndex = text.length;
+          buffer += chunk;
+        }
+
+        if (buffer.trim()) {
+          const parts = buffer.split('\n\n');
+          for (const part of parts) {
+            processBlock(part);
+          }
+          buffer = '';
+        }
+      };
+
       xhr.onprogress = () => {
         const text = xhr.responseText || '';
         const chunk = text.slice(seenIndex);
@@ -127,39 +154,78 @@ export class ChatStreamClient {
       };
 
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          if (buffer.trim()) {
-            processBlock(buffer);
-          }
-          resolve();
-        } else if (!isCompleted) {
-          let errorMessage = `Stream request failed with HTTP ${xhr.status}`;
-          try {
-            const errJson = JSON.parse(xhr.responseText);
-            if (errJson?.error?.message) {
-              errorMessage = errJson.error.message;
-            }
-          } catch {}
+        flushRemainingBuffer();
 
-          callbacks.onFailed?.({
+        if (isCompleted) {
+          resolve();
+          return;
+        }
+
+        if (accumulatedDelta.trim().length > 0) {
+          isCompleted = true;
+          callbacks.onCompleted?.({
+            messageId: currentAssistantMessageId,
             conversationId,
-            errorCode: 'HTTP_ERROR',
-            errorMessage,
-            retryable: xhr.status >= 500,
+            finalContent: accumulatedDelta,
+            totalTokens: Math.ceil(accumulatedDelta.length / 4),
+            status: 'SENT',
+            timestamp: new Date().toISOString(),
           });
           resolve();
+          return;
         }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+          return;
+        }
+
+        let errorMessage = `Stream request failed with HTTP ${xhr.status}`;
+        try {
+          const errJson = JSON.parse(xhr.responseText);
+          if (errJson?.error?.message) {
+            errorMessage = errJson.error.message;
+          }
+        } catch {}
+
+        callbacks.onFailed?.({
+          conversationId,
+          errorCode: 'HTTP_ERROR',
+          errorMessage,
+          retryable: xhr.status >= 500,
+        });
+        resolve();
       };
 
       xhr.onerror = () => {
-        if (!isCompleted) {
-          callbacks.onFailed?.({
-            conversationId,
-            errorCode: 'NETWORK_ERROR',
-            errorMessage: 'Network connection failed during streaming',
-            retryable: true,
-          });
+        flushRemainingBuffer();
+
+        if (isCompleted) {
+          resolve();
+          return;
         }
+
+        // If content was already received from model, treat socket closure as a successful completion
+        if (accumulatedDelta.trim().length > 0) {
+          isCompleted = true;
+          callbacks.onCompleted?.({
+            messageId: currentAssistantMessageId,
+            conversationId,
+            finalContent: accumulatedDelta,
+            totalTokens: Math.ceil(accumulatedDelta.length / 4),
+            status: 'SENT',
+            timestamp: new Date().toISOString(),
+          });
+          resolve();
+          return;
+        }
+
+        callbacks.onFailed?.({
+          conversationId,
+          errorCode: 'NETWORK_ERROR',
+          errorMessage: 'Network connection failed during streaming',
+          retryable: true,
+        });
         resolve();
       };
 

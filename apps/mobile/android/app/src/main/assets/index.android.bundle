@@ -102680,11 +102680,13 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           isTypingNext: true
         }));
         clearDeliveryTimers();
+        setStreamError(null);
         var abortController = new AbortController();
         startStreaming(effectiveConvId, tempAssistantId, abortController);
         var accumulatedText = '';
         yield _$$_REQUIRE(_dependencyMap[15]).ChatStreamClient.streamMessage(effectiveConvId, content, clientRequestId, {
           onStarted: function onStarted(payload) {
+            setStreamError(null);
             if (payload.messageId) {
               _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.setState({
                 streamingMessageId: payload.messageId
@@ -102692,10 +102694,12 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             }
           },
           onDelta: function onDelta(payload) {
+            setStreamError(null);
             accumulatedText += payload.delta;
             appendDelta(payload.delta);
           },
           onCompleted: function onCompleted(payload) {
+            setStreamError(null);
             var finalContent = (payload == null ? undefined : payload.finalContent) || accumulatedText || _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.getState().accumulatedDelta || '';
             var paragraphs = finalContent.split(/\n\s*\n|\n/).map(function (s) {
               return s.trim();
@@ -102704,6 +102708,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             var finalizeDelivery = /*#__PURE__*/function () {
               var _ref4 = (0, _asyncToGenerator2.default)(function* () {
                 finishStreaming();
+                setStreamError(null);
                 refetchRelationship();
                 queryClient.invalidateQueries({
                   queryKey: ['conversations']
@@ -102827,9 +102832,11 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             }
           },
           onFailed: function onFailed(payload) {
+            if (!accumulatedText.trim()) {
+              setStreamError(payload.errorMessage);
+            }
             clearDeliveryTimers();
             setDeliveringMap({});
-            setStreamError(payload.errorMessage);
             finishStreaming();
             setOptimisticMessages([]);
             queryClient.invalidateQueries({
@@ -104167,21 +104174,25 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             if (accessToken) {
               xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
             }
+            var seenIndex = 0;
+            var buffer = '';
+            var isCompleted = false;
+            var accumulatedDelta = '';
+            var currentAssistantMessageId = '';
             if (abortSignal) {
               abortSignal.addEventListener('abort', function () {
-                xhr.abort();
+                try {
+                  xhr.abort();
+                } catch (_unused) {}
                 callbacks.onCancelled == null || callbacks.onCancelled({
-                  messageId: '',
+                  messageId: currentAssistantMessageId,
                   conversationId: conversationId,
-                  partialContent: '',
+                  partialContent: accumulatedDelta,
                   reason: 'Generation cancelled'
                 });
                 resolve();
               });
             }
-            var seenIndex = 0;
-            var buffer = '';
-            var isCompleted = false;
             var processBlock = function processBlock(block) {
               if (!block.trim()) return;
               var blockLines = block.split('\n');
@@ -104199,9 +104210,15 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 var parsed = JSON.parse(dataStr);
                 switch (currentEvent) {
                   case 'message.started':
+                    if (parsed != null && parsed.messageId) {
+                      currentAssistantMessageId = parsed.messageId;
+                    }
                     callbacks.onStarted == null || callbacks.onStarted(parsed);
                     break;
                   case 'message.delta':
+                    if (parsed != null && parsed.delta) {
+                      accumulatedDelta += parsed.delta;
+                    }
                     callbacks.onDelta == null || callbacks.onDelta(parsed);
                     break;
                   case 'message.metadata':
@@ -104225,6 +104242,21 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 console.warn('Failed to parse SSE data block:', dataStr, jsonErr);
               }
             };
+            var flushRemainingBuffer = function flushRemainingBuffer() {
+              var text = xhr.responseText || '';
+              if (text.length > seenIndex) {
+                var chunk = text.slice(seenIndex);
+                seenIndex = text.length;
+                buffer += chunk;
+              }
+              if (buffer.trim()) {
+                var parts = buffer.split('\n\n');
+                for (var part of parts) {
+                  processBlock(part);
+                }
+                buffer = '';
+              }
+            };
             xhr.onprogress = function () {
               var text = xhr.responseText || '';
               var chunk = text.slice(seenIndex);
@@ -104237,38 +104269,71 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               }
             };
             xhr.onload = function () {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                if (buffer.trim()) {
-                  processBlock(buffer);
-                }
+              flushRemainingBuffer();
+              if (isCompleted) {
                 resolve();
-              } else if (!isCompleted) {
-                var errorMessage = `Stream request failed with HTTP ${xhr.status}`;
-                try {
-                  var _errJson$error;
-                  var errJson = JSON.parse(xhr.responseText);
-                  if (errJson != null && (_errJson$error = errJson.error) != null && _errJson$error.message) {
-                    errorMessage = errJson.error.message;
-                  }
-                } catch (_unused) {}
-                callbacks.onFailed == null || callbacks.onFailed({
+                return;
+              }
+              if (accumulatedDelta.trim().length > 0) {
+                isCompleted = true;
+                callbacks.onCompleted == null || callbacks.onCompleted({
+                  messageId: currentAssistantMessageId,
                   conversationId: conversationId,
-                  errorCode: 'HTTP_ERROR',
-                  errorMessage: errorMessage,
-                  retryable: xhr.status >= 500
+                  finalContent: accumulatedDelta,
+                  totalTokens: Math.ceil(accumulatedDelta.length / 4),
+                  status: 'SENT',
+                  timestamp: new Date().toISOString()
                 });
                 resolve();
+                return;
               }
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+                return;
+              }
+              var errorMessage = `Stream request failed with HTTP ${xhr.status}`;
+              try {
+                var _errJson$error;
+                var errJson = JSON.parse(xhr.responseText);
+                if (errJson != null && (_errJson$error = errJson.error) != null && _errJson$error.message) {
+                  errorMessage = errJson.error.message;
+                }
+              } catch (_unused2) {}
+              callbacks.onFailed == null || callbacks.onFailed({
+                conversationId: conversationId,
+                errorCode: 'HTTP_ERROR',
+                errorMessage: errorMessage,
+                retryable: xhr.status >= 500
+              });
+              resolve();
             };
             xhr.onerror = function () {
-              if (!isCompleted) {
-                callbacks.onFailed == null || callbacks.onFailed({
-                  conversationId: conversationId,
-                  errorCode: 'NETWORK_ERROR',
-                  errorMessage: 'Network connection failed during streaming',
-                  retryable: true
-                });
+              flushRemainingBuffer();
+              if (isCompleted) {
+                resolve();
+                return;
               }
+
+              // If content was already received from model, treat socket closure as a successful completion
+              if (accumulatedDelta.trim().length > 0) {
+                isCompleted = true;
+                callbacks.onCompleted == null || callbacks.onCompleted({
+                  messageId: currentAssistantMessageId,
+                  conversationId: conversationId,
+                  finalContent: accumulatedDelta,
+                  totalTokens: Math.ceil(accumulatedDelta.length / 4),
+                  status: 'SENT',
+                  timestamp: new Date().toISOString()
+                });
+                resolve();
+                return;
+              }
+              callbacks.onFailed == null || callbacks.onFailed({
+                conversationId: conversationId,
+                errorCode: 'NETWORK_ERROR',
+                errorMessage: 'Network connection failed during streaming',
+                retryable: true
+              });
               resolve();
             };
             try {
