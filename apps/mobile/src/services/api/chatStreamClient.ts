@@ -63,6 +63,7 @@ export class ChatStreamClient {
 
       let seenIndex = 0;
       let buffer = '';
+      let isCompleted = false;
 
       const processBlock = (block: string) => {
         if (!block.trim()) return;
@@ -93,6 +94,7 @@ export class ChatStreamClient {
               callbacks.onMetadata?.(parsed);
               break;
             case 'message.completed':
+              isCompleted = true;
               callbacks.onCompleted?.(parsed);
               break;
             case 'message.failed':
@@ -130,7 +132,7 @@ export class ChatStreamClient {
             processBlock(buffer);
           }
           resolve();
-        } else {
+        } else if (!isCompleted) {
           let errorMessage = `Stream request failed with HTTP ${xhr.status}`;
           try {
             const errJson = JSON.parse(xhr.responseText);
@@ -150,12 +152,14 @@ export class ChatStreamClient {
       };
 
       xhr.onerror = () => {
-        callbacks.onFailed?.({
-          conversationId,
-          errorCode: 'NETWORK_ERROR',
-          errorMessage: 'Network connection failed during streaming',
-          retryable: true,
-        });
+        if (!isCompleted) {
+          callbacks.onFailed?.({
+            conversationId,
+            errorCode: 'NETWORK_ERROR',
+            errorMessage: 'Network connection failed during streaming',
+            retryable: true,
+          });
+        }
         resolve();
       };
 

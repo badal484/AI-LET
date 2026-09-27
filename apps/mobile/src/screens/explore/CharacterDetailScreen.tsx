@@ -105,6 +105,9 @@ export const CharacterDetailScreen: React.FC = () => {
           characterId: profile.id,
           conversationId: profile.existingConversationId,
           initialPrompt,
+          characterName: profile.name,
+          characterAvatarUrl: profile.avatarUrl,
+          characterSlug: profile.slug,
         });
         return;
       }
@@ -114,11 +117,17 @@ export const CharacterDetailScreen: React.FC = () => {
         characterId: profile.id,
         conversationId: conversation.id,
         initialPrompt,
+        characterName: profile.name,
+        characterAvatarUrl: profile.avatarUrl,
+        characterSlug: profile.slug,
       });
     } catch {
       navigation.navigate('Chat', {
         characterId: profile.id,
         initialPrompt,
+        characterName: profile.name,
+        characterAvatarUrl: profile.avatarUrl,
+        characterSlug: profile.slug,
       });
     }
   };

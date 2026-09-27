@@ -17,6 +17,9 @@ export type RootStackParamList = {
     characterId: string;
     conversationId?: string;
     initialPrompt?: string;
+    characterName?: string;
+    characterAvatarUrl?: string;
+    characterSlug?: string;
   };
   CharacterDetail: {
     characterId: string;

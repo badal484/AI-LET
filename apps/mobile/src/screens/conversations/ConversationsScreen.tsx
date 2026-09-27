@@ -46,6 +46,8 @@ export const ConversationsScreen: React.FC = () => {
     navigation.navigate('Chat', {
       characterId: conversation.character.id,
       conversationId: conversation.id,
+      characterName: conversation.character.name,
+      characterAvatarUrl: conversation.character.avatarUrl,
     });
   };
 

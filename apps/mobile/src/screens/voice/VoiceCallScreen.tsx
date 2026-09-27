@@ -17,6 +17,8 @@ import { RootStackParamList } from '../../navigation/types.js';
 import { VoiceWebSocketClient } from '../../services/voice/VoiceWebSocketClient.js';
 import { VoicePermissions } from '../../services/voice/VoicePermissions.js';
 import { VoiceApi } from '../../services/api/voiceApi.js';
+import { useQuery } from '@tanstack/react-query';
+import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import {
   Avatar,
   IconButton,
@@ -33,6 +35,16 @@ export const VoiceCallScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<VoiceCallRouteProp>();
   const { characterId, conversationId, characterName, characterAvatarUrl } = route.params;
+
+  const { data: profile } = useQuery({
+    queryKey: ['discovery', 'character', characterId],
+    queryFn: () => DiscoveryApi.getCharacterProfile(characterId),
+    enabled: Boolean(characterId && !characterName),
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const effectiveName = characterName || profile?.name || 'Companion';
+  const effectiveAvatarUrl = characterAvatarUrl || profile?.avatarUrl;
 
   const [clientState, setClientState] = useState<VoiceClientState>('CONNECTING');
   const [voiceMode, setVoiceMode] = useState<VoiceMode>('hands_free');
@@ -253,7 +265,7 @@ export const VoiceCallScreen: React.FC = () => {
         />
 
         <View style={styles.headerInfo}>
-          <Text style={styles.characterHeaderName}>{characterName || 'AI Companion'}</Text>
+          <Text style={styles.characterHeaderName}>{effectiveName}</Text>
           <Text style={styles.timerText}>{formatTimer(sessionSeconds)}</Text>
         </View>
 
@@ -277,8 +289,8 @@ export const VoiceCallScreen: React.FC = () => {
           ]}
         >
           <Avatar
-            uri={characterAvatarUrl}
-            name={characterName || 'AI'}
+            uri={effectiveAvatarUrl}
+            name={effectiveName}
             size="huge"
           />
         </Animated.View>
@@ -323,7 +335,7 @@ export const VoiceCallScreen: React.FC = () => {
             ) : null}
             {aiTranscript ? (
               <Text style={styles.aiSubtitleText}>
-                <Text style={styles.subtitleSpeaker}>{characterName || 'Companion'}: </Text>
+                <Text style={styles.subtitleSpeaker}>{effectiveName}: </Text>
                 {aiTranscript}
               </Text>
             ) : null}

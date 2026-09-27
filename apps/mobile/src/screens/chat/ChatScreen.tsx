@@ -22,6 +22,7 @@ import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-quer
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../navigation/types.js';
 import { ConversationApi } from '../../services/api/conversationApi.js';
+import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import { ChatStreamClient } from '../../services/api/chatStreamClient.js';
 import { feedbackApi } from '../../services/api/feedbackApi.js';
 import { RelationshipApi } from '../../services/api/relationshipApi.js';
@@ -63,7 +64,14 @@ const REPORT_REASONS: Array<{ key: CharacterReportCreateInput['reasonCode']; lab
 export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { characterId, conversationId: initialConversationId, initialPrompt } = route.params;
+  const {
+    characterId,
+    conversationId: initialConversationId,
+    initialPrompt,
+    characterName: routeCharacterName,
+    characterAvatarUrl: routeCharacterAvatarUrl,
+    characterSlug: routeCharacterSlug,
+  } = route.params;
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(
     initialConversationId || null,
@@ -130,6 +138,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     };
   }, []);
 
+  // 0. Fetch Character Profile (fallback for instant header rendering)
+  const { data: characterProfile } = useQuery({
+    queryKey: ['discovery', 'character', characterId],
+    queryFn: () => DiscoveryApi.getCharacterProfile(characterId),
+    enabled: Boolean(characterId),
+    staleTime: 1000 * 60 * 10,
+  });
+
   // 1. Resolve or Create Conversation
   const { data: conversation, isLoading: isConvLoading } = useQuery({
     queryKey: ['conversation', activeConversationId || characterId],
@@ -144,7 +160,40 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   });
 
   const effectiveConvId = conversation?.id || activeConversationId;
-  const companionFirstName = conversation?.character?.name?.split(' ')[0] || 'Companion';
+
+  const characterName =
+    conversation?.character?.name ||
+    routeCharacterName ||
+    characterProfile?.name ||
+    'Ritika Sharma';
+
+  const characterAvatarUrl =
+    conversation?.character?.avatarUrl ||
+    routeCharacterAvatarUrl ||
+    characterProfile?.avatarUrl;
+
+  const characterCoverUrl =
+    conversation?.character?.coverImageUrl ||
+    characterProfile?.coverImageUrl ||
+    characterAvatarUrl;
+
+  const characterTagline =
+    conversation?.character?.tagline ||
+    characterProfile?.tagline ||
+    'Ready to converse. Choose a starter below or ask anything.';
+
+  const characterEffectiveId: string =
+    characterId ||
+    conversation?.character?.id ||
+    characterProfile?.id ||
+    '';
+
+  const characterEffectiveSlug =
+    routeCharacterSlug ||
+    conversation?.character?.slug ||
+    characterProfile?.slug;
+
+  const companionFirstName = characterName.split(' ')[0] || 'Companion';
 
   // 2. Fetch Live Relationship State
   const { data: relationshipData, refetch: refetchRelationship } = useQuery({
@@ -448,7 +497,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     setIsMenuVisible(false);
     Alert.alert(
       'Reset Relationship',
-      `Are you sure you want to reset your relationship history with ${conversation?.character?.name || 'this character'} back to baseline?`,
+      `Are you sure you want to reset your relationship history with ${characterName} back to baseline?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -456,7 +505,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           style: 'destructive',
           onPress: async () => {
             try {
-              await RelationshipApi.resetRelationship(characterId);
+              await RelationshipApi.resetRelationship(characterEffectiveId);
               refetchRelationship();
               ToastService.show({ message: 'Relationship reset to baseline.', type: 'info', duration: 2500 });
             } catch {
@@ -492,8 +541,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     return (
       <MessageBubble
         message={item}
-        characterAvatarUrl={conversation?.character.avatarUrl}
-        characterName={conversation?.character.name}
+        characterAvatarUrl={characterAvatarUrl}
+        characterName={characterName}
         isStreaming={isStreamingItem}
         revealedParagraphs={delivery?.revealedParagraphs}
         isTypingNext={delivery?.isTypingNext}
@@ -526,16 +575,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     return (
       <View style={styles.emptyContainer}>
         <Avatar
-          uri={conversation?.character.avatarUrl}
-          name={conversation?.character.name || 'AI'}
+          uri={characterAvatarUrl}
+          name={characterName}
           size="xl"
           style={styles.emptyAvatar}
         />
-        <Text style={styles.emptyTitle}>{conversation?.character.name}</Text>
-        <Text style={styles.emptyBio}>
-          {conversation?.character.tagline ||
-            'Ready to converse. Choose a starter below or ask anything.'}
-        </Text>
+        <Text style={styles.emptyTitle}>{characterName}</Text>
+        <Text style={styles.emptyBio}>{characterTagline}</Text>
 
         <View style={styles.startersContainer}>
           <Text style={styles.startersHeader}>Suggested Starters</Text>
@@ -576,8 +622,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     <ImageBackground
       source={{
         uri:
-          conversation?.character.coverImageUrl ||
-          conversation?.character.avatarUrl ||
+          characterCoverUrl ||
           'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1200&q=80',
       }}
       style={styles.backgroundImage}
@@ -616,24 +661,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             style={styles.headerTitleContainer}
             activeOpacity={0.85}
             onPress={() => {
-              if (conversation?.character) {
+              if (characterEffectiveId) {
                 navigation.navigate('CharacterDetail', {
-                  characterId: conversation.character.id,
+                  characterId: characterEffectiveId,
+                  characterSlug: characterEffectiveSlug,
                 });
               }
             }}
           >
             <View style={styles.avatarWrapper}>
               <Avatar
-                uri={conversation?.character.avatarUrl}
-                name={conversation?.character.name || 'AI'}
+                uri={characterAvatarUrl}
+                name={characterName}
                 size="sm"
               />
               <View style={styles.onlineBadge} />
             </View>
             <View style={styles.headerTextCol}>
               <Text style={styles.headerName} numberOfLines={1}>
-                {conversation?.character.name || 'AI Companion'}
+                {characterName}
               </Text>
               <View style={styles.statusRow}>
                 <Text style={styles.headerStatus}>
@@ -654,10 +700,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               style={styles.callButton}
               onPress={() => {
                 navigation.navigate('VoiceCall', {
-                  characterId,
+                  characterId: characterEffectiveId,
                   conversationId: activeConversationId || undefined,
-                  characterName: conversation?.character.name,
-                  characterAvatarUrl: conversation?.character.avatarUrl,
+                  characterName: characterName,
+                  characterAvatarUrl: characterAvatarUrl,
                 });
               }}
               activeOpacity={0.7}
@@ -886,8 +932,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 style={styles.menuItem}
                 onPress={() => {
                   setIsMenuVisible(false);
-                  if (conversation?.character) {
-                    navigation.navigate('CharacterDetail', { characterId: conversation.character.id });
+                  if (characterEffectiveId) {
+                    navigation.navigate('CharacterDetail', {
+                      characterId: characterEffectiveId,
+                      characterSlug: characterEffectiveSlug,
+                    });
                   }
                 }}
               >
@@ -899,10 +948,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 onPress={() => {
                   setIsMenuVisible(false);
                   navigation.navigate('VoiceCall', {
-                    characterId,
+                    characterId: characterEffectiveId,
                     conversationId: activeConversationId || undefined,
-                    characterName: conversation?.character.name,
-                    characterAvatarUrl: conversation?.character.avatarUrl,
+                    characterName: characterName,
+                    characterAvatarUrl: characterAvatarUrl,
                   });
                 }}
               >

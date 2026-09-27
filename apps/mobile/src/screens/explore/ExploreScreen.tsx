@@ -32,7 +32,11 @@ export const ExploreScreen: React.FC = () => {
   });
 
   const handleStartChat = (character: CharacterSummary) => {
-    navigation.navigate('Chat', { characterId: character.id });
+    navigation.navigate('Chat', {
+      characterId: character.id,
+      characterName: character.name,
+      characterAvatarUrl: character.avatarUrl,
+    });
   };
 
   const renderCharacterCard = ({ item }: { item: CharacterSummary }) => {
