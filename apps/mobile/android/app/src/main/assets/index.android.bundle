@@ -47660,27 +47660,6 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               if ((_error$response4 = error.response) != null && (_error$response4 = _error$response4.data) != null && _error$response4.error) {
                 return Promise.reject(error.response.data.error);
               }
-
-              // Network Error fallback (e.g. Android emulator vs localhost)
-              var isDev = Boolean(false);
-              if (!error.response && !originalRequest._networkRetried && isDev) {
-                var _ApiClient$instance2;
-                originalRequest._networkRetried = true;
-                var currentBase = ((_ApiClient$instance2 = ApiClient.instance) == null ? undefined : _ApiClient$instance2.defaults.baseURL) || _$$_REQUIRE(_dependencyMap[1]).API_BASE_URL;
-                var altBase = '';
-                if (currentBase.includes('10.0.2.2')) {
-                  altBase = currentBase.replace('10.0.2.2', 'localhost');
-                } else if (currentBase.includes('localhost') || currentBase.includes('127.0.0.1')) {
-                  altBase = currentBase.replace(/localhost|127\.0\.0\.1/, '10.0.2.2');
-                }
-                if (altBase && altBase !== currentBase) {
-                  if (ApiClient.instance) {
-                    ApiClient.instance.defaults.baseURL = altBase;
-                  }
-                  originalRequest.baseURL = altBase;
-                  return ApiClient.getInstance()(originalRequest);
-                }
-              }
               var fallbackError = {
                 code: 'NETWORK_ERROR',
                 message: error.message || 'Unable to connect to server. Please check your connection.',
@@ -103218,7 +103197,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             size: 16,
             color: "#FFFFFF"
           })
-        }), streamError && /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Banner, {
+        }), streamError && (!allMessages[0] || allMessages[0].role !== 'assistant' || allMessages[0].status === 'FAILED') && /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Banner, {
           type: "error",
           message: streamError,
           actionLabel: "Retry",

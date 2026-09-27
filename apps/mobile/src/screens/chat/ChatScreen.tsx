@@ -798,7 +798,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         )}
 
         {/* Stream Error Banner */}
-        {streamError && (
+        {streamError && (!allMessages[0] || allMessages[0].role !== 'assistant' || allMessages[0].status === 'FAILED') && (
           <Banner
             type="error"
             message={streamError}
@@ -811,6 +811,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             onDismiss={() => useChatStreamStore.setState({ error: null })}
           />
         )}
+
 
         {/* Bottom Composer Footer */}
         <View
