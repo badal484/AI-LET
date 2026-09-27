@@ -312,8 +312,8 @@ async function main() {
           entityKey: 'current_activity',
           entityType: 'LOCATION',
           stateValue: {
-            currentStatus: routines[0].name,
-            location: (routines[0].constraints as any)?.location || 'Home / Studio',
+            currentStatus: routines[0]?.name || 'Resting',
+            location: (routines[0]?.constraints as any)?.location || 'Home / Studio',
             updatedAt: new Date().toISOString(),
           },
           version: 1,
@@ -321,8 +321,8 @@ async function main() {
         update: {
           characterVersionId: char.currentPublishedVersionId,
           stateValue: {
-            currentStatus: routines[0].name,
-            location: (routines[0].constraints as any)?.location || 'Home / Studio',
+            currentStatus: routines[0]?.name || 'Resting',
+            location: (routines[0]?.constraints as any)?.location || 'Home / Studio',
             updatedAt: new Date().toISOString(),
           },
         },

@@ -71,7 +71,7 @@ async function main() {
 
   // Test 2: Multi-turn continuation with Aanya
   console.log('--- TEST 2: Multi-Turn Continuation with Aanya Mehta ---');
-  const history2 = [
+  const history2: Array<{ role: 'user' | 'assistant'; content: string }> = [
     ...history1,
     { role: 'user', content: 'Sex karke' },
     { role: 'assistant', content: reply1.trim() },
