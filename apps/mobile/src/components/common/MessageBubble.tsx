@@ -20,7 +20,8 @@ export interface MessageBubbleProps {
   isStreaming?: boolean;
   revealedParagraphs?: string[];
   isTypingNext?: boolean;
-  onRetry?: (content: string) => void;
+  /** Second argument: the bubble's message, so a failed reply can be regenerated in place. */
+  onRetry?: (content: string, message?: ChatMessageItem) => void;
   onFeedback?: (messageId: string, rating: 'positive' | 'negative') => void;
   onSelectMedia?: (mediaUrl: string) => void;
 }
@@ -171,7 +172,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 {isFailed && pIdx === arr.length - 1 && (
                   <TouchableOpacity
                     style={styles.retryButton}
-                    onPress={() => onRetry?.(message.content)}
+                    onPress={() => onRetry?.(message.content, message)}
                     accessibilityLabel="Retry sending message"
                   >
                     <Text style={styles.retryText}>Retry Sending</Text>
@@ -247,7 +248,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <TouchableOpacity
                 style={styles.actionItem}
                 onPress={() => {
-                  onRetry(message.content);
+                  onRetry(message.content, message);
                   setShowActions(false);
                 }}
               >

@@ -77083,7 +77083,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               }), isFailed && pIdx === arr.length - 1 && /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
                 style: styles.retryButton,
                 onPress: function onPress() {
-                  return onRetry == null ? undefined : onRetry(message.content);
+                  return onRetry == null ? undefined : onRetry(message.content, message);
                 },
                 accessibilityLabel: "Retry sending message",
                 children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
@@ -77161,7 +77161,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           }), isFailed && onRetry && /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.TouchableOpacity, {
             style: styles.actionItem,
             onPress: function onPress() {
-              onRetry(message.content);
+              onRetry(message.content, message);
               setShowActions(false);
             },
             children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[8]).Icon, {
@@ -102419,34 +102419,39 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       _useState6 = (0, _slicedToArray2.default)(_useState5, 2),
       optimisticMessages = _useState6[0],
       setOptimisticMessages = _useState6[1];
-    var _useState7 = (0, _react.useState)(false),
+    // Failed reply currently being regenerated (hidden while its replacement streams in).
+    var _useState7 = (0, _react.useState)(null),
       _useState8 = (0, _slicedToArray2.default)(_useState7, 2),
-      isScrolledUp = _useState8[0],
-      setIsScrolledUp = _useState8[1];
+      retryingMessageId = _useState8[0],
+      setRetryingMessageId = _useState8[1];
     var _useState9 = (0, _react.useState)(false),
       _useState0 = (0, _slicedToArray2.default)(_useState9, 2),
-      isGiftModalVisible = _useState0[0],
-      setIsGiftModalVisible = _useState0[1];
+      isScrolledUp = _useState0[0],
+      setIsScrolledUp = _useState0[1];
     var _useState1 = (0, _react.useState)(false),
       _useState10 = (0, _slicedToArray2.default)(_useState1, 2),
-      isMenuVisible = _useState10[0],
-      setIsMenuVisible = _useState10[1];
+      isGiftModalVisible = _useState10[0],
+      setIsGiftModalVisible = _useState10[1];
     var _useState11 = (0, _react.useState)(false),
       _useState12 = (0, _slicedToArray2.default)(_useState11, 2),
-      isReportModalVisible = _useState12[0],
-      setIsReportModalVisible = _useState12[1];
-    var _useState13 = (0, _react.useState)('HARASSMENT'),
+      isMenuVisible = _useState12[0],
+      setIsMenuVisible = _useState12[1];
+    var _useState13 = (0, _react.useState)(false),
       _useState14 = (0, _slicedToArray2.default)(_useState13, 2),
-      reportReason = _useState14[0],
-      setReportReason = _useState14[1];
-    var _useState15 = (0, _react.useState)(''),
+      isReportModalVisible = _useState14[0],
+      setIsReportModalVisible = _useState14[1];
+    var _useState15 = (0, _react.useState)('HARASSMENT'),
       _useState16 = (0, _slicedToArray2.default)(_useState15, 2),
-      reportNotes = _useState16[0],
-      setReportNotes = _useState16[1];
-    var _useState17 = (0, _react.useState)(0),
+      reportReason = _useState16[0],
+      setReportReason = _useState16[1];
+    var _useState17 = (0, _react.useState)(''),
       _useState18 = (0, _slicedToArray2.default)(_useState17, 2),
-      keyboardHeight = _useState18[0],
-      setKeyboardHeight = _useState18[1];
+      reportNotes = _useState18[0],
+      setReportNotes = _useState18[1];
+    var _useState19 = (0, _react.useState)(0),
+      _useState20 = (0, _slicedToArray2.default)(_useState19, 2),
+      keyboardHeight = _useState20[0],
+      setKeyboardHeight = _useState20[1];
     var flatListRef = (0, _react.useRef)(null);
     (0, _react.useEffect)(function () {
       var showEvent = _reactNative.Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -102479,10 +102484,10 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       finishStreaming = _useChatStreamStore.finishStreaming,
       setStreamError = _useChatStreamStore.setError,
       streamError = _useChatStreamStore.error;
-    var _useState19 = (0, _react.useState)({}),
-      _useState20 = (0, _slicedToArray2.default)(_useState19, 2),
-      deliveringMap = _useState20[0],
-      setDeliveringMap = _useState20[1];
+    var _useState21 = (0, _react.useState)({}),
+      _useState22 = (0, _slicedToArray2.default)(_useState21, 2),
+      deliveringMap = _useState22[0],
+      setDeliveringMap = _useState22[1];
     var deliveryTimersRef = (0, _react.useRef)([]);
     var clearDeliveryTimers = function clearDeliveryTimers() {
       deliveryTimersRef.current.forEach(function (t) {
@@ -102493,6 +102498,11 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     (0, _react.useEffect)(function () {
       return function () {
         clearDeliveryTimers();
+        // Leaving mid-reply must not leave the shared "streaming" flag set, or every chat's send
+        // button stays frozen. The server keeps generating and saves the reply for when we return.
+        if (_$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.getState().isStreaming) {
+          _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.getState().finishStreaming();
+        }
       };
     }, []);
 
@@ -102591,7 +102601,9 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
     var pendingOptimistic = optimisticMessages.filter(function (m) {
       return !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId);
     });
-    var allMessages = [].concat((0, _toConsumableArray2.default)(pendingOptimistic), (0, _toConsumableArray2.default)(serverMessages));
+    var allMessages = [].concat((0, _toConsumableArray2.default)(pendingOptimistic), (0, _toConsumableArray2.default)(serverMessages.filter(function (m) {
+      return m.id !== retryingMessageId;
+    })));
 
     // 5. Scroll Management
     var handleScroll = function handleScroll(e) {
@@ -102606,19 +102618,64 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         });
       }
     }, [isScrolledUp]);
-    var isAnyDelivering = isStreaming || Object.keys(deliveringMap).length > 0;
+
+    // The stream store is app-wide: only a stream for *this* conversation may lock this composer.
+    var streamingConversationId = (0, _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore)(function (st) {
+      return st.activeConversationId;
+    });
+    var isStreamingHere = isStreaming && (!streamingConversationId || streamingConversationId === effectiveConvId);
+    var isAnyDelivering = isStreamingHere || Object.keys(deliveringMap).length > 0;
     (0, _react.useEffect)(function () {
       if (isAnyDelivering) {
         scrollToBottom();
       }
     }, [accumulatedDelta, isAnyDelivering, scrollToBottom]);
 
+    // Watchdog: a reply that never resolves (dropped connection, app backgrounded, server restart)
+    // must not lock the chat. After 75s, drop the local "typing" state and show the server's truth.
+    (0, _react.useEffect)(function () {
+      if (!isAnyDelivering) return;
+      var t = setTimeout(function () {
+        clearDeliveryTimers();
+        setDeliveringMap({});
+        setOptimisticMessages([]);
+        setRetryingMessageId(null);
+        if (_$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.getState().isStreaming) finishStreaming();
+        queryClient.invalidateQueries({
+          queryKey: ['messages', effectiveConvId]
+        });
+      }, 75000);
+      return function () {
+        return clearTimeout(t);
+      };
+    }, [isAnyDelivering, effectiveConvId]);
+
     // 6. Send Message Handler
     var handleSendMessage = /*#__PURE__*/function () {
-      var _ref3 = (0, _asyncToGenerator2.default)(function* (textToSend) {
+      var _ref3 = (0, _asyncToGenerator2.default)(function* (textToSend, retryMessageId) {
         var _allMessages$, _allMessages$2;
         var content = (textToSend || inputText).trim();
-        if (!content || !effectiveConvId || isAnyDelivering) return;
+        if (!content || !effectiveConvId) return;
+        if (isAnyDelivering) {
+          if (isStreamingHere) {
+            // The server is still writing the previous reply (it accepts one at a time): say so,
+            // keep the typed text, instead of silently ignoring the tap.
+            _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
+              message: `${characterName} is still replying… one moment`,
+              type: 'info',
+              duration: 1800
+            });
+            return;
+          }
+          // Only the bubble reveal animation is running: finish it instantly and send.
+          clearDeliveryTimers();
+          setDeliveringMap({});
+          setOptimisticMessages([]);
+          setRetryingMessageId(null);
+          queryClient.invalidateQueries({
+            queryKey: ['messages', effectiveConvId]
+          });
+        }
         if (!textToSend) {
           setInputText('');
         }
@@ -102653,7 +102710,8 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         };
 
         // Inverted list: index 0 is assistant (bottom), index 1 is user (above assistant)
-        setOptimisticMessages([tempAssistantMessage, tempUserMessage]);
+        setOptimisticMessages(retryMessageId ? [tempAssistantMessage] : [tempAssistantMessage, tempUserMessage]);
+        setRetryingMessageId(retryMessageId != null ? retryMessageId : null);
         setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
           revealedParagraphs: [],
           isTypingNext: true
@@ -102663,83 +102721,76 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
         var abortController = new AbortController();
         startStreaming(effectiveConvId, tempAssistantId, abortController);
         var accumulatedText = '';
-        yield _$$_REQUIRE(_dependencyMap[15]).ChatStreamClient.streamMessage(effectiveConvId, content, clientRequestId, {
-          onStarted: function onStarted(payload) {
-            setStreamError(null);
-            if (payload.messageId) {
-              _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.setState({
-                streamingMessageId: payload.messageId
-              });
-            }
-          },
-          onDelta: function onDelta(payload) {
-            setStreamError(null);
-            accumulatedText += payload.delta;
-            appendDelta(payload.delta);
-          },
-          onCompleted: function onCompleted(payload) {
-            setStreamError(null);
-            var finalContent = (payload == null ? undefined : payload.finalContent) || accumulatedText || _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.getState().accumulatedDelta || '';
-            var paragraphs = finalContent.split(/\n\s*\n|\n/).map(function (s) {
-              return s.trim();
-            }).filter(Boolean);
-            var safeParagraphs = paragraphs.length > 0 ? paragraphs : [finalContent.trim() || '...'];
-            var finalizeDelivery = /*#__PURE__*/function () {
-              var _ref4 = (0, _asyncToGenerator2.default)(function* () {
-                finishStreaming();
-                setStreamError(null);
-                refetchRelationship();
-                queryClient.invalidateQueries({
-                  queryKey: ['conversations']
+        // The server emits message.started only after it has stored the user's message.
+        var serverStoredMessage = false;
+        var failSend = function failSend(message) {
+          if (!accumulatedText.trim()) {
+            setStreamError(message);
+          }
+          // Rejected before it was stored (blocked, rate-limited, offline): give the text back so the
+          // message is never silently lost.
+          if (!serverStoredMessage && !textToSend) {
+            setInputText(function (prev) {
+              return prev.trim() ? prev : content;
+            });
+          }
+          clearDeliveryTimers();
+          setDeliveringMap({});
+          finishStreaming();
+          setOptimisticMessages([]);
+          setRetryingMessageId(null);
+          queryClient.invalidateQueries({
+            queryKey: ['messages', effectiveConvId]
+          });
+        };
+        try {
+          yield _$$_REQUIRE(_dependencyMap[16]).ChatStreamClient.streamMessage(effectiveConvId, content, clientRequestId, {
+            onStarted: function onStarted(payload) {
+              serverStoredMessage = true;
+              setStreamError(null);
+              if (payload.messageId) {
+                _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.setState({
+                  streamingMessageId: payload.messageId
                 });
-                try {
-                  yield queryClient.refetchQueries({
-                    queryKey: ['messages', effectiveConvId]
+              }
+            },
+            onDelta: function onDelta(payload) {
+              setStreamError(null);
+              accumulatedText += payload.delta;
+              appendDelta(payload.delta);
+            },
+            onCompleted: function onCompleted(payload) {
+              setStreamError(null);
+              var finalContent = (payload == null ? undefined : payload.finalContent) || accumulatedText || _$$_REQUIRE(_dependencyMap[10]).useChatStreamStore.getState().accumulatedDelta || '';
+              var paragraphs = finalContent.split(/\n\s*\n|\n/).map(function (s) {
+                return s.trim();
+              }).filter(Boolean);
+              var safeParagraphs = paragraphs.length > 0 ? paragraphs : [finalContent.trim() || '...'];
+              var finalizeDelivery = /*#__PURE__*/function () {
+                var _ref4 = (0, _asyncToGenerator2.default)(function* () {
+                  finishStreaming();
+                  setStreamError(null);
+                  refetchRelationship();
+                  queryClient.invalidateQueries({
+                    queryKey: ['conversations']
                   });
-                } catch (err) {
-                  console.warn('Failed to refetch messages after generation:', err);
-                }
-                setDeliveringMap({});
-                setOptimisticMessages([]);
-              });
-              return function finalizeDelivery() {
-                return _ref4.apply(this, arguments);
-              };
-            }();
-            if (safeParagraphs.length === 1) {
-              // Single bubble: reveal it immediately
-              setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
-                revealedParagraphs: safeParagraphs,
-                isTypingNext: false
-              }));
-              setOptimisticMessages(function (prev) {
-                return prev.map(function (m) {
-                  return m.id === tempAssistantId ? Object.assign({}, m, {
-                    content: safeParagraphs[0],
-                    status: 'SENT'
-                  }) : m;
+                  try {
+                    yield queryClient.refetchQueries({
+                      queryKey: ['messages', effectiveConvId]
+                    });
+                  } catch (err) {
+                    console.warn('Failed to refetch messages after generation:', err);
+                  }
+                  setDeliveringMap({});
+                  setOptimisticMessages([]);
+                  setRetryingMessageId(null);
                 });
-              });
-              scrollToBottom();
-              var t = setTimeout(function () {
-                finalizeDelivery();
-              }, 300);
-              deliveryTimersRef.current.push(t);
-            } else if (safeParagraphs.length === 2) {
-              // Bubble 1 -> typing dots below -> Bubble 2
-              setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
-                revealedParagraphs: [safeParagraphs[0]],
-                isTypingNext: true
-              }));
-              setOptimisticMessages(function (prev) {
-                return prev.map(function (m) {
-                  return m.id === tempAssistantId ? Object.assign({}, m, {
-                    content: safeParagraphs[0]
-                  }) : m;
-                });
-              });
-              scrollToBottom();
-              var t1 = setTimeout(function () {
+                return function finalizeDelivery() {
+                  return _ref4.apply(this, arguments);
+                };
+              }();
+              if (safeParagraphs.length === 1) {
+                // Single bubble: reveal it immediately
                 setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
                   revealedParagraphs: safeParagraphs,
                   isTypingNext: false
@@ -102747,46 +102798,31 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 setOptimisticMessages(function (prev) {
                   return prev.map(function (m) {
                     return m.id === tempAssistantId ? Object.assign({}, m, {
-                      content: safeParagraphs.join('\n'),
+                      content: safeParagraphs[0],
                       status: 'SENT'
                     }) : m;
                   });
                 });
                 scrollToBottom();
-                var t2 = setTimeout(function () {
+                var t = setTimeout(function () {
                   finalizeDelivery();
                 }, 300);
-                deliveryTimersRef.current.push(t2);
-              }, 1200);
-              deliveryTimersRef.current.push(t1);
-            } else {
-              // 3 Bubbles: Bubble 1 -> typing dots -> Bubble 2 -> typing dots -> Bubble 3
-              setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
-                revealedParagraphs: [safeParagraphs[0]],
-                isTypingNext: true
-              }));
-              setOptimisticMessages(function (prev) {
-                return prev.map(function (m) {
-                  return m.id === tempAssistantId ? Object.assign({}, m, {
-                    content: safeParagraphs[0]
-                  }) : m;
-                });
-              });
-              scrollToBottom();
-              var _t = setTimeout(function () {
+                deliveryTimersRef.current.push(t);
+              } else if (safeParagraphs.length === 2) {
+                // Bubble 1 -> typing dots below -> Bubble 2
                 setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
-                  revealedParagraphs: [safeParagraphs[0], safeParagraphs[1]],
+                  revealedParagraphs: [safeParagraphs[0]],
                   isTypingNext: true
                 }));
                 setOptimisticMessages(function (prev) {
                   return prev.map(function (m) {
                     return m.id === tempAssistantId ? Object.assign({}, m, {
-                      content: `${safeParagraphs[0]}\n${safeParagraphs[1]}`
+                      content: safeParagraphs[0]
                     }) : m;
                   });
                 });
                 scrollToBottom();
-                var t2 = setTimeout(function () {
+                var t1 = setTimeout(function () {
                   setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
                     revealedParagraphs: safeParagraphs,
                     isTypingNext: false
@@ -102800,50 +102836,97 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                     });
                   });
                   scrollToBottom();
-                  var t3 = setTimeout(function () {
+                  var t2 = setTimeout(function () {
                     finalizeDelivery();
                   }, 300);
-                  deliveryTimersRef.current.push(t3);
+                  deliveryTimersRef.current.push(t2);
                 }, 1200);
-                deliveryTimersRef.current.push(t2);
-              }, 1200);
-              deliveryTimersRef.current.push(_t);
+                deliveryTimersRef.current.push(t1);
+              } else {
+                // 3 Bubbles: Bubble 1 -> typing dots -> Bubble 2 -> typing dots -> Bubble 3
+                setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
+                  revealedParagraphs: [safeParagraphs[0]],
+                  isTypingNext: true
+                }));
+                setOptimisticMessages(function (prev) {
+                  return prev.map(function (m) {
+                    return m.id === tempAssistantId ? Object.assign({}, m, {
+                      content: safeParagraphs[0]
+                    }) : m;
+                  });
+                });
+                scrollToBottom();
+                var _t = setTimeout(function () {
+                  setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
+                    revealedParagraphs: [safeParagraphs[0], safeParagraphs[1]],
+                    isTypingNext: true
+                  }));
+                  setOptimisticMessages(function (prev) {
+                    return prev.map(function (m) {
+                      return m.id === tempAssistantId ? Object.assign({}, m, {
+                        content: `${safeParagraphs[0]}\n${safeParagraphs[1]}`
+                      }) : m;
+                    });
+                  });
+                  scrollToBottom();
+                  var t2 = setTimeout(function () {
+                    setDeliveringMap((0, _defineProperty2.default)({}, tempAssistantId, {
+                      revealedParagraphs: safeParagraphs,
+                      isTypingNext: false
+                    }));
+                    setOptimisticMessages(function (prev) {
+                      return prev.map(function (m) {
+                        return m.id === tempAssistantId ? Object.assign({}, m, {
+                          content: safeParagraphs.join('\n'),
+                          status: 'SENT'
+                        }) : m;
+                      });
+                    });
+                    scrollToBottom();
+                    var t3 = setTimeout(function () {
+                      finalizeDelivery();
+                    }, 300);
+                    deliveryTimersRef.current.push(t3);
+                  }, 1200);
+                  deliveryTimersRef.current.push(t2);
+                }, 1200);
+                deliveryTimersRef.current.push(_t);
+              }
+            },
+            onFailed: function onFailed(payload) {
+              failSend(payload.errorMessage);
+            },
+            onCancelled: function onCancelled() {
+              clearDeliveryTimers();
+              setDeliveringMap({});
+              finishStreaming();
+              setOptimisticMessages([]);
+              setRetryingMessageId(null);
+              queryClient.invalidateQueries({
+                queryKey: ['messages', effectiveConvId]
+              });
             }
-          },
-          onFailed: function onFailed(payload) {
-            if (!accumulatedText.trim()) {
-              setStreamError(payload.errorMessage);
-            }
-            clearDeliveryTimers();
-            setDeliveringMap({});
-            finishStreaming();
-            setOptimisticMessages([]);
-            queryClient.invalidateQueries({
-              queryKey: ['messages', effectiveConvId]
-            });
-          },
-          onCancelled: function onCancelled() {
-            clearDeliveryTimers();
-            setDeliveringMap({});
-            finishStreaming();
-            setOptimisticMessages([]);
-            queryClient.invalidateQueries({
-              queryKey: ['messages', effectiveConvId]
-            });
-          }
-        }, abortController.signal);
+          }, abortController.signal, retryMessageId);
+        } catch (err) {
+          failSend((err == null ? undefined : err.message) || 'Message could not be sent. Please try again.');
+        }
       });
-      return function handleSendMessage(_x) {
+      return function handleSendMessage(_x, _x2) {
         return _ref3.apply(this, arguments);
       };
     }();
-    var handleRetry = function handleRetry(content) {
+    var handleRetry = function handleRetry(content, message) {
+      // A failed *reply* is regenerated in place; only a user's own unsent message is re-sent.
+      if (message && message.role === 'assistant') {
+        handleSendMessage(content, message.id);
+        return;
+      }
       handleSendMessage(content);
     };
-    var _useState21 = (0, _react.useState)(null),
-      _useState22 = (0, _slicedToArray2.default)(_useState21, 2),
-      feedbackTarget = _useState22[0],
-      setFeedbackTarget = _useState22[1];
+    var _useState23 = (0, _react.useState)(null),
+      _useState24 = (0, _slicedToArray2.default)(_useState23, 2),
+      feedbackTarget = _useState24[0],
+      setFeedbackTarget = _useState24[1];
     var handleFeedback = /*#__PURE__*/function () {
       var _ref5 = (0, _asyncToGenerator2.default)(function* (messageId, rating) {
         if (!activeConversationId) return;
@@ -102855,30 +102938,30 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           return;
         }
         try {
-          yield _$$_REQUIRE(_dependencyMap[16]).feedbackApi.submitMessageFeedback(activeConversationId, messageId, {
+          yield _$$_REQUIRE(_dependencyMap[17]).feedbackApi.submitMessageFeedback(activeConversationId, messageId, {
             rating: 'THUMBS_UP'
           });
-          _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+          _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
             message: 'Thank you for your feedback!',
             type: 'success',
             duration: 2000
           });
         } catch (_unused) {
-          _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+          _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
             message: 'Could not send feedback. Please try again.',
             type: 'error',
             duration: 2500
           });
         }
       });
-      return function handleFeedback(_x2, _x3) {
+      return function handleFeedback(_x3, _x4) {
         return _ref5.apply(this, arguments);
       };
     }();
     var handleSendGift = function handleSendGift(gift) {
       setIsGiftModalVisible(false);
       handleSendMessage(gift.prompt);
-      _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+      _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
         message: `Sent ${gift.name}! +${Math.round(gift.coins / 5)} Intimacy points`,
         type: 'success',
         duration: 2500
@@ -102899,13 +102982,13 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             try {
               yield _$$_REQUIRE(_dependencyMap[13]).RelationshipApi.resetRelationship(characterEffectiveId);
               refetchRelationship();
-              _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+              _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
                 message: 'Relationship reset to baseline.',
                 type: 'info',
                 duration: 2500
               });
             } catch (_unused2) {
-              _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+              _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
                 message: 'Failed to reset relationship.',
                 type: 'error',
                 duration: 2500
@@ -102928,13 +103011,13 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             reasonCode: reportReason,
             details: reportNotes.trim().length >= 10 ? reportNotes.trim() : `User reported character for ${reportReason} from chat screen`
           });
-          _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+          _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
             message: 'Report submitted. Our safety team will review it.',
             type: 'success',
             duration: 3000
           });
         } catch (_unused3) {
-          _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+          _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
             message: 'Could not submit report.',
             type: 'error',
             duration: 2500
@@ -102949,7 +103032,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       var item = _ref7.item;
       var delivery = deliveringMap[item.id];
       var isStreamingItem = item.status === 'STREAMING' || Boolean(delivery == null ? undefined : delivery.isTypingNext);
-      return /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).MessageBubble, {
+      return /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).MessageBubble, {
         message: item,
         characterAvatarUrl: characterAvatarUrl,
         characterName: characterName,
@@ -102963,13 +103046,26 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
 
     // Header "Today" pill at the top of the chat (ListFooterComponent in inverted list)
     var renderListHeader = function renderListHeader() {
+      // Inverted list: the last item is the oldest loaded message, which this pill sits above.
+      var oldest = allMessages[allMessages.length - 1];
+      if (!(oldest != null && oldest.createdAt)) return null;
+      var d = new Date(oldest.createdAt);
+      var startOfDay = function startOfDay(x) {
+        return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+      };
+      var days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+      var label = days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : d.toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: days > 300 ? 'numeric' : undefined
+      });
       return /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
         style: styles.todayPillContainer,
         children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.View, {
           style: styles.todayPill,
           children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.Text, {
             style: styles.todayPillText,
-            children: "Today"
+            children: label
           })
         })
       });
@@ -102979,7 +103075,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       var starters = ['Hello! Kaise ho?', 'Tell me something interesting about you!', 'I had a long day, tell me a comforting thought.'];
       return /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
         style: styles.emptyContainer,
-        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Avatar, {
+        children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Avatar, {
           uri: characterAvatarUrl,
           name: characterName,
           size: "xl",
@@ -103043,7 +103139,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               right: 12
             },
             activeOpacity: 0.7,
-            children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Icon, {
+            children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Icon, {
               name: "arrow-left",
               size: 22,
               color: "#FFFFFF"
@@ -103061,7 +103157,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             },
             children: [/*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
               style: styles.avatarWrapper,
-              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Avatar, {
+              children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Avatar, {
                 uri: characterAvatarUrl,
                 name: characterName,
                 size: "sm"
@@ -103101,7 +103197,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 });
               },
               activeOpacity: 0.7,
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Icon, {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Icon, {
                 name: "phone",
                 size: 20,
                 color: "#C084FC"
@@ -103112,7 +103208,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 return setIsMenuVisible(true);
               },
               activeOpacity: 0.7,
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Icon, {
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Icon, {
                 name: "more-vertical",
                 size: 20,
                 color: "#FFFFFF"
@@ -103147,11 +103243,11 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           })]
         }), isConvLoading ? /*#__PURE__*/(0, _jsxRuntime.jsxs)(_reactNative.View, {
           style: styles.loadingContainer,
-          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Skeleton.Card, {
+          children: [/*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Skeleton.Card, {
             height: 90
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Skeleton.Card, {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Skeleton.Card, {
             height: 70
-          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Skeleton.Card, {
+          }), /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Skeleton.Card, {
             height: 100
           })]
         }) : /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.FlatList, {
@@ -103192,12 +103288,12 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             });
           },
           activeOpacity: 0.8,
-          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Icon, {
+          children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Icon, {
             name: "chevron-down-double",
             size: 16,
             color: "#FFFFFF"
           })
-        }), streamError && (!allMessages[0] || allMessages[0].role !== 'assistant' || allMessages[0].status === 'FAILED') && /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Banner, {
+        }), streamError && (!allMessages[0] || allMessages[0].role !== 'assistant' || allMessages[0].status === 'FAILED') && /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Banner, {
           type: "error",
           message: streamError,
           actionLabel: "Retry",
@@ -103249,21 +103345,26 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 },
                 activeOpacity: 0.7,
                 accessibilityLabel: "Send gift or spark",
-                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Icon, {
+                children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Icon, {
                   name: "sparkles",
                   size: 18,
                   color: "#C084FC"
                 })
               })]
             }), inputText.trim().length > 0 ? /*#__PURE__*/(0, _jsxRuntime.jsx)(_reactNative.TouchableOpacity, {
-              style: styles.circleActionButton,
+              style: [styles.circleActionButton, isStreamingHere && {
+                opacity: 0.45
+              }],
               onPress: function onPress() {
                 return handleSendMessage();
               },
               activeOpacity: 0.8,
               accessibilityRole: "button",
-              accessibilityLabel: "Send message",
-              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[17]).Icon, {
+              accessibilityState: {
+                busy: isStreamingHere
+              },
+              accessibilityLabel: isStreamingHere ? `${characterName} is replying` : 'Send message',
+              children: /*#__PURE__*/(0, _jsxRuntime.jsx)(_$$_REQUIRE(_dependencyMap[15]).Icon, {
                 name: "arrow-up",
                 size: 22,
                 color: "#FFFFFF"
@@ -103484,7 +103585,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
           },
           onSuccess: function onSuccess() {
             setFeedbackTarget(null);
-            _$$_REQUIRE(_dependencyMap[17]).ToastService.show({
+            _$$_REQUIRE(_dependencyMap[15]).ToastService.show({
               message: 'Thank you for your detailed feedback!',
               type: 'success',
               duration: 2500
@@ -104010,7 +104111,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
       fontWeight: '700'
     }
   });
-},1084,[1,252,6,105,40,63,2,111,837,637,1085,1063,1065,1096,1068,1086,1087,813,1073,1088,805]);
+},1084,[1,252,6,105,40,63,2,111,837,637,1085,1063,1065,1096,1068,813,1086,1087,1073,1088,805]);
 __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, exports, _dependencyMap) {
   Object.defineProperty(exports, "__esModule", {
     value: true
@@ -104139,17 +104240,25 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
        * which natively supports progressive chunk streaming in React Native (Hermes).
        */
       function () {
-        var _streamMessage = (0, _asyncToGenerator2.default)(function* (conversationId, content, clientRequestId, callbacks, abortSignal) {
-          var session = yield _$$_REQUIRE(_dependencyMap[4]).SecureAuthStorage.getSession();
-          var accessToken = (session == null ? undefined : session.accessToken) || null;
+        var _streamMessage = (0, _asyncToGenerator2.default)(function* (conversationId, content, clientRequestId, callbacks, abortSignal, /** Regenerate the reply for this (failed) message instead of sending new text. */
+        retryMessageId) {
+          var accessToken = null;
+          try {
+            var _yield$SecureAuthStor;
+            accessToken = ((_yield$SecureAuthStor = yield _$$_REQUIRE(_dependencyMap[4]).SecureAuthStorage.getSession()) == null ? undefined : _yield$SecureAuthStor.accessToken) || null;
+          } catch (_unused) {
+            accessToken = null;
+          }
           var baseUrl = _$$_REQUIRE(_dependencyMap[5]).ApiClient.getBaseUrl();
-          var url = `${baseUrl}/conversations/${conversationId}/messages`;
+          var url = retryMessageId ? `${baseUrl}/conversations/${conversationId}/messages/${retryMessageId}/retry` : `${baseUrl}/conversations/${conversationId}/messages`;
           return new Promise(function (resolve) {
             var xhr = new XMLHttpRequest();
             xhr.open('POST', url, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.setRequestHeader('Accept', 'text/event-stream');
             xhr.setRequestHeader('x-correlation-id', `mob-stream-${Date.now()}`);
+            // The server gives up on a silent model within ~25s; never leave the composer locked longer.
+            xhr.timeout = ChatStreamClient.REQUEST_TIMEOUT_MS;
             if (accessToken) {
               xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
             }
@@ -104162,7 +104271,7 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
               abortSignal.addEventListener('abort', function () {
                 try {
                   xhr.abort();
-                } catch (_unused) {}
+                } catch (_unused2) {}
                 callbacks.onCancelled == null || callbacks.onCancelled({
                   messageId: currentAssistantMessageId,
                   conversationId: conversationId,
@@ -104267,6 +104376,14 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 return;
               }
               if (xhr.status >= 200 && xhr.status < 300) {
+                // A stream that ends with neither text nor a terminal event must still end the send
+                // (otherwise the UI stays in "sending" and the send button freezes).
+                callbacks.onFailed == null || callbacks.onFailed({
+                  conversationId: conversationId,
+                  errorCode: 'EMPTY_RESPONSE',
+                  errorMessage: 'No reply was received. Please try again.',
+                  retryable: true
+                });
                 resolve();
                 return;
               }
@@ -104277,13 +104394,39 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
                 if (errJson != null && (_errJson$error = errJson.error) != null && _errJson$error.message) {
                   errorMessage = errJson.error.message;
                 }
-              } catch (_unused2) {}
+              } catch (_unused3) {}
               callbacks.onFailed == null || callbacks.onFailed({
                 conversationId: conversationId,
                 errorCode: 'HTTP_ERROR',
                 errorMessage: errorMessage,
                 retryable: xhr.status >= 500
               });
+              resolve();
+            };
+            xhr.ontimeout = function () {
+              flushRemainingBuffer();
+              if (isCompleted) {
+                resolve();
+                return;
+              }
+              if (accumulatedDelta.trim().length > 0) {
+                isCompleted = true;
+                callbacks.onCompleted == null || callbacks.onCompleted({
+                  messageId: currentAssistantMessageId,
+                  conversationId: conversationId,
+                  finalContent: accumulatedDelta,
+                  totalTokens: Math.ceil(accumulatedDelta.length / 4),
+                  status: 'SENT',
+                  timestamp: new Date().toISOString()
+                });
+              } else {
+                callbacks.onFailed == null || callbacks.onFailed({
+                  conversationId: conversationId,
+                  errorCode: 'TIMEOUT',
+                  errorMessage: 'The reply is taking too long. Please try again.',
+                  retryable: true
+                });
+              }
               resolve();
             };
             xhr.onerror = function () {
@@ -104331,13 +104474,14 @@ __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, e
             }
           });
         });
-        function streamMessage(_x, _x2, _x3, _x4, _x5) {
+        function streamMessage(_x, _x2, _x3, _x4, _x5, _x6) {
           return _streamMessage.apply(this, arguments);
         }
         return streamMessage;
       }())
     }]);
   }();
+  ChatStreamClient.REQUEST_TIMEOUT_MS = 60000;
 },1086,[1,105,12,13,620,626]);
 __d(function (global, _$$_REQUIRE, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, exports, _dependencyMap) {
   var _interopRequireDefault = _$$_REQUIRE(_dependencyMap[0]);

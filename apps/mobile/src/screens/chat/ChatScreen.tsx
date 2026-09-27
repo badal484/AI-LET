@@ -46,11 +46,41 @@ type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
 
 const VIRTUAL_GIFTS = [
   { id: 'rose', name: 'Red Rose', icon: '🌹', coins: 10, prompt: '[Sent a Gift: 🌹 Red Rose]' },
-  { id: 'coffee', name: 'Hot Coffee', icon: '☕', coins: 25, prompt: '[Sent a Gift: ☕ Hot Coffee]' },
-  { id: 'chocolates', name: 'Chocolates', icon: '🍫', coins: 50, prompt: '[Sent a Gift: 🍫 Box of Belgian Chocolates]' },
-  { id: 'teddy', name: 'Teddy Bear', icon: '🧸', coins: 100, prompt: '[Sent a Gift: 🧸 Fluffy Teddy Bear]' },
-  { id: 'star', name: 'Cosmic Star', icon: '✨', coins: 200, prompt: '[Sent a Gift: ✨ Glowing Celestial Star]' },
-  { id: 'ring', name: 'Diamond Ring', icon: '💍', coins: 500, prompt: '[Sent a Gift: 💍 Sparkling Diamond Ring]' },
+  {
+    id: 'coffee',
+    name: 'Hot Coffee',
+    icon: '☕',
+    coins: 25,
+    prompt: '[Sent a Gift: ☕ Hot Coffee]',
+  },
+  {
+    id: 'chocolates',
+    name: 'Chocolates',
+    icon: '🍫',
+    coins: 50,
+    prompt: '[Sent a Gift: 🍫 Box of Belgian Chocolates]',
+  },
+  {
+    id: 'teddy',
+    name: 'Teddy Bear',
+    icon: '🧸',
+    coins: 100,
+    prompt: '[Sent a Gift: 🧸 Fluffy Teddy Bear]',
+  },
+  {
+    id: 'star',
+    name: 'Cosmic Star',
+    icon: '✨',
+    coins: 200,
+    prompt: '[Sent a Gift: ✨ Glowing Celestial Star]',
+  },
+  {
+    id: 'ring',
+    name: 'Diamond Ring',
+    icon: '💍',
+    coins: 500,
+    prompt: '[Sent a Gift: 💍 Sparkling Diamond Ring]',
+  },
 ];
 
 const REPORT_REASONS: Array<{ key: CharacterReportCreateInput['reasonCode']; label: string }> = [
@@ -78,11 +108,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   );
   const [inputText, setInputText] = useState(initialPrompt || '');
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessageItem[]>([]);
+  // Failed reply currently being regenerated (hidden while its replacement streams in).
+  const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
-  const [reportReason, setReportReason] = useState<CharacterReportCreateInput['reasonCode']>('HARASSMENT');
+  const [reportReason, setReportReason] =
+    useState<CharacterReportCreateInput['reasonCode']>('HARASSMENT');
   const [reportNotes, setReportNotes] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -92,7 +125,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const showSub = Keyboard.addListener(showEvent, (e) => {
+    const showSub = Keyboard.addListener(showEvent, e => {
       setKeyboardHeight(e.endCoordinates.height);
       if (flatListRef.current) {
         setTimeout(() => {
@@ -128,13 +161,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const deliveryTimersRef = useRef<NodeJS.Timeout[]>([]);
 
   const clearDeliveryTimers = () => {
-    deliveryTimersRef.current.forEach((t) => clearTimeout(t));
+    deliveryTimersRef.current.forEach(t => clearTimeout(t));
     deliveryTimersRef.current = [];
   };
 
   useEffect(() => {
     return () => {
       clearDeliveryTimers();
+      // Leaving mid-reply must not leave the shared "streaming" flag set, or every chat's send
+      // button stays frozen. The server keeps generating and saves the reply for when we return.
+      if (useChatStreamStore.getState().isStreaming) {
+        useChatStreamStore.getState().finishStreaming();
+      }
     };
   }, []);
 
@@ -168,14 +206,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     'Ritika Sharma';
 
   const characterAvatarUrl =
-    conversation?.character?.avatarUrl ||
-    routeCharacterAvatarUrl ||
-    characterProfile?.avatarUrl;
+    conversation?.character?.avatarUrl || routeCharacterAvatarUrl || characterProfile?.avatarUrl;
 
   const characterCoverUrl =
-    conversation?.character?.coverImageUrl ||
-    characterProfile?.coverImageUrl ||
-    characterAvatarUrl;
+    conversation?.character?.coverImageUrl || characterProfile?.coverImageUrl || characterAvatarUrl;
 
   const characterTagline =
     conversation?.character?.tagline ||
@@ -183,15 +217,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     'Ready to converse. Choose a starter below or ask anything.';
 
   const characterEffectiveId: string =
-    characterId ||
-    conversation?.character?.id ||
-    characterProfile?.id ||
-    '';
+    characterId || conversation?.character?.id || characterProfile?.id || '';
 
   const characterEffectiveSlug =
-    routeCharacterSlug ||
-    conversation?.character?.slug ||
-    characterProfile?.slug;
+    routeCharacterSlug || conversation?.character?.slug || characterProfile?.slug;
 
   const companionFirstName = characterName.split(' ')[0] || 'Companion';
 
@@ -225,19 +254,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         direction: 'before',
       }),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+    getNextPageParam: lastPage => lastPage.nextCursor || undefined,
     enabled: Boolean(effectiveConvId),
   });
 
-  const serverMessages = messagesData?.pages.flatMap((page) => page.items) || [];
-  const serverMessageIds = new Set(serverMessages.map((m) => m.id));
+  const serverMessages = messagesData?.pages.flatMap(page => page.items) || [];
+  const serverMessageIds = new Set(serverMessages.map(m => m.id));
   const serverClientRequestIds = new Set(
-    serverMessages.map((m) => m.clientRequestId).filter(Boolean)
+    serverMessages.map(m => m.clientRequestId).filter(Boolean),
   );
   const pendingOptimistic = optimisticMessages.filter(
-    (m) => !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId)
+    m => !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId),
   );
-  const allMessages = [...pendingOptimistic, ...serverMessages];
+  const allMessages = [
+    ...pendingOptimistic,
+    ...serverMessages.filter(m => m.id !== retryingMessageId),
+  ];
 
   // 5. Scroll Management
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -251,7 +283,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   }, [isScrolledUp]);
 
-  const isAnyDelivering = isStreaming || Object.keys(deliveringMap).length > 0;
+  // The stream store is app-wide: only a stream for *this* conversation may lock this composer.
+  const streamingConversationId = useChatStreamStore(st => st.activeConversationId);
+  const isStreamingHere =
+    isStreaming && (!streamingConversationId || streamingConversationId === effectiveConvId);
+  const isAnyDelivering = isStreamingHere || Object.keys(deliveringMap).length > 0;
 
   useEffect(() => {
     if (isAnyDelivering) {
@@ -259,10 +295,40 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   }, [accumulatedDelta, isAnyDelivering, scrollToBottom]);
 
+  // Watchdog: a reply that never resolves (dropped connection, app backgrounded, server restart)
+  // must not lock the chat. After 75s, drop the local "typing" state and show the server's truth.
+  useEffect(() => {
+    if (!isAnyDelivering) return;
+    const t = setTimeout(() => {
+      clearDeliveryTimers();
+      setDeliveringMap({});
+      setOptimisticMessages([]);
+      setRetryingMessageId(null);
+      if (useChatStreamStore.getState().isStreaming) finishStreaming();
+      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+    }, 75_000);
+    return () => clearTimeout(t);
+  }, [isAnyDelivering, effectiveConvId]);
+
   // 6. Send Message Handler
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string, retryMessageId?: string) => {
     const content = (textToSend || inputText).trim();
-    if (!content || !effectiveConvId || isAnyDelivering) return;
+    if (!content || !effectiveConvId) return;
+
+    if (isAnyDelivering) {
+      if (isStreamingHere) {
+        // The server is still writing the previous reply (it accepts one at a time): say so,
+        // keep the typed text, instead of silently ignoring the tap.
+        ToastService.show({ message: `${characterName} is still replying… one moment`, type: 'info', duration: 1800 });
+        return;
+      }
+      // Only the bubble reveal animation is running: finish it instantly and send.
+      clearDeliveryTimers();
+      setDeliveringMap({});
+      setOptimisticMessages([]);
+      setRetryingMessageId(null);
+      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+    }
 
     if (!textToSend) {
       setInputText('');
@@ -300,7 +366,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     };
 
     // Inverted list: index 0 is assistant (bottom), index 1 is user (above assistant)
-    setOptimisticMessages([tempAssistantMessage, tempUserMessage]);
+    setOptimisticMessages(retryMessageId ? [tempAssistantMessage] : [tempAssistantMessage, tempUserMessage]);
+    setRetryingMessageId(retryMessageId ?? null);
     setDeliveringMap({
       [tempAssistantId]: { revealedParagraphs: [], isTypingNext: true },
     });
@@ -312,173 +379,206 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     startStreaming(effectiveConvId, tempAssistantId, abortController);
 
     let accumulatedText = '';
+    // The server emits message.started only after it has stored the user's message.
+    let serverStoredMessage = false;
 
-    await ChatStreamClient.streamMessage(
-      effectiveConvId,
-      content,
-      clientRequestId,
-      {
-        onStarted: (payload) => {
-          setStreamError(null);
-          if (payload.messageId) {
-            useChatStreamStore.setState({ streamingMessageId: payload.messageId });
-          }
-        },
-        onDelta: (payload) => {
-          setStreamError(null);
-          accumulatedText += payload.delta;
-          appendDelta(payload.delta);
-        },
-        onCompleted: (payload) => {
-          setStreamError(null);
-          const finalContent = payload?.finalContent || accumulatedText || useChatStreamStore.getState().accumulatedDelta || '';
-          const paragraphs = finalContent
-            .split(/\n\s*\n|\n/)
-            .map((s: string) => s.trim())
-            .filter(Boolean);
+    const failSend = (message: string) => {
+      if (!accumulatedText.trim()) {
+        setStreamError(message);
+      }
+      // Rejected before it was stored (blocked, rate-limited, offline): give the text back so the
+      // message is never silently lost.
+      if (!serverStoredMessage && !textToSend) {
+        setInputText(prev => (prev.trim() ? prev : content));
+      }
+      clearDeliveryTimers();
+      setDeliveringMap({});
+      finishStreaming();
+      setOptimisticMessages([]);
+      setRetryingMessageId(null);
+      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+    };
 
-          const safeParagraphs = paragraphs.length > 0 ? paragraphs : [finalContent.trim() || '...'];
-
-          const finalizeDelivery = async () => {
-            finishStreaming();
+    try {
+      await ChatStreamClient.streamMessage(
+        effectiveConvId,
+        content,
+        clientRequestId,
+        {
+          onStarted: payload => {
+            serverStoredMessage = true;
             setStreamError(null);
-            refetchRelationship();
-            queryClient.invalidateQueries({ queryKey: ['conversations'] });
-            try {
-              await queryClient.refetchQueries({ queryKey: ['messages', effectiveConvId] });
-            } catch (err) {
-              console.warn('Failed to refetch messages after generation:', err);
+            if (payload.messageId) {
+              useChatStreamStore.setState({ streamingMessageId: payload.messageId });
             }
-            setDeliveringMap({});
-            setOptimisticMessages([]);
-          };
+          },
+          onDelta: payload => {
+            setStreamError(null);
+            accumulatedText += payload.delta;
+            appendDelta(payload.delta);
+          },
+          onCompleted: payload => {
+            setStreamError(null);
+            const finalContent =
+              payload?.finalContent ||
+              accumulatedText ||
+              useChatStreamStore.getState().accumulatedDelta ||
+              '';
+            const paragraphs = finalContent
+              .split(/\n\s*\n|\n/)
+              .map((s: string) => s.trim())
+              .filter(Boolean);
 
-          if (safeParagraphs.length === 1) {
-            // Single bubble: reveal it immediately
-            setDeliveringMap({
-              [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
-            });
-            setOptimisticMessages((prev) =>
-              prev.map((m) =>
-                m.id === tempAssistantId ? { ...m, content: safeParagraphs[0], status: 'SENT' } : m
-              )
-            );
-            scrollToBottom();
+            const safeParagraphs =
+              paragraphs.length > 0 ? paragraphs : [finalContent.trim() || '...'];
 
-            const t = setTimeout(() => {
-              finalizeDelivery();
-            }, 300);
-            deliveryTimersRef.current.push(t);
-          } else if (safeParagraphs.length === 2) {
-            // Bubble 1 -> typing dots below -> Bubble 2
-            setDeliveringMap({
-              [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
-            });
-            setOptimisticMessages((prev) =>
-              prev.map((m) =>
-                m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m
-              )
-            );
-            scrollToBottom();
+            const finalizeDelivery = async () => {
+              finishStreaming();
+              setStreamError(null);
+              refetchRelationship();
+              queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              try {
+                await queryClient.refetchQueries({ queryKey: ['messages', effectiveConvId] });
+              } catch (err) {
+                console.warn('Failed to refetch messages after generation:', err);
+              }
+              setDeliveringMap({});
+              setOptimisticMessages([]);
+      setRetryingMessageId(null);
+            };
 
-            const t1 = setTimeout(() => {
+            if (safeParagraphs.length === 1) {
+              // Single bubble: reveal it immediately
               setDeliveringMap({
                 [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
               });
-              setOptimisticMessages((prev) =>
-                prev.map((m) =>
+              setOptimisticMessages(prev =>
+                prev.map(m =>
                   m.id === tempAssistantId
-                    ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
-                    : m
-                )
+                    ? { ...m, content: safeParagraphs[0], status: 'SENT' }
+                    : m,
+                ),
               );
               scrollToBottom();
 
-              const t2 = setTimeout(() => {
+              const t = setTimeout(() => {
                 finalizeDelivery();
               }, 300);
-              deliveryTimersRef.current.push(t2);
-            }, 1200);
-            deliveryTimersRef.current.push(t1);
-          } else {
-            // 3 Bubbles: Bubble 1 -> typing dots -> Bubble 2 -> typing dots -> Bubble 3
-            setDeliveringMap({
-              [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
-            });
-            setOptimisticMessages((prev) =>
-              prev.map((m) =>
-                m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m
-              )
-            );
-            scrollToBottom();
-
-            const t1 = setTimeout(() => {
+              deliveryTimersRef.current.push(t);
+            } else if (safeParagraphs.length === 2) {
+              // Bubble 1 -> typing dots below -> Bubble 2
               setDeliveringMap({
-                [tempAssistantId]: {
-                  revealedParagraphs: [safeParagraphs[0], safeParagraphs[1]],
-                  isTypingNext: true,
-                },
+                [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
               });
-              setOptimisticMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempAssistantId
-                    ? { ...m, content: `${safeParagraphs[0]}\n${safeParagraphs[1]}` }
-                    : m
-                )
+              setOptimisticMessages(prev =>
+                prev.map(m =>
+                  m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m,
+                ),
               );
               scrollToBottom();
 
-              const t2 = setTimeout(() => {
+              const t1 = setTimeout(() => {
                 setDeliveringMap({
                   [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
                 });
-                setOptimisticMessages((prev) =>
-                  prev.map((m) =>
+                setOptimisticMessages(prev =>
+                  prev.map(m =>
                     m.id === tempAssistantId
                       ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
-                      : m
-                  )
+                      : m,
+                  ),
                 );
                 scrollToBottom();
 
-                const t3 = setTimeout(() => {
+                const t2 = setTimeout(() => {
                   finalizeDelivery();
                 }, 300);
-                deliveryTimersRef.current.push(t3);
+                deliveryTimersRef.current.push(t2);
               }, 1200);
-              deliveryTimersRef.current.push(t2);
-            }, 1200);
-            deliveryTimersRef.current.push(t1);
-          }
-        },
-        onFailed: (payload) => {
-          if (!accumulatedText.trim()) {
-            setStreamError(payload.errorMessage);
-          }
-          clearDeliveryTimers();
-          setDeliveringMap({});
-          finishStreaming();
-          setOptimisticMessages([]);
-          queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-        },
-        onCancelled: () => {
-          clearDeliveryTimers();
-          setDeliveringMap({});
-          finishStreaming();
-          setOptimisticMessages([]);
-          queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-        },
-      },
-      abortController.signal,
-    );
+              deliveryTimersRef.current.push(t1);
+            } else {
+              // 3 Bubbles: Bubble 1 -> typing dots -> Bubble 2 -> typing dots -> Bubble 3
+              setDeliveringMap({
+                [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
+              });
+              setOptimisticMessages(prev =>
+                prev.map(m =>
+                  m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m,
+                ),
+              );
+              scrollToBottom();
 
+              const t1 = setTimeout(() => {
+                setDeliveringMap({
+                  [tempAssistantId]: {
+                    revealedParagraphs: [safeParagraphs[0], safeParagraphs[1]],
+                    isTypingNext: true,
+                  },
+                });
+                setOptimisticMessages(prev =>
+                  prev.map(m =>
+                    m.id === tempAssistantId
+                      ? { ...m, content: `${safeParagraphs[0]}\n${safeParagraphs[1]}` }
+                      : m,
+                  ),
+                );
+                scrollToBottom();
+
+                const t2 = setTimeout(() => {
+                  setDeliveringMap({
+                    [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
+                  });
+                  setOptimisticMessages(prev =>
+                    prev.map(m =>
+                      m.id === tempAssistantId
+                        ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
+                        : m,
+                    ),
+                  );
+                  scrollToBottom();
+
+                  const t3 = setTimeout(() => {
+                    finalizeDelivery();
+                  }, 300);
+                  deliveryTimersRef.current.push(t3);
+                }, 1200);
+                deliveryTimersRef.current.push(t2);
+              }, 1200);
+              deliveryTimersRef.current.push(t1);
+            }
+          },
+          onFailed: payload => {
+            failSend(payload.errorMessage);
+          },
+          onCancelled: () => {
+            clearDeliveryTimers();
+            setDeliveringMap({});
+            finishStreaming();
+            setOptimisticMessages([]);
+      setRetryingMessageId(null);
+            queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+          },
+        },
+        abortController.signal,
+        retryMessageId,
+      );
+    } catch (err: any) {
+      failSend(err?.message || 'Message could not be sent. Please try again.');
+    }
   };
 
-  const handleRetry = (content: string) => {
+  const handleRetry = (content: string, message?: ChatMessageItem) => {
+    // A failed *reply* is regenerated in place; only a user's own unsent message is re-sent.
+    if (message && message.role === 'assistant') {
+      handleSendMessage(content, message.id);
+      return;
+    }
     handleSendMessage(content);
   };
 
-  const [feedbackTarget, setFeedbackTarget] = useState<{ messageId: string; score: 1 | -1 } | null>(null);
+  const [feedbackTarget, setFeedbackTarget] = useState<{ messageId: string; score: 1 | -1 } | null>(
+    null,
+  );
   const handleFeedback = async (messageId: string, rating: 'positive' | 'negative') => {
     if (!activeConversationId) return;
     if (rating === 'negative') {
@@ -486,17 +586,31 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       return;
     }
     try {
-      await feedbackApi.submitMessageFeedback(activeConversationId, messageId, { rating: 'THUMBS_UP' });
-      ToastService.show({ message: 'Thank you for your feedback!', type: 'success', duration: 2000 });
+      await feedbackApi.submitMessageFeedback(activeConversationId, messageId, {
+        rating: 'THUMBS_UP',
+      });
+      ToastService.show({
+        message: 'Thank you for your feedback!',
+        type: 'success',
+        duration: 2000,
+      });
     } catch {
-      ToastService.show({ message: 'Could not send feedback. Please try again.', type: 'error', duration: 2500 });
+      ToastService.show({
+        message: 'Could not send feedback. Please try again.',
+        type: 'error',
+        duration: 2500,
+      });
     }
   };
 
-  const handleSendGift = (gift: typeof VIRTUAL_GIFTS[0]) => {
+  const handleSendGift = (gift: (typeof VIRTUAL_GIFTS)[0]) => {
     setIsGiftModalVisible(false);
     handleSendMessage(gift.prompt);
-    ToastService.show({ message: `Sent ${gift.name}! +${Math.round(gift.coins / 5)} Intimacy points`, type: 'success', duration: 2500 });
+    ToastService.show({
+      message: `Sent ${gift.name}! +${Math.round(gift.coins / 5)} Intimacy points`,
+      type: 'success',
+      duration: 2500,
+    });
     refetchBilling();
     refetchRelationship();
   };
@@ -515,9 +629,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             try {
               await RelationshipApi.resetRelationship(characterEffectiveId);
               refetchRelationship();
-              ToastService.show({ message: 'Relationship reset to baseline.', type: 'info', duration: 2500 });
+              ToastService.show({
+                message: 'Relationship reset to baseline.',
+                type: 'info',
+                duration: 2500,
+              });
             } catch {
-              ToastService.show({ message: 'Failed to reset relationship.', type: 'error', duration: 2500 });
+              ToastService.show({
+                message: 'Failed to reset relationship.',
+                type: 'error',
+                duration: 2500,
+              });
             }
           },
         },
@@ -536,7 +658,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             ? reportNotes.trim()
             : `User reported character for ${reportReason} from chat screen`,
       });
-      ToastService.show({ message: 'Report submitted. Our safety team will review it.', type: 'success', duration: 3000 });
+      ToastService.show({
+        message: 'Report submitted. Our safety team will review it.',
+        type: 'success',
+        duration: 3000,
+      });
     } catch {
       ToastService.show({ message: 'Could not submit report.', type: 'error', duration: 2500 });
     }
@@ -562,10 +688,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   // Header "Today" pill at the top of the chat (ListFooterComponent in inverted list)
   const renderListHeader = () => {
+    // Inverted list: the last item is the oldest loaded message, which this pill sits above.
+    const oldest = allMessages[allMessages.length - 1];
+    if (!oldest?.createdAt) return null;
+    const d = new Date(oldest.createdAt);
+    const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
+    const label =
+      days <= 0
+        ? 'Today'
+        : days === 1
+          ? 'Yesterday'
+          : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: days > 300 ? 'numeric' : undefined });
     return (
       <View style={styles.todayPillContainer}>
         <View style={styles.todayPill}>
-          <Text style={styles.todayPillText}>Today</Text>
+          <Text style={styles.todayPillText}>{label}</Text>
         </View>
       </View>
     );
@@ -636,11 +774,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       style={styles.backgroundImage}
       resizeMode="cover"
     >
-      <StatusBar
-        barStyle="light-content"
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.backgroundScrim} />
 
       <View
@@ -649,8 +783,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           {
             paddingBottom:
               Platform.OS === 'ios'
-                ? (keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 8))
-                : (keyboardHeight > 0 ? 4 : Math.max(insets.bottom, 8)),
+                ? keyboardHeight > 0
+                  ? keyboardHeight
+                  : Math.max(insets.bottom, 8)
+                : keyboardHeight > 0
+                  ? 4
+                  : Math.max(insets.bottom, 8),
           },
         ]}
       >
@@ -678,11 +816,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             }}
           >
             <View style={styles.avatarWrapper}>
-              <Avatar
-                uri={characterAvatarUrl}
-                name={characterName}
-                size="sm"
-              />
+              <Avatar uri={characterAvatarUrl} name={characterName} size="sm" />
               <View style={styles.onlineBadge} />
             </View>
             <View style={styles.headerTextCol}>
@@ -690,9 +824,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 {characterName}
               </Text>
               <View style={styles.statusRow}>
-                <Text style={styles.headerStatus}>
-                  {isAnyDelivering ? 'Typing...' : 'Online'}
-                </Text>
+                <Text style={styles.headerStatus}>{isAnyDelivering ? 'Typing...' : 'Online'}</Text>
                 <View style={styles.relationshipBadge}>
                   <Text style={styles.relationshipBadgeText}>
                     ❤️ {relationshipStage} · {intimacyPercent}%
@@ -757,7 +889,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           <FlatList
             ref={flatListRef}
             data={allMessages}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             renderItem={renderMessageItem}
             inverted
             onScroll={handleScroll}
@@ -772,11 +904,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             ListFooterComponent={
               <>
                 {isFetchingNextPage ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#A78BFA"
-                    style={{ marginVertical: 12 }}
-                  />
+                  <ActivityIndicator size="small" color="#A78BFA" style={{ marginVertical: 12 }} />
                 ) : null}
                 {renderListHeader()}
               </>
@@ -798,20 +926,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         )}
 
         {/* Stream Error Banner */}
-        {streamError && (!allMessages[0] || allMessages[0].role !== 'assistant' || allMessages[0].status === 'FAILED') && (
-          <Banner
-            type="error"
-            message={streamError}
-            actionLabel="Retry"
-            onAction={() => {
-              if (allMessages[0]?.role === 'user') {
-                handleSendMessage(allMessages[0].content);
-              }
-            }}
-            onDismiss={() => useChatStreamStore.setState({ error: null })}
-          />
-        )}
-
+        {streamError &&
+          (!allMessages[0] ||
+            allMessages[0].role !== 'assistant' ||
+            allMessages[0].status === 'FAILED') && (
+            <Banner
+              type="error"
+              message={streamError}
+              actionLabel="Retry"
+              onAction={() => {
+                if (allMessages[0]?.role === 'user') {
+                  handleSendMessage(allMessages[0].content);
+                }
+              }}
+              onDismiss={() => useChatStreamStore.setState({ error: null })}
+            />
+          )}
 
         {/* Bottom Composer Footer */}
         <View
@@ -820,8 +950,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             {
               paddingBottom:
                 Platform.OS === 'ios'
-                  ? (keyboardHeight > 0 ? keyboardHeight : Math.max(insets.bottom, 12))
-                  : (keyboardHeight > 0 ? 8 : Math.max(insets.bottom, 12)),
+                  ? keyboardHeight > 0
+                    ? keyboardHeight
+                    : Math.max(insets.bottom, 12)
+                  : keyboardHeight > 0
+                    ? 8
+                    : Math.max(insets.bottom, 12),
             },
           ]}
         >
@@ -831,7 +965,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               <TouchableOpacity
                 style={styles.pillLeadingBtn}
                 onPress={() => {
-                  setInputText((prev) => (prev ? `${prev} 😊` : '😊 '));
+                  setInputText(prev => (prev ? `${prev} 😊` : '😊 '));
                 }}
                 activeOpacity={0.7}
                 accessibilityLabel="Emoji"
@@ -863,11 +997,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             {/* Circular Action Button */}
             {inputText.trim().length > 0 ? (
               <TouchableOpacity
-                style={styles.circleActionButton}
+                style={[styles.circleActionButton, isStreamingHere && { opacity: 0.45 }]}
                 onPress={() => handleSendMessage()}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel="Send message"
+                accessibilityState={{ busy: isStreamingHere }}
+                accessibilityLabel={isStreamingHere ? `${characterName} is replying` : 'Send message'}
               >
                 <Icon name="arrow-up" size={22} color="#FFFFFF" />
               </TouchableOpacity>
@@ -905,7 +1040,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               </Text>
 
               <View style={styles.giftGrid}>
-                {VIRTUAL_GIFTS.map((gift) => (
+                {VIRTUAL_GIFTS.map(gift => (
                   <TouchableOpacity
                     key={gift.id}
                     style={styles.giftItem}
@@ -967,11 +1102,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 <Text style={styles.menuItemText}>Start Voice Call</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={handleResetRelationship}
-              >
-                <Text style={[styles.menuItemText, { color: '#F87171' }]}>Reset Relationship to Baseline</Text>
+              <TouchableOpacity style={styles.menuItem} onPress={handleResetRelationship}>
+                <Text style={[styles.menuItemText, { color: '#F87171' }]}>
+                  Reset Relationship to Baseline
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -981,7 +1115,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   setIsReportModalVisible(true);
                 }}
               >
-                <Text style={[styles.menuItemText, { color: '#FBBF24' }]}>Report Character Behavior</Text>
+                <Text style={[styles.menuItemText, { color: '#FBBF24' }]}>
+                  Report Character Behavior
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1009,7 +1145,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               </Text>
 
               <View style={styles.reportReasonList}>
-                {REPORT_REASONS.map((reason) => (
+                {REPORT_REASONS.map(reason => (
                   <TouchableOpacity
                     key={reason.key}
                     style={[
@@ -1046,10 +1182,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 >
                   <Text style={styles.reportCancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.reportSubmitBtn}
-                  onPress={handleReportCharacter}
-                >
+                <TouchableOpacity style={styles.reportSubmitBtn} onPress={handleReportCharacter}>
                   <Text style={styles.reportSubmitText}>Submit Report</Text>
                 </TouchableOpacity>
               </View>

@@ -69,26 +69,30 @@ export class ChatStreamController {
         throw new ForbiddenError('Access denied', ErrorCode.FORBIDDEN);
       }
 
-      let contentToRetry = targetMessage.content;
-      if (targetMessage.role === 'assistant') {
-        // Find preceding user message
-        const prevUserMsg = await prisma.message.findFirst({
-          where: {
-            conversationId,
-            sequenceNumber: { lt: targetMessage.sequenceNumber },
-            role: 'user',
-          },
-          orderBy: { sequenceNumber: 'desc' },
-        });
-        if (prevUserMsg) {
-          contentToRetry = prevUserMsg.content;
-        }
+      // Regenerate the reply to the user's message in place — never post the user's text again
+      // (and never post a failed reply's placeholder text as if the user wrote it).
+      const userMsg =
+        targetMessage.role === 'user'
+          ? targetMessage
+          : await prisma.message.findFirst({
+              where: { conversationId, sequenceNumber: { lt: targetMessage.sequenceNumber }, role: 'user' },
+              orderBy: { sequenceNumber: 'desc' },
+            });
+      if (!userMsg) {
+        throw new NotFoundError('No message to reply to', ErrorCode.MESSAGE_NOT_FOUND);
       }
+      const failedReply =
+        targetMessage.role === 'assistant'
+          ? targetMessage
+          : await prisma.message.findFirst({
+              where: { conversationId, role: 'assistant', sequenceNumber: { gt: userMsg.sequenceNumber }, status: { in: ['FAILED', 'CANCELLED'] } },
+              orderBy: { sequenceNumber: 'asc' },
+            });
 
-      // Stream retry response
       await StreamingChatService.streamMessage(req, res, userId, conversationId, {
-        content: contentToRetry,
+        content: userMsg.content,
         clientRequestId: input.clientRequestId,
+        regenerate: { userMessageId: userMsg.id, assistantMessageId: failedReply?.id },
       });
     } catch (err) {
       next(err);

@@ -21,6 +21,8 @@ export interface ChatStreamCallbacks {
 }
 
 export class ChatStreamClient {
+  public static readonly REQUEST_TIMEOUT_MS = 60_000;
+
   /**
    * Opens an SSE streaming generation request to the API using XMLHttpRequest
    * which natively supports progressive chunk streaming in React Native (Hermes).
@@ -31,11 +33,19 @@ export class ChatStreamClient {
     clientRequestId: string,
     callbacks: ChatStreamCallbacks,
     abortSignal?: AbortSignal,
+    /** Regenerate the reply for this (failed) message instead of sending new text. */
+    retryMessageId?: string,
   ): Promise<void> {
-    const session = await SecureAuthStorage.getSession();
-    const accessToken = session?.accessToken || null;
+    let accessToken: string | null = null;
+    try {
+      accessToken = (await SecureAuthStorage.getSession())?.accessToken || null;
+    } catch {
+      accessToken = null;
+    }
     const baseUrl = ApiClient.getBaseUrl();
-    const url = `${baseUrl}/conversations/${conversationId}/messages`;
+    const url = retryMessageId
+      ? `${baseUrl}/conversations/${conversationId}/messages/${retryMessageId}/retry`
+      : `${baseUrl}/conversations/${conversationId}/messages`;
 
     return new Promise<void>((resolve) => {
       const xhr = new XMLHttpRequest();
@@ -43,6 +53,8 @@ export class ChatStreamClient {
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Accept', 'text/event-stream');
       xhr.setRequestHeader('x-correlation-id', `mob-stream-${Date.now()}`);
+      // The server gives up on a silent model within ~25s; never leave the composer locked longer.
+      xhr.timeout = ChatStreamClient.REQUEST_TIMEOUT_MS;
 
       if (accessToken) {
         xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
@@ -176,6 +188,14 @@ export class ChatStreamClient {
         }
 
         if (xhr.status >= 200 && xhr.status < 300) {
+          // A stream that ends with neither text nor a terminal event must still end the send
+          // (otherwise the UI stays in "sending" and the send button freezes).
+          callbacks.onFailed?.({
+            conversationId,
+            errorCode: 'EMPTY_RESPONSE',
+            errorMessage: 'No reply was received. Please try again.',
+            retryable: true,
+          });
           resolve();
           return;
         }
@@ -194,6 +214,33 @@ export class ChatStreamClient {
           errorMessage,
           retryable: xhr.status >= 500,
         });
+        resolve();
+      };
+
+      xhr.ontimeout = () => {
+        flushRemainingBuffer();
+        if (isCompleted) {
+          resolve();
+          return;
+        }
+        if (accumulatedDelta.trim().length > 0) {
+          isCompleted = true;
+          callbacks.onCompleted?.({
+            messageId: currentAssistantMessageId,
+            conversationId,
+            finalContent: accumulatedDelta,
+            totalTokens: Math.ceil(accumulatedDelta.length / 4),
+            status: 'SENT',
+            timestamp: new Date().toISOString(),
+          });
+        } else {
+          callbacks.onFailed?.({
+            conversationId,
+            errorCode: 'TIMEOUT',
+            errorMessage: 'The reply is taking too long. Please try again.',
+            retryable: true,
+          });
+        }
         resolve();
       };
 
