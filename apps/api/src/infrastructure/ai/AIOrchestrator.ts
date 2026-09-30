@@ -63,7 +63,7 @@ export class AIOrchestrator {
       return this.providers.get(key)!;
     }
 
-    if (['google', 'openai', 'anthropic'].includes(key)) {
+    if (['google', 'openai', 'anthropic', 'mistral'].includes(key)) {
       const adapter: IAIProvider = {
         providerName: key,
         generateText: async (model, messages, options) => {

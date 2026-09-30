@@ -3,6 +3,7 @@ import { AIOrchestrator } from '../../../infrastructure/ai/AIOrchestrator.js';
 import { SYSTEM_CONSTANTS } from '@ai-companion/config';
 import { logger } from '../../../config/logger.js';
 import type { ConversationSummaryData } from '@ai-companion/types';
+import { backgroundAIRoute } from '../../ai/routing/aiRoutes.js';
 
 export class ConversationSummaryService {
   private static readonly SUMMARIZATION_PROMPT = `
@@ -91,8 +92,7 @@ REQUIREMENTS:
     let openTopics: string[] = [];
 
     try {
-      const provider = (process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY']) ? 'google' : 'mock';
-      const model = provider === 'google' ? 'gemini-3.5-flash-lite' : 'gpt-4o-mini';
+      const { provider, model } = backgroundAIRoute();
       const response = await AIOrchestrator.executeText(
         provider,
         model,

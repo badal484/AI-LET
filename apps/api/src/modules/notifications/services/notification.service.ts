@@ -130,6 +130,8 @@ export class NotificationService {
     });
 
     if (!pref) {
+      // Start from the timezone in their profile, so quiet hours mean *their* night, not UTC's.
+      const profile = await prisma.userProfile.findUnique({ where: { userId }, select: { timezone: true } });
       pref = await prisma.userNotificationPreference.create({
         data: {
           userId,
@@ -138,7 +140,7 @@ export class NotificationService {
           quietHoursEnabled: true,
           quietHoursStart: SYSTEM_CONSTANTS.PROACTIVITY.DEFAULT_QUIET_HOURS_START,
           quietHoursEnd: SYSTEM_CONSTANTS.PROACTIVITY.DEFAULT_QUIET_HOURS_END,
-          timezone: 'UTC',
+          timezone: profile?.timezone || 'UTC',
           maxDailyNotifications: SYSTEM_CONSTANTS.PROACTIVITY.DEFAULT_MAX_DAILY_NOTIFICATIONS,
           maxWeeklyNotifications: SYSTEM_CONSTANTS.PROACTIVITY.DEFAULT_MAX_WEEKLY_NOTIFICATIONS,
           showPreview: true,

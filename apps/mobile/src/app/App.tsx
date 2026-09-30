@@ -21,6 +21,7 @@ import { bindSocialStateToAuth } from '../features/social/state/authBinding.js';
 import { installStorageEngines } from '../services/storage/storageEngines.js';
 import { Analytics } from '../services/analytics/AnalyticsSDK.js';
 import { APP_VERSION } from '../config/appInfo.js';
+import { api } from '../services/api/client.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
 installStorageEngines();
@@ -91,6 +92,12 @@ export const AppContent: React.FC = () => {
   useEffect(() => {
     if (status === 'authenticated' && userId) {
       Analytics.identify(userId);
+      // Keep the profile's timezone in sync with the phone: quiet hours, "good morning" and
+      // "today" on the server all depend on it.
+      const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (deviceTimezone && deviceTimezone !== user?.profile?.timezone) {
+        api.patch('/users/profile', { timezone: deviceTimezone }).catch(() => undefined);
+      }
     } else if (status === 'unauthenticated' || status === 'session-expired') {
       Analytics.reset().catch(() => undefined);
     }

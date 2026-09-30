@@ -47,6 +47,21 @@ export class ConversationLockManager {
   }
 
   /**
+   * Extends the lock's lifetime while the holder is still working (a human-style turn — waiting for
+   * the user to finish a burst, generating, then pacing several messages — can outlast one TTL).
+   */
+  public static async extendLock(conversationId: string, token: string): Promise<void> {
+    const key = `conv:lock:${conversationId}`;
+    try {
+      if ((await redis.get(key)) === token) {
+        await redis.expire(key, this.TTL_SECONDS);
+      }
+    } catch (err) {
+      logger.warn(`Redis lock extend error for ${key}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
    * Checks if a conversation is currently actively generating.
    */
   public static async isLocked(conversationId: string): Promise<boolean> {

@@ -18,6 +18,7 @@ import { MockAIProviderAdapter } from './MockAIProviderAdapter.js';
 import { OpenAIProviderAdapter } from './OpenAIProviderAdapter.js';
 import { AnthropicProviderAdapter } from './AnthropicProviderAdapter.js';
 import { GoogleAIProviderAdapter } from './GoogleAIProviderAdapter.js';
+import { MistralProviderAdapter } from './MistralProviderAdapter.js';
 
 export class AIGatewayError extends AppError {
   public readonly failureType: AIFailureType;
@@ -49,6 +50,7 @@ export class AIGateway {
     this.registerAdapter(new OpenAIProviderAdapter());
     this.registerAdapter(new AnthropicProviderAdapter());
     this.registerAdapter(new GoogleAIProviderAdapter());
+    this.registerAdapter(new MistralProviderAdapter());
   }
 
   public static getInstance(): AIGateway {

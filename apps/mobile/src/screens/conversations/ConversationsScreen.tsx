@@ -24,6 +24,7 @@ import { darkThemeColors, spacing } from '../../theme/index.js';
 
 import { ApiClient } from '../../services/api/client.js';
 import { SecureAuthStorage } from '../../services/auth/SecureAuthStorage.js';
+import { chatListTime } from '../../utils/chatDates.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -71,17 +72,6 @@ export const ConversationsScreen: React.FC = () => {
     });
   };
 
-  const formatTimeAgo = (dateString?: string | null) => {
-    if (!dateString) return '';
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffSec < 60) return 'Just now';
-    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
-    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
-    return `${Math.floor(diffSec / 86400)}d`;
-  };
 
   const renderConversationItem = ({ item }: { item: ConversationSummary }) => {
     return (
@@ -105,7 +95,7 @@ export const ConversationsScreen: React.FC = () => {
             <Text style={styles.characterName} numberOfLines={1}>
               {item.character.name}
             </Text>
-            <Text style={styles.timestamp}>{formatTimeAgo(item.lastMessageAt)}</Text>
+            <Text style={styles.timestamp}>{chatListTime(item.lastMessageAt)}</Text>
           </View>
 
           <View style={styles.bottomRow}>

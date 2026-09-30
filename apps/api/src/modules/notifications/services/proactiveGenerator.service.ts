@@ -14,6 +14,9 @@ import type {
   ProactiveIntentType,
   AIMessagePayload,
 } from '@ai-companion/types';
+import { characterVoiceAIRoute } from '../../ai/routing/aiRoutes.js';
+import { personaPackFor } from '../../conversations/human/personaPacks/index.js';
+import { buildTextFirstPrompt, kindTextFirstCheck } from '../../conversations/human/textFirst.js';
 
 export interface ProactiveGenerationParams {
   userId: string;
@@ -157,10 +160,45 @@ export class ProactiveGeneratorService {
       { role: 'user', content: `Initiate proactive interaction: ${intentInstruction}` },
     ];
 
+    // Human-engine characters text first in their own voice, and only when it would feel kind.
+    let commitTextFirst: (() => Promise<void>) | null = null;
+    const slug = (await prisma.character.findUnique({ where: { id: characterId }, select: { slug: true } }))?.slug;
+    const pack = slug ? personaPackFor(slug) : null;
+    if (pack && activeIntent !== 'USER_REQUESTED_REMINDER') {
+      const kind = await kindTextFirstCheck({ userId, characterId, conversationId: conversation.id, timeZone: user?.profile?.timezone });
+      if (!kind.ok) {
+        await prisma.proactiveDecisionLog.create({
+          data: { userId, characterId, decision: 'SKIP', reasonCode: 'NOT_KIND_TIMING', intentType: activeIntent, confidence: decisionResult.confidence, metadata: { reason: kind.reason } },
+        });
+        return { isExecuted: false, decision: 'SKIP', reason: kind.reason, intentType: activeIntent };
+      }
+      const recent = await prisma.message.findMany({
+        where: { conversationId: conversation.id, status: { in: ['COMPLETED', 'SENT'] } },
+        orderBy: { sequenceNumber: 'desc' },
+        take: 8,
+        select: { role: true, content: true },
+      });
+      const textFirst = await buildTextFirstPrompt({
+        pack,
+        userId,
+        characterId,
+        userName: user?.profile?.displayName || 'them',
+        timeZone: user?.profile?.timezone,
+        memoriesText: context.memoriesText ?? '',
+        relationshipText: context.relationshipText ?? '',
+        stage: context.activeRelationshipStage ?? null,
+      });
+      commitTextFirst = dryRun ? null : textFirst.commit;
+      const history = recent.reverse().map((m) => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content}`).join('\n');
+      messages.splice(0, messages.length,
+        { role: 'system', content: textFirst.systemPrompt },
+        { role: 'user', content: `[Your last chat, for context]\n${history || '(none)'}\n\n[Now write the message you send them first. Only the message.]` },
+      );
+    }
+
     let generatedText = '';
     try {
-      const activeProvider = ((characterRuntime.aiConfig as any)?.provider || 'google').toLowerCase() as any;
-      const activeModel = characterRuntime.aiConfig?.customModelName || 'gemini-2.5-flash';
+      const { provider: activeProvider, model: activeModel } = characterVoiceAIRoute();
 
       const response = await AIOrchestrator.executeText(
         activeProvider,
@@ -171,7 +209,8 @@ export class ProactiveGeneratorService {
           maxTokens: 120,
         },
       );
-      generatedText = response.content.trim();
+      // One stored message: join multi-text replies as lines.
+      generatedText = response.content.replace(/\s*\[\[\s*next\s*\]\]\s*/gi, '\n').trim();
     } catch (err: any) {
       logger.error(`Proactive AI generation failed: ${err.message}`);
       return {
@@ -269,6 +308,8 @@ export class ProactiveGeneratorService {
         unreadCount: { increment: 1 },
       },
     });
+
+    await commitTextFirst?.();
 
     // 10. Persist Proactive Action Record
     const expiresAt = new Date(Date.now() + SYSTEM_CONSTANTS.PROACTIVITY.INTENT_DEFAULT_EXPIRY_HOURS * 3600 * 1000);

@@ -136,12 +136,14 @@ describe('Chat Streaming & Conversation Engine Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('text/event-stream');
 
-      // Verify SSE events payload stream
+      // Verify SSE events: user message stored first, then the reply as stored bubble(s)
       const rawText = res.text;
-      expect(rawText).toContain('event: message.started');
-      expect(rawText).toContain('event: message.delta');
-      expect(rawText).toContain('event: message.metadata');
+      expect(rawText).toContain('event: message.saved');
+      expect(rawText).toContain('event: typing');
+      expect(rawText).toContain('event: message.bubble');
       expect(rawText).toContain('event: message.completed');
+      expect(rawText).toContain('event: turn.completed');
+      expect(rawText.indexOf('event: message.saved')).toBeLessThan(rawText.indexOf('event: message.bubble'));
 
       // Verify user message in DB
       const userMessage = await prisma.message.findFirst({
@@ -195,9 +197,10 @@ describe('Chat Streaming & Conversation Engine Integration Tests', () => {
           clientRequestId: clientReqId,
         });
 
-      // Stream yields completed event for already completed request
+      // The resend is recognised as the same stored message; it is already answered, so no new reply
       expect(duplicateRes.status).toBe(200);
-      expect(duplicateRes.text).toContain('event: message.completed');
+      expect(duplicateRes.text).toContain('event: message.saved');
+      expect(duplicateRes.text).not.toContain('event: message.bubble');
 
       // Message count remains strictly 2 (no duplicate generation created)
       const messageCountSecond = await prisma.message.count({
@@ -206,7 +209,7 @@ describe('Chat Streaming & Conversation Engine Integration Tests', () => {
       expect(messageCountSecond).toBe(2);
     });
 
-    it('blocks concurrent generations when conversation is locked', async () => {
+    it('stores and queues a message sent while the character is already replying (never refuses it)', async () => {
       // Manually acquire lock to simulate concurrent generation in-flight
       await redis.set(`conv:lock:${conversationId}`, 'test-lock-token', 'EX', 60);
 
@@ -219,8 +222,16 @@ describe('Chat Streaming & Conversation Engine Integration Tests', () => {
         });
 
       expect(res.status).toBe(200);
-      expect(res.text).toContain('event: message.failed');
-      expect(res.text).toContain('GENERATION_ALREADY_RUNNING');
+      expect(res.text).toContain('event: message.saved');
+      expect(res.text).toContain('event: message.queued');
+      expect(res.text).not.toContain('event: message.failed');
+
+      // The message is stored for the running turn to answer — it is not lost.
+      const stored = await prisma.message.findFirst({
+        where: { conversationId, clientRequestId: 'req-concurrent-003' },
+      });
+      expect(stored?.content).toBe('Attempt concurrent message');
+      await redis.del(`conv:lock:${conversationId}`);
     });
 
     it('blocks messages triggering content moderation boundaries before AI invocation', async () => {
