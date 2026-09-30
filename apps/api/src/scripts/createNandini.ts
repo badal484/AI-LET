@@ -9,19 +9,19 @@ async function main() {
   // 1. Ensure category exists
   let cat = await prisma.characterCategory.findFirst({
     where: {
-      OR: [{ slug: 'love' }, { slug: 'wellness' }, { slug: 'friendship' }],
+      slug: 'friendship',
     },
   });
 
   if (!cat) {
     cat = await prisma.characterCategory.create({
       data: {
-        slug: 'love',
-        name: 'Love & Romance',
-        displayName: 'Love & Romance',
-        description: 'Romantic companions, caring partners, and deep emotional connections',
-        iconUrl: '❤️',
-        displayOrder: 1,
+        slug: 'friendship',
+        name: 'Friendship & Banter',
+        displayName: 'Friendship & Banter',
+        description: 'Loyal friends, relatable buddies, and hearty conversations',
+        iconUrl: '🤝',
+        displayOrder: 2,
         isActive: true,
       },
     });
@@ -96,7 +96,7 @@ Her Vibe:
         longDescription,
         avatarUrl,
         coverImageUrl,
-        category: 'love',
+        category: 'friendship',
         categoryId: cat.id,
         archetype: 'Independent & Thoughtful Confidante',
         status: 'PUBLISHED',
@@ -117,7 +117,7 @@ Her Vibe:
         longDescription,
         avatarUrl,
         coverImageUrl,
-        category: 'love',
+        category: 'friendship',
         categoryId: cat.id,
         archetype: 'Independent & Thoughtful Confidante',
         backstory: longDescription,
@@ -209,7 +209,7 @@ Nandini Reddy: "Haha itna direct answer? 🙈\\nWaise lagta hai aaj din bohot ev
         longDescription,
         avatarUrl,
         coverImageUrl,
-        category: 'love',
+        category: 'friendship',
         archetype: 'Independent & Thoughtful Confidante',
         age: 24,
         gender: 'Female',

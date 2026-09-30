@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
   RefreshControl,
   StatusBar,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -16,6 +18,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import type { RootStackParamList } from '../../navigation/types.js';
 import { Skeleton, ErrorState } from '../../components/common/index.js';
+import { activeSectionAt, chipLabelFor } from '../../utils/sectionSpy.js';
 import type {
   CharacterCatalogItem,
   HomeFeedSection,
@@ -27,25 +30,17 @@ const SNAP_INTERVAL = CARD_WIDTH + 10;
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
-interface FilterChipDef {
-  slug: string | null;
-  label: string;
-}
-
-const FILTER_CHIPS: FilterChipDef[] = [
-  { slug: null, label: 'All' },
-  { slug: 'love', label: 'Love' },
-  { slug: 'friendship', label: 'Friends' },
-  { slug: 'astrology', label: 'Astrology' },
-  { slug: 'health', label: 'Health' },
-  { slug: 'learn-earn', label: 'Learn' },
-  { slug: 'coaching', label: 'Coaching' },
-];
-
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // The chip for the section being read (null = "All"); follows the scroll, and a tap jumps there.
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const feedScrollRef = useRef<ScrollView>(null);
+  const chipBarRef = useRef<ScrollView>(null);
+  const sectionY = useRef<Record<string, number>>({});
+  const chipX = useRef<Record<string, number>>({});
+  // While a chip tap is scrolling the page, don't let the passing sections flicker the chips.
+  const jumpingUntil = useRef(0);
 
   const { data: homeFeed, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['discovery', 'home'],
@@ -70,20 +65,43 @@ export const HomeScreen: React.FC = () => {
     navigation.navigate('CreditWallet');
   };
 
-  // Filter sections by selected category chip
+  // Every category row, in order (the chips mirror these).
   const sections = useMemo(() => {
     if (!homeFeed?.sections) return [];
-    return homeFeed.sections.filter((section: HomeFeedSection) => {
-      if (section.sectionKey === 'CATEGORIES' || section.sectionKey === 'CONTINUE') return false;
-      if (!selectedCategory) return true;
-      const secId = section.id || '';
-      const secKey = section.sectionKey || '';
-      return (
-        secId.toLowerCase().includes(selectedCategory.toLowerCase()) ||
-        secKey.toLowerCase().includes(selectedCategory.toLowerCase())
-      );
-    });
-  }, [homeFeed, selectedCategory]);
+    return homeFeed.sections.filter(
+      (section: HomeFeedSection) =>
+        section.sectionKey !== 'CATEGORIES' && section.sectionKey !== 'CONTINUE' && (section.items?.length ?? 0) > 0,
+    );
+  }, [homeFeed]);
+
+  const chips = useMemo(
+    () => [{ id: null as string | null, label: 'All' }, ...sections.map((section: HomeFeedSection) => ({ id: section.id, label: chipLabelFor(section) }))],
+    [sections],
+  );
+
+  // Keep the active chip visible in the chip bar.
+  useEffect(() => {
+    const x = chipX.current[activeSectionId ?? 'all'];
+    if (x !== undefined) chipBarRef.current?.scrollTo({ x: Math.max(0, x - 40), animated: true });
+  }, [activeSectionId]);
+
+  const handleFeedScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (Date.now() < jumpingUntil.current) return;
+    const y = e.nativeEvent.contentOffset.y;
+    const next = activeSectionAt(
+      Object.entries(sectionY.current).map(([id, top]) => ({ id, y: top })),
+      y,
+    );
+    const resolved = y < 20 ? null : next;
+    if (resolved !== activeSectionId) setActiveSectionId(resolved);
+  };
+
+  const handleChipPress = (id: string | null) => {
+    setActiveSectionId(id);
+    jumpingUntil.current = Date.now() + 700;
+    const y = id ? Math.max(0, (sectionY.current[id] ?? 0) - 8) : 0;
+    feedScrollRef.current?.scrollTo({ y, animated: true });
+  };
 
   if (isLoading && !homeFeed) {
     return (
@@ -145,18 +163,22 @@ export const HomeScreen: React.FC = () => {
       {/* 2. Simple Clean Filter Chips */}
       <View style={styles.filterBarContainer}>
         <ScrollView
+          ref={chipBarRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterChipsScroll}
         >
-          {FILTER_CHIPS.map((chip, index) => {
-            const isSelected = selectedCategory === chip.slug;
+          {chips.map((chip) => {
+            const isSelected = activeSectionId === chip.id;
             return (
               <TouchableOpacity
-                key={chip.slug || `chip-${index}`}
+                key={chip.id ?? 'all'}
                 style={[styles.filterChip, isSelected && styles.filterChipActive]}
                 activeOpacity={0.75}
-                onPress={() => setSelectedCategory(chip.slug)}
+                onLayout={(e) => {
+                  chipX.current[chip.id ?? 'all'] = e.nativeEvent.layout.x;
+                }}
+                onPress={() => handleChipPress(chip.id)}
               >
                 <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
                   {chip.label}
@@ -169,9 +191,12 @@ export const HomeScreen: React.FC = () => {
 
       {/* 3. Feed with Clean Horizontal Rows */}
       <ScrollView
+        ref={feedScrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleFeedScroll}
+        scrollEventThrottle={32}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -180,14 +205,21 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
-        {sections.map((section: HomeFeedSection) => {
-          return renderSection(section, handleOpenCharacter, handleOpenCategory);
-        })}
+        {sections.map((section: HomeFeedSection) => (
+          <View
+            key={section.id}
+            onLayout={(e) => {
+              sectionY.current[section.id] = e.nativeEvent.layout.y;
+            }}
+          >
+            {renderSection(section, handleOpenCharacter, handleOpenCategory)}
+          </View>
+        ))}
 
         {sections.length === 0 && !isLoading && (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyTitle}>No companions found</Text>
-            <Text style={styles.emptySubtitle}>Tap 'All' or pull down to refresh</Text>
+            <Text style={styles.emptySubtitle}>Pull down to refresh</Text>
           </View>
         )}
       </ScrollView>

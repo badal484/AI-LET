@@ -9,19 +9,19 @@ async function main() {
   // 1. Ensure category exists
   let cat = await prisma.characterCategory.findFirst({
     where: {
-      OR: [{ slug: 'friendship' }, { slug: 'banter' }],
+      slug: 'professionals',
     },
   });
 
   if (!cat) {
     cat = await prisma.characterCategory.create({
       data: {
-        slug: 'friendship',
-        name: 'Friendship & Banter',
-        displayName: 'Friendship & Banter',
-        description: 'Loyal friends, relatable buddies, and hearty conversations',
-        iconUrl: '🤝',
-        displayOrder: 2,
+        slug: 'professionals',
+        name: 'Working Professionals',
+        displayName: 'Working Professionals',
+        description: 'Corporate peers, career guides, sales executives, and daily work buddies',
+        iconUrl: '💼',
+        displayOrder: 5,
         isActive: true,
       },
     });
@@ -101,7 +101,7 @@ His Vibe:
         longDescription,
         avatarUrl,
         coverImageUrl,
-        category: 'friendship',
+        category: 'professionals',
         categoryId: cat.id,
         archetype: 'Desi Dairy Owner & Jovial Milkman',
         status: 'PUBLISHED',
@@ -122,7 +122,7 @@ His Vibe:
         longDescription,
         avatarUrl,
         coverImageUrl,
-        category: 'friendship',
+        category: 'professionals',
         categoryId: cat.id,
         archetype: 'Desi Dairy Owner & Jovial Milkman',
         backstory: longDescription,
@@ -209,7 +209,7 @@ Sandeep Chaudhary: "Arey Ram Ram bhai! Yeh kya ulti-seedhi baatein shuru kar di?
         longDescription,
         avatarUrl,
         coverImageUrl,
-        category: 'friendship',
+        category: 'professionals',
         archetype: 'Desi Dairy Owner & Jovial Milkman',
         age: 28,
         gender: 'Male',

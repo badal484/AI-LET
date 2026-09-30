@@ -31,7 +31,7 @@ export class HomeFeedService {
     } = {},
   ): Promise<HomeFeedResponse> {
     const limit = options.limit || 10;
-    const cacheKey = userId ? `home:user:${userId}:v26` : 'home:guest:v26';
+    const cacheKey = userId ? `home:user:${userId}:v27` : 'home:guest:v27';
 
     if (!options.refresh) {
       try {
@@ -219,14 +219,16 @@ export class HomeFeedService {
         });
       }
 
-      if (categories.length > 0) {
+      // Only categories that actually have characters (no empty "Wisdom" chip).
+      const populated = categories.filter((cat) => characters.some((c) => c.categoryId === cat.id));
+      if (populated.length > 0) {
         sections.push({
           id: 'section_categories',
           sectionKey: 'CATEGORIES',
           title: 'Categories',
           subtitle: 'Browse companions by interest and specialty',
           layoutStyle: 'CHIPS',
-          items: categories,
+          items: populated,
         });
       }
 
@@ -258,17 +260,14 @@ export class HomeFeedService {
         const catName = (cat.name || '').toLowerCase().trim();
         const catDisplay = (cat.displayName || '').toLowerCase().trim();
 
+        // A character belongs to exactly one category: its categoryId decides. The old free-text
+        // field is only a fallback for characters without one (exact match, never fuzzy — fuzzy
+        // matching put characters in several rows, and '' matched every category).
         const catChars = characters.filter((c) => {
-          if (c.categoryId && c.categoryId === cat.id) return true;
+          if (assignedCharIds.has(c.id)) return false;
+          if (c.categoryId) return c.categoryId === cat.id;
           const charCat = (c.category || '').toLowerCase().trim();
-          return (
-            charCat === catSlug ||
-            charCat === catName ||
-            charCat === catDisplay ||
-            charCat.includes(catSlug) ||
-            catSlug.includes(charCat) ||
-            catName.includes(charCat)
-          );
+          return charCat !== '' && (charCat === catSlug || charCat === catName || charCat === catDisplay);
         });
 
         if (catChars.length > 0) {
