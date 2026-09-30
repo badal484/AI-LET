@@ -34,10 +34,14 @@ export default defineConfig({
       ...(testDatabaseUrl ? { DATABASE_URL: testDatabaseUrl } : {}),
       // Simulated agent-tool adapters are test/dev-only (production/staging refuse to start with this on).
       AGENT_SIMULATED_TOOLS: 'true',
+      // Human-style chat pacing (burst wait, typing pauses) is disabled in tests unless a test opts in.
+      CHAT_BURST_QUIET_MS: '0',
+      CHAT_PACING_SCALE: '0',
       // Tests must never call paid AI providers (the .env loaded above holds real keys).
       GOOGLE_AI_API_KEY: '',
       GEMINI_API_KEY: '',
       OPENAI_API_KEY: '',
+      MISTRAL_API_KEY: '',
       ANTHROPIC_API_KEY: '',
       BILLING_SIMULATED_PROVIDERS: 'true',
     },

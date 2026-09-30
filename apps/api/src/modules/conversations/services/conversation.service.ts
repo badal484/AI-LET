@@ -295,6 +295,9 @@ export class ConversationService {
 
     const where: any = {
       conversationId,
+      // Failures are shown as a retry chip, never as a character message; empty placeholders from
+      // interrupted generations are not messages at all.
+      NOT: { role: 'assistant', status: { in: ['FAILED', 'STREAMING', 'PENDING'] } },
     };
 
     if (query.cursor) {

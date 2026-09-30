@@ -12,6 +12,7 @@ import { ToastService } from './Toast.js';
 import { Icon } from './Icon.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem } from '@ai-companion/types';
+import { messageTime } from '../../utils/chatDates.js';
 
 export interface MessageBubbleProps {
   message: ChatMessageItem;
@@ -82,12 +83,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isFailed = message.status === 'FAILED';
   const isCancelled = message.status === 'CANCELLED';
 
+  // The server stores each of her short messages separately, so one message = one bubble; line breaks
+  // inside a message (e.g. a plan's lines) stay together in that bubble.
   const paragraphsToRender = revealedParagraphs && revealedParagraphs.length > 0
     ? revealedParagraphs
-    : (!isUser && !isStreaming && message.content && message.content.includes('\n')
-        ? message.content.split(/\n\s*\n|\n/).map((s) => s.trim()).filter(Boolean)
-        : [message.content].filter(Boolean)
-      );
+    : [message.content].filter(Boolean);
 
   const isInitialTyping = isStreaming && paragraphsToRender.length === 0;
 
@@ -103,12 +103,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     setShowActions(false);
   };
 
-  const formattedTime = message.createdAt
-    ? new Date(message.createdAt).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
+  const formattedTime = message.createdAt ? messageTime(message.createdAt) : '';
 
   return (
     <View

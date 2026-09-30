@@ -56,3 +56,6 @@ ios/build/
 *.xcworkspace
 *.xcodeproj
 
+
+# Humanness eval outputs (generated transcripts/scores)
+apps/api/scripts/eval/results/

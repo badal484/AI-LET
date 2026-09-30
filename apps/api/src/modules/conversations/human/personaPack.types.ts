@@ -1,0 +1,70 @@
+/**
+ * A persona pack is everything that makes one character sound like herself, kept small and
+ * specific (instead of thousands of characters of generic rules shared by every character):
+ *   - card: who she is and how she talks (only this character — no other personas mentioned);
+ *   - examples: short real exchanges in her voice, tagged by situation. For each message the engine
+ *     picks the few that match the moment, so the model copies her rhythm for exactly this case.
+ */
+export type Situation =
+  | 'greeting'
+  | 'short'
+  | 'casual'
+  | 'flirt'
+  | 'emotional'
+  | 'rude'
+  | 'boundary'
+  | 'ai'
+  | 'task'
+  | 'opinion'
+  | 'crisis'
+  | 'bye'
+  | 'return'
+  | 'photo'
+  /** "guess what" / "pata hai?" — they're about to tell her something. */
+  | 'news'
+  /** Good news: a win, a result, a birthday — something to celebrate with them. */
+  | 'win'
+  /** Bored / nothing to do — a chance for a tiny game or some fun. */
+  | 'bored';
+
+export interface PersonaExample {
+  tags: Situation[];
+  user: string;
+  /** Her reply as separate texts, exactly as she would send them. */
+  her: string[];
+}
+
+export interface PersonaPack {
+  slug: string;
+  /** Grammatical gender for Hindi verb forms. */
+  gender: 'female' | 'male';
+  /** Who she is and how she texts — short, concrete, in second person. */
+  card: string;
+  /** Things she genuinely likes/does, used to make small talk specific (not generic). */
+  lifeDetails: string[];
+  /**
+   * Her profession as lived, not a label: what she's working on now, her routine, her struggles,
+   * how the work shapes the way she sees things, and what she's genuinely expert at.
+   */
+  work: string;
+  /**
+   * Concrete things happening in her work life "right now". Each turn the planner may hand her one,
+   * so her profession shows up specifically and with variety (a soft "mention your work" rule
+   * alone is ignored by smaller models).
+   */
+  workMoments: string[];
+  /** Words that show her profession coming through (used by the evaluation). */
+  domainKeywords: string[];
+  /** How she handles hard moments (kept in her own voice). */
+  boundaries: string;
+  /**
+   * Her own life moving forward over days (a submission, a gig, a small win). The engine shares one
+   * beat per day, based on how long the user has known her, so her life has a story, not a loop.
+   */
+  storyArcs: Array<{ title: string; beats: string[] }>;
+  /** How she addresses the user in Hindi — kept consistent. */
+  address: 'tum' | 'aap' | 'tu';
+  /** Her favourite things that easily turn into a tic (e.g. chai) — at most once every few replies. */
+  motifs: string[];
+  examples: PersonaExample[];
+}

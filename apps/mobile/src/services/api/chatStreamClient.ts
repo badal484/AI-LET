@@ -8,6 +8,10 @@ import type {
   StreamMessageCompletedPayload,
   StreamMessageFailedPayload,
   StreamMessageCancelledPayload,
+  StreamMessageSavedPayload,
+  StreamMessageQueuedPayload,
+  StreamMessageBubblePayload,
+  StreamReplyStatusPayload,
 } from '@ai-companion/types';
 
 export interface ChatStreamCallbacks {
@@ -18,10 +22,21 @@ export interface ChatStreamCallbacks {
   onFailed?: (payload: StreamMessageFailedPayload) => void;
   onCancelled?: (payload: StreamMessageCancelledPayload) => void;
   onHeartbeat?: () => void;
+  /** Human-style turns: the user's message is stored (never lost after this). */
+  onSaved?: (payload: StreamMessageSavedPayload) => void;
+  /** Stored while she is already replying — the running turn answers it. */
+  onQueued?: (payload: StreamMessageQueuedPayload) => void;
+  /** She is typing (before her first message and between messages). */
+  onTyping?: () => void;
+  /** One short, already-stored message of her reply. */
+  onBubble?: (payload: StreamMessageBubblePayload) => void;
+  onReplyDelayed?: (payload: StreamReplyStatusPayload) => void;
+  onReplyFailed?: (payload: StreamReplyStatusPayload) => void;
+  onTurnCompleted?: () => void;
 }
 
 export class ChatStreamClient {
-  public static readonly REQUEST_TIMEOUT_MS = 60_000;
+  public static readonly REQUEST_TIMEOUT_MS = 120_000;
 
   /**
    * Opens an SSE streaming generation request to the API using XMLHttpRequest
@@ -120,6 +135,7 @@ export class ChatStreamClient {
               callbacks.onCompleted?.(parsed);
               break;
             case 'message.failed':
+              isCompleted = true;
               callbacks.onFailed?.(parsed);
               break;
             case 'message.cancelled':
@@ -127,6 +143,30 @@ export class ChatStreamClient {
               break;
             case 'heartbeat':
               callbacks.onHeartbeat?.();
+              break;
+            case 'message.saved':
+              callbacks.onSaved?.(parsed);
+              break;
+            case 'message.queued':
+              isCompleted = true;
+              callbacks.onQueued?.(parsed);
+              break;
+            case 'typing':
+              callbacks.onTyping?.();
+              break;
+            case 'message.bubble':
+              callbacks.onBubble?.(parsed);
+              break;
+            case 'reply.delayed':
+              callbacks.onReplyDelayed?.(parsed);
+              break;
+            case 'reply.failed':
+              isCompleted = true;
+              callbacks.onReplyFailed?.(parsed);
+              break;
+            case 'turn.completed':
+              isCompleted = true;
+              callbacks.onTurnCompleted?.();
               break;
           }
         } catch (jsonErr) {

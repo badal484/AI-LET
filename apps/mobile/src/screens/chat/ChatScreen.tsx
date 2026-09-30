@@ -17,6 +17,8 @@ import {
   Dimensions,
   StatusBar,
   Alert,
+  Animated,
+  ViewToken,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +31,6 @@ import { feedbackApi } from '../../services/api/feedbackApi.js';
 import { RelationshipApi } from '../../services/api/relationshipApi.js';
 import { billingApi } from '../../services/api/billingApi.js';
 import { ModerationApi } from '../../services/api/moderationApi.js';
-import { useChatStreamStore } from '../../stores/chatStreamStore.js';
 import {
   Avatar,
   MessageBubble,
@@ -41,6 +42,7 @@ import {
 import { MessageFeedbackModal } from '../../components/chat/MessageFeedbackModal.js';
 import { spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem, ConversationDetail } from '@ai-companion/types';
+import { dayLabel, isDateDivider, withDateDividers, type DateDivider } from '../../utils/chatDates.js';
 import type { CharacterReportCreateInput } from '@ai-companion/validation';
 
 type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
@@ -163,8 +165,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   );
   const [inputText, setInputText] = useState(initialPrompt || '');
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessageItem[]>([]);
-  // Failed reply currently being regenerated (hidden while its replacement streams in).
-  const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
@@ -200,37 +200,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     };
   }, []);
 
-  const {
-    isStreaming,
-    accumulatedDelta,
-    startStreaming,
-    appendDelta,
-    finishStreaming,
-    setError: setStreamError,
-    error: streamError,
-  } = useChatStreamStore();
-
-  const [deliveringMap, setDeliveringMap] = useState<
-    Record<string, { revealedParagraphs: string[]; isTypingNext: boolean }>
-  >({});
-
-  const deliveryTimersRef = useRef<NodeJS.Timeout[]>([]);
-
-  const clearDeliveryTimers = () => {
-    deliveryTimersRef.current.forEach(t => clearTimeout(t));
-    deliveryTimersRef.current = [];
-  };
-
-  useEffect(() => {
-    return () => {
-      clearDeliveryTimers();
-      // Leaving mid-reply must not leave the shared "streaming" flag set, or every chat's send
-      // button stays frozen. The server keeps generating and saves the reply for when we return.
-      if (useChatStreamStore.getState().isStreaming) {
-        useChatStreamStore.getState().finishStreaming();
-      }
-    };
-  }, []);
+  // Human-style turn state. Every message is stored server-side; this is only presentation.
+  const [isTyping, setIsTyping] = useState(false);
+  const [replyNotice, setReplyNotice] = useState<{ kind: 'delayed' | 'failed'; text: string } | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const activeTurnsRef = useRef(0);
+  const typingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(
+    () => () => {
+      if (typingPollRef.current) clearInterval(typingPollRef.current);
+    },
+    [],
+  );
 
   // 0. Fetch Character Profile (fallback for instant header rendering)
   const { data: characterProfile } = useQuery({
@@ -330,15 +311,45 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const pendingOptimistic = optimisticMessages.filter(
     m => !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId),
   );
-  const allMessages = [
-    ...pendingOptimistic,
-    ...serverMessages.filter(m => m.id !== retryingMessageId),
-  ];
+  const allMessages = [...pendingOptimistic, ...serverMessages];
 
   // 5. Scroll Management
+  // WhatsApp-style floating date: shows the day you're looking at while scrolling, then fades.
+  const [floatingDate, setFloatingDate] = useState<string | null>(null);
+  const floatingOpacity = useRef(new Animated.Value(0)).current;
+  const floatingHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  // Keep "Today"/"Yesterday" right if the chat stays open past midnight.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    // Inverted list: the highest index on screen is the one at the top.
+    const top = viewableItems.reduce<ViewToken | null>((a, b) => (a && (a.index ?? 0) > (b.index ?? 0) ? a : b), null);
+    const item = top?.item as ChatMessageItem | DateDivider | undefined;
+    if (!item) return;
+    if (isDateDivider(item)) setFloatingDate(item.label);
+    else if (item.createdAt) setFloatingDate(dayLabel(item.createdAt));
+  }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10 }).current;
+
+  useEffect(() => () => {
+    if (floatingHideTimer.current) clearTimeout(floatingHideTimer.current);
+  }, []);
+
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = e.nativeEvent.contentOffset.y;
     setIsScrolledUp(offsetY > 100);
+    if (offsetY > 100) {
+      Animated.timing(floatingOpacity, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+      if (floatingHideTimer.current) clearTimeout(floatingHideTimer.current);
+      floatingHideTimer.current = setTimeout(() => {
+        Animated.timing(floatingOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start();
+      }, 1200);
+    }
   };
 
   const scrollToBottom = useCallback(() => {
@@ -347,294 +358,195 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   }, [isScrolledUp]);
 
-  // The stream store is app-wide: only a stream for *this* conversation may lock this composer.
-  const streamingConversationId = useChatStreamStore(st => st.activeConversationId);
-  const isStreamingHere =
-    isStreaming && (!streamingConversationId || streamingConversationId === effectiveConvId);
-  const isAnyDelivering = isStreamingHere || Object.keys(deliveringMap).length > 0;
-
   useEffect(() => {
-    if (isAnyDelivering) {
+    if (isTyping) {
       scrollToBottom();
     }
-  }, [accumulatedDelta, isAnyDelivering, scrollToBottom]);
+  }, [isTyping, serverMessages.length, scrollToBottom]);
 
-  // Watchdog: a reply that never resolves (dropped connection, app backgrounded, server restart)
-  // must not lock the chat. After 75s, drop the local "typing" state and show the server's truth.
+  // Watchdog: if a turn's connection silently dies, stop showing "typing" after a while and show
+  // whatever the server has stored (the reply is saved server-side even if the stream was lost).
   useEffect(() => {
-    if (!isAnyDelivering) return;
+    if (!isTyping) return;
     const t = setTimeout(() => {
-      clearDeliveryTimers();
-      setDeliveringMap({});
-      setOptimisticMessages([]);
-      setRetryingMessageId(null);
-      if (useChatStreamStore.getState().isStreaming) finishStreaming();
+      setIsTyping(false);
       queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-    }, 75_000);
+    }, 90_000);
     return () => clearTimeout(t);
-  }, [isAnyDelivering, effectiveConvId]);
+    // eslint-disable-next-line
+  }, [isTyping, effectiveConvId]);
 
-  // 6. Send Message Handler
-  const handleSendMessage = async (textToSend?: string, retryMessageId?: string) => {
-    const content = (textToSend || inputText).trim();
-    if (!content || !effectiveConvId) return;
+  /** Puts a stored message into the chat immediately (newest first, ordered by sequence). */
+  const upsertServerMessage = useCallback(
+    (msg: ChatMessageItem) => {
+      queryClient.setQueryData(['messages', effectiveConvId], (old: any) => {
+        if (!old?.pages?.length) return old;
+        const [first, ...rest] = old.pages;
+        const items = [msg, ...first.items.filter((m: ChatMessageItem) => m.id !== msg.id)].sort(
+          (a: ChatMessageItem, b: ChatMessageItem) => (b.sequenceNumber ?? 0) - (a.sequenceNumber ?? 0),
+        );
+        return { ...old, pages: [{ ...first, items }, ...rest] };
+      });
+    },
+    [queryClient, effectiveConvId],
+  );
 
-    if (isAnyDelivering) {
-      if (isStreamingHere) {
-        // The server is still writing the previous reply (it accepts one at a time): say so,
-        // keep the typed text, instead of silently ignoring the tap.
-        ToastService.show({ message: `${characterName} is still replying… one moment`, type: 'info', duration: 1800 });
-        return;
+  /**
+   * A message was stored while another turn is answering (e.g. her reply is still coming on another
+   * request, or she's replying in the background): keep the typing indicator and pick up her
+   * messages from the server as they are stored.
+   */
+  const followBackgroundTurn = () => {
+    if (activeTurnsRef.current > 0) return; // this screen's open turn will deliver them
+    setIsTyping(true);
+    if (typingPollRef.current) clearInterval(typingPollRef.current);
+    const startedAt = Date.now();
+    const lastSeq = serverMessages[0]?.sequenceNumber ?? 0;
+    typingPollRef.current = setInterval(async () => {
+      const result = await refetchMessages();
+      const newest = result.data?.pages?.[0]?.items?.[0];
+      const answered = newest && newest.role === 'assistant' && (newest.sequenceNumber ?? 0) > lastSeq;
+      if (answered || Date.now() - startedAt > 60_000) {
+        if (typingPollRef.current) clearInterval(typingPollRef.current);
+        typingPollRef.current = null;
+        if (activeTurnsRef.current === 0) setIsTyping(false);
       }
-      // Only the bubble reveal animation is running: finish it instantly and send.
-      clearDeliveryTimers();
-      setDeliveringMap({});
-      setOptimisticMessages([]);
-      setRetryingMessageId(null);
-      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-    }
+    }, 2000);
+  };
 
-    if (!textToSend) {
-      setInputText('');
-    }
-
-    const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const tempUserMessage: ChatMessageItem = {
-      id: `temp-user-${Date.now()}`,
-      conversationId: effectiveConvId,
-      senderType: 'USER',
-      role: 'user',
-      content,
-      status: 'SENT',
-      sequenceNumber: (allMessages[0]?.sequenceNumber || 0) + 1,
-      retryCount: 0,
-      parts: [],
-      clientRequestId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const tempAssistantId = `temp-assist-${Date.now()}`;
-    const tempAssistantMessage: ChatMessageItem = {
-      id: tempAssistantId,
-      conversationId: effectiveConvId,
-      senderType: 'CHARACTER',
-      role: 'assistant',
-      content: '',
-      status: 'STREAMING',
-      sequenceNumber: (allMessages[0]?.sequenceNumber || 0) + 2,
-      retryCount: 0,
-      parts: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    // Inverted list: index 0 is assistant (bottom), index 1 is user (above assistant)
-    setOptimisticMessages(retryMessageId ? [tempAssistantMessage] : [tempAssistantMessage, tempUserMessage]);
-    setRetryingMessageId(retryMessageId ?? null);
-    setDeliveringMap({
-      [tempAssistantId]: { revealedParagraphs: [], isTypingNext: true },
-    });
-
-    clearDeliveryTimers();
-    setStreamError(null);
-
-    const abortController = new AbortController();
-    startStreaming(effectiveConvId, tempAssistantId, abortController);
-
-    let accumulatedText = '';
-    // The server emits message.started only after it has stored the user's message.
-    let serverStoredMessage = false;
-
-    const failSend = (message: string) => {
-      if (!accumulatedText.trim()) {
-        setStreamError(message);
-      }
-      // Rejected before it was stored (blocked, rate-limited, offline): give the text back so the
-      // message is never silently lost.
-      if (!serverStoredMessage && !textToSend) {
-        setInputText(prev => (prev.trim() ? prev : content));
-      }
-      clearDeliveryTimers();
-      setDeliveringMap({});
-      finishStreaming();
-      setOptimisticMessages([]);
-      setRetryingMessageId(null);
-      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
-    };
-
+  /** Opens one server turn: stores the message (unless retrying) and receives her reply bubbles. */
+  const runTurn = async (opts: { content: string; clientRequestId: string; retryMessageId?: string; restoreOnReject: boolean }) => {
+    if (!effectiveConvId) return;
+    let saved = Boolean(opts.retryMessageId);
+    activeTurnsRef.current += 1;
     try {
       await ChatStreamClient.streamMessage(
         effectiveConvId,
-        content,
-        clientRequestId,
+        opts.content,
+        opts.clientRequestId,
         {
-          onStarted: payload => {
-            serverStoredMessage = true;
-            setStreamError(null);
-            if (payload.messageId) {
-              useChatStreamStore.setState({ streamingMessageId: payload.messageId });
-            }
+          onSaved: payload => {
+            saved = true;
+            upsertServerMessage({
+              id: payload.messageId,
+              conversationId: effectiveConvId,
+              senderType: 'USER',
+              role: 'user',
+              content: opts.content,
+              status: 'SENT',
+              clientRequestId: payload.clientRequestId ?? opts.clientRequestId,
+              sequenceNumber: payload.sequenceNumber,
+              retryCount: 0,
+              parts: [],
+              createdAt: payload.createdAt,
+              updatedAt: payload.createdAt,
+            } as ChatMessageItem);
           },
-          onDelta: payload => {
-            setStreamError(null);
-            accumulatedText += payload.delta;
-            appendDelta(payload.delta);
+          onQueued: () => followBackgroundTurn(),
+          onTyping: () => setIsTyping(true),
+          onBubble: payload => {
+            setReplyNotice(null);
+            setIsTyping(false);
+            upsertServerMessage({
+              id: payload.messageId,
+              conversationId: effectiveConvId,
+              senderType: 'CHARACTER',
+              role: 'assistant',
+              content: payload.content,
+              status: 'SENT',
+              sequenceNumber: payload.sequenceNumber,
+              retryCount: 0,
+              parts: [],
+              createdAt: payload.createdAt,
+              updatedAt: payload.createdAt,
+            } as ChatMessageItem);
+            scrollToBottom();
           },
-          onCompleted: payload => {
-            setStreamError(null);
-            const finalContent =
-              payload?.finalContent ||
-              accumulatedText ||
-              useChatStreamStore.getState().accumulatedDelta ||
-              '';
-            const paragraphs = finalContent
-              .split(/\n\s*\n|\n/)
-              .map((s: string) => s.trim())
-              .filter(Boolean);
-
-            const safeParagraphs =
-              paragraphs.length > 0 ? paragraphs : [finalContent.trim() || '...'];
-
-            const finalizeDelivery = async () => {
-              finishStreaming();
-              setStreamError(null);
-              refetchRelationship();
-              queryClient.invalidateQueries({ queryKey: ['conversations'] });
-              try {
-                await queryClient.refetchQueries({ queryKey: ['messages', effectiveConvId] });
-              } catch (err) {
-                console.warn('Failed to refetch messages after generation:', err);
-              }
-              setDeliveringMap({});
-              setOptimisticMessages([]);
-      setRetryingMessageId(null);
-            };
-
-            if (safeParagraphs.length === 1) {
-              // Single bubble: reveal it immediately
-              setDeliveringMap({
-                [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
-              });
-              setOptimisticMessages(prev =>
-                prev.map(m =>
-                  m.id === tempAssistantId
-                    ? { ...m, content: safeParagraphs[0], status: 'SENT' }
-                    : m,
-                ),
-              );
-              scrollToBottom();
-
-              const t = setTimeout(() => {
-                finalizeDelivery();
-              }, 300);
-              deliveryTimersRef.current.push(t);
-            } else if (safeParagraphs.length === 2) {
-              // Bubble 1 -> typing dots below -> Bubble 2
-              setDeliveringMap({
-                [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
-              });
-              setOptimisticMessages(prev =>
-                prev.map(m =>
-                  m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m,
-                ),
-              );
-              scrollToBottom();
-
-              const t1 = setTimeout(() => {
-                setDeliveringMap({
-                  [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
-                });
-                setOptimisticMessages(prev =>
-                  prev.map(m =>
-                    m.id === tempAssistantId
-                      ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
-                      : m,
-                  ),
-                );
-                scrollToBottom();
-
-                const t2 = setTimeout(() => {
-                  finalizeDelivery();
-                }, 300);
-                deliveryTimersRef.current.push(t2);
-              }, 1200);
-              deliveryTimersRef.current.push(t1);
-            } else {
-              // 3 Bubbles: Bubble 1 -> typing dots -> Bubble 2 -> typing dots -> Bubble 3
-              setDeliveringMap({
-                [tempAssistantId]: { revealedParagraphs: [safeParagraphs[0]], isTypingNext: true },
-              });
-              setOptimisticMessages(prev =>
-                prev.map(m =>
-                  m.id === tempAssistantId ? { ...m, content: safeParagraphs[0] } : m,
-                ),
-              );
-              scrollToBottom();
-
-              const t1 = setTimeout(() => {
-                setDeliveringMap({
-                  [tempAssistantId]: {
-                    revealedParagraphs: [safeParagraphs[0], safeParagraphs[1]],
-                    isTypingNext: true,
-                  },
-                });
-                setOptimisticMessages(prev =>
-                  prev.map(m =>
-                    m.id === tempAssistantId
-                      ? { ...m, content: `${safeParagraphs[0]}\n${safeParagraphs[1]}` }
-                      : m,
-                  ),
-                );
-                scrollToBottom();
-
-                const t2 = setTimeout(() => {
-                  setDeliveringMap({
-                    [tempAssistantId]: { revealedParagraphs: safeParagraphs, isTypingNext: false },
-                  });
-                  setOptimisticMessages(prev =>
-                    prev.map(m =>
-                      m.id === tempAssistantId
-                        ? { ...m, content: safeParagraphs.join('\n'), status: 'SENT' }
-                        : m,
-                    ),
-                  );
-                  scrollToBottom();
-
-                  const t3 = setTimeout(() => {
-                    finalizeDelivery();
-                  }, 300);
-                  deliveryTimersRef.current.push(t3);
-                }, 1200);
-                deliveryTimersRef.current.push(t2);
-              }, 1200);
-              deliveryTimersRef.current.push(t1);
-            }
+          onReplyDelayed: payload => setReplyNotice({ kind: 'delayed', text: payload.message }),
+          onReplyFailed: payload => {
+            setIsTyping(false);
+            setReplyNotice({ kind: 'failed', text: payload.message });
+          },
+          onTurnCompleted: () => {
+            setReplyNotice(n => (n?.kind === 'delayed' ? null : n));
+            refetchRelationship();
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
           },
           onFailed: payload => {
-            failSend(payload.errorMessage);
-          },
-          onCancelled: () => {
-            clearDeliveryTimers();
-            setDeliveringMap({});
-            finishStreaming();
-            setOptimisticMessages([]);
-      setRetryingMessageId(null);
-            queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+            setIsTyping(false);
+            if (!saved) {
+              // Refused before it was stored (blocked, rate-limited, offline): never lose the text.
+              setOptimisticMessages(prev => prev.filter(m => m.clientRequestId !== opts.clientRequestId));
+              if (opts.restoreOnReject) setInputText(prev => (prev.trim() ? prev : opts.content));
+              setSendError(payload.errorMessage);
+            } else {
+              setReplyNotice({ kind: 'failed', text: `Couldn't reach ${characterName}. Tap to try again.` });
+            }
           },
         },
-        abortController.signal,
-        retryMessageId,
+        undefined,
+        opts.retryMessageId,
       );
     } catch (err: any) {
-      failSend(err?.message || 'Message could not be sent. Please try again.');
+      if (!saved) {
+        setOptimisticMessages(prev => prev.filter(m => m.clientRequestId !== opts.clientRequestId));
+        if (opts.restoreOnReject) setInputText(prev => (prev.trim() ? prev : opts.content));
+        setSendError(err?.message || 'Message could not be sent. Please try again.');
+      }
+    } finally {
+      activeTurnsRef.current = Math.max(0, activeTurnsRef.current - 1);
+      if (activeTurnsRef.current === 0 && !typingPollRef.current) setIsTyping(false);
+      queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
     }
   };
 
+  // 6. Send Message Handler — never blocked: the message shows instantly and is stored at once.
+  const handleSendMessage = async (textToSend?: string) => {
+    const content = (textToSend || inputText).trim();
+    if (!content || !effectiveConvId) return;
+    if (!textToSend) setInputText('');
+    setSendError(null);
+
+    const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const now = new Date().toISOString();
+    setOptimisticMessages(prev => [
+      {
+        id: `temp-user-${clientRequestId}`,
+        conversationId: effectiveConvId,
+        senderType: 'USER',
+        role: 'user',
+        content,
+        status: 'SENT',
+        sequenceNumber: Number.MAX_SAFE_INTEGER,
+        retryCount: 0,
+        parts: [],
+        clientRequestId,
+        createdAt: now,
+        updatedAt: now,
+      } as ChatMessageItem,
+      ...prev,
+    ]);
+    scrollToBottom();
+    await runTurn({ content, clientRequestId, restoreOnReject: !textToSend });
+  };
+
+  /** Ask her to answer whatever is still unanswered (after a failure). */
+  const retryPendingReply = () => {
+    const lastUser = serverMessages.find(m => m.role === 'user');
+    if (!lastUser) return;
+    setReplyNotice(null);
+    setIsTyping(true);
+    runTurn({
+      content: lastUser.content,
+      clientRequestId: `retry-${Date.now()}`,
+      retryMessageId: lastUser.id,
+      restoreOnReject: false,
+    });
+  };
+
   const handleRetry = (content: string, message?: ChatMessageItem) => {
-    // A failed *reply* is regenerated in place; only a user's own unsent message is re-sent.
     if (message && message.role === 'assistant') {
-      handleSendMessage(content, message.id);
+      retryPendingReply();
       return;
     }
     handleSendMessage(content);
@@ -732,46 +644,50 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   };
 
-  const renderMessageItem = ({ item }: { item: ChatMessageItem }) => {
-    const delivery = deliveringMap[item.id];
-    const isStreamingItem = item.status === 'STREAMING' || Boolean(delivery?.isTypingNext);
+  const TYPING_ITEM_ID = 'typing-indicator';
 
+  const renderMessageItem = ({ item }: { item: ChatMessageItem | DateDivider }) => {
+    if (isDateDivider(item)) {
+      return (
+        <View style={styles.todayPillContainer}>
+          <View style={styles.todayPill}>
+            <Text style={styles.todayPillText}>{item.label}</Text>
+          </View>
+        </View>
+      );
+    }
     return (
       <MessageBubble
         message={item}
         characterAvatarUrl={characterAvatarUrl}
         characterName={characterName}
-        isStreaming={isStreamingItem}
-        revealedParagraphs={delivery?.revealedParagraphs}
-        isTypingNext={delivery?.isTypingNext}
+        isStreaming={item.id === TYPING_ITEM_ID}
         onRetry={handleRetry}
         onFeedback={handleFeedback}
       />
     );
   };
 
-  // Header "Today" pill at the top of the chat (ListFooterComponent in inverted list)
-  const renderListHeader = () => {
-    // Inverted list: the last item is the oldest loaded message, which this pill sits above.
-    const oldest = allMessages[allMessages.length - 1];
-    if (!oldest?.createdAt) return null;
-    const d = new Date(oldest.createdAt);
-    const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-    const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
-    const label =
-      days <= 0
-        ? 'Today'
-        : days === 1
-          ? 'Yesterday'
-          : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: days > 300 ? 'numeric' : undefined });
-    return (
-      <View style={styles.todayPillContainer}>
-        <View style={styles.todayPill}>
-          <Text style={styles.todayPillText}>{label}</Text>
-        </View>
-      </View>
-    );
-  };
+  // While she is typing, a "…" bubble sits under her latest message (inverted list: index 0).
+  const withDividers = withDateDividers(allMessages, now);
+  const listData: Array<ChatMessageItem | DateDivider> = isTyping
+    ? [
+        {
+          id: TYPING_ITEM_ID,
+          conversationId: effectiveConvId ?? '',
+          senderType: 'CHARACTER',
+          role: 'assistant',
+          content: '',
+          status: 'STREAMING',
+          sequenceNumber: Number.MAX_SAFE_INTEGER,
+          retryCount: 0,
+          parts: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as ChatMessageItem,
+        ...withDividers,
+      ]
+    : withDividers;
 
   // Distinct screen states: never show the "new chat" screen while history is still loading or
   // failed to load (that looked like the conversation had vanished).
@@ -894,7 +810,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               <Text style={styles.headerName} numberOfLines={1}>
                 {characterName}
               </Text>
-              <Text style={styles.headerStatus}>{isAnyDelivering ? 'Typing...' : 'Online'}</Text>
+              {/* WhatsApp-style status; no "last seen". */}
+              <Text style={styles.headerStatus}>{isTyping ? 'typing…' : 'online'}</Text>
             </View>
           </TouchableOpacity>
 
@@ -925,21 +842,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           </View>
         </View>
 
-        {/* Top Disclaimer & Floating Action Pill */}
+        {/* Top Disclaimer */}
         <View style={styles.topNoticeContainer}>
           <Text style={styles.aiDisclaimerText}>
             ⓘ Messages are generated by AI. Some may be inaccurate
           </Text>
 
-          <View style={styles.askPhotosPill}>
-            <View style={styles.photosIconRow}>
-              <Text style={{ fontSize: 16 }}>📷</Text>
-            </View>
-            <View style={styles.askPhotosTextCol}>
-              <Text style={styles.askPhotosTitle}>Ask for photos anytime.</Text>
-              <Text style={styles.askPhotosSubtitle}>Your AI friend can send them. Try now!</Text>
-            </View>
-          </View>
         </View>
 
         {/* Message Stream */}
@@ -971,32 +879,43 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             {renderEmptyState()}
           </ScrollView>
         ) : (
-          <FlatList
-            ref={flatListRef}
-            data={allMessages}
-            keyExtractor={item => item.id}
-            renderItem={renderMessageItem}
-            inverted
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={styles.listContent}
-            onEndReached={() => {
-              if (hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
+          <View style={styles.messageArea}>
+            <FlatList
+              ref={flatListRef}
+              data={listData}
+              keyExtractor={item => item.id}
+              renderItem={renderMessageItem}
+              inverted
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+              contentContainerStyle={styles.listContent}
+              onEndReached={() => {
+                if (hasNextPage && !isFetchingNextPage) {
+                  fetchNextPage();
+                }
+              }}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={
+                <>
+                  {isFetchingNextPage ? (
+                    <ActivityIndicator size="small" color="#A78BFA" style={{ marginVertical: 12 }} />
+                  ) : null}
+                </>
               }
-            }}
-            onEndReachedThreshold={0.3}
-            ListFooterComponent={
-              <>
-                {isFetchingNextPage ? (
-                  <ActivityIndicator size="small" color="#A78BFA" style={{ marginVertical: 12 }} />
-                ) : null}
-                {renderListHeader()}
-              </>
-            }
-            ListHeaderComponent={null}
-          />
+              ListHeaderComponent={null}
+            />
+            {floatingDate && allMessages.length > 0 ? (
+              <Animated.View pointerEvents="none" style={[styles.floatingDateContainer, { opacity: floatingOpacity }]}>
+                <View style={styles.todayPill}>
+                  <Text style={styles.todayPillText}>{floatingDate}</Text>
+                </View>
+              </Animated.View>
+            ) : null}
+          </View>
         )}
+
 
         {/* Floating Scroll to Bottom Button */}
         {isScrolledUp && (
@@ -1009,23 +928,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           </TouchableOpacity>
         )}
 
-        {/* Stream Error Banner */}
-        {streamError &&
-          (!allMessages[0] ||
-            allMessages[0].role !== 'assistant' ||
-            allMessages[0].status === 'FAILED') && (
-            <Banner
-              type="error"
-              message={streamError}
-              actionLabel="Retry"
-              onAction={() => {
-                if (allMessages[0]?.role === 'user') {
-                  handleSendMessage(allMessages[0].content);
-                }
-              }}
-              onDismiss={() => useChatStreamStore.setState({ error: null })}
-            />
-          )}
+        {/* A message that could not be stored (blocked / offline): the text is back in the box. */}
+        {sendError && (
+          <Banner type="error" message={sendError} onDismiss={() => setSendError(null)} />
+        )}
+
+        {/* Her reply is delayed or failed: a small note, never a fake message in the chat. */}
+        {replyNotice && (
+          <TouchableOpacity
+            style={styles.replyNotice}
+            activeOpacity={replyNotice.kind === 'failed' ? 0.7 : 1}
+            disabled={replyNotice.kind !== 'failed'}
+            onPress={retryPendingReply}
+            accessibilityRole={replyNotice.kind === 'failed' ? 'button' : 'text'}
+          >
+            {replyNotice.kind === 'delayed' ? <ActivityIndicator size="small" color="#C4B5FD" /> : null}
+            <Text style={styles.replyNoticeText}>{replyNotice.text}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Bottom Composer Footer */}
         <View
@@ -1081,12 +1001,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             {/* Circular Action Button */}
             {inputText.trim().length > 0 ? (
               <TouchableOpacity
-                style={[styles.circleActionButton, isStreamingHere && { opacity: 0.45 }]}
+                style={styles.circleActionButton}
                 onPress={() => handleSendMessage()}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityState={{ busy: isStreamingHere }}
-                accessibilityLabel={isStreamingHere ? `${characterName} is replying` : 'Send message'}
+                accessibilityLabel="Send message"
               >
                 <Icon name="arrow-up" size={22} color="#FFFFFF" />
               </TouchableOpacity>
@@ -1465,6 +1384,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 };
 
 const styles = StyleSheet.create({
+  replyNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 8,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(76, 29, 149, 0.55)',
+  },
+  replyNoticeText: { color: '#E9D5FF', fontSize: 13 },
   historyErrorContainer: {
     flex: 1,
     alignItems: 'center',
@@ -1502,38 +1433,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  askPhotosPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(23, 16, 38, 0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.28)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 10,
-  },
-  photosIconRow: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: 'rgba(168, 85, 247, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  askPhotosTextCol: {
-    flex: 1,
-  },
-  askPhotosTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  askPhotosSubtitle: {
-    fontSize: 10.5,
-    color: '#C084FC',
-    marginTop: 1,
-  },
   container: {
     flex: 1,
   },
@@ -1559,17 +1458,6 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     position: 'relative',
-  },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: -1,
-    right: -1,
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
-    backgroundColor: '#10B981',
-    borderWidth: 2,
-    borderColor: '#0F0B18',
   },
   headerTextCol: {
     flex: 1,
@@ -1629,6 +1517,28 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  onlineBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#0F0B18',
+  },
+  messageArea: {
+    flex: 1,
+  },
+  floatingDateContainer: {
+    position: 'absolute',
+    top: 8,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
   },
   todayPillContainer: {
     alignItems: 'center',

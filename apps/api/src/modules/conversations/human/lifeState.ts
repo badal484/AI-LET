@@ -1,0 +1,230 @@
+import { redis } from '../../../infrastructure/redis/redis.js';
+import type { PersonaPack, Situation } from './personaPack.types.js';
+
+/**
+ * Everything she "carries" between messages with one person, so talking to her feels continuous:
+ *   - today: what she already told them today (no contradicting herself, no repeating news), and how
+ *     they've been feeling today (so she notices when they cheer up);
+ *   - threads: things they mentioned that are coming up ("kal interview hai") so she can ask later;
+ *   - nickname: what they asked to be called;
+ *   - firstMetAt: drives her own story forward day by day.
+ * Stored as one small JSON value per user–character pair. Losing it is harmless (she just forgets).
+ */
+export type UserMood = 'excited' | 'happy' | 'low' | 'stressed' | 'tired' | 'bored' | 'angry' | 'neutral';
+
+export interface Thread {
+  /** The event word, e.g. "interview". */
+  topic: string;
+  /** What they said, trimmed, so she can refer to it naturally. */
+  said: string;
+  mentionedAt: number;
+  /** When it makes sense to ask how it went. */
+  dueAt: number;
+  askedAt?: number;
+}
+
+export interface LifeState {
+  firstMetAt: number;
+  day: { date: string; told: string[]; userMoods: UserMood[]; storyShared: boolean };
+  threads: Thread[];
+  nickname?: string;
+  /** Read from how they talk about themselves ("ja raha hoon" / "ja rahi hoon"). */
+  userGender?: 'male' | 'female';
+}
+
+/** "They asked about her": the natural moment to share her news. */
+export const ASKS_ABOUT_HER = /(tum batao|aur batao|kya chal raha|kya kar rahi|kya karti|kya haal|what'?s up|how('?s| was) your|tumhara din|life mein|apne baare|kya click|what are you)/i;
+
+export function readUserGender(text: string): 'male' | 'female' | undefined {
+  const t = text.toLowerCase();
+  if (/\b\w*(raha|gaya|ta|chuka)\s+(hoon|hu|hun)\b|\b\w+unga\b/.test(t)) return 'male';
+  if (/\b\w*(rahi|gayi|ti|chuki)\s+(hoon|hu|hun)\b|\b\w+ungi\b/.test(t)) return 'female';
+  return undefined;
+}
+
+const TTL_SECONDS = 60 * 60 * 24 * 60;
+const key = (userId: string, characterId: string) => `human:life:${userId}:${characterId}`;
+const HOUR = 3_600_000;
+
+export function localDate(timeZone: string | null | undefined, now = new Date()): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'Asia/Kolkata' }).format(now);
+  } catch {
+    return now.toISOString().slice(0, 10);
+  }
+}
+
+export async function loadLifeState(userId: string, characterId: string, timeZone?: string | null): Promise<LifeState> {
+  const today = localDate(timeZone);
+  let state: LifeState | null = null;
+  try {
+    const raw = await redis.get(key(userId, characterId));
+    state = raw ? (JSON.parse(raw) as LifeState) : null;
+  } catch {
+    state = null;
+  }
+  const fresh = { date: today, told: [], userMoods: [], storyShared: false };
+  if (!state) return { firstMetAt: Date.now(), day: fresh, threads: [] };
+  if (state.day?.date !== today) state.day = fresh;
+  // Forget threads nobody followed up on within 3 days of being due.
+  state.threads = (state.threads ?? []).filter((t) => Date.now() < t.dueAt + 72 * HOUR);
+  return state;
+}
+
+export async function saveLifeState(userId: string, characterId: string, state: LifeState): Promise<void> {
+  try {
+    await redis.set(key(userId, characterId), JSON.stringify(state), 'EX', TTL_SECONDS);
+  } catch {
+    /* continuity is a nicety — never block the reply on it */
+  }
+}
+
+/** Their mood, read from what they wrote (not hers — hers lives in emotionalState). */
+export function readUserMood(text: string, situations: Situation[]): UserMood {
+  const t = text.toLowerCase();
+  if (situations.includes('win') || /(!{2,}|yay+|woo+hoo|😍|🥳|🎉)/.test(t)) return 'excited';
+  if (/\b(better|behtar|achha lag raha|acha lag raha|theek lag raha|relief|halka lag)\b/.test(t) && !/\b(nahi|not)\b/.test(t)) return 'happy';
+  if (situations.includes('crisis') || /\b(sad|udaas|udas|dukhi|rona|cry|lonely|akela|akeli|depress|hurt|mood (off|kharab)|bura lag)\b/.test(t)) return 'low';
+  if (/\b(stress|tension|pareshan|anxious|nervous|dar lag|ghabra|worried)\b/.test(t)) return 'stressed';
+  if (situations.includes('emotional')) return 'low';
+  if (/\b(thak|tired|neend|sleepy|exhausted)\b/.test(t)) return 'tired';
+  if (situations.includes('bored')) return 'bored';
+  if (situations.includes('rude') || /\b(gussa|angry|irritate|frustrat)\b/.test(t)) return 'angry';
+  if (/(😂|🤣|haha|hehe|lol|😄|😊|mast|awesome|maza aa)/.test(t)) return 'happy';
+  return 'neutral';
+}
+
+const EVENT =
+  /\b(interview|exam|paper|test|result|presentation|meeting|date|trip|flight|train|doctor|appointment|match|audition|viva|shaadi|wedding|party|joining|surgery|operation|deadline|pitch|recital|performance)\b/;
+const PAST = /\b(tha|thi|the|gaya|gayi|gaye|hua|hui|ho gaya|ho gayi|was|went|did|had|yesterday)\b/;
+const WHEN: Array<[RegExp, number]> = [
+  [/\b(parso|day after tomorrow)\b/, 40],
+  [/\b(kal|tomorrow)\b/, 16],
+  [/\b(next week|agle hafte)\b/, 24 * 5],
+  [/\b(weekend)\b/, 48],
+  [/\b(aaj|today|tonight|abhi|in an hour|thodi der)\b/, 3],
+];
+
+/** Something upcoming they mentioned — worth asking about later, like a friend who remembers. */
+export function extractThread(text: string, now = Date.now()): Thread | null {
+  const t = text.toLowerCase();
+  const event = t.match(EVENT)?.[1];
+  if (!event || PAST.test(t)) return null;
+  const when = WHEN.find(([re]) => re.test(t));
+  if (!when) return null;
+  return { topic: event, said: text.trim().slice(0, 120), mentionedAt: now, dueAt: now + when[1] * HOUR };
+}
+
+/** "mujhe Sonu bulao" / "call me Sonu" → "Sonu". */
+export function extractNickname(text: string): string | undefined {
+  const m =
+    text.match(/\bcall me\s+([\p{L}]{2,15})/iu) ??
+    text.match(/\bmujhe\s+([\p{L}]{2,15})\s+(bulao|bulaya karo|bol[ao]|bula sakti|keh sakti)/iu) ??
+    text.match(/\bmera naam\s+([\p{L}]{2,15})\s+hai/iu);
+  const name = m?.[1];
+  if (!name || /^(tum|aap|kuch|kya|mat|na|ye|woh|main)$/i.test(name)) return undefined;
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** Her ongoing story: one beat per ~2 days since they met, cycling through her arcs. */
+export function currentStoryBeat(pack: PersonaPack, firstMetAt: number, now = Date.now()): string | undefined {
+  const beats = pack.storyArcs.flatMap((a) => a.beats);
+  if (!beats.length) return undefined;
+  const daysKnown = Math.max(0, Math.floor((now - firstMetAt) / (24 * HOUR)));
+  return beats[Math.floor(daysKnown / 2) % beats.length];
+}
+
+export interface ContinuityNotes {
+  /** Lines for the RIGHT NOW section. */
+  lines: string[];
+  /** A due follow-up she should bring up this turn (thread already marked as asked). */
+  followUp?: Thread;
+  /** Today's story beat to share this turn, if any. */
+  storyBeat?: string;
+  /**
+   * Stay in their moment: they were just hurting (comfort) or sharing good news (celebrate), and this
+   * message continues it — so no switching to her own news or small talk yet.
+   */
+  focus?: 'comfort' | 'celebrate' | 'relief';
+  /** They just told her what to call them — she should say it back. */
+  newNickname?: string;
+  hasNickname?: boolean;
+  asksAboutHer?: boolean;
+}
+
+/**
+ * Update the state with this message and decide what she should carry into her reply.
+ * Mutates `state`; the caller records what she mentioned (`rememberTold`) and saves it.
+ */
+export function applyUserTurn(params: {
+  state: LifeState;
+  pack: PersonaPack;
+  userText: string;
+  situations: Situation[];
+  userMood: UserMood;
+  now?: number;
+}): ContinuityNotes {
+  const { state, pack, userText, situations, userMood } = params;
+  const now = params.now ?? Date.now();
+  const lines: string[] = [];
+  // Moments that belong to them (or need care) — no follow-ups or her own news here.
+  const serious = situations.some((s) => ['crisis', 'emotional', 'rude', 'boundary', 'ai', 'win', 'task'].includes(s));
+
+  // Their mood today: notice a change for the better.
+  const wasDown = state.day.userMoods.some((m) => m === 'low' || m === 'stressed');
+  if (wasDown && (userMood === 'happy' || userMood === 'excited' || userMood === 'neutral') && !serious) {
+    lines.push('Earlier today they were feeling low. If they seem better now, notice it warmly and lightly.');
+  }
+  let focus: ContinuityNotes['focus'];
+  const lastTwo = state.day.userMoods.slice(-2);
+  if (lastTwo.some((m) => m === 'low' || m === 'stressed') && ['low', 'stressed', 'neutral', 'tired'].includes(userMood)) focus = 'comfort';
+  else if (wasDown && (userMood === 'happy' || userMood === 'excited') && !serious) focus = 'relief';
+  else if (lastTwo.includes('excited') && ['excited', 'happy', 'neutral'].includes(userMood) && !serious) focus = 'celebrate';
+  const lowStreak = [...state.day.userMoods, userMood].slice(-3).filter((m) => m === 'low' || m === 'stressed').length;
+  state.day.userMoods = [...state.day.userMoods, userMood].slice(-12);
+
+  // They told her something new: a nickname, or an upcoming event.
+  const nickname = extractNickname(userText);
+  const newNickname = nickname && nickname !== state.nickname ? nickname : undefined;
+  if (nickname) state.nickname = nickname;
+  state.userGender = readUserGender(userText) ?? state.userGender;
+  if (state.userGender) {
+    lines.push(state.userGender === 'male' ? 'They are a guy: talk to them with male forms (rahe ho, gaye, karoge).' : 'They are a girl: talk to them with female forms (rahi ho, gayi, karogi).');
+  }
+  if (state.nickname) lines.push(`They like being called "${state.nickname}". Use it now and then, not every text.`);
+
+  // If they bring up an open thread themselves, it's resolved (she'll react to what they say).
+  const lower = userText.toLowerCase();
+  state.threads = state.threads.filter((t) => !(now - t.mentionedAt > HOUR && lower.includes(t.topic)));
+  const thread = extractThread(userText, now);
+  if (thread) state.threads = [...state.threads.filter((t) => t.topic !== thread.topic), thread].slice(-5);
+
+  let followUp: Thread | undefined;
+  if (!serious && !thread && !focus) {
+    followUp = state.threads.find((t) => !t.askedAt && now >= t.dueAt);
+    if (followUp) followUp.askedAt = now;
+  }
+
+  if (state.day.told.length) {
+    lines.push(`Earlier today you already told them: ${state.day.told.join('; ')}. Stay consistent with it and don't repeat it as news.`);
+  }
+
+  let storyBeat: string | undefined;
+  const smallTalk = situations.some((s) => ['greeting', 'casual', 'return', 'bored', 'opinion'].includes(s));
+  // People share news when they greet you or you ask about them — not in the middle of your story.
+  const natural = situations.includes('greeting') || situations.includes('return') || ASKS_ABOUT_HER.test(userText);
+  if (!state.day.storyShared && smallTalk && natural && !serious && !followUp && !focus) {
+    storyBeat = currentStoryBeat(pack, state.firstMetAt, now);
+    if (storyBeat) state.day.storyShared = true;
+  }
+
+  if (lowStreak >= 2 && situations.includes('emotional')) {
+    lines.push('They have been down for a few messages now. After listening, offer one small comfort or a gentle distraction (a song, a silly question) — still no lectures.');
+  }
+  return { lines, followUp, storyBeat, focus, newNickname, hasNickname: Boolean(state.nickname), asksAboutHer: ASKS_ABOUT_HER.test(userText) };
+}
+
+export function rememberTold(state: LifeState, what: string | undefined): void {
+  if (!what) return;
+  state.day.told = [...state.day.told.filter((t) => t !== what), what].slice(-6);
+}

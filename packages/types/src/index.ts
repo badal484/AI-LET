@@ -652,7 +652,48 @@ export type StreamEventType =
   | 'message.completed'
   | 'message.failed'
   | 'message.cancelled'
-  | 'heartbeat';
+  | 'heartbeat'
+  // Human-style turn events: the user's message is stored at once; the character's reply arrives as
+  // one or more separately stored short messages ("bubbles"), paced like real typing.
+  | 'message.saved'
+  | 'message.queued'
+  | 'typing'
+  | 'message.bubble'
+  | 'reply.delayed'
+  | 'reply.failed'
+  | 'turn.completed';
+
+/** The user's message has been stored (it is never lost after this event). */
+export interface StreamMessageSavedPayload {
+  messageId: string;
+  conversationId: string;
+  clientRequestId?: string | null;
+  sequenceNumber: number;
+  createdAt: string;
+}
+
+/** Stored while the character is already replying; the running turn will answer it. */
+export interface StreamMessageQueuedPayload {
+  messageId: string;
+  conversationId: string;
+  clientRequestId?: string | null;
+}
+
+/** One short message of the character's reply, already stored. */
+export interface StreamMessageBubblePayload {
+  messageId: string;
+  conversationId: string;
+  content: string;
+  sequenceNumber: number;
+  createdAt: string;
+  index: number;
+}
+
+export interface StreamReplyStatusPayload {
+  conversationId: string;
+  message: string;
+  retryable?: boolean;
+}
 
 export interface StreamMessageStartedPayload {
   messageId: string;
@@ -1088,7 +1129,7 @@ export interface RetrievedRelationshipContext {
 // AI Types
 // -----------------------------------------------------------------------------
 
-export type AIProviderName = 'openai' | 'anthropic' | 'google' | 'local' | 'local_ollama' | 'mock';
+export type AIProviderName = 'openai' | 'anthropic' | 'google' | 'mistral' | 'local' | 'local_ollama' | 'mock';
 export type AITaskType = 'chat' | 'memory_extraction' | 'summarization' | 'embedding' | 'moderation';
 
 export interface TokenUsage {

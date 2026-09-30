@@ -14,6 +14,7 @@ import type {
   MemorySignalType,
   MemoryType,
 } from '@ai-companion/types';
+import { backgroundAIRoute } from '../../ai/routing/aiRoutes.js';
 
 export interface ExtractMemoryParams {
   userId: string;
@@ -212,8 +213,7 @@ Respond with ONLY valid JSON matching this schema:
     const hasExplicitSignal = !!explicitMatch;
 
     try {
-      const provider = (process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY']) ? 'google' : 'mock';
-      const model = provider === 'google' ? 'gemini-3.5-flash-lite' : 'gpt-4o-mini';
+      const { provider, model } = backgroundAIRoute();
       const response = await AIOrchestrator.executeText(
         provider,
         model,

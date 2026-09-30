@@ -32,7 +32,7 @@ export class ProactiveEligibilityService {
     // 1. User Status Check
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { status: true },
+      select: { status: true, profile: { select: { timezone: true } } },
     });
 
     if (!user || user.status !== 'ACTIVE') {
@@ -94,7 +94,9 @@ export class ProactiveEligibilityService {
     }
 
     // 4. Quiet Hours Evaluation
-    const timezone = options?.userTimezone || userPrefs.timezone || 'UTC';
+    // Settings created before the profile had a timezone still say "UTC": fall back to the profile's.
+    const profileTimezone = userPrefs.timezone && userPrefs.timezone !== 'UTC' ? null : user.profile?.timezone;
+    const timezone = options?.userTimezone || profileTimezone || userPrefs.timezone || 'UTC';
     const quietHoursCheck = this.isQuietHoursActive(
       userPrefs.quietHoursEnabled,
       userPrefs.quietHoursStart,

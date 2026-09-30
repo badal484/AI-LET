@@ -51,6 +51,11 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
+  MISTRAL_API_KEY: z.string().optional(),
+  MISTRAL_CHAT_MODEL: z.string().optional(),
+  /** Which provider answers chat first: 'google' (Gemini) or 'mistral'. The other one is the backup. */
+  CHAT_PROVIDER: z.enum(['google', 'mistral']).optional(),
+  MISTRAL_BACKGROUND_MODEL: z.string().optional(),
 
   DEFAULT_CHAT_MODEL: z.string().default('gpt-4o-mini'),
   DEFAULT_FALLBACK_CHAT_MODEL: z.string().default('gemini-1.5-flash'),
@@ -123,6 +128,10 @@ export const ENV_SECRET_CLASSIFICATION: Record<keyof EnvConfig, 'SECRET' | 'PUBL
   OPENAI_API_KEY: 'SECRET',
   ANTHROPIC_API_KEY: 'SECRET',
   GOOGLE_AI_API_KEY: 'SECRET',
+  MISTRAL_API_KEY: 'SECRET',
+  MISTRAL_CHAT_MODEL: 'PUBLIC_CONFIG',
+  CHAT_PROVIDER: 'PUBLIC_CONFIG',
+  MISTRAL_BACKGROUND_MODEL: 'PUBLIC_CONFIG',
   DEFAULT_CHAT_MODEL: 'PUBLIC_CONFIG',
   DEFAULT_FALLBACK_CHAT_MODEL: 'PUBLIC_CONFIG',
   AI_REQUEST_TIMEOUT_MS: 'PUBLIC_CONFIG',

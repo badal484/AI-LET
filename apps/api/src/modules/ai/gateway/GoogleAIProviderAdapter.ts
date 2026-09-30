@@ -23,18 +23,43 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
    * Fallback chain for rate limits (429) / outages (5xx). Ordered by measured latency; slow models
    * (gemini-3.5-flash ≈ 20s per turn) are deliberately excluded so a fallback never stalls a chat.
    */
+  // Measured with the real ~19k-char companion prompt (Sep 2026): 3.6-flash ≈ 2s to first token,
+  // 3.1-flash-lite ≈ 4–7s, 3.5-flash-lite > 20s. Fastest first.
   private static readonly RESILIENT_MODELS = [
-    'gemini-3.5-flash-lite',
     'gemini-3.6-flash',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash-lite',
     'gemini-flash-lite-latest',
-    'gemini-2.5-flash-lite',
     'gemini-3.8-flash',
   ];
 
   /** Abort an attempt that has not started responding within this window, then try the next model. */
-  private static readonly FIRST_BYTE_TIMEOUT_MS = 10_000;
+  private static readonly FIRST_BYTE_TIMEOUT_MS = 8_000;
   /** Hard ceiling for one full attempt (headers + body). */
   private static readonly ATTEMPT_TIMEOUT_MS = 45_000;
+  /**
+   * Recently slow/failing models (first-byte timeout, 429, 5xx) are tried last for a while, so one
+   * overloaded or quota-limited model doesn't add its timeout to every single reply.
+   */
+  private static readonly degradedUntil = new Map<string, number>();
+  private static readonly DEGRADED_FOR_MS = 5 * 60_000;
+
+  private static markDegraded(model: string): void {
+    GoogleAIProviderAdapter.degradedUntil.set(model, Date.now() + GoogleAIProviderAdapter.DEGRADED_FOR_MS);
+  }
+
+  private static markHealthy(model: string): void {
+    GoogleAIProviderAdapter.degradedUntil.delete(model);
+  }
+
+  /** Requested model first, then the fallback chain — with currently degraded models moved last. */
+  private static orderCandidates(primary: string): string[] {
+    const chain = [primary, ...GoogleAIProviderAdapter.RESILIENT_MODELS.filter((m) => m !== primary)];
+    const now = Date.now();
+    const isDegraded = (m: string) => (GoogleAIProviderAdapter.degradedUntil.get(m) ?? 0) > now;
+    return [...chain.filter((m) => !isDegraded(m)), ...chain.filter(isDegraded)];
+  }
+
   /** Stop falling back to further models once this much time has passed without any text. */
   private static readonly SILENT_FALLBACK_BUDGET_MS = 15_000;
 
@@ -45,8 +70,8 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
    */
   private static thinkingConfigFor(modelName: string): Record<string, unknown> | undefined {
     if (/^gemini-2\./.test(modelName)) return modelName.includes('pro') ? { thinkingBudget: 128 } : { thinkingBudget: 0 };
-    // gemini-3.8-flash rejects MINIMAL (HTTP 400); 'low' is its lowest accepted level.
-    if (/^gemini-3\.8/.test(modelName)) return { thinkingLevel: 'low' };
+    // gemini-3.7/3.8-flash reject MINIMAL (HTTP 400); 'low' is their lowest accepted level.
+    if (/^gemini-3\.[78]/.test(modelName)) return { thinkingLevel: 'low' };
     if (/^gemini-(3|flash|pro)/.test(modelName)) return { thinkingLevel: 'minimal' };
     return undefined;
   }
@@ -182,7 +207,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
     const startTime = Date.now();
     const primaryModel = this.resolveModelName(request.model);
-    const candidateModels = [primaryModel, ...GoogleAIProviderAdapter.RESILIENT_MODELS.filter((m) => m !== primaryModel)];
+    const candidateModels = GoogleAIProviderAdapter.orderCandidates(primaryModel);
     const baseBody = this.buildGeminiPayload(request);
     let lastError = 'no model attempted';
 
@@ -199,6 +224,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         });
         if (!response.ok) {
           lastError = `${modelName}: HTTP ${response.status}`;
+          if (response.status === 429 || response.status >= 500) GoogleAIProviderAdapter.markDegraded(modelName);
           continue;
         }
 
@@ -213,6 +239,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         const finishReason = data.candidates?.[0]?.finishReason || 'STOP';
         const usage = data.usageMetadata || {};
         const latencyMs = Date.now() - startTime;
+        GoogleAIProviderAdapter.markHealthy(modelName);
         return {
           id: data.responseId || `gen_gemini_${Date.now()}`,
           provider: 'google',
@@ -229,6 +256,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         };
       } catch (err) {
         lastError = `${modelName}: ${(err as Error).name === 'AbortError' ? 'timed out' : (err as Error).message}`;
+        if ((err as Error).name === 'AbortError') GoogleAIProviderAdapter.markDegraded(modelName);
       } finally {
         clearTimeout(timer);
       }
@@ -249,7 +277,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     const startTime = Date.now();
     const generationId = `gen_gemini_stream_${Date.now()}`;
     const primaryModel = this.resolveModelName(request.model);
-    const candidateModels = [primaryModel, ...GoogleAIProviderAdapter.RESILIENT_MODELS.filter((m) => m !== primaryModel)];
+    const candidateModels = GoogleAIProviderAdapter.orderCandidates(primaryModel);
     const baseBody = this.buildGeminiPayload(request);
 
     yield { type: 'started', id: generationId, model: primaryModel, timestamp: Date.now() };
@@ -283,6 +311,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         if (!response.ok || !response.body) {
           lastError = `${modelName}: HTTP ${response.status}`;
           if (response.status === 429) sawRateLimit = true;
+          if (response.status === 429 || response.status >= 500) GoogleAIProviderAdapter.markDegraded(modelName);
           continue;
         }
 
@@ -332,6 +361,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         }
       } catch (err) {
         lastError = `${modelName}: ${(err as Error).name === 'AbortError' ? 'timed out' : (err as Error).message}`;
+        if ((err as Error).name === 'AbortError' && ttftMs === undefined) GoogleAIProviderAdapter.markDegraded(modelName);
       } finally {
         clearTimeout(attemptTimer);
         if (firstByteTimer) clearTimeout(firstByteTimer);
@@ -340,6 +370,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       // Once text has reached the client, never splice another model's answer onto it: finish with
       // what was delivered (the caller trims a cut-off tail). Only a silent attempt falls through.
       if (accumulated.trim().length > 0) {
+        GoogleAIProviderAdapter.markHealthy(modelName);
         yield {
           type: 'metadata',
           id: generationId,
