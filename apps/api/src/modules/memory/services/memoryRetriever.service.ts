@@ -75,7 +75,8 @@ export class MemoryRetrieverService {
         whereCondition.AND = [
           {
             OR: [
-              { scope: 'GLOBAL_USER' },
+              // Shared facts only if they didn't come from a chat with some other character.
+              { scope: 'GLOBAL_USER', conversationId: null },
               { scope: 'CHARACTER_SPECIFIC', characterId },
             ],
           },

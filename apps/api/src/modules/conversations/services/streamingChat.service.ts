@@ -562,10 +562,13 @@ export class StreamingChatService {
     const honestyHint = asksIfAI
       ? ' They are asking if you are real: say plainly and warmly that you are an AI companion (not a human), then continue in character.'
       : '';
+    // A first chat must feel like a first chat (no "kahan gayab the?", no pretending to know them).
+    const firstChatHint =
+      recentMessages.length === 0 ? " This is your very first conversation with them: you've never talked before, so don't act like you know them or ask where they were." : '';
     const request = {
       model: providerChain[0]!.model,
       // A one-line hint for THIS turn, last in the prompt, where small models follow it best.
-      systemPrompt: `${builtContext.systemPrompt}\n\n[THIS_REPLY] ${style.hint}${genderHint}${honestyHint}`,
+      systemPrompt: `${builtContext.systemPrompt}\n\n[THIS_REPLY] ${style.hint}${genderHint}${honestyHint}${firstChatHint} Only mention things about them that they told you (in this chat or in your recalled memories); never say "you told me" about anything else.`,
       messages: builtContext.messages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
       temperature: Math.max(0.85, characterRuntime.aiConfig?.temperature || 0.85),
       // Sized to what the user sent: a casual text can't produce a paragraph; a real task has room.

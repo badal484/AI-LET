@@ -78,6 +78,21 @@ describe('Phase 5: Memory Extraction & Safety Engine', () => {
     expect(storedMemories[0].confidenceScore).toBeGreaterThanOrEqual(0.8);
   });
 
+  it('keeps what the user told this character with this character only (never shared)', async () => {
+    await MemoryExtractionService.processConversationMessage({
+      userId: testUserId,
+      characterId: testCharacterId,
+      conversationId: testConversationId,
+      userMessage: 'I live in Pune and I work as a nurse.',
+    });
+    const stored = await prisma.memory.findMany({ where: { userId: testUserId, status: 'ACTIVE' } });
+    expect(stored.length).toBeGreaterThan(0);
+    for (const m of stored) {
+      expect(m.scope).toBe('CHARACTER_SPECIFIC');
+      expect(m.characterId).toBe(testCharacterId);
+    }
+  });
+
   it('extracts explicit remember commands with highest priority', async () => {
     const result = await MemoryExtractionService.processConversationMessage({
       userId: testUserId,
