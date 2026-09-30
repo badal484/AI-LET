@@ -71,7 +71,7 @@ export async function updateMomentContext(params: {
     hour < 5 ? `it's very late at night for them (${hour}:00)` : hour < 12 ? 'it is morning for them' : hour < 17 ? 'it is afternoon for them' : hour < 21 ? 'it is evening for them' : 'it is night for them';
   const gap =
     hoursSinceLastUserMessage === null
-      ? 'This is the start of your chat.'
+      ? "This is your very first conversation with them: you've never talked before and know nothing about them yet (except their name). Don't act like you know them or ask where they were — get to know them."
       : hoursSinceLastUserMessage >= 48
         ? `They are back after ${Math.round(hoursSinceLastUserMessage / 24)} days.`
         : hoursSinceLastUserMessage >= 12

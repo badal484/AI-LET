@@ -154,6 +154,30 @@ describe('Phase 5: Memory Hybrid Retrieval & Ranking Engine', () => {
     expect(idsB).toContain(memGlobal.id);
   });
 
+  it('never shows another character a shared memory that came from a chat with someone else', async () => {
+    const convA = await prisma.conversation.create({ data: { userId: testUserId, characterId: charAId, title: 'With Luna' } });
+    // Legacy data: learned in a chat with Luna but saved as shared.
+    const leaked = await prisma.memory.create({
+      data: {
+        userId: testUserId,
+        characterId: null,
+        conversationId: convA.id,
+        scope: 'GLOBAL_USER',
+        category: 'GOAL',
+        content: 'The user is following a customized workout split.',
+        status: 'ACTIVE',
+        importanceScore: 0.9,
+        confidenceScore: 0.9,
+      },
+    });
+    const resultB = await MemoryRetrieverService.retrieveContext({
+      userId: testUserId,
+      characterId: charBId,
+      query: 'What is my workout plan?',
+    });
+    expect(resultB.memories.map((m) => m.id)).not.toContain(leaked.id);
+  });
+
   it('enforces token budget limits and retrieval deduplication', async () => {
     for (let i = 0; i < 10; i++) {
       const mem = await prisma.memory.create({

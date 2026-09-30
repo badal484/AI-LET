@@ -195,7 +195,9 @@ export function buildHumanPrompt(params: {
       'RIGHT NOW',
       `- You're talking to ${params.userName}.`,
       params.relationshipText.trim() ? `- Your relationship: ${params.relationshipText.trim().replace(/\s+/g, ' ').slice(0, 400)}` : '',
-      params.memoriesText.trim() ? `- What you remember about them (use naturally, only if relevant):\n${params.memoriesText.trim().slice(0, 900)}` : '',
+      params.memoriesText.trim()
+        ? `- What they have told you before (use naturally, only if relevant). This is ALL you know about their life — anything else, ask:\n${params.memoriesText.trim().slice(0, 900)}`
+        : '- They have not told you anything about their life yet. Don\'t guess or pretend to know — ask.',
       params.conversationSummary?.trim() ? `- Earlier in your chats: ${params.conversationSummary.trim().slice(0, 500)}` : '',
       `- ${bondGuidance(params.stage)}`,
       ...(params.continuityLines ?? []).map((l) => `- ${l}`),
