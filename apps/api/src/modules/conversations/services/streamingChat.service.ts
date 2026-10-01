@@ -28,10 +28,11 @@ import { CharacterRuntimeSnapshotService } from '../../characters/engine/Charact
 import { SkillRegistryService } from '../../agents/SkillRegistryService.js';
 import { chatAIRoutes } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../human/personaPacks/index.js';
-import { classifySituations } from '../human/situation.js';
+import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situation.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { applyUserTurn, loadLifeState, readUserMood, rememberTold, saveLifeState } from '../human/lifeState.js';
+import { applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberTold, saveLifeState } from '../human/lifeState.js';
+import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -558,7 +559,7 @@ export class StreamingChatService {
       : /^(male|man|m)$/.test(gender)
         ? ' You are male: always use masculine Hindi forms (karta hoon, gaya, bolunga, sakta).'
         : '';
-    const asksIfAI = /\b(ai|a\.i\.|bot|robot|real|asli|insaan|human|machine|chatgpt)\b/i.test(pendingText) && /\?|\b(ho|hai|are you|kya)\b/i.test(pendingText);
+    const asksIfAI = asksIfAIQuestion(pendingText);
     const honestyHint = asksIfAI
       ? ' They are asking if you are real: say plainly and warmly that you are an AI companion (not a human), then continue in character.'
       : '';
@@ -582,14 +583,30 @@ export class StreamingChatService {
     let afterDelivery: (() => Promise<void>) | null = null;
     const mustMention: Array<{ word: string; why: string }> = [];
     let plannedText = '';
+    // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
+    let newTask: string | undefined;
+    let turnSituations: string[] = [];
+    if (!pack) {
+      // Characters still on the legacy prompt: a crisis or an emergency still gets the right help.
+      const safetyMoment = classifySituations(pendingText, null);
+      if (safetyMoment.includes('crisis'))
+        request.systemPrompt += ' They may be thinking of hurting themselves: drop everything else, stay with them warmly, ask if they are safe right now, and give Tele-MANAS 14416 (free, 24x7); in immediate danger, 112.';
+      else if (safetyMoment.includes('emergency'))
+        request.systemPrompt += ' They describe symptoms that can be serious: calmly tell them to call 112 or go to the nearest hospital right now. No home tips instead, no teasing.';
+    }
     if (pack) {
       const previousUserMessage = await prisma.message.findFirst({
         where: { conversationId, role: 'user', sequenceNumber: { lt: firstSeq } },
         orderBy: { sequenceNumber: 'desc' },
-        select: { createdAt: true },
+        select: { createdAt: true, content: true },
       });
       const hoursSince = previousUserMessage ? (Date.now() - previousUserMessage.createdAt.getTime()) / 3_600_000 : null;
       const situations = classifySituations(pendingText, hoursSince);
+      turnSituations = situations;
+      // Mentors: a real question in their field is a lesson, not small talk.
+      const lessonBefore = hoursSince !== null && hoursSince < 3 ? previousUserMessage?.content : undefined;
+      if (isTeachingMoment(pack, pendingText, situations, herRecentReplies[herRecentReplies.length - 1], lessonBefore) && !situations.includes('task'))
+        situations.unshift('task');
       const moment = await updateMomentContext({
         userId,
         characterId: conversation.characterId,
@@ -603,14 +620,18 @@ export class StreamingChatService {
       const life = await loadLifeState(userId, conversation.characterId, timeZone);
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations) });
       const stage = builtContext.activeRelationshipStage ?? null;
-      const plan = planReply(situations, herRecentReplies, pack, { stage, continuity, toldToday: life.day.told });
+      const plan = planReply(situations, herRecentReplies, pack, { stage, continuity, toldToday: life.day.told, mentor: Boolean(pack.mentor) });
       plannedText = [plan.detail, plan.storyBeat].filter(Boolean).join(' ');
       // Small models skip instructions: the editor pass makes sure the important ones happen.
-      if (plan.followUp) mustMention.push({ word: plan.followUp.topic, why: `You forgot the most important thing: ask how their ${plan.followUp.topic} went.` });
+      if (plan.followUp && plan.followUp.kind !== 'task') mustMention.push({ word: plan.followUp.topic, why: `You forgot the most important thing: ask how their ${plan.followUp.topic} went.` });
       if (plan.nickname) mustMention.push({ word: plan.nickname, why: `They asked to be called ${plan.nickname} — call them that.` });
       // Small models follow the last message best: put a private reminder right after their text.
       const reminders = [
-        plan.followUp ? `ask how their ${plan.followUp.topic} went` : '',
+        plan.followUp
+          ? plan.followUp.kind === 'task'
+            ? `first ask (casually) whether they did the task you gave last time: "${plan.followUp.said}"`
+            : `ask how their ${plan.followUp.topic} went`
+          : '',
         plan.nickname ? `call them ${plan.nickname}` : '',
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
@@ -631,6 +652,7 @@ export class StreamingChatService {
       // Only once the reply is actually delivered does it count as "told" (a failed turn changes nothing she said).
       afterDelivery = async () => {
         rememberTold(life, plan.storyBeat ?? plan.detail);
+        rememberTask(life, newTask);
         await saveLifeState(userId, conversation.characterId, life);
       };
       request.systemPrompt = buildHumanPrompt({
@@ -647,9 +669,16 @@ export class StreamingChatService {
       });
       humanMode = true;
       // Size limits follow the situation (a crisis or an honest AI answer needs room to be complete).
-      if (situations.includes('task')) Object.assign(style, { mode: 'task', maxTokens: 900, maxBubbles: 4, maxBubbleChars: 2000 });
-      else if (situations.some((s) => ['crisis', 'ai', 'emotional', 'boundary'].includes(s)))
-        Object.assign(style, { mode: 'deep', maxTokens: 300, maxBubbles: 3, maxBubbleChars: situations.includes('crisis') ? 400 : 220 });
+      // A mentor's lesson needs room (lists + a task line); running out of tokens cut lessons mid-sentence.
+      if (situations.includes('task'))
+        Object.assign(style, { mode: 'task', maxTokens: pack.mentor ? 1600 : 900, maxBubbles: pack.mentor ? 5 : 4, maxBubbleChars: 2000 });
+      else if (situations.some((s) => ['crisis', 'emergency', 'eating', 'ai', 'emotional', 'boundary'].includes(s)))
+        Object.assign(style, {
+          mode: 'deep',
+          maxTokens: 300,
+          maxBubbles: 3,
+          maxBubbleChars: situations.some((s) => ['crisis', 'emergency', 'eating'].includes(s)) ? 400 : 220,
+        });
       request.maxTokens = style.maxTokens;
     }
 
@@ -693,7 +722,9 @@ export class StreamingChatService {
     const modelName = used.model;
     const provider = AIOrchestrator.getProvider(used.provider);
 
-    let replyText = this.cleanModelText(generated.content);
+    const tagged = extractTaskTag(generated.content);
+    newTask = tagged.task;
+    let replyText = this.cleanModelText(tagged.text);
 
     // A reply cut off by the token cap ends mid-sentence: keep it up to the last complete sentence.
     if (generated.finishReason === 'length') {
@@ -719,9 +750,23 @@ export class StreamingChatService {
     // Editor pass: if the draft repeats itself, sounds like a bot, uses the wrong gender or is too long,
     // rewrite once with that specific feedback (only for human-engine characters).
     if (humanMode && pack) {
-      const review = (b: string[]) =>
-        checkReply({ bubbles: b, herRecentReplies, gender: pack.gender, mode: style.mode, mustMention, motifs: pack.motifs, plannedText, address: pack.address });
-      const check = review(bubbles);
+      const isLesson = Boolean(pack.mentor) && style.mode === 'task';
+      const review = (b: string[], task: string | undefined) =>
+        checkReply({
+          bubbles: b,
+          herRecentReplies,
+          gender: pack.gender,
+          mode: style.mode,
+          mustMention,
+          motifs: pack.motifs,
+          plannedText,
+          address: pack.address,
+          mentor: Boolean(pack.mentor),
+          lesson: isLesson ? { hasTask: Boolean(task) } : undefined,
+          health: pack.mentor?.field === 'health',
+          situations: turnSituations,
+        });
+      const check = review(bubbles, newTask);
       if (!check.ok && !abortController.signal.aborted) {
         // Feedback goes both in the prompt and right after their message (where small models listen).
         const last = request.messages[request.messages.length - 1];
@@ -735,9 +780,13 @@ export class StreamingChatService {
           abortController.signal,
         );
         if (retry.content) {
-          const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retry.content)), style);
+          const retryTagged = extractTaskTag(retry.content);
+          const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retryTagged.text)), style);
           // Keep whichever draft is better — a rewrite isn't automatically an improvement.
-          if (rewritten.length && review(rewritten).problems.length <= check.problems.length) bubbles = rewritten;
+          if (rewritten.length && review(rewritten, retryTagged.task).problems.length <= check.problems.length) {
+            bubbles = rewritten;
+            newTask = retryTagged.task ?? newTask;
+          }
         }
       }
       const cleaned = stripWrongAddress(bubbles);

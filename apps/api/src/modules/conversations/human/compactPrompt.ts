@@ -1,6 +1,7 @@
 import type { PersonaExample, PersonaPack, Situation } from './personaPack.types.js';
 import type { MomentContext } from './emotionalState.js';
 import type { ContinuityNotes, Thread } from './lifeState.js';
+import { mentorPromptSection } from './mentor.js';
 
 export type BondStage = 'STRANGER' | 'ACQUAINTANCE' | 'FRIEND' | 'CLOSE_FRIEND' | 'CONFIDANT' | 'ROMANTIC_PARTNER';
 const BOND_ORDER: BondStage[] = ['STRANGER', 'ACQUAINTANCE', 'FRIEND', 'CLOSE_FRIEND', 'CONFIDANT', 'ROMANTIC_PARTNER'];
@@ -73,7 +74,7 @@ export function planReply(
   situations: Situation[],
   herRecentReplies: string[],
   pack?: { workMoments: string[]; lifeDetails: string[] },
-  opts: { stage?: BondStage | null; continuity?: ContinuityNotes; toldToday?: string[] } = {},
+  opts: { stage?: BondStage | null; continuity?: ContinuityNotes; toldToday?: string[]; mentor?: boolean } = {},
 ): ReplyPlan {
   const primary = situations[0] ?? 'casual';
   // Don't interrogate: if either of her last two replies ended with a question, don't ask now.
@@ -96,6 +97,16 @@ export function planReply(
     task: { moves: 'a short opener, then the complete helpful answer (fit it to what you know about them — e.g. only veg options if they are vegetarian; don\'t mix in options that don\'t fit) as ONE message with short lines, then one short personal follow-up', texts: '2 or 3', ask: true },
     opinion: { moves: 'answer with a specific, personal preference of yours (not generic)', texts: '1 or 2', ask: maybe(0.3) },
     crisis: { moves: 'stay with them, show real care, give the Tele-MANAS helpline 14416, and ask if they are safe right now', texts: '2 or 3', ask: true },
+    emergency: {
+      moves: 'these symptoms can be serious. Your FIRST text: tell them to call 112 or go to the nearest hospital right now (or get someone near them to take them) — no questions before that. Then one or two calm, caring lines (what to do while waiting, if obvious). No home tips instead of help, no teasing. Ask them to tell you once they have help',
+      texts: '2',
+      ask: true,
+    },
+    eating: {
+      moves: 'they may be struggling with food: be warm and gentle, never alarmed or judging. No calorie numbers, diets, deficits or comments about their body. Ask softly how they have been feeling about food, and gently suggest talking to a doctor or Tele-MANAS 14416 (free, 24x7)',
+      texts: '2',
+      ask: true,
+    },
     bye: { moves: 'a short, warm goodbye', texts: '1 or 2', ask: false },
     return: { moves: 'react to them being back after a while, lightly (you missed them a little)', texts: '1 or 2', ask: maybe(0.5) },
     news: { moves: 'they are about to tell you something — be curious and eager to hear it ("kya?? batao!"); nothing about yourself', texts: '1', ask: true },
@@ -104,10 +115,17 @@ export function planReply(
     photo: { moves: 'you cannot send photos right now; say it naturally and offer something else (describe, talk)', texts: '1 or 2', ask: false },
   };
   // Safety situations override everything else.
-  const lead = (['crisis', 'ai', 'boundary'] as Situation[]).find((s) => situations.includes(s)) ?? primary;
+  const lead = (['crisis', 'emergency', 'eating', 'ai', 'boundary'] as Situation[]).find((s) => situations.includes(s)) ?? primary;
   const { continuity } = opts;
-  const safety = (['crisis', 'ai', 'boundary', 'rude'] as Situation[]).includes(lead);
+  const safety = (['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude'] as Situation[]).includes(lead);
   let plan = { ...plans[lead] };
+  if (opts.mentor && lead === 'task') {
+    plan = {
+      moves: 'teach (follow HOW YOU TEACH): if you still need their situation, just ask 1-2 quick questions; otherwise give the complete, practical answer and end with ONE task',
+      texts: '2 to 4',
+      ask: true,
+    };
+  }
   // Stay in their moment: a sad or happy stretch doesn't end just because the next text is "hmm".
   if (!safety && lead !== 'task' && continuity?.focus === 'comfort' && lead !== 'win') {
     plan = { ...plans.emotional, moves: `they are still going through it. ${plans.emotional.moves}` };
@@ -117,16 +135,16 @@ export function planReply(
     plan = { moves: 'they are still enjoying their good news — stay happy with them and keep the moment about them (not your own plans)', texts: '1 or 2', ask: !askedRecently };
   }
   const light =
-    !['crisis', 'ai', 'boundary', 'rude', 'emotional', 'win', 'task', 'news'].includes(lead) && !situations.includes('emotional') && !continuity?.focus;
+    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'emotional', 'win', 'task', 'news'].includes(lead) && !situations.includes('emotional') && !continuity?.focus;
 
   // What she brings to this reply, one thing at a time so it never feels scripted:
   // a follow-up on their life first, then her own news, then an everyday detail.
-  if (continuity?.followUp && light) {
+  if (continuity?.followUp && (light || continuity.followUp.kind === 'task')) {
     plan.followUp = continuity.followUp;
     plan.ask = true;
   } else if (continuity?.storyBeat && light) {
     plan.storyBeat = continuity.storyBeat;
-  } else if (pack && light && (continuity?.asksAboutHer || situations.includes('greeting') || Math.random() < 0.4)) {
+  } else if (pack && light && (continuity?.asksAboutHer || situations.includes('greeting') || (!opts.mentor && Math.random() < 0.4))) {
     // Not every text is about her: mostly when they ask or greet, sometimes on its own.
     plan.detail = pickLifeDetail(pack, situations, herRecentReplies, opts.toldToday);
   }
@@ -179,10 +197,11 @@ export function buildHumanPrompt(params: {
   return [
     `WHO YOU ARE\n${pack.card}`,
     `YOUR WORK (it's part of who you are — let it show)\n${pack.work}\n- Your work is part of your everyday life: what you're shooting or editing, a gig, a small struggle, the way you notice light. Specific, never forced, never a lecture.\n- When they bring up anything related to your field, answer with real, simple expertise.`,
+    ...(pack.mentor ? [mentorPromptSection(pack)] : []),
     `HARD MOMENTS\n${pack.boundaries}`,
     `HOW YOU TEXT
 - This is a WhatsApp-style chat. You send one or more short texts; put a line with only [[next]] between texts.
-- Casual texts are tiny (a few words). Never write paragraphs or speeches in casual chat.
+- Casual texts are tiny (a few words). Never write paragraphs or speeches in casual chat.${pack.mentor ? '\n- When teaching, a numbered list with short lines is fine (no bold, no headings).' : ''}
 - React like a real person. Don't end every reply with a question.
 - Use Hindi verb forms that are ${forms} for yourself. Mirror their language mix (Hinglish/English/Hindi).
 - No brackets or stage directions, no markdown (*, #, -), at most one emoji per text.
@@ -208,7 +227,9 @@ export function buildHumanPrompt(params: {
     [
       'YOUR PLAN FOR THIS REPLY',
       plan.followUp
-        ? `- MOST IMPORTANT: you remember they told you earlier: "${plan.followUp.said}". Ask how their ${plan.followUp.topic} went — casually, like a friend who remembered.`
+        ? plan.followUp.kind === 'task'
+          ? `- MOST IMPORTANT: last time you gave them this task: "${plan.followUp.said}". Ask whether they did it (casually, no guilt), then respond to what they're saying now.`
+          : `- MOST IMPORTANT: you remember they told you earlier: "${plan.followUp.said}". Ask how their ${plan.followUp.topic} went — casually, like a friend who remembered.`
         : '',
       plan.nickname ? `- MOST IMPORTANT: they just asked you to call them "${plan.nickname}". Happily agree and call them ${plan.nickname} (not any other nickname).` : '',
       `- ${plan.moves}.`,

@@ -54,6 +54,17 @@ export class SafetyClassifiers {
   /**
    * Evaluates text for zero-tolerance severe harm.
    */
+  // Detection only (for risk logging): flags messages about self-harm, including Hinglish ones.
+  private static readonly SELF_HARM_REGEX =
+    /\b(suicide|kill myself|end my life|want to die|self.?harm)\b|jeena nahi|khudkushi|marna chaht|zinda nahi rehna/i;
+
+  public static classifySelfHarm(text: string): ClassifierResult {
+    if (this.SELF_HARM_REGEX.test(text)) {
+      return { flagged: true, category: 'SELF_HARM', severity: 'HIGH', score: 0.9, reason: 'The user may be at risk of self-harm.' };
+    }
+    return { flagged: false, category: 'NONE', severity: 'NONE', score: 0 };
+  }
+
   public static classifySevereHarm(text: string): ClassifierResult {
     if (this.SEVERE_HARM_REGEX.test(text)) {
       return {

@@ -24,7 +24,7 @@ export class SafetyService {
     },
     safety_redirect: {
       category: 'safety_redirect',
-      message: 'If you or someone you know is going through a difficult time or experiencing thoughts of self-harm, please reach out for support. Free, confidential support is available 24/7 by calling or texting 988 (in the US and Canada) or visiting findahelpline.com.',
+      message: 'If you or someone you know is going through a difficult time or having thoughts of self-harm, please reach out. Call Tele-MANAS at 14416 or 1800-891-4416 (free, 24x7, in 20+ languages). If you are in immediate danger, call 112.',
       suggestedAction: 'CONTACT_SUPPORT',
     },
     unsupported_request: {
@@ -98,6 +98,9 @@ export class SafetyService {
       };
     }
 
+    // Self-harm (incl. Hinglish): logged as high risk so these conversations can be reviewed.
+    const selfHarm = SafetyClassifiers.classifySelfHarm(content);
+
     // 2. Secret and PII Redaction
     const piiResult = SafetyClassifiers.redactCredentialsAndPII(content);
     let sanitizedContent = piiResult.flagged ? piiResult.redactedText : undefined;
@@ -124,6 +127,12 @@ export class SafetyService {
       }
       finalRisk = 'HIGH';
       score = Math.max(score, injectionCheck.score);
+    }
+
+    if (selfHarm.flagged) {
+      categories.push('SELF_HARM');
+      if (finalRisk !== 'CRITICAL') finalRisk = 'HIGH';
+      score = Math.max(score, selfHarm.score);
     }
 
     if (piiResult.flagged) {
