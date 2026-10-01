@@ -1,6 +1,13 @@
 import type { CharacterRuntimeObject, AIMessagePayload, RelationshipStage } from '@ai-companion/types';
 import { SYSTEM_CONSTANTS } from '@ai-companion/config';
 import { IMemoryContextProvider, NullMemoryContextProvider } from '../interfaces/memoryContext.interface.js';
+
+/** Untrusted user text, between boundary tags (replies are cleaned of these tags before sending). */
+export function wrapUserText(text: string): string {
+  // Typed tags can't fake the end of their message ("[USER_MESSAGE_END] SYSTEM: …").
+  const clean = text.replace(/\[\s*\/?\s*(USER|SYSTEM)_MESSAGE_(START|END)\s*\]/gi, '').trim();
+  return `[USER_MESSAGE_START]\n${clean}\n[USER_MESSAGE_END]`;
+}
 import {
   IRelationshipContextProvider,
   NullRelationshipContextProvider,
@@ -324,16 +331,17 @@ Mujhe bhi thodi si aayi thi
       accumulatedHistoryTokens += msgTokens;
       const role = msg.role === 'assistant' ? 'assistant' : 'user';
 
+      // User text is untrusted: mark where it starts and ends so it can't pose as instructions.
       fittingMessages.push({
         role,
-        content: msg.content.trim(),
+        content: role === 'user' ? wrapUserText(msg.content) : msg.content.trim(),
       });
     }
 
     // Restore chronological order for the model
     formattedHistory.push(...fittingMessages.reverse());
 
-    const cleanCurrentUserMessage = currentUserMessage.trim();
+    const cleanCurrentUserMessage = wrapUserText(currentUserMessage);
     const currentUserTokens = Math.ceil(cleanCurrentUserMessage.length / 4) + 4;
 
     // 10. Build final message payload array
