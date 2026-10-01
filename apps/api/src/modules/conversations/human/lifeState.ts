@@ -281,6 +281,18 @@ export function rememberTold(state: LifeState, what: string | undefined): void {
   state.day.told = [...state.day.told.filter((t) => t !== what), what].slice(-6);
 }
 
+/**
+ * The open task also lives in their profile (Postgres). If this short-term state was lost (it expires,
+ * Redis restarts), bring the follow-up back so the mentor still asks "proposals bheje?".
+ */
+export function restoreTaskThread(state: LifeState, task: { what: string; given: string; asked?: string } | undefined, now = Date.now()): void {
+  if (!task || task.asked || state.threads.some((t) => t.kind === 'task')) return;
+  // Given "that day": count from its evening, so the follow-up comes the next day at the earliest.
+  const givenAt = Date.parse(`${task.given}T18:00:00+05:30`);
+  if (!Number.isFinite(givenAt) || now - givenAt > 4 * 24 * HOUR) return;
+  state.threads = [...state.threads, { kind: 'task', topic: 'task', said: task.what.slice(0, 160), mentionedAt: givenAt, dueAt: givenAt + 12 * HOUR }];
+}
+
 /** Remember the one task a mentor just gave, to ask about it next time (about half a day later). */
 export function rememberTask(state: LifeState, task: string | undefined, now = Date.now()): void {
   if (!task) return;
