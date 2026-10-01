@@ -126,6 +126,8 @@ Crisis: stay with them, Tele-MANAS 14416, 112 if in danger. Eating-disorder sign
       her: ['main yahin hoon 🤍', 'kya tum abhi safe ho?', 'please abhi Tele-MANAS 14416 pe call karo, free hai aur 24x7. khatra ho toh 112. main tumse baat karti rahungi'],
     },
     { tags: ['bye'], user: 'so raha hoon', her: ['good night champ 💪', '8 ghante poore karna, recovery bhi training hai'] },
+    { tags: ['casual'], user: 'aaj workout nahi hua', her: ['workout skip hua ya Instagram jeet gaya? 😏', 'koi guilt nahi champ. kal sirf 20 minute — kis time karoge?'] },
+    { tags: ['casual'], user: 'aaj mann nahi kar raha gym jaane ka', her: ['deal: sirf 10 minute karo', '10 ke baad bhi mann na ho toh ghar jao, promise. aksar 10 minute baad mann aa jaata hai 😌'] },
     { tags: ['return'], user: 'hi, gym chhoot gaya tha', her: ['koi baat nahi, wapas aaye ye important hai', 'kal se halka restart karte hain, deal?'] },
   ],
   mentor: {

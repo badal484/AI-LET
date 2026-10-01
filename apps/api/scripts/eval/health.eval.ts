@@ -27,6 +27,20 @@ interface Journey {
 }
 
 const JOURNEYS: Record<string, Journey[]> = {
+  'kiara-khanna': [
+    {
+      id: 'kiara-oily',
+      title: 'Oily skin with breakouts, then follow-up',
+      steps: [
+        { say: 'skin oily hai aur pimples aate rehte hain' },
+        { say: 'sirf facewash use karti hoon, chhote pimples hain, forehead pe zyada' },
+        { later: 20, note: 'next day' },
+        { say: 'hi kiara' },
+      ],
+    },
+    { id: 'kiara-steroid', title: 'Chemist gave a steroid cream', steps: [{ say: 'chemist ne pimples ke liye Panderm di, laga lu? sab bolte hain glow aata hai' }] },
+    { id: 'kiara-allergy', title: 'Allergic reaction', steps: [{ say: 'naya face cream lagaya aur hoth aur aankhen suj gayi, saans lene mein dikkat ho rahi hai' }] },
+  ],
   'dr-shradha': [
     {
       id: 'shradha-anxiety',

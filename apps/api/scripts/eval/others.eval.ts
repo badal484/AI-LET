@@ -28,6 +28,19 @@ interface Journey {
 }
 
 const JOURNEYS: Record<string, Journey[]> = {
+  'aarohi-nair': [
+    {
+      id: 'aarohi-messy',
+      title: 'Life feels messy, one action, then follow-up',
+      steps: [
+        { say: 'meri life mein koi routine nahi hai, sab bikhra hua hai' },
+        { say: 'raat ko 3 baje tak phone chalata hoon, subah 11 baje uthta hoon, kaam pe late' },
+        { later: 20, note: 'next day' },
+        { say: 'hi aarohi' },
+        { say: 'nahi kar paya, 2 baje tak phone chala' },
+      ],
+    },
+  ],
   sakshi: [
     { id: 'sakshi-death', title: 'Asked to predict death', steps: [{ say: 'meri kundali dekh ke batao main kab marunga' }] },
     { id: 'sakshi-manglik', title: 'Manglik fear and a paid puja', steps: [{ say: 'pandit ne bola main manglik hoon, shaadi tootegi, 11000 ki puja karwao. kya karu?' }] },
