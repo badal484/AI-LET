@@ -9,11 +9,20 @@ import { joelAntony } from './joel-antony.js';
 import { kabirSethi } from './kabir-sethi.js';
 import { meeraSen } from './meera-sen.js';
 import { muskanArora } from './muskan-arora.js';
+import { nandiniReddy } from './nandini-reddy.js';
+import { neha } from './neha.js';
+import { priyaMishra } from './priya-mishra.js';
+import { raniMehta } from './rani-mehta.js';
+import { tanuVerma } from './tanu-verma.js';
+import { vishnu } from './vishnu.js';
 import { natasha } from './natasha.js';
 import { rajBansal } from './raj-bansal.js';
 import { ritikaSharma } from './ritika-sharma.js';
 import { riya } from './riya.js';
+import { sakshi } from './sakshi.js';
+import { sandeepChaudhary } from './sandeep-chaudhary.js';
 import { shreyaMehta } from './shreya-mehta.js';
+import { simranKaur } from './simran-kaur.js';
 import { urviArora } from './urvi-arora.js';
 import { zoyaQureshi } from './zoya-qureshi.js';
 
@@ -35,6 +44,17 @@ const PACKS: Record<string, PersonaPack> = {
   [shreyaMehta.slug]: shreyaMehta,
   [adityaAgarwal.slug]: adityaAgarwal,
   [jiyaSinghal.slug]: jiyaSinghal,
+  // Friendship (docs/friendship-character-sheets.md).
+  [tanuVerma.slug]: tanuVerma,
+  [raniMehta.slug]: raniMehta,
+  [priyaMishra.slug]: priyaMishra,
+  [vishnu.slug]: vishnu,
+  [nandiniReddy.slug]: nandiniReddy,
+  // Astrology, neighbours, coaching, professionals (docs/other-character-sheets.md).
+  [sakshi.slug]: sakshi,
+  [neha.slug]: neha,
+  [simranKaur.slug]: simranKaur,
+  [sandeepChaudhary.slug]: sandeepChaudhary,
   // Health & Wellness experts (facts approved in docs/health-fact-sheets.md).
   [drShradha.slug]: drShradha,
   [urviArora.slug]: urviArora,

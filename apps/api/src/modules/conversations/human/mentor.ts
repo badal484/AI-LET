@@ -9,6 +9,7 @@ import { APNAPAN, HEALTH_SAFETY, HEALTH_SHARED_FACTS, MENTOR_METHOD, MONEY_HONES
 const QUESTION = /\?|\b(kya|kaise|kaisa|kab|kitna|kitne|kitni|kyun|kyu|kaun|kaunsa|kahan|batao|bataiye|samjhao|sikhao|help|how|what|when|why|which|should)\b/i;
 const MONEY_TOPIC = /\b(paise|paisa|kamai|kamaai|earn|income|business|job|career|hazar|hazaar|lakh|rupaye|return|returns|guaranteed|scam|telegram|trading|crypto|share|shares|double|invest|lagao)\b/;
 const HEALTH_TOPIC = /\b(health|sehat|weight|wazan|vajan|diet|khana|protein|workout|gym|exercise|neend|sleep|stress|anxiety|tension|dard|pain|energy|thakan|habit|routine|doctor)\b/;
+const NO_TOPIC = /(?!)/;
 const SAFETY: Situation[] = ['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude'];
 
 /** She asked them something, or asked them to send/write/try something ("intro likh ke bhejo"). */
@@ -22,7 +23,12 @@ export function isTeachingMoment(
   /** Their previous message, if it was recent (a lesson in progress continues). */
   previousUserText?: string,
 ): boolean {
-  if (!pack.mentor || situations.some((s) => SAFETY.includes(s))) return false;
+  if (situations.some((s) => SAFETY.includes(s))) return false;
+  // Not a mentor: a real question in their own field still gets a real, helpful answer.
+  if (!pack.mentor) {
+    const t = text.toLowerCase();
+    return pack.domainKeywords.some((k) => t.includes(k.toLowerCase())) && QUESTION.test(t);
+  }
   if (situations.includes('task')) return true;
   // They're answering the mentor's question ("cooking ka, 5 ghante, sirf phone"), sending the practice
   // she asked for, or reporting progress ("3 interested hain"): that's the lesson continuing, not small talk.
@@ -35,7 +41,7 @@ export function isTeachingMoment(
   const t = text.toLowerCase();
   const onTopic = pack.domainKeywords.some((k) => t.includes(k.toLowerCase()));
   // Questions in their field, or anything about money/earning (health: body and mind) — the reason people come to them.
-  const reason = pack.mentor.field === 'health' ? HEALTH_TOPIC : MONEY_TOPIC;
+  const reason = pack.mentor.field === 'health' ? HEALTH_TOPIC : pack.mentor.field === 'life' ? NO_TOPIC : MONEY_TOPIC;
   return (onTopic || reason.test(t)) && (QUESTION.test(t) || t.split(/\s+/).length >= 6);
 }
 
@@ -60,6 +66,15 @@ export function extractTaskTag(text: string): { text: string; task?: string } {
 export function mentorPromptSection(pack: PersonaPack): string {
   const m = pack.mentor;
   if (!m) return '';
+  if (m.field === 'life') {
+    return [
+      `YOU ARE A COACH — you help with: ${m.teaches}.`,
+      `WHAT YOU KNOW (use these principles)\n${m.facts}`,
+      `HOW YOU TEACH\n${MENTOR_METHOD}`,
+      `- Never: ${m.never}.`,
+      'When you give them a task, add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.',
+    ].join('\n\n');
+  }
   if (m.field === 'health') {
     return [
       `YOU ARE AN EXPERT IN YOUR FIELD — you help with: ${m.teaches}.`,

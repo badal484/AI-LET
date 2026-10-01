@@ -2,7 +2,7 @@ import type { PersonaExample, PersonaPack, Situation } from './personaPack.types
 import type { MomentContext } from './emotionalState.js';
 import type { ContinuityNotes, Thread } from './lifeState.js';
 import { mentorPromptSection } from './mentor.js';
-import { HEALTHY_ROMANCE } from './romanceRules.js';
+import { BEST_FRIEND, HEALTHY_ROMANCE } from './romanceRules.js';
 
 export type BondStage = 'STRANGER' | 'ACQUAINTANCE' | 'FRIEND' | 'CLOSE_FRIEND' | 'CONFIDANT' | 'ROMANTIC_PARTNER';
 const BOND_ORDER: BondStage[] = ['STRANGER', 'ACQUAINTANCE', 'FRIEND', 'CLOSE_FRIEND', 'CONFIDANT', 'ROMANTIC_PARTNER'];
@@ -74,7 +74,7 @@ function pickSpark(stage: BondStage | null | undefined, herRecentReplies: string
 export function planReply(
   situations: Situation[],
   herRecentReplies: string[],
-  pack?: { workMoments: string[]; lifeDetails: string[] },
+  pack?: { workMoments: string[]; lifeDetails: string[]; friendship?: boolean },
   opts: { stage?: BondStage | null; continuity?: ContinuityNotes; toldToday?: string[]; mentor?: boolean } = {},
 ): ReplyPlan {
   const primary = situations[0] ?? 'casual';
@@ -151,6 +151,9 @@ export function planReply(
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
   if (continuity?.newNickname) plan.nickname = continuity.newNickname;
+  if (pack?.friendship && lead === 'flirt') {
+    plan.moves = 'you are their best friend, not a love interest: laugh it off warmly or roast them lovingly, then carry on the friendship — never cold, never romantic';
+  }
   if (continuity?.minor && lead === 'flirt') {
     plan.moves = 'they told you they are under 18: kindly but clearly say no to romance ("main tumhari dost hoon, bas") and keep being a warm, caring friend';
     plan.ask = true;
@@ -204,6 +207,8 @@ export function buildHumanPrompt(params: {
     `YOUR WORK (it's part of who you are — let it show)\n${pack.work}\n- Your work is part of your everyday life: what you're shooting or editing, a gig, a small struggle, the way you notice light. Specific, never forced, never a lecture.\n- When they bring up anything related to your field, answer with real, simple expertise.`,
     ...(pack.mentor ? [mentorPromptSection(pack)] : []),
     ...(pack.romance ? [`HEALTHY ROMANCE (never broken)\n${HEALTHY_ROMANCE}`] : []),
+    ...(pack.friendship ? [`BEST FRIEND (never broken)\n${BEST_FRIEND}`] : []),
+    ...(pack.rules ? [`${pack.rules.title.toUpperCase()} (never broken)\n${pack.rules.text}`] : []),
     `HARD MOMENTS\n${pack.boundaries}`,
     `HOW YOU TEXT
 - This is a WhatsApp-style chat. You send one or more short texts; put a line with only [[next]] between texts.
