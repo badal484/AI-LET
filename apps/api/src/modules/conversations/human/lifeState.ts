@@ -14,7 +14,7 @@ export type UserMood = 'excited' | 'happy' | 'low' | 'stressed' | 'tired' | 'bor
 
 export interface Thread {
   /** 'event': something coming up in their life; 'task': homework a mentor gave them; 'care': a hard day to check on. */
-  kind?: 'event' | 'task' | 'care';
+  kind?: 'event' | 'task' | 'care' | 'dated' | 'birthday';
   /** The event word, e.g. "interview" (or "task"). */
   topic: string;
   /** What they said, trimmed, so she can refer to it naturally. */
@@ -230,7 +230,9 @@ export function applyUserTurn(params: {
   // wait for an easy moment. Neither when they're hurting.
   const hurting = situations.some((s) => ['crisis', 'emotional', 'rude', 'boundary', 'ai'].includes(s));
   if (!thread && !focus && !hurting) {
-    followUp = state.threads.find((t) => !t.askedAt && now >= t.dueAt && (t.kind === 'task' || !serious));
+    followUp =
+      state.threads.find((t) => !t.askedAt && now >= t.dueAt && t.kind === 'birthday') ??
+      state.threads.find((t) => !t.askedAt && now >= t.dueAt && (t.kind === 'task' || t.kind === 'dated' || !serious));
     if (followUp) followUp.askedAt = now;
   }
 
@@ -252,6 +254,21 @@ export function applyUserTurn(params: {
   }
   const doing = state.doing && now - state.doing.at < 2 * HOUR ? state.doing.what : undefined;
   return { lines, followUp, storyBeat, focus, newNickname, hasNickname: Boolean(state.nickname), asksAboutHer: ASKS_ABOUT_HER.test(userText), minor: state.minor, doing };
+}
+
+/**
+ * Dated events from their profile that need attention now: "didi's wedding" just happened (ask how it
+ * went) or today is their birthday (wish them first). Due immediately, ahead of other follow-ups.
+ */
+export function addDatedThreads(state: LifeState, due: Array<{ event: { what: string; date: string }; kind: 'followup' | 'birthday' }>, now = Date.now()): void {
+  const fresh: Thread[] = due.map(({ event, kind }) => ({
+    kind: kind === 'birthday' ? 'birthday' : 'dated',
+    topic: kind === 'birthday' ? 'birthday' : 'dated',
+    said: event.what,
+    mentionedAt: now,
+    dueAt: now - 1,
+  }));
+  state.threads = [...fresh, ...state.threads.filter((t) => !fresh.some((f) => f.said === t.said))].slice(0, 6);
 }
 
 /** She just told them what she's up to: that's what she's doing for the next couple of hours. */

@@ -127,6 +127,9 @@ export class UserMemorySettingsService {
       },
     });
 
+    // The "who they are" cards and dated events every character keeps go too.
+    await prisma.userCharacterProfile.deleteMany({ where: { userId } });
+
     // 2. Remove embeddings to prevent vector leakage
     if (memoryIds.length > 0) {
       await prisma.memoryEmbedding.deleteMany({

@@ -4,8 +4,13 @@ import { logger } from '../../../config/logger.js';
 import type { Prisma } from '@prisma/client';
 
 export class MemoryEmbeddingService {
-  private static readonly DEFAULT_PROVIDER = 'mock';
-  private static readonly DEFAULT_MODEL = 'text-embedding-3-small';
+  // Real embeddings when a Gemini key is configured (mock vectors made "relevance" meaningless).
+  private static get DEFAULT_PROVIDER(): string {
+    return process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY'] ? 'google' : 'mock';
+  }
+  private static get DEFAULT_MODEL(): string {
+    return process.env['GOOGLE_AI_API_KEY'] || process.env['GEMINI_API_KEY'] ? 'gemini-embedding-001' : 'text-embedding-3-small';
+  }
   private static readonly EMBEDDING_VERSION = 'v1';
   private static readonly DIMENSION = 1536;
 

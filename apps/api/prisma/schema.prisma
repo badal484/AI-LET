@@ -372,6 +372,7 @@ model User {
   deletedAt                 DateTime?                   @map("deleted_at") @db.Timestamptz(6)
   createdAt                 DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  characterProfiles         UserCharacterProfile[]
 
   @@index([status])
   @@index([normalizedEmail])
@@ -678,6 +679,7 @@ model Character {
   deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz(6)
   createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  userProfiles              UserCharacterProfile[]
 
   @@index([status, visibility])
   @@index([category])
@@ -941,6 +943,23 @@ model ConversationSummary {
 
   @@index([conversationId, endSequenceNumber(sort: Desc)])
   @@map("conversation_summaries")
+}
+
+/// What a user has told one character about themselves: a short "who they are" card plus dated events
+/// (birthdays, a sister's wedding) the character remembers and asks about. Never shared across characters.
+model UserCharacterProfile {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterId String    @map("character_id") @db.Uuid
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  data        Json      @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, characterId])
+  @@index([characterId])
+  @@map("user_character_profiles")
 }
 
 model UserMemorySettings {
@@ -3939,23 +3958,23 @@ model SocialEventReceipt {
 
 /// Explicit multi-turn user goals tracked by character and session
 model UserGoal {
-  id              String    @id @default(uuid()) @db.VarChar(100)
-  userId          String    @map("user_id") @db.VarChar(100)
-  characterId     String?   @map("character_id") @db.VarChar(100)
-  conversationId  String?   @map("conversation_id") @db.VarChar(100)
-  category        String    @db.VarChar(60) // travel_planning, interview_prep, study, coding, research, writing, general
-  title           String    @db.VarChar(200)
-  status          String    @default("active") @db.VarChar(30) // created, active, paused, blocked, awaiting_input, awaiting_confirmation, executing, completed, cancelled, expired, failed
-  priority        Int       @default(0)
-  progress        Float     @default(0.0)
-  constraints     Json?     @db.JsonB
-  activeTaskId    String?   @map("active_task_id") @db.VarChar(100)
-  metadata        Json?     @db.JsonB
-  lastActiveAt    DateTime  @default(now()) @map("last_active_at") @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.VarChar(100)
+  userId         String   @map("user_id") @db.VarChar(100)
+  characterId    String?  @map("character_id") @db.VarChar(100)
+  conversationId String?  @map("conversation_id") @db.VarChar(100)
+  category       String   @db.VarChar(60) // travel_planning, interview_prep, study, coding, research, writing, general
+  title          String   @db.VarChar(200)
+  status         String   @default("active") @db.VarChar(30) // created, active, paused, blocked, awaiting_input, awaiting_confirmation, executing, completed, cancelled, expired, failed
+  priority       Int      @default(0)
+  progress       Float    @default(0.0)
+  constraints    Json?    @db.JsonB
+  activeTaskId   String?  @map("active_task_id") @db.VarChar(100)
+  metadata       Json?    @db.JsonB
+  lastActiveAt   DateTime @default(now()) @map("last_active_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  tasks           AgentTaskRecord[]
+  tasks AgentTaskRecord[]
 
   @@index([userId, status])
   @@index([userId, lastActiveAt(sort: Desc)])
@@ -3965,32 +3984,32 @@ model UserGoal {
 
 /// Durable record for agent tasks replacing in-memory Task maps
 model AgentTaskRecord {
-  id               String               @id @db.VarChar(100)
-  userId           String               @map("user_id") @db.VarChar(100)
-  characterId      String?              @map("character_id") @db.VarChar(100)
-  conversationId   String?              @map("conversation_id") @db.VarChar(100)
-  goalId           String?              @map("goal_id") @db.VarChar(100)
-  goal             UserGoal?            @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  taskType         String               @map("task_type") @db.VarChar(40) // WORKFLOW, ONE_SHOT_TOOL, RESEARCH, MULTIMODAL_EXTRACTION, SCHEDULED_AUTOMATION
-  objective        String               @db.Text
-  status           String               @default("created") @db.VarChar(30)
-  currentStepIndex Int                  @default(0) @map("current_step_index")
-  bounds           Json                 @db.JsonB
-  planId           String?              @map("plan_id") @db.VarChar(100)
+  id               String           @id @db.VarChar(100)
+  userId           String           @map("user_id") @db.VarChar(100)
+  characterId      String?          @map("character_id") @db.VarChar(100)
+  conversationId   String?          @map("conversation_id") @db.VarChar(100)
+  goalId           String?          @map("goal_id") @db.VarChar(100)
+  goal             UserGoal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  taskType         String           @map("task_type") @db.VarChar(40) // WORKFLOW, ONE_SHOT_TOOL, RESEARCH, MULTIMODAL_EXTRACTION, SCHEDULED_AUTOMATION
+  objective        String           @db.Text
+  status           String           @default("created") @db.VarChar(30)
+  currentStepIndex Int              @default(0) @map("current_step_index")
+  bounds           Json             @db.JsonB
+  planId           String?          @map("plan_id") @db.VarChar(100)
   plan             AgentPlanRecord?
-  estimatedCostUsd Float                @default(0.0) @map("estimated_cost_usd")
-  actualCostUsd    Float                @default(0.0) @map("actual_cost_usd")
-  failureCode      String?              @map("failure_code") @db.VarChar(60)
-  failureReason    String?              @map("failure_reason") @db.Text
-  metadata         Json?                @db.JsonB
-  startedAt        DateTime?            @map("started_at") @db.Timestamptz(6)
-  completedAt      DateTime?            @map("completed_at") @db.Timestamptz(6)
-  cancelledAt      DateTime?            @map("cancelled_at") @db.Timestamptz(6)
-  expiresAt        DateTime             @map("expires_at") @db.Timestamptz(6)
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  estimatedCostUsd Float            @default(0.0) @map("estimated_cost_usd")
+  actualCostUsd    Float            @default(0.0) @map("actual_cost_usd")
+  failureCode      String?          @map("failure_code") @db.VarChar(60)
+  failureReason    String?          @map("failure_reason") @db.Text
+  metadata         Json?            @db.JsonB
+  startedAt        DateTime?        @map("started_at") @db.Timestamptz(6)
+  completedAt      DateTime?        @map("completed_at") @db.Timestamptz(6)
+  cancelledAt      DateTime?        @map("cancelled_at") @db.Timestamptz(6)
+  expiresAt        DateTime         @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  checkpoints      AgentTaskCheckpoint[]
+  checkpoints AgentTaskCheckpoint[]
 
   @@index([userId, status])
   @@index([characterId])
@@ -4034,18 +4053,18 @@ model AgentTaskCheckpoint {
 
 /// High-risk confirmation tokens bound to exact args hash and expiration
 model HighRiskConfirmationRecord {
-  token             String    @id @db.VarChar(100)
-  userId            String    @map("user_id") @db.VarChar(100)
-  taskId            String    @map("task_id") @db.VarChar(100)
-  stepId            String    @map("step_id") @db.VarChar(100)
-  toolSlug          String    @map("tool_slug") @db.VarChar(100)
-  argumentsHash     String    @map("arguments_hash") @db.VarChar(64)
-  riskLevel         String    @map("risk_level") @db.VarChar(20)
-  explanation       String    @db.Text
-  proposedArguments Json      @map("proposed_arguments") @db.JsonB
-  isUsed            Boolean   @default(false) @map("is_used")
-  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  token             String   @id @db.VarChar(100)
+  userId            String   @map("user_id") @db.VarChar(100)
+  taskId            String   @map("task_id") @db.VarChar(100)
+  stepId            String   @map("step_id") @db.VarChar(100)
+  toolSlug          String   @map("tool_slug") @db.VarChar(100)
+  argumentsHash     String   @map("arguments_hash") @db.VarChar(64)
+  riskLevel         String   @map("risk_level") @db.VarChar(20)
+  explanation       String   @db.Text
+  proposedArguments Json     @map("proposed_arguments") @db.JsonB
+  isUsed            Boolean  @default(false) @map("is_used")
+  expiresAt         DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, isUsed])
   @@index([token, argumentsHash])
@@ -4054,22 +4073,22 @@ model HighRiskConfirmationRecord {
 
 /// Durable skill registry with bounded capabilities
 model SkillRecord {
-  id                   String               @id @default(uuid()) @db.VarChar(100)
-  slug                 String               @unique @db.VarChar(80)
-  name                 String               @db.VarChar(120)
-  description          String               @db.Text
-  category             String               @db.VarChar(60)
-  status               String               @default("published") @db.VarChar(30) // draft, testing, published, deprecated, disabled
-  isCreatorSkill       Boolean              @default(false) @map("is_creator_skill")
-  creatorId            String?              @map("creator_id") @db.VarChar(100)
-  requiredCapabilities Json                 @map("required_capabilities") @db.JsonB
-  requiredToolSlugs    Json                 @map("required_tool_slugs") @db.JsonB
-  maxSteps             Int                  @default(10) @map("max_steps")
-  maxCostUsd           Float                @default(0.20) @map("max_cost_usd")
-  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String   @id @default(uuid()) @db.VarChar(100)
+  slug                 String   @unique @db.VarChar(80)
+  name                 String   @db.VarChar(120)
+  description          String   @db.Text
+  category             String   @db.VarChar(60)
+  status               String   @default("published") @db.VarChar(30) // draft, testing, published, deprecated, disabled
+  isCreatorSkill       Boolean  @default(false) @map("is_creator_skill")
+  creatorId            String?  @map("creator_id") @db.VarChar(100)
+  requiredCapabilities Json     @map("required_capabilities") @db.JsonB
+  requiredToolSlugs    Json     @map("required_tool_slugs") @db.JsonB
+  maxSteps             Int      @default(10) @map("max_steps")
+  maxCostUsd           Float    @default(0.20) @map("max_cost_usd")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  versions             SkillVersionRecord[]
+  versions SkillVersionRecord[]
 
   @@index([category, status])
   @@index([isCreatorSkill, creatorId])
@@ -4078,14 +4097,14 @@ model SkillRecord {
 
 /// Immutable version tracking for skills
 model SkillVersionRecord {
-  id         String      @id @default(uuid()) @db.VarChar(100)
-  skillId    String      @map("skill_id") @db.VarChar(100)
-  skill      SkillRecord @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  version    String      @db.VarChar(30)
-  config     Json        @db.JsonB
-  status     String      @default("published") @db.VarChar(30)
-  changelog  String?     @db.Text
-  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String      @id @default(uuid()) @db.VarChar(100)
+  skillId   String      @map("skill_id") @db.VarChar(100)
+  skill     SkillRecord @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  version   String      @db.VarChar(30)
+  config    Json        @db.JsonB
+  status    String      @default("published") @db.VarChar(30)
+  changelog String?     @db.Text
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([skillId, version])
   @@map("skill_versions")
@@ -4093,13 +4112,13 @@ model SkillVersionRecord {
 
 /// Character to Skill assignment with override configuration
 model CharacterSkill {
-  id             String    @id @default(uuid()) @db.VarChar(100)
-  characterId    String    @map("character_id") @db.VarChar(100)
-  skillSlug      String    @map("skill_slug") @db.VarChar(80)
-  assignmentType String    @default("default") @map("assignment_type") @db.VarChar(30) // default, optional, premium, creator, disabled
-  isEnabled      Boolean   @default(true) @map("is_enabled")
-  customConfig   Json?     @map("custom_config") @db.JsonB
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.VarChar(100)
+  characterId    String   @map("character_id") @db.VarChar(100)
+  skillSlug      String   @map("skill_slug") @db.VarChar(80)
+  assignmentType String   @default("default") @map("assignment_type") @db.VarChar(30) // default, optional, premium, creator, disabled
+  isEnabled      Boolean  @default(true) @map("is_enabled")
+  customConfig   Json?    @map("custom_config") @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([characterId, skillSlug])
   @@index([characterId, isEnabled])
@@ -4108,22 +4127,22 @@ model CharacterSkill {
 
 /// Guided multi-turn experiences (study, interview, travel, coding)
 model CharacterExperience {
-  id                 String    @id @default(uuid()) @db.VarChar(100)
-  slug               String    @unique @db.VarChar(80)
-  name               String    @db.VarChar(120)
-  description        String    @db.Text
-  category           String    @db.VarChar(60)
-  characterId        String?   @map("character_id") @db.VarChar(100)
-  creatorId          String?   @map("creator_id") @db.VarChar(100)
-  goalTemplate       String    @map("goal_template") @db.VarChar(100)
-  requiredSkillSlugs Json      @map("required_skill_slugs") @db.JsonB
-  initialPrompt      String    @map("initial_prompt") @db.Text
-  uiConfig           Json?     @map("ui_config") @db.JsonB
-  evaluationCriteria Json?     @map("evaluation_criteria") @db.JsonB
-  status             String    @default("published") @db.VarChar(30)
-  version            String    @default("1.0.0") @db.VarChar(30)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String   @id @default(uuid()) @db.VarChar(100)
+  slug               String   @unique @db.VarChar(80)
+  name               String   @db.VarChar(120)
+  description        String   @db.Text
+  category           String   @db.VarChar(60)
+  characterId        String?  @map("character_id") @db.VarChar(100)
+  creatorId          String?  @map("creator_id") @db.VarChar(100)
+  goalTemplate       String   @map("goal_template") @db.VarChar(100)
+  requiredSkillSlugs Json     @map("required_skill_slugs") @db.JsonB
+  initialPrompt      String   @map("initial_prompt") @db.Text
+  uiConfig           Json?    @map("ui_config") @db.JsonB
+  evaluationCriteria Json?    @map("evaluation_criteria") @db.JsonB
+  status             String   @default("published") @db.VarChar(30)
+  version            String   @default("1.0.0") @db.VarChar(30)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([category, status])
   @@map("character_experiences")
@@ -4131,25 +4150,25 @@ model CharacterExperience {
 
 /// Immutable runtime snapshot for generation explainability and audit
 model CharacterRuntimeSnapshot {
-  id                  String    @id @default(uuid()) @db.VarChar(100)
-  conversationId      String    @map("conversation_id") @db.VarChar(100)
-  messageId           String?   @map("message_id") @db.VarChar(100)
-  characterId         String    @map("character_id") @db.VarChar(100)
-  characterVersionId  String    @map("character_version_id") @db.VarChar(100)
-  promptVersion       String    @map("prompt_version") @db.VarChar(50)
-  behaviorPolicyHash  String    @map("behavior_policy_hash") @db.VarChar(64)
-  safetyPolicyVersion String    @map("safety_policy_version") @db.VarChar(50)
-  modelId             String    @map("model_id") @db.VarChar(100)
-  memoryIds           Json      @map("memory_ids") @db.JsonB
-  relationshipStage   String?   @map("relationship_stage") @db.VarChar(40)
-  activeGoalId        String?   @map("active_goal_id") @db.VarChar(100)
-  activeTaskId        String?   @map("active_task_id") @db.VarChar(100)
-  selectedSkillSlugs  Json      @map("selected_skill_slugs") @db.JsonB
-  contextAttribution  Json?     @map("context_attribution") @db.JsonB
-  tokensPrompt        Int       @default(0) @map("tokens_prompt")
-  tokensCompletion    Int       @default(0) @map("tokens_completion")
-  costUsd             Float     @default(0.0) @map("cost_usd")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                  String   @id @default(uuid()) @db.VarChar(100)
+  conversationId      String   @map("conversation_id") @db.VarChar(100)
+  messageId           String?  @map("message_id") @db.VarChar(100)
+  characterId         String   @map("character_id") @db.VarChar(100)
+  characterVersionId  String   @map("character_version_id") @db.VarChar(100)
+  promptVersion       String   @map("prompt_version") @db.VarChar(50)
+  behaviorPolicyHash  String   @map("behavior_policy_hash") @db.VarChar(64)
+  safetyPolicyVersion String   @map("safety_policy_version") @db.VarChar(50)
+  modelId             String   @map("model_id") @db.VarChar(100)
+  memoryIds           Json     @map("memory_ids") @db.JsonB
+  relationshipStage   String?  @map("relationship_stage") @db.VarChar(40)
+  activeGoalId        String?  @map("active_goal_id") @db.VarChar(100)
+  activeTaskId        String?  @map("active_task_id") @db.VarChar(100)
+  selectedSkillSlugs  Json     @map("selected_skill_slugs") @db.JsonB
+  contextAttribution  Json?    @map("context_attribution") @db.JsonB
+  tokensPrompt        Int      @default(0) @map("tokens_prompt")
+  tokensCompletion    Int      @default(0) @map("tokens_completion")
+  costUsd             Float    @default(0.0) @map("cost_usd")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([conversationId])
   @@index([messageId])
@@ -4196,22 +4215,22 @@ model UserToolConsentRecord {
 
 /// Creator knowledge ingestion with scanning, chunking, and versioned moderation
 model CreatorKnowledgeDoc {
-  id               String                  @id @default(uuid()) @db.VarChar(100)
-  creatorId        String                  @map("creator_id") @db.VarChar(100)
-  characterId      String?                 @map("character_id") @db.VarChar(100)
-  title            String                  @db.VarChar(200)
-  sourceUrl        String?                 @map("source_url") @db.VarChar(500)
-  originalFilename String?                 @map("original_filename") @db.VarChar(255)
-  mimeType         String                  @map("mime_type") @db.VarChar(100)
-  fileSizeBytes    Int                     @map("file_size_bytes")
-  version          Int                     @default(1)
-  chunkCount       Int                     @default(0) @map("chunk_count")
-  status           String                  @default("READY") @db.VarChar(30) // PENDING, PROCESSING, READY, FAILED, MODERATION_REJECTED
-  moderationStatus String                  @default("PASSED") @map("moderation_status") @db.VarChar(30)
-  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String   @id @default(uuid()) @db.VarChar(100)
+  creatorId        String   @map("creator_id") @db.VarChar(100)
+  characterId      String?  @map("character_id") @db.VarChar(100)
+  title            String   @db.VarChar(200)
+  sourceUrl        String?  @map("source_url") @db.VarChar(500)
+  originalFilename String?  @map("original_filename") @db.VarChar(255)
+  mimeType         String   @map("mime_type") @db.VarChar(100)
+  fileSizeBytes    Int      @map("file_size_bytes")
+  version          Int      @default(1)
+  chunkCount       Int      @default(0) @map("chunk_count")
+  status           String   @default("READY") @db.VarChar(30) // PENDING, PROCESSING, READY, FAILED, MODERATION_REJECTED
+  moderationStatus String   @default("PASSED") @map("moderation_status") @db.VarChar(30)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  chunks           CreatorKnowledgeChunk[]
+  chunks CreatorKnowledgeChunk[]
 
   @@index([creatorId, status])
   @@index([characterId])
@@ -4239,29 +4258,29 @@ model CreatorKnowledgeChunk {
 
 /// Phase 26: Unified Knowledge Document
 model KnowledgeDocument {
-  id               String                      @id @default(uuid()) @db.VarChar(100)
-  ownerId          String                      @map("owner_id") @db.VarChar(100)
-  ownerType        String                      @default("USER") @map("owner_type") @db.VarChar(30) // USER, CREATOR, PLATFORM
-  characterId      String?                     @map("character_id") @db.VarChar(100)
-  title            String                      @db.VarChar(255)
-  originalFilename String                      @map("original_filename") @db.VarChar(255)
-  mimeType         String                      @map("mime_type") @db.VarChar(100)
-  fileSizeBytes    Int                         @map("file_size_bytes")
-  storageUrl       String?                     @map("storage_url") @db.VarChar(500)
-  contentHash      String                      @map("content_hash") @db.VarChar(64)
-  status           String                      @default("UPLOADED") @db.VarChar(30) // UPLOADED, PROCESSING, INDEXED, FAILED, RESTRICTED, DELETED
-  failureReason    String?                     @map("failure_reason") @db.Text
-  currentVersion   Int                         @default(1) @map("current_version")
-  totalChunks      Int                         @default(0) @map("total_chunks")
-  totalTokens      Int                         @default(0) @map("total_tokens")
-  pageCount        Int                         @default(1) @map("page_count")
-  visibility       String                      @default("PRIVATE") @db.VarChar(30) // PRIVATE, SHARED, CHARACTER_ACCESSIBLE, TASK_ONLY, PUBLIC
-  createdAt        DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String   @id @default(uuid()) @db.VarChar(100)
+  ownerId          String   @map("owner_id") @db.VarChar(100)
+  ownerType        String   @default("USER") @map("owner_type") @db.VarChar(30) // USER, CREATOR, PLATFORM
+  characterId      String?  @map("character_id") @db.VarChar(100)
+  title            String   @db.VarChar(255)
+  originalFilename String   @map("original_filename") @db.VarChar(255)
+  mimeType         String   @map("mime_type") @db.VarChar(100)
+  fileSizeBytes    Int      @map("file_size_bytes")
+  storageUrl       String?  @map("storage_url") @db.VarChar(500)
+  contentHash      String   @map("content_hash") @db.VarChar(64)
+  status           String   @default("UPLOADED") @db.VarChar(30) // UPLOADED, PROCESSING, INDEXED, FAILED, RESTRICTED, DELETED
+  failureReason    String?  @map("failure_reason") @db.Text
+  currentVersion   Int      @default(1) @map("current_version")
+  totalChunks      Int      @default(0) @map("total_chunks")
+  totalTokens      Int      @default(0) @map("total_tokens")
+  pageCount        Int      @default(1) @map("page_count")
+  visibility       String   @default("PRIVATE") @db.VarChar(30) // PRIVATE, SHARED, CHARACTER_ACCESSIBLE, TASK_ONLY, PUBLIC
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  versions         DocumentVersion[]
-  chunks           DocumentChunk[]
-  collectionLinks  KnowledgeCollectionMember[]
+  versions        DocumentVersion[]
+  chunks          DocumentChunk[]
+  collectionLinks KnowledgeCollectionMember[]
 
   @@index([ownerId, status])
   @@index([characterId])
@@ -4281,7 +4300,7 @@ model DocumentVersion {
   status        String            @default("ACTIVE") @db.VarChar(30)
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  chunks        DocumentChunk[]
+  chunks DocumentChunk[]
 
   @@unique([documentId, versionNumber])
   @@map("document_versions")
@@ -4312,15 +4331,15 @@ model DocumentChunk {
 
 /// Personal and shared knowledge collections
 model KnowledgeCollection {
-  id          String                      @id @default(uuid()) @db.VarChar(100)
-  ownerId     String                      @map("owner_id") @db.VarChar(100)
-  name        String                      @db.VarChar(100)
-  description String?                     @db.Text
-  visibility  String                      @default("PRIVATE") @db.VarChar(30) // PRIVATE, SHARED, CHARACTER_ACCESSIBLE, TASK_ONLY
-  createdAt   DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String   @id @default(uuid()) @db.VarChar(100)
+  ownerId     String   @map("owner_id") @db.VarChar(100)
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  visibility  String   @default("PRIVATE") @db.VarChar(30) // PRIVATE, SHARED, CHARACTER_ACCESSIBLE, TASK_ONLY
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  members     KnowledgeCollectionMember[]
+  members KnowledgeCollectionMember[]
 
   @@index([ownerId])
   @@map("knowledge_collections")
@@ -4341,20 +4360,20 @@ model KnowledgeCollectionMember {
 
 /// Web research task orchestrating multi-source search & synthesis
 model WebResearchTask {
-  id              String            @id @default(uuid()) @db.VarChar(100)
-  userId          String            @map("user_id") @db.VarChar(100)
-  conversationId  String?           @map("conversation_id") @db.VarChar(100)
-  query           String            @db.Text
-  status          String            @default("INITIATED") @db.VarChar(30)
-  freshnessPolicy String            @default("DAILY") @map("freshness_policy") @db.VarChar(30)
-  sourceCount     Int               @default(0) @map("source_count")
-  costUsd         Float             @default(0.0) @map("cost_usd")
-  summary         String?           @db.Text
-  findings        Json?             @db.JsonB
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  completedAt     DateTime?         @map("completed_at") @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.VarChar(100)
+  userId          String    @map("user_id") @db.VarChar(100)
+  conversationId  String?   @map("conversation_id") @db.VarChar(100)
+  query           String    @db.Text
+  status          String    @default("INITIATED") @db.VarChar(30)
+  freshnessPolicy String    @default("DAILY") @map("freshness_policy") @db.VarChar(30)
+  sourceCount     Int       @default(0) @map("source_count")
+  costUsd         Float     @default(0.0) @map("cost_usd")
+  summary         String?   @db.Text
+  findings        Json?     @db.JsonB
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
 
-  sources         WebSourceRecord[]
+  sources WebSourceRecord[]
 
   @@index([userId, status])
   @@index([conversationId])
@@ -4385,19 +4404,19 @@ model WebSourceRecord {
 
 /// Structured citations linking assertions directly to documents or web sources
 model CitationRecord {
-  id             String    @id @default(uuid()) @db.VarChar(100)
-  messageId      String?   @map("message_id") @db.VarChar(100)
-  generationId   String?   @map("generation_id") @db.VarChar(100)
-  sourceType     String    @map("source_type") @db.VarChar(40) // DOCUMENT, WEB, CREATOR_KNOWLEDGE, EXTERNAL
-  documentId     String?   @map("document_id") @db.VarChar(100)
-  chunkId        String?   @map("chunk_id") @db.VarChar(100)
-  webSourceId    String?   @map("web_source_id") @db.VarChar(100)
-  url            String?   @db.VarChar(1000)
-  title          String    @db.VarChar(500)
-  pageNumber     Int?      @map("page_number")
-  sectionHeading String?   @map("section_heading") @db.VarChar(255)
-  exactQuote     String?   @map("exact_quote") @db.Text
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id             String   @id @default(uuid()) @db.VarChar(100)
+  messageId      String?  @map("message_id") @db.VarChar(100)
+  generationId   String?  @map("generation_id") @db.VarChar(100)
+  sourceType     String   @map("source_type") @db.VarChar(40) // DOCUMENT, WEB, CREATOR_KNOWLEDGE, EXTERNAL
+  documentId     String?  @map("document_id") @db.VarChar(100)
+  chunkId        String?  @map("chunk_id") @db.VarChar(100)
+  webSourceId    String?  @map("web_source_id") @db.VarChar(100)
+  url            String?  @db.VarChar(1000)
+  title          String   @db.VarChar(500)
+  pageNumber     Int?     @map("page_number")
+  sectionHeading String?  @map("section_heading") @db.VarChar(255)
+  exactQuote     String?  @map("exact_quote") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([messageId])
   @@index([documentId])
@@ -4411,35 +4430,35 @@ model CitationRecord {
 
 /// Persistent character objectives and long-horizon goals
 model CharacterGoal {
-  id                  String             @id @default(uuid()) @db.VarChar(100)
-  characterId         String             @map("character_id") @db.VarChar(100)
-  characterVersionId  String?            @map("character_version_id") @db.VarChar(100)
-  userId              String             @map("user_id") @db.VarChar(100)
-  owner               String             @default("CHARACTER") @db.VarChar(30) // CHARACTER, USER, SHARED, SYSTEM
-  category            String             @db.VarChar(60) // learning, topic_continuity, habit, narrative_arc, creative, check_in
-  title               String             @db.VarChar(255)
-  description         String?            @db.Text
-  priority            Int                @default(1)
-  status              String             @default("ACTIVE") @db.VarChar(30) // DRAFT, ACTIVE, IN_PROGRESS, PAUSED, BLOCKED, COMPLETED, ABANDONED, EXPIRED, CANCELLED
-  progress            Float              @default(0.0)
-  progressType        String             @default("PERCENTAGE") @map("progress_type") @db.VarChar(30) // BINARY, PERCENTAGE, COUNT, MILESTONE, QUALITATIVE
-  qualitativeProgress String?            @map("qualitative_progress") @db.VarChar(30) // NOT_STARTED, EARLY, DEVELOPING, ADVANCED, NEAR_COMPLETE, COMPLETE
-  startAt             DateTime           @default(now()) @map("start_at") @db.Timestamptz(6)
-  dueAt               DateTime?          @map("due_at") @db.Timestamptz(6)
-  lastProgressAt      DateTime?          @map("last_progress_at") @db.Timestamptz(6)
-  completedAt         DateTime?          @map("completed_at") @db.Timestamptz(6)
-  abandonedAt         DateTime?          @map("abandoned_at") @db.Timestamptz(6)
-  source              String?            @db.VarChar(50) // conversation, creator_preset, user_request, routine
-  confidence          Float              @default(1.0)
-  version             Int                @default(1)
-  constraints         Json?              @db.JsonB
-  metadata            Json?              @db.JsonB
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String    @id @default(uuid()) @db.VarChar(100)
+  characterId         String    @map("character_id") @db.VarChar(100)
+  characterVersionId  String?   @map("character_version_id") @db.VarChar(100)
+  userId              String    @map("user_id") @db.VarChar(100)
+  owner               String    @default("CHARACTER") @db.VarChar(30) // CHARACTER, USER, SHARED, SYSTEM
+  category            String    @db.VarChar(60) // learning, topic_continuity, habit, narrative_arc, creative, check_in
+  title               String    @db.VarChar(255)
+  description         String?   @db.Text
+  priority            Int       @default(1)
+  status              String    @default("ACTIVE") @db.VarChar(30) // DRAFT, ACTIVE, IN_PROGRESS, PAUSED, BLOCKED, COMPLETED, ABANDONED, EXPIRED, CANCELLED
+  progress            Float     @default(0.0)
+  progressType        String    @default("PERCENTAGE") @map("progress_type") @db.VarChar(30) // BINARY, PERCENTAGE, COUNT, MILESTONE, QUALITATIVE
+  qualitativeProgress String?   @map("qualitative_progress") @db.VarChar(30) // NOT_STARTED, EARLY, DEVELOPING, ADVANCED, NEAR_COMPLETE, COMPLETE
+  startAt             DateTime  @default(now()) @map("start_at") @db.Timestamptz(6)
+  dueAt               DateTime? @map("due_at") @db.Timestamptz(6)
+  lastProgressAt      DateTime? @map("last_progress_at") @db.Timestamptz(6)
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(6)
+  abandonedAt         DateTime? @map("abandoned_at") @db.Timestamptz(6)
+  source              String?   @db.VarChar(50) // conversation, creator_preset, user_request, routine
+  confidence          Float     @default(1.0)
+  version             Int       @default(1)
+  constraints         Json?     @db.JsonB
+  metadata            Json?     @db.JsonB
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  milestones          CharacterGoalMilestone[]
-  tasks               CharacterGoalTask[]
-  plans               CharacterPlan[]
+  milestones CharacterGoalMilestone[]
+  tasks      CharacterGoalTask[]
+  plans      CharacterPlan[]
 
   @@index([userId, characterId, status])
   @@index([characterId, status])
@@ -4458,7 +4477,7 @@ model CharacterGoalMilestone {
   completedAt DateTime?     @map("completed_at") @db.Timestamptz(6)
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  tasks       CharacterGoalTask[]
+  tasks CharacterGoalTask[]
 
   @@index([goalId, orderIndex])
   @@map("character_goal_milestones")
@@ -4496,7 +4515,7 @@ model CharacterRoutine {
   frequencyLimitPerDay Int       @default(1) @map("frequency_limit_per_day")
   cooldownMinutes      Int       @default(60) @map("cooldown_minutes")
   quietHoursStart      String?   @map("quiet_hours_start") @db.VarChar(10) // "22:00"
-  quietHoursEnd        String?   @map("quiet_hours_end") @db.VarChar(10)   // "08:00"
+  quietHoursEnd        String?   @map("quiet_hours_end") @db.VarChar(10) // "08:00"
   priority             Int       @default(1)
   active               Boolean   @default(true)
   constraints          Json?     @db.JsonB
@@ -4573,26 +4592,26 @@ model CharacterSimulationState {
 
 /// Durable audit record for every simulation cycle execution
 model SimulationRunRecord {
-  id                     String    @id @default(uuid()) @db.VarChar(100)
-  userId                 String    @map("user_id") @db.VarChar(100)
-  characterId            String    @map("character_id") @db.VarChar(100)
-  characterVersionId     String?   @map("character_version_id") @db.VarChar(100)
-  triggerType            String    @map("trigger_type") @db.VarChar(40) // CONVERSATION, ROUTINE, GOAL_EVENT, MANUAL, RELATIONSHIP
-  triggerEventId         String?   @map("trigger_event_id") @db.VarChar(100)
-  status                 String    @default("RUNNING") @db.VarChar(30) // RUNNING, COMPLETED, NO_ACTION, FAILED
-  modelId                String?   @map("model_id") @db.VarChar(100)
-  promptVersion          String?   @map("prompt_version") @db.VarChar(50)
-  contextHash            String?   @map("context_hash") @db.VarChar(64)
-  outputHash             String?   @map("output_hash") @db.VarChar(64)
-  proposalsCount         Int       @default(0) @map("proposals_count")
-  acceptedProposalsCount Int       @default(0) @map("accepted_proposals_count")
-  costUsd                Float     @default(0.0) @map("cost_usd")
-  latencyMs              Int       @default(0) @map("latency_ms")
-  errorCode              String?   @map("error_code") @db.VarChar(60)
-  errorMessage           String?   @map("error_message") @db.Text
-  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                     String   @id @default(uuid()) @db.VarChar(100)
+  userId                 String   @map("user_id") @db.VarChar(100)
+  characterId            String   @map("character_id") @db.VarChar(100)
+  characterVersionId     String?  @map("character_version_id") @db.VarChar(100)
+  triggerType            String   @map("trigger_type") @db.VarChar(40) // CONVERSATION, ROUTINE, GOAL_EVENT, MANUAL, RELATIONSHIP
+  triggerEventId         String?  @map("trigger_event_id") @db.VarChar(100)
+  status                 String   @default("RUNNING") @db.VarChar(30) // RUNNING, COMPLETED, NO_ACTION, FAILED
+  modelId                String?  @map("model_id") @db.VarChar(100)
+  promptVersion          String?  @map("prompt_version") @db.VarChar(50)
+  contextHash            String?  @map("context_hash") @db.VarChar(64)
+  outputHash             String?  @map("output_hash") @db.VarChar(64)
+  proposalsCount         Int      @default(0) @map("proposals_count")
+  acceptedProposalsCount Int      @default(0) @map("accepted_proposals_count")
+  costUsd                Float    @default(0.0) @map("cost_usd")
+  latencyMs              Int      @default(0) @map("latency_ms")
+  errorCode              String?  @map("error_code") @db.VarChar(60)
+  errorMessage           String?  @map("error_message") @db.Text
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  snapshots              SimulationStateSnapshot[]
+  snapshots SimulationStateSnapshot[]
 
   @@index([userId, characterId, createdAt(sort: Desc)])
   @@index([status])
@@ -4639,24 +4658,24 @@ model CharacterSimulationPolicy {
 
 /// Long-horizon sequential plans linked to character goals or independent workflows
 model CharacterPlan {
-  id                 String              @id @default(uuid()) @db.VarChar(100)
-  characterId        String              @map("character_id") @db.VarChar(100)
-  userId             String              @map("user_id") @db.VarChar(100)
-  characterVersionId String?             @map("character_version_id") @db.VarChar(100)
-  goalId             String?             @map("goal_id") @db.VarChar(100)
-  goal               CharacterGoal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  title              String              @db.VarChar(255)
-  description        String?             @db.Text
-  status             String              @default("ACTIVE") @db.VarChar(30) // DRAFT, ACTIVE, PAUSED, BLOCKED, COMPLETED, FAILED, CANCELLED, EXPIRED
-  currentStepIndex   Int                 @default(0) @map("current_step_index")
-  version            Int                 @default(1)
-  expiresAt          DateTime?           @map("expires_at") @db.Timestamptz(6)
-  completedAt        DateTime?           @map("completed_at") @db.Timestamptz(6)
-  metadata           Json?               @db.JsonB
-  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String         @id @default(uuid()) @db.VarChar(100)
+  characterId        String         @map("character_id") @db.VarChar(100)
+  userId             String         @map("user_id") @db.VarChar(100)
+  characterVersionId String?        @map("character_version_id") @db.VarChar(100)
+  goalId             String?        @map("goal_id") @db.VarChar(100)
+  goal               CharacterGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  title              String         @db.VarChar(255)
+  description        String?        @db.Text
+  status             String         @default("ACTIVE") @db.VarChar(30) // DRAFT, ACTIVE, PAUSED, BLOCKED, COMPLETED, FAILED, CANCELLED, EXPIRED
+  currentStepIndex   Int            @default(0) @map("current_step_index")
+  version            Int            @default(1)
+  expiresAt          DateTime?      @map("expires_at") @db.Timestamptz(6)
+  completedAt        DateTime?      @map("completed_at") @db.Timestamptz(6)
+  metadata           Json?          @db.JsonB
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  steps              CharacterPlanStep[]
+  steps CharacterPlanStep[]
 
   @@index([userId, characterId, status])
   @@index([characterId, status])
@@ -4687,17 +4706,17 @@ model CharacterPlanStep {
 
 /// Persistent fictional/contextual world state entity (global or user-scoped)
 model CharacterWorldState {
-  id                 String    @id @default(uuid()) @db.VarChar(100)
-  characterId        String    @map("character_id") @db.VarChar(100)
-  userId             String?   @map("user_id") @db.VarChar(100) // Null for character-global
-  characterVersionId String?   @map("character_version_id") @db.VarChar(100)
-  entityKey          String    @map("entity_key") @db.VarChar(100)
-  entityType         String    @map("entity_type") @db.VarChar(50) // SETTING, STORY_ARC, ACTIVE_PROJECT, FACTION, ITEM, CUSTOM
-  stateValue         Json      @map("state_value") @db.JsonB
-  version            Int       @default(1)
-  lastEventId        String?   @map("last_event_id") @db.VarChar(100)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String   @id @default(uuid()) @db.VarChar(100)
+  characterId        String   @map("character_id") @db.VarChar(100)
+  userId             String?  @map("user_id") @db.VarChar(100) // Null for character-global
+  characterVersionId String?  @map("character_version_id") @db.VarChar(100)
+  entityKey          String   @map("entity_key") @db.VarChar(100)
+  entityType         String   @map("entity_type") @db.VarChar(50) // SETTING, STORY_ARC, ACTIVE_PROJECT, FACTION, ITEM, CUSTOM
+  stateValue         Json     @map("state_value") @db.JsonB
+  version            Int      @default(1)
+  lastEventId        String?  @map("last_event_id") @db.VarChar(100)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([characterId, userId, entityKey])
   @@index([characterId, entityType])
@@ -4706,16 +4725,16 @@ model CharacterWorldState {
 
 /// Immutable event log for world state mutations
 model CharacterWorldStateEvent {
-  id                 String    @id @default(uuid()) @db.VarChar(100)
-  characterId        String    @map("character_id") @db.VarChar(100)
-  userId             String?   @map("user_id") @db.VarChar(100)
-  characterVersionId String?   @map("character_version_id") @db.VarChar(100)
-  eventType          String    @map("event_type") @db.VarChar(60) // PROJECT_STARTED, LOCATION_CHANGED, etc.
-  entityKey          String    @map("entity_key") @db.VarChar(100)
-  delta              Json      @db.JsonB
-  source             String    @db.VarChar(50)
-  version            Int       @default(1)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String   @id @default(uuid()) @db.VarChar(100)
+  characterId        String   @map("character_id") @db.VarChar(100)
+  userId             String?  @map("user_id") @db.VarChar(100)
+  characterVersionId String?  @map("character_version_id") @db.VarChar(100)
+  eventType          String   @map("event_type") @db.VarChar(60) // PROJECT_STARTED, LOCATION_CHANGED, etc.
+  entityKey          String   @map("entity_key") @db.VarChar(100)
+  delta              Json     @db.JsonB
+  source             String   @db.VarChar(50)
+  version            Int      @default(1)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([characterId, entityKey, createdAt(sort: Desc)])
   @@map("character_world_state_events")
@@ -4723,17 +4742,17 @@ model CharacterWorldStateEvent {
 
 /// Immutable ledger of all simulation events for event sourcing, replay, and idempotency
 model CharacterSimulationEvent {
-  id                 String    @id @default(uuid()) @db.VarChar(100)
-  characterId        String    @map("character_id") @db.VarChar(100)
-  userId             String?   @map("user_id") @db.VarChar(100)
-  characterVersionId String?   @map("character_version_id") @db.VarChar(100)
-  eventType          String    @map("event_type") @db.VarChar(60)
-  source             String    @db.VarChar(50)
-  payload            Json      @db.JsonB
-  stateVersion       Int       @default(1) @map("state_version")
-  correlationId      String?   @map("correlation_id") @db.VarChar(100)
-  idempotencyKey     String?   @unique @map("idempotency_key") @db.VarChar(100)
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String   @id @default(uuid()) @db.VarChar(100)
+  characterId        String   @map("character_id") @db.VarChar(100)
+  userId             String?  @map("user_id") @db.VarChar(100)
+  characterVersionId String?  @map("character_version_id") @db.VarChar(100)
+  eventType          String   @map("event_type") @db.VarChar(60)
+  source             String   @db.VarChar(50)
+  payload            Json     @db.JsonB
+  stateVersion       Int      @default(1) @map("state_version")
+  correlationId      String?  @map("correlation_id") @db.VarChar(100)
+  idempotencyKey     String?  @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([characterId, userId, createdAt(sort: Desc)])
   @@index([correlationId])
@@ -4742,21 +4761,21 @@ model CharacterSimulationEvent {
 
 /// User-controlled simulation preferences and autonomy levels per user-character pair
 model UserSimulationSettings {
-  id                 String    @id @default(uuid()) @db.VarChar(100)
-  userId             String    @map("user_id") @db.VarChar(100)
-  characterId        String    @map("character_id") @db.VarChar(100)
-  enabled            Boolean   @default(true)
-  autonomyLevel      String    @default("CONTEXTUAL") @map("autonomy_level") @db.VarChar(30) // PASSIVE, CONTEXTUAL, PROACTIVE, TASK_ORIENTED
-  proactiveEnabled   Boolean   @default(true) @map("proactive_enabled")
-  routinesEnabled    Boolean   @default(true) @map("routines_enabled")
-  remindersEnabled   Boolean   @default(true) @map("reminders_enabled")
-  plansEnabled       Boolean   @default(true) @map("plans_enabled")
-  quietHoursStart    String    @default("22:00") @map("quiet_hours_start") @db.VarChar(10)
-  quietHoursEnd      String    @default("08:00") @map("quiet_hours_end") @db.VarChar(10)
-  userTimezone       String    @default("UTC") @map("user_timezone") @db.VarChar(50)
-  metadata           Json?     @db.JsonB
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String   @id @default(uuid()) @db.VarChar(100)
+  userId           String   @map("user_id") @db.VarChar(100)
+  characterId      String   @map("character_id") @db.VarChar(100)
+  enabled          Boolean  @default(true)
+  autonomyLevel    String   @default("CONTEXTUAL") @map("autonomy_level") @db.VarChar(30) // PASSIVE, CONTEXTUAL, PROACTIVE, TASK_ORIENTED
+  proactiveEnabled Boolean  @default(true) @map("proactive_enabled")
+  routinesEnabled  Boolean  @default(true) @map("routines_enabled")
+  remindersEnabled Boolean  @default(true) @map("reminders_enabled")
+  plansEnabled     Boolean  @default(true) @map("plans_enabled")
+  quietHoursStart  String   @default("22:00") @map("quiet_hours_start") @db.VarChar(10)
+  quietHoursEnd    String   @default("08:00") @map("quiet_hours_end") @db.VarChar(10)
+  userTimezone     String   @default("UTC") @map("user_timezone") @db.VarChar(50)
+  metadata         Json?    @db.JsonB
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([userId, characterId])
   @@map("user_simulation_settings")
@@ -4768,32 +4787,32 @@ model UserSimulationSettings {
 
 /// Organization entity for developer teams and enterprise billing
 model DeveloperOrganization {
-  id                    String                @id @default(uuid()) @db.VarChar(100)
-  name                  String                @db.VarChar(100)
-  slug                  String                @unique @db.VarChar(100)
-  billingEmail          String                @map("billing_email") @db.VarChar(255)
-  tier                  String                @default("FREE") @db.VarChar(30) // FREE, BUILDER, SCALE, ENTERPRISE
-  monthlyBudgetUsd      Float?                @map("monthly_budget_usd")
-  spendAlertThresholds  Json                  @default("[50, 75, 90, 100]") @map("spend_alert_thresholds") @db.JsonB
-  hardLimitEnabled      Boolean               @default(true) @map("hard_limit_enabled")
-  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String   @id @default(uuid()) @db.VarChar(100)
+  name                 String   @db.VarChar(100)
+  slug                 String   @unique @db.VarChar(100)
+  billingEmail         String   @map("billing_email") @db.VarChar(255)
+  tier                 String   @default("FREE") @db.VarChar(30) // FREE, BUILDER, SCALE, ENTERPRISE
+  monthlyBudgetUsd     Float?   @map("monthly_budget_usd")
+  spendAlertThresholds Json     @default("[50, 75, 90, 100]") @map("spend_alert_thresholds") @db.JsonB
+  hardLimitEnabled     Boolean  @default(true) @map("hard_limit_enabled")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  members               DeveloperOrgMember[]
-  projects              DeveloperProject[]
+  members  DeveloperOrgMember[]
+  projects DeveloperProject[]
 
   @@map("developer_organizations")
 }
 
 /// Member association within a DeveloperOrganization with explicit RBAC
 model DeveloperOrgMember {
-  id              String                @id @default(uuid()) @db.VarChar(100)
-  organizationId  String                @map("organization_id") @db.VarChar(100)
-  organization    DeveloperOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userId          String                @map("user_id") @db.VarChar(100)
-  role            String                @default("DEVELOPER") @db.VarChar(30) // OWNER, ADMIN, DEVELOPER, BILLING, ANALYST, READ_ONLY
-  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String                @id @default(uuid()) @db.VarChar(100)
+  organizationId String                @map("organization_id") @db.VarChar(100)
+  organization   DeveloperOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String                @map("user_id") @db.VarChar(100)
+  role           String                @default("DEVELOPER") @db.VarChar(30) // OWNER, ADMIN, DEVELOPER, BILLING, ANALYST, READ_ONLY
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([organizationId, userId])
   @@index([userId])
@@ -4802,24 +4821,24 @@ model DeveloperOrgMember {
 
 /// Developer workspace project grouping credentials, webhooks, usage, and environments
 model DeveloperProject {
-  id               String                 @id @default(uuid()) @db.VarChar(100)
-  organizationId   String?                @map("organization_id") @db.VarChar(100)
-  organization     DeveloperOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userId           String                 @map("user_id") @db.VarChar(100)
-  name             String                 @db.VarChar(100)
-  slug             String                 @db.VarChar(100)
-  status           String                 @default("ACTIVE") @db.VarChar(30) // ACTIVE, RESTRICTED, SUSPENDED
-  environment      String                 @default("DEVELOPMENT") @db.VarChar(30) // DEVELOPMENT, STAGING, PRODUCTION
-  allowedOrigins   Json                   @default("[]") @map("allowed_origins") @db.JsonB
-  metadata         Json?                  @db.JsonB
-  createdAt        DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String                 @id @default(uuid()) @db.VarChar(100)
+  organizationId String?                @map("organization_id") @db.VarChar(100)
+  organization   DeveloperOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String                 @map("user_id") @db.VarChar(100)
+  name           String                 @db.VarChar(100)
+  slug           String                 @db.VarChar(100)
+  status         String                 @default("ACTIVE") @db.VarChar(30) // ACTIVE, RESTRICTED, SUSPENDED
+  environment    String                 @default("DEVELOPMENT") @db.VarChar(30) // DEVELOPMENT, STAGING, PRODUCTION
+  allowedOrigins Json                   @default("[]") @map("allowed_origins") @db.JsonB
+  metadata       Json?                  @db.JsonB
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  apiKeys          DeveloperApiKey[]
-  oauthApps        OAuthApplication[]
-  webhooks         WebhookEndpoint[]
-  usageRecords     DeveloperUsageRecord[]
-  embedConfigs     DeveloperEmbedConfig[]
+  apiKeys      DeveloperApiKey[]
+  oauthApps    OAuthApplication[]
+  webhooks     WebhookEndpoint[]
+  usageRecords DeveloperUsageRecord[]
+  embedConfigs DeveloperEmbedConfig[]
 
   @@unique([userId, slug])
   @@index([organizationId])
@@ -4851,24 +4870,24 @@ model DeveloperApiKey {
 
 /// OAuth 2.0 application registration supporting PKCE and confidential clients
 model OAuthApplication {
-  id                 String           @id @default(uuid()) @db.VarChar(100)
-  projectId          String           @map("project_id") @db.VarChar(100)
-  project            DeveloperProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name               String           @db.VarChar(100)
-  clientId           String           @unique @map("client_id") @db.VarChar(100)
-  clientSecretHash   String?          @map("client_secret_hash") @db.VarChar(128)
-  redirectUris       Json             @map("redirect_uris") @db.JsonB
-  allowedScopes      Json             @map("allowed_scopes") @db.JsonB
-  isPublicClient     Boolean          @default(false) @map("is_public_client")
-  clientType         String           @default("WEB") @map("client_type") @db.VarChar(30)
-  logoUrl            String?          @map("logo_url") @db.VarChar(500)
-  privacyPolicyUrl   String?          @map("privacy_policy_url") @db.VarChar(500)
-  termsUrl           String?          @map("terms_url") @db.VarChar(500)
-  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String           @id @default(uuid()) @db.VarChar(100)
+  projectId        String           @map("project_id") @db.VarChar(100)
+  project          DeveloperProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name             String           @db.VarChar(100)
+  clientId         String           @unique @map("client_id") @db.VarChar(100)
+  clientSecretHash String?          @map("client_secret_hash") @db.VarChar(128)
+  redirectUris     Json             @map("redirect_uris") @db.JsonB
+  allowedScopes    Json             @map("allowed_scopes") @db.JsonB
+  isPublicClient   Boolean          @default(false) @map("is_public_client")
+  clientType       String           @default("WEB") @map("client_type") @db.VarChar(30)
+  logoUrl          String?          @map("logo_url") @db.VarChar(500)
+  privacyPolicyUrl String?          @map("privacy_policy_url") @db.VarChar(500)
+  termsUrl         String?          @map("terms_url") @db.VarChar(500)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  consents           OAuthConsent[]
-  tokens             OAuthToken[]
+  consents OAuthConsent[]
+  tokens   OAuthToken[]
 
   @@index([projectId])
   @@map("oauth_applications")
@@ -4908,20 +4927,20 @@ model OAuthToken {
 
 /// Registered webhook destination with HMAC signing secret
 model WebhookEndpoint {
-  id           String            @id @default(uuid()) @db.VarChar(100)
-  projectId    String            @map("project_id") @db.VarChar(100)
-  project      DeveloperProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  url          String            @db.VarChar(500)
-  secret       String            @db.VarChar(128)
-  description  String?           @db.VarChar(255)
-  eventTypes   Json              @map("event_types") @db.JsonB
-  environment  String            @default("DEVELOPMENT") @db.VarChar(30)
-  active       Boolean           @default(true)
-  failureCount Int               @default(0) @map("failure_count")
-  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id           String           @id @default(uuid()) @db.VarChar(100)
+  projectId    String           @map("project_id") @db.VarChar(100)
+  project      DeveloperProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  url          String           @db.VarChar(500)
+  secret       String           @db.VarChar(128)
+  description  String?          @db.VarChar(255)
+  eventTypes   Json             @map("event_types") @db.JsonB
+  environment  String           @default("DEVELOPMENT") @db.VarChar(30)
+  active       Boolean          @default(true)
+  failureCount Int              @default(0) @map("failure_count")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  deliveries   WebhookDelivery[]
+  deliveries WebhookDelivery[]
 
   @@index([projectId, active])
   @@map("webhook_endpoints")
@@ -4984,5 +5003,3 @@ model DeveloperEmbedConfig {
   @@index([projectId, characterId])
   @@map("developer_embed_configs")
 }
-
-

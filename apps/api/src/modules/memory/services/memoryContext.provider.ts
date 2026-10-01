@@ -13,6 +13,8 @@ export class MemoryContextProvider implements IMemoryContextProvider {
       characterId,
       conversationId,
       query: currentQuery || '',
+      // The "who they are" card covers the essentials; these are extra relevant details.
+      maxMemories: 10,
     });
 
     return {

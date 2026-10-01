@@ -30,9 +30,10 @@ import { chatAIRoutes } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../human/personaPacks/index.js';
 import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situation.js';
 import { localHourIn } from '../human/emotionalState.js';
+import { formatProfile, localToday, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, saveLifeState } from '../human/lifeState.js';
+import { addDatedThreads, applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, saveLifeState } from '../human/lifeState.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
@@ -444,6 +445,9 @@ export class StreamingChatService {
       .replace(/\[USER_MESSAGE_START\][\s\S]*?\[USER_MESSAGE_END\]\s*/gi, '')
       .replace(/\[(USER|SYSTEM)_MESSAGE_(START|END)\]/gi, '')
       .replace(/\[SYSTEM_MESSAGE_START\][\s\S]*?\[SYSTEM_MESSAGE_END\]\s*/gi, '')
+      // Internal markers the model sometimes leaks ("[[thought …", "[[note]]"); [[next]] splits bubbles and stays.
+      .replace(/\[\[(?!\s*next\s*\]\])[^\]\n]*\]\]/gi, '')
+      .replace(/\[\[(?!\s*next\s*\]\])[^\]\n]*$/gim, '')
       // Chat bubbles are plain text: drop markdown the model sometimes adds (**bold**, # headings).
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?]|$)/g, '$1$2')
@@ -620,6 +624,11 @@ export class StreamingChatService {
       // Continuity: what she told them today, their mood today, things to follow up on, her own story.
       const timeZone = conversation.user.profile?.timezone;
       const life = await loadLifeState(userId, conversation.characterId, timeZone);
+      // "Who they are" + dated events: a wedding that just happened, a birthday today.
+      const profile = await UserProfileService.load(userId, conversation.characterId);
+      const today = localToday(timeZone).date;
+      const dueEvents = takeDueEvents(profile, today);
+      if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations) });
       const stage = builtContext.activeRelationshipStage ?? null;
       const latest = recentMessages[recentMessages.length - 1];
@@ -643,7 +652,11 @@ export class StreamingChatService {
             ? `first ask (casually) whether they did the task you gave last time: "${plan.followUp.said}"`
             : plan.followUp.kind === 'care'
               ? `gently check how they're feeling now about what they told you last time: "${plan.followUp.said}"`
-              : `ask how their ${plan.followUp.topic} went`
+              : plan.followUp.kind === 'birthday'
+                ? `today is "${plan.followUp.said}" — wish them first`
+                : plan.followUp.kind === 'dated'
+                  ? `"${plan.followUp.said}" has happened now — ask how it went`
+                  : `ask how their ${plan.followUp.topic} went`
           : '',
         plan.nickname ? `call them ${plan.nickname}` : '',
       ].filter(Boolean);
@@ -669,6 +682,8 @@ export class StreamingChatService {
         rememberDoing(life, plan.detail);
         rememberTask(life, newTask);
         await saveLifeState(userId, conversation.characterId, life);
+        // Only once she actually brought it up does the event count as handled.
+        if (dueEvents.changed) await UserProfileService.save(userId, conversation.characterId, profile);
       };
       request.systemPrompt = buildHumanPrompt({
         pack,
@@ -681,6 +696,7 @@ export class StreamingChatService {
         plan,
         stage,
         continuityLines: continuity.lines,
+        profileText: formatProfile(profile, today),
       });
       humanMode = true;
       // Size limits follow the situation (a crisis or an honest AI answer needs room to be complete).
@@ -935,6 +951,16 @@ export class StreamingChatService {
         costUsd: estimatedCostUsd,
       })
       .catch((snapErr) => logger.warn(`Failed to capture runtime snapshot: ${snapErr.message}`));
+
+    // Keep the "who they are" card up to date (background, never blocks).
+    void UserProfileService.updateFromExchange({
+      userId,
+      characterId: conversation.characterId,
+      userMessage: pendingText,
+      assistantMessage: deliveredText,
+      previousAssistantMessage: herRecentReplies[herRecentReplies.length - 1],
+      timeZone: conversation.user.profile?.timezone,
+    });
 
     MemoryExtractionService.processConversationMessage({
       userId,
