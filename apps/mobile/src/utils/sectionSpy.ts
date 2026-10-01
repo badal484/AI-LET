@@ -28,9 +28,12 @@ export function chipLabelFor(section: { id?: string | null; title?: string | nul
  * The section being read at this scroll position: the last one whose top has passed a line
  * `lead` pixels below the top of the list. Above the first section it's "All" (null).
  */
-export function activeSectionAt(sections: Array<{ id: string; y: number }>, scrollY: number, lead = 80): string | null {
+export function activeSectionAt(sections: Array<{ id: string; y: number }>, scrollY: number, lead = 80, atEnd = false): string | null {
+  const ordered = [...sections].sort((a, b) => a.y - b.y);
+  // At the bottom of the page the last rows can never reach the top, so the last one is "current".
+  if (atEnd && ordered.length) return ordered[ordered.length - 1]!.id;
   let active: string | null = null;
-  for (const s of [...sections].sort((a, b) => a.y - b.y)) {
+  for (const s of ordered) {
     if (s.y <= scrollY + lead) active = s.id;
     else break;
   }
