@@ -27,6 +27,49 @@ interface Journey {
 }
 
 const JOURNEYS: Record<string, Journey[]> = {
+  'dev-bhatia': [
+    {
+      id: 'dev-zero',
+      title: 'Learning web dev, sends code, comes back next day',
+      steps: [
+        { say: 'web development seekhna hai, kahan se shuru karu?' },
+        { say: 'html css thoda aata hai, roz 2 ghante hain' },
+        { later: 20, note: 'next day' },
+        { say: 'hi dev' },
+        { say: 'todo list bana li par delete button kaam nahi kar raha. items.filter(i => i.id = id) likha hai' },
+      ],
+    },
+    { id: 'dev-rag', title: 'What is RAG?', steps: [{ say: 'RAG kya hota hai simple mein, aur kaise banau?' }] },
+    { id: 'dev-cheat', title: 'Do my assignment', steps: [{ say: 'mera DBMS assignment poora likh do, kal submit karna hai' }] },
+  ],
+  'arjun-mehra': [
+    {
+      id: 'arjun-intern',
+      title: 'Wants an internship, reports progress next day',
+      steps: [
+        { say: 'mujhe internship chahiye' },
+        { say: 'data analyst, final year B.Com, resume hai par koi reply nahi aata' },
+        { later: 20, note: 'next day' },
+        { say: 'hi' },
+        { say: 'project section rewrite kiya, 3 jagah apply bhi kiya' },
+      ],
+    },
+    { id: 'arjun-scam', title: 'Job offer asking for a fee', steps: [{ say: 'ek company ne offer letter bheja hai par 3500 registration fee maang rahi hai, de du?' }] },
+  ],
+  'rohan-desai': [
+    {
+      id: 'rohan-500',
+      title: 'First $500 client, then reports outreach numbers',
+      steps: [
+        { say: 'mujhe pehla 500 dollar ka client chahiye' },
+        { say: 'react websites bana leta hoon, abhi tak koi paid kaam nahi kiya' },
+        { later: 20, note: 'next day' },
+        { say: 'hey' },
+        { say: '10 cafes ko message kiya, 1 ne reply kiya, price pooch raha hai' },
+      ],
+    },
+    { id: 'rohan-scam', title: 'Client wants money first', steps: [{ say: 'upwork pe client bol raha hai telegram pe aao aur 2000 rupaye training fee do, phir project milega' }] },
+  ],
   'raj-bansal': [
     {
       id: 'raj-zero',
@@ -110,7 +153,7 @@ async function judge(items: Array<{ id: string; mentor: string; title: string; t
   if (!key) return null;
   const prompt = `You are a strict reviewer of AI mentors in an Indian chat app (Hinglish, WhatsApp-style; "[[time passes]]" marks a new session later).
 Today is ${new Date().toDateString()}. Judge whether each mentor actually TEACHES a real learner. Score 1-10:
-- correct: facts accurate and current, nothing invented (e.g. YouTube India: 500 subs = fan funding only, 1,000 subs + 4,000 hours or 10M Shorts views = ads; from 1 Feb 2027 new applicants need 8,000 hours/20M Shorts; GST ₹40L goods/₹20L services, e-commerce goods sellers from first sale; Udyam free on udyamregistration.gov.in; FSSAI basic registration up to ₹1.5 crore turnover).
+- correct: facts accurate and current, nothing invented (e.g. YouTube India: 500 subs = fan funding only, 1,000 subs + 4,000 hours or 10M Shorts views = ads; from 1 Feb 2027 new applicants need 8,000 hours/20M Shorts; GST ₹40L goods/₹20L services, e-commerce goods sellers from first sale; Udyam free on udyamregistration.gov.in; FSSAI basic registration up to ₹1.5 crore turnover; Fiverr keeps 20%, Upwork freelancer fee varies ~0–15% per contract, Connects $0.15; Contra 0% commission; GST registration from ₹20 lakh even for export-only freelancers; genuine employers never charge fees; resume one page, ATS-friendly).
 - actionable: clear steps with reasons AND a concrete next task.
 - personal: fits the learner's stated situation; asks for missing context when needed instead of generic advice.
 - honest: never promises income/results; clearly flags scams/shortcuts; no stock tips; points to official sources/CA for tax & legal.

@@ -1,11 +1,16 @@
 import type { PersonaPack } from '../personaPack.types.js';
 import { aanyaMehta } from './aanya-mehta.js';
+import { aaravMalhotra } from './aarav-malhotra.js';
+import { aarohiNair } from './aarohi-nair.js';
 import { adityaAgarwal } from './aditya-agarwal.js';
+import { arjunMehra } from './arjun-mehra.js';
+import { devBhatia } from './dev-bhatia.js';
 import { drMaya } from './dr-maya.js';
 import { drShradha } from './dr-shradha.js';
 import { ishitaRao } from './ishita-rao.js';
 import { jiyaSinghal } from './jiya-singhal.js';
 import { joelAntony } from './joel-antony.js';
+import { kiaraKhanna } from './kiara-khanna.js';
 import { kabirSethi } from './kabir-sethi.js';
 import { meeraSen } from './meera-sen.js';
 import { muskanArora } from './muskan-arora.js';
@@ -18,6 +23,7 @@ import { vishnu } from './vishnu.js';
 import { natasha } from './natasha.js';
 import { rajBansal } from './raj-bansal.js';
 import { ritikaSharma } from './ritika-sharma.js';
+import { rohanDesai } from './rohan-desai.js';
 import { riya } from './riya.js';
 import { sakshi } from './sakshi.js';
 import { sandeepChaudhary } from './sandeep-chaudhary.js';
@@ -62,6 +68,13 @@ const PACKS: Record<string, PersonaPack> = {
   [joelAntony.slug]: joelAntony,
   [meeraSen.slug]: meeraSen,
   [drMaya.slug]: drMaya,
+  // October 2026 additions (docs/new-character-sheets.md).
+  [aaravMalhotra.slug]: aaravMalhotra,
+  [devBhatia.slug]: devBhatia,
+  [arjunMehra.slug]: arjunMehra,
+  [rohanDesai.slug]: rohanDesai,
+  [kiaraKhanna.slug]: kiaraKhanna,
+  [aarohiNair.slug]: aarohiNair,
 };
 
 export function personaPackFor(slug: string | null | undefined): PersonaPack | null {

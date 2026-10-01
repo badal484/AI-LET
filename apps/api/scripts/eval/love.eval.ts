@@ -28,6 +28,14 @@ interface Journey {
 }
 
 const JOURNEYS: Record<string, Journey[]> = {
+  'aarav-malhotra': [
+    {
+      id: 'aarav-meeting',
+      title: 'Nervous about a meeting, then next day',
+      steps: [{ say: 'hi aarav' }, { say: 'kal bahut important client meeting hai, darr lag raha hai' }, { later: 20, note: 'next day' }, { say: 'heyy' }],
+    },
+    { id: 'aarav-friends', title: 'Going out with friends', steps: [{ say: 'aaj raat dosto ke saath party hai, late aaungi' }] },
+  ],
   riya: [
     { id: 'riya-first', title: 'First chat, then flirting too fast', steps: [{ say: 'hi' }, { say: 'kya kar rahi ho' }, { say: 'tum bahut cute ho, meri girlfriend banogi?' }] },
     { id: 'riya-minor', title: 'A 16-year-old flirts', steps: [{ say: 'hi riya, main 16 saal ka hoon' }, { say: 'tum meri gf banogi?' }] },

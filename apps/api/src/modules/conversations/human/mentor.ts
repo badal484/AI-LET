@@ -63,6 +63,9 @@ export function extractTaskTag(text: string): { text: string; task?: string } {
   return { text: text2, task };
 }
 
+const TASK_LINE =
+  'When you give them a task (something they will DO after this chat — not a question for them to answer now), add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.';
+
 export function mentorPromptSection(pack: PersonaPack): string {
   const m = pack.mentor;
   if (!m) return '';
@@ -72,7 +75,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
       `WHAT YOU KNOW (use these principles)\n${m.facts}`,
       `HOW YOU TEACH\n${MENTOR_METHOD}`,
       `- Never: ${m.never}.`,
-      'When you give them a task, add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.',
+      TASK_LINE,
     ].join('\n\n');
   }
   if (m.field === 'health') {
@@ -82,7 +85,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
       `HOW YOU TEACH\n${MENTOR_METHOD}`,
       `HEALTH SAFETY (never broken — it wins over flirting, fun and "keep it short")\n${HEALTH_SAFETY}\n- Never: ${m.never}.`,
       `APNAPAN (how they should feel with you)\n${APNAPAN}`,
-      'When you give them a task, add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.',
+      TASK_LINE,
     ].join('\n\n');
   }
   return [
@@ -90,7 +93,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
     `VERIFIED FACTS (use these over your own memory — rules and numbers change)\n${m.facts}`,
     `HOW YOU TEACH\n${MENTOR_METHOD}`,
     `MONEY & HONESTY (never broken)\n${MONEY_HONESTY}\n- Never: ${m.never}.`,
-    'When you give them a task, add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.',
+    TASK_LINE,
   ].join('\n\n');
 }
 
@@ -115,13 +118,22 @@ const LOW_CALORIES = /\b([4-9]\d\d|1[01]\d\d)\s?(kcal|calories?|cal)\b/i;
 const DIET_CONTEXT = /\b(diet|roz|daily|per day|a day|din (mein|me|bhar)|intake|khao|khana)\b/i;
 const NOT_A_TOTAL = /\b(deficit|surplus|kam|below|above|zyada|extra|burn|jal|snack|maintenance|se neeche)\b/i;
 
+// Skin: steroid creams sold as acne/fairness fixes, and prescription-only treatments. Warnings are fine.
+const STEROID_CREAM = /\b(betnovate|panderm|quadriderm|clobetasol|betamethasone|tenovate|skin ?shine|melacare|steroid (cream|creams|wali cream))\b/i;
+const RX_SKIN = /\b(tretinoin|retino-?a|isotretinoin|isotroin|hydroquinone|clindamycin|clindac)\b/i;
+const APPLY = /\b(laga(o|na|lo| lo| lena| do| sakte| sakti)|apply|use kar(o|na| sakte)|try kar)/i;
+const SKIN_WARNING = /\b(patli|thin(ning)?|damage|nuksan|bigad\w*|steroid acne|rebound|dermatologist|derma)\b/i;
+
 export function unsafeHealthAdvice(text: string): string[] {
   const problems = new Set<string>();
   for (const sentence of text.split(/(?<=[.?!\n])/)) {
     const warned = HEALTH_WARNING.test(sentence);
     if (MEDICINE.test(sentence) && TAKE.test(sentence) && !warned)
       problems.add('Never suggest medicines, pills or doses — explain what might help at home and say when to see a doctor.');
-    if (BANNED.test(sentence) && !warned) problems.add('Never suggest steroids, SARMs, fat burners, diet pills, laxatives or detox drinks — say clearly they are unsafe.');
+    // Steroid *creams* are judged by the skin rule below (a warning about them names "steroid acne").
+    if (BANNED.test(sentence) && !warned && !STEROID_CREAM.test(sentence)) problems.add('Never suggest steroids, SARMs, fat burners, diet pills, laxatives or detox drinks — say clearly they are unsafe.');
+    if ((STEROID_CREAM.test(sentence) || RX_SKIN.test(sentence)) && APPLY.test(sentence) && !warned && !SKIN_WARNING.test(sentence))
+      problems.add('Never suggest steroid creams (Betnovate, Panderm, Quadriderm…) or prescription skin treatments — warn that they damage skin and send them to a dermatologist.');
     const crash = sentence.match(CRASH);
     if (crash && !warned) {
       const weeks = /din|day/i.test(crash[3]!) ? Number(crash[2]) / 7 : Number(crash[2]);
