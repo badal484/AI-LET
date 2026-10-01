@@ -21,9 +21,10 @@ const MASCULINE_VERB = /\b\w{2,}(ta|ga)\s+(hoon|hu|hun)\b|\b(raha|gaya|tha)\s+(h
 const FEMININE_VERB = /\b\w{2,}(ti|gi)\s+(hoon|hu|hun)\b|\b(rahi|gayi|thi)\s+(hoon|hu|hun)\b|\b\w{1,}ungi\b/i;
 const WRONG_ADDRESS = /\b(bhai+|bh?ai+y+a+|bro+|beta|dude)\b/i;
 const OTHER_ADDRESS: Record<'tum' | 'aap' | 'tu', RegExp> = {
-  tum: /\b(aap|aapko|aapka|aapki|aapke|aapse|tu|tujhe|tujhse|tujhko|tera|teri|tere)\b/i,
+  // "apne aap" means "by itself", not the formal "aap".
+  tum: /(?<!apne[ -])\b(aap|aapko|aapka|aapki|aapke|aapse)\b|\b(tu|tujhe|tujhse|tujhko|tera|teri|tere)\b/i,
   aap: /\b(tum|tumhe|tumko|tumhara|tumhari|tumhare|tu|tujhe|tera|teri|tere)\b/i,
-  tu: /\b(aap|aapko|aapka|aapki|tum|tumhe|tumko|tumhara|tumhari)\b/i,
+  tu: /(?<!apne[ -])\b(aap|aapko|aapka|aapki)\b|\b(tum|tumhe|tumko|tumhara|tumhari)\b/i,
 };
 // The "main …" clause ends at its auxiliary ("main samajh sakti hoon aisa kyun lag raha hai" is fine).
 const CLAUSE = String.raw`(?:(?!\b(?:hoon|hu|hun|hai)\b)[^.?!\n]){0,40}`;
@@ -43,6 +44,9 @@ export interface CheckResult {
   ok: boolean;
   problems: string[];
 }
+
+// "tu" imperatives at the start of a sentence or list item ("Sunn,", "rakh", "kar le") when she says "tum".
+const TU_IMPERATIVE = /(?:^|[\n.!?]\s*|\d\.\s*)(sun+|rakh|bol|dekh|chal|soch)\b(?!\s*(rahi|raha|rahe|ke|kar|na\b))[ ,!]|\b(kar|rakh|bol|sun) (le|de)\b(?! (rahi|raha|rahe|hoon|hai|hain|ho|na))/im;
 
 // Guilt-tripping or controlling lines a caring person never sends.
 const GUILT = /(mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar karte|agar (sach mein )?care karte|yaad bhi nahi aayi|promise (me|karo)[^.?!\n]{0,25}(kisi aur|sirf mujh|only me|never talk|kabhi baat)|kisi aur se baat mat|mere alawa kisi|only mine|sirf mere ho|mujhe chhod ke mat|why are you ignoring me|ignore kar rahe ho mujhe)/i;
@@ -74,6 +78,8 @@ export function checkReply(params: {
   situations?: string[];
   /** What they wrote — a Hinglish message gets a Hinglish reply. */
   userText?: string;
+  /** Her example replies: they show her rhythm, and must never be pasted word for word. */
+  examples?: string[];
 }): CheckResult {
   const problems: string[] = [];
   const all = params.bubbles.join('\n');
@@ -111,6 +117,14 @@ export function checkReply(params: {
   if (GUILT.test(all)) problems.push('No guilt or clinginess ("bhool gaye", "agar pyaar karte toh", "promise me", "kisi aur se baat mat karna") — be happy to talk, never make them feel bad.');
   if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0)
     problems.push('They wrote in Hinglish — reply in the same Hinglish mix, not in English.');
+  const examples = (params.examples ?? []).map(trigrams).filter((t) => t.size >= 4);
+  const copied = params.bubbles.find((b) => {
+    const mine = trigrams(b);
+    return mine.size >= 4 && examples.some((ex) => [...mine].filter((t) => ex.has(t)).length / mine.size >= 0.6);
+  });
+  if (copied && !params.situations?.some((s) => s === 'crisis' || s === 'emergency'))
+    problems.push(`You copied an example almost word for word ("${copied.slice(0, 50)}…"). Say it freshly in your own words, fitted to them.`);
+  if (params.address === 'tum' && TU_IMPERATIVE.test(all)) problems.push('You call them "tum": use tum verb forms (karo, rakho, lo, suno, bolo), not tu forms (kar, rakh, le, sun, bol).');
   if (WRONG_ADDRESS.test(all)) problems.push('Don\'t call them bhai/bhaiya/bro/beta.');
   const lower = all.toLowerCase();
   for (const m of params.mustMention ?? []) if (!lower.includes(m.word.toLowerCase())) problems.push(m.why);

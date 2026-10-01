@@ -25,8 +25,10 @@ describe('Health & Wellness experts', () => {
 
   it('none of their example replies breaks the health rules', () => {
     for (const slug of HEALTH) {
-      for (const ex of personaPackFor(slug)!.examples) {
+      const pack = personaPackFor(slug)!;
+      for (const ex of pack.examples) {
         expect(unsafeHealthAdvice(ex.her.join('\n')), `${slug}: ${ex.user}`).toEqual([]);
+        expect(checkReply({ bubbles: ex.her, herRecentReplies: [], gender: pack.gender, mode: 'task', address: pack.address }).problems, `${slug}: ${ex.user}`).toEqual([]);
         expect(ex.her.join(' '), `${slug} uses bhai/bro`).not.toMatch(/\b(bhai|bro|beta|dude)\b/i);
       }
     }
