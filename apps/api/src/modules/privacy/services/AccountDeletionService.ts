@@ -1,16 +1,11 @@
 import crypto from 'crypto';
 import os from 'os';
 import { Prisma } from '@prisma/client';
+import { LegacySocialDataService } from './legacySocialData.service.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { redis } from '../../../infrastructure/redis/redis.js';
 import { logger } from '../../../config/logger.js';
 import { AuditService } from '../../audit/audit.service.js';
-import { SocialDataLifecycleService } from '../../social/lifecycle/SocialDataLifecycleService.js';
-import { SocialEvents } from '../../social/shared/SocialEvents.js';
-import { SocialFeedService } from '../../social/feed/SocialFeedService.js';
-import { AgentTaskService } from '../../agents/AgentTaskService.js';
-import { ScheduledAgentTaskService } from '../../agents/ScheduledAgentTaskService.js';
-import { OAuthVaultService } from '../../agents/OAuthVaultService.js';
 
 /**
  * Account deletion pipeline: idempotent, resumable, retryable, leased, observable and audited.
@@ -70,48 +65,24 @@ export class AccountDeletionService {
         return { sessions: sessions.count, devices: devices.count, pushDevices: pushDevices.count, identities: identities.count, emailTokens: emailTokens.count, resetTokens: resetTokens.count };
       },
     },
-    /** Social footprint: see SocialDataLifecycleService.purgeUser for per-entity decisions. */
+    /** Social data from the (removed) social network: see LegacySocialDataService.purgeUser. */
     SOCIAL_CLEANUP: {
       transactional: false,
-      run: async (userId) => {
-        const stats = await SocialDataLifecycleService.purgeUser(userId, 'ACCOUNT_DELETION');
-        await SocialFeedService.invalidate(userId);
-        SocialEvents.emit('AccountDeleted', { actorUserId: userId, source: 'account_deletion' });
-        return stats;
-      },
+      run: async (userId) => LegacySocialDataService.purgeUser(userId, 'ACCOUNT_DELETION'),
     },
-    /** Agent runtime state is in-process (Phase 23); cancel what this process holds. */
+    /** Data from the (removed) experiences/agents feature: tasks cancelled, linked-account tokens wiped. */
     AGENT_CLEANUP: {
       transactional: false,
       run: async (userId) => {
-        const tasks = AgentTaskService.getInstance();
-        let cancelled = 0;
-        const userTasks = await tasks.listUserTasks(userId);
-        for (const t of userTasks) {
-          if (!['completed', 'failed', 'cancelled'].includes(t.status)) {
-            try {
-              await tasks.cancelTask(t.id, userId);
-              cancelled++;
-            } catch {
-              // already terminal
-            }
-          }
-        }
-        const scheduler = ScheduledAgentTaskService.getInstance();
-        let schedules = 0;
-        for (const s of scheduler.listUserScheduledTasks(userId)) {
-          if (s.isEnabled) {
-            scheduler.toggleScheduledTask(s.id, userId, false);
-            schedules++;
-          }
-        }
-        const vault = OAuthVaultService.getInstance();
-        let oauth = 0;
-        const connections = await vault.listConnections(userId);
-        for (const c of connections) {
-          if (await vault.disconnect(userId, c.provider)) oauth++;
-        }
-        return { cancelledTasks: cancelled, disabledSchedules: schedules, revokedOAuthConnections: oauth };
+        const tasks = await prisma.agentTaskRecord.updateMany({
+          where: { userId, status: { notIn: ['completed', 'failed', 'cancelled'] } },
+          data: { status: 'cancelled' },
+        });
+        const oauth = await prisma.oAuthConnectionRecord.updateMany({
+          where: { userId, status: { not: 'DISCONNECTED' } },
+          data: { status: 'DISCONNECTED', encryptedAccessToken: '', encryptedRefreshToken: null },
+        });
+        return { cancelledTasks: tasks.count, revokedOAuthConnections: oauth.count };
       },
     },
     /** Private conversations, memories, relationship state and personalization are deleted. */

@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../shared/utils/logger.js';
-import { SecureBrowserTool } from '../../agents/SecureBrowserTool.js';
-import { ToolResultSanitizer } from '../../agents/ToolResultSanitizer.js';
+import { SecureBrowserTool } from '../SecureBrowserTool.js';
+import { ToolResultSanitizer } from '../ToolResultSanitizer.js';
 import { AppError, BadRequestError, NotFoundError } from '../../../shared/errors/AppError.js';
-import { simulatedToolsAllowed } from '../../agents/toolSafety.js';
+import { simulatedToolsAllowed } from '../toolSafety.js';
 import { ErrorCode } from '@ai-companion/config';
 import type {
   WebResearchTaskItem,

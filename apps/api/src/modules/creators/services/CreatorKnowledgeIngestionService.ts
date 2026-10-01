@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { SafetyService } from '../../safety/services/SafetyService.js';
-import { ToolResultSanitizer } from '../../agents/ToolResultSanitizer.js';
+import { ToolResultSanitizer } from '../../knowledge/ToolResultSanitizer.js';
 import { BadRequestError, NotFoundError } from '../../../shared/errors/AppError.js';
 import { ErrorCode } from '@ai-companion/config';
 

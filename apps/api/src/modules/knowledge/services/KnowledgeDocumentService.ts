@@ -3,7 +3,7 @@ import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../../../shared/errors/AppError.js';
 import { ErrorCode } from '@ai-companion/config';
-import { ToolResultSanitizer } from '../../agents/ToolResultSanitizer.js';
+import { ToolResultSanitizer } from '../ToolResultSanitizer.js';
 import { MemoryEmbeddingService } from '../../memory/services/memoryEmbedding.service.js';
 import type {
   KnowledgeDocumentItem,

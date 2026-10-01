@@ -5,7 +5,7 @@ import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 import { ADMIN_PERMISSIONS } from '@ai-companion/config';
 import { signAccessToken, signAdminToken } from '../../src/security/tokens.js';
-import { createCharacter, createConversation } from '../social/fixtures.js';
+import { createCharacter, createConversation } from '../fixtures.js';
 import { env } from '../../src/config/env.js';
 
 const app = createApp();
@@ -231,43 +231,7 @@ describe('admin operator surfaces act on an explicit target and need specific pe
   });
 });
 
-describe('agents and knowledge: no cross-user reads, no fabricated results', () => {
-  it('a user cannot read the generation explanation of another user\'s message', async () => {
-    const owner = await user();
-    const other = await user();
-    const ch = await createCharacter();
-    const { conversationId, messageIds } = await createConversation(owner.id, ch.id, [['USER', 'hi'], ['CHARACTER', 'hello']]);
-    const messageId = messageIds[1]!;
-    await prisma.characterRuntimeSnapshot.create({
-      data: {
-        conversationId,
-        messageId,
-        characterId: ch.id,
-        characterVersionId: 'v1',
-        promptVersion: 'p1',
-        behaviorPolicyHash: 'h',
-        safetyPolicyVersion: 's1',
-        modelId: 'm1',
-        memoryIds: [],
-        selectedSkillSlugs: [],
-        tokensPrompt: 1,
-        tokensCompletion: 1,
-        costUsd: 0,
-      },
-    });
-    expect((await request(app).get(`/api/v1/agents/generations/${messageId}/explain`).set('Authorization', `Bearer ${other.token}`)).status).toBe(404);
-    expect((await request(app).get(`/api/v1/agents/generations/${messageId}/explain`).set('Authorization', `Bearer ${owner.token}`)).status).toBe(200);
-  });
-
-  it('starting an experience requires a real, reachable character (no demo fallback)', async () => {
-    const u = await user();
-    const exps = await request(app).get('/api/v1/agents/experiences').set('Authorization', `Bearer ${u.token}`);
-    const slug = exps.body.data?.[0]?.slug ?? 'study_session';
-    expect((await request(app).post(`/api/v1/agents/experiences/${slug}/start`).set('Authorization', `Bearer ${u.token}`).send({})).status).toBe(400);
-    const draft = await createCharacter({ status: 'DRAFT' });
-    expect((await request(app).post(`/api/v1/agents/experiences/${slug}/start`).set('Authorization', `Bearer ${u.token}`).send({ characterId: draft.id })).status).toBe(404);
-  });
-
+describe('knowledge: no fabricated results', () => {
   it('web research fails honestly when no provider is configured (simulation off)', async () => {
     const u = await user();
     const previous = env.AGENT_SIMULATED_TOOLS;

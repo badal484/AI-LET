@@ -77,13 +77,6 @@ export const adminAIApi = {
   // Feedback Analytics
   getFeedbackSummary: (days = 30) => authFetch<any>(`/feedback/summary?days=${days}`),
 
-  // Phase 25: Intelligence, Skills, Experiences & Tasks
-  listSkills: () => authFetch<any[]>('/admin/agents/skills'),
-  listExperiences: () => authFetch<any[]>('/admin/agents/experiences'),
-  // Persisted agent tasks across users (admin view of task lifecycle).
-  listTasks: () => authFetch<any[]>('/admin/agents/tasks'),
-  explainGeneration: (messageId: string) => authFetch<any>(`/admin/agents/generations/${messageId}/explain`),
-
   // Phase 26: Knowledge, Documents, Collections & Web Research
   // Metadata only; search/research run in the admin's own sandbox, never over users' documents.
   listKnowledgeDocuments: () => authFetch<any[]>('/admin/knowledge/documents'),

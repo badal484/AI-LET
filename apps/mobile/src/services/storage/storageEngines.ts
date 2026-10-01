@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import { SecureAuthStorage } from '../auth/SecureAuthStorage.js';
 import { Analytics } from '../analytics/AnalyticsSDK.js';
-import { SocialDraftStorage } from '../../features/social/state/socialClientState.js';
 
 export interface KeyValueStorageEngine {
   getItem: (key: string) => Promise<string | null>;
@@ -47,6 +46,5 @@ export function installStorageEngines(): void {
   if (installed) return;
   installed = true;
   SecureAuthStorage.setStorageEngine(secureStorageEngine);
-  SocialDraftStorage.setStorageEngine(localStorageEngine);
   Analytics.setStorageEngine(localStorageEngine);
 }

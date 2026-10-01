@@ -25,7 +25,6 @@ import { EnforcementService } from '../../safety/services/EnforcementService.js'
 import { AIEconomicsService } from '../../analytics/services/AIEconomicsService.js';
 import { UserGoalService } from '../../characters/engine/UserGoalService.js';
 import { CharacterRuntimeSnapshotService } from '../../characters/engine/CharacterRuntimeSnapshotService.js';
-import { SkillRegistryService } from '../../agents/SkillRegistryService.js';
 import { chatAIRoutes } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../human/personaPacks/index.js';
 import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situation.js';
@@ -530,16 +529,13 @@ export class StreamingChatService {
       select: { role: true, content: true, createdAt: true },
     });
     const latestSummary = await ConversationSummaryService.getLatestSummary(conversationId);
-    // Human-engine characters (a persona pack) get their own compact prompt; goals and skills only feed the
-    // legacy prompt, so they're skipped for them.
+    // Human-engine characters (a persona pack) get their own compact prompt; goals only feed the legacy
+    // prompt, so they're skipped for them.
     const pack = personaPackFor(conversation.character.slug);
     const activeGoal = pack ? null : await UserGoalService.getInstance().getActiveGoal(userId, conversation.characterId);
     const activeGoalText = activeGoal
       ? `Goal Title: "${activeGoal.title}" (Category: ${activeGoal.category}, Progress: ${(activeGoal.progress * 100).toFixed(0)}%)`
       : null;
-    const activeSkills = pack ? [] : await SkillRegistryService.getInstance().getCharacterSkills(conversation.characterId);
-    const activeSkillText =
-      activeSkills.length > 0 ? activeSkills.map((s) => `- ${s.name} (${s.slug}): ${s.description}`).join('\n') : null;
 
     const builtContext = await ContextBuilder.buildModelContext({
       characterRuntime,
@@ -556,7 +552,6 @@ export class StreamingChatService {
       relationshipProvider: new RelationshipContextProvider(),
       conversationSummary: latestSummary?.summary,
       activeGoalText,
-      activeSkillText,
     });
 
     const providerChain = this.chatProviderChain(characterRuntime);
@@ -946,7 +941,7 @@ export class StreamingChatService {
         memoryIds: builtContext.retrievedMemoryIds,
         relationshipStage: builtContext.activeRelationshipStage,
         activeGoalId: activeGoal?.id,
-        selectedSkillSlugs: activeSkills.map((s) => s.slug),
+        selectedSkillSlugs: [],
         contextAttribution: builtContext.contextAttribution,
         tokensPrompt: promptTokens,
         tokensCompletion: completionTokens,

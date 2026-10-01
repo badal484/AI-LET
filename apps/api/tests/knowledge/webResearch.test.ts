@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { WebResearchService } from '../../src/modules/knowledge/services/WebResearchService.js';
-import { SecureBrowserTool } from '../../src/modules/agents/SecureBrowserTool.js';
+import { SecureBrowserTool } from '../../src/modules/knowledge/SecureBrowserTool.js';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 
 describe('Phase 26: Web Research Platform & SSRF Defenses', () => {

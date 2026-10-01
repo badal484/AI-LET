@@ -1,8 +1,8 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { KnowledgeDocumentService } from '../../src/modules/knowledge/services/KnowledgeDocumentService.js';
 import { HybridRetrievalEngine } from '../../src/modules/knowledge/services/HybridRetrievalEngine.js';
-import { SecureBrowserTool } from '../../src/modules/agents/SecureBrowserTool.js';
-import { ToolResultSanitizer } from '../../src/modules/agents/ToolResultSanitizer.js';
+import { SecureBrowserTool } from '../../src/modules/knowledge/SecureBrowserTool.js';
+import { ToolResultSanitizer } from '../../src/modules/knowledge/ToolResultSanitizer.js';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 
 describe('Phase 26: Knowledge Security Red Team & Injection Defenses', () => {

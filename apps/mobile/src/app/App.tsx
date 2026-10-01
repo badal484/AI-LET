@@ -17,7 +17,6 @@ import { AuthNavigator } from '../navigation/AuthNavigator.js';
 import { OnboardingNavigator } from '../navigation/OnboardingNavigator.js';
 import { RootNavigator } from '../navigation/RootNavigator.js';
 import type { RootStackParamList } from '../navigation/types.js';
-import { bindSocialStateToAuth } from '../features/social/state/authBinding.js';
 import { installStorageEngines } from '../services/storage/storageEngines.js';
 import { Analytics } from '../services/analytics/AnalyticsSDK.js';
 import { APP_VERSION } from '../config/appInfo.js';
@@ -25,7 +24,6 @@ import { api } from '../services/api/client.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
 installStorageEngines();
-bindSocialStateToAuth();
 Analytics.initialize({ appVersion: APP_VERSION }).catch(() => undefined);
 
 const queryClient = new QueryClient({
@@ -67,17 +65,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       SubscriptionManagement: 'subscription',
       CreditWallet: 'wallet',
       CreatorProfile: 'creator/:username',
-      // Social deep links. Every target re-verifies existence, visibility, blocks and expiry server-side
-      // and renders a graceful "unavailable" state instead of crashing on deleted content.
-      SocialProfile: 'u/:handle',
-      SocialContent: {
-        path: 'p/:publicId',
-        alias: ['share/:publicId'],
-      },
-      Community: 'community/:slug',
-      SocialFeed: 'social',
-      SocialInbox: 'messages/requests',
-      SocialPrivacySettings: 'settings/social',
     },
   },
 };

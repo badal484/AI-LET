@@ -1,5 +1,5 @@
 import { logger } from '../../../config/logger.js';
-import { SocialDataLifecycleService } from '../../social/lifecycle/SocialDataLifecycleService.js';
+import { LegacySocialDataService } from './legacySocialData.service.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { NotFoundError, ValidationError } from '../../../shared/errors/AppError.js';
 import { AuditService } from '../../audit/audit.service.js';
@@ -207,7 +207,7 @@ export class PrivacyService {
       }
 
       if (dataTypes.includes('SOCIAL')) {
-        exportPayload['social'] = await SocialDataLifecycleService.exportUser(userId);
+        exportPayload['social'] = await LegacySocialDataService.exportUser(userId);
       }
 
       const rawJson = JSON.stringify(exportPayload, null, 2);

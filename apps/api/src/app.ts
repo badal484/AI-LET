@@ -46,8 +46,6 @@ import { analyticsRouter } from './modules/analytics/routes/analyticsRouter.js';
 import { adminAnalyticsRouter } from './modules/analytics/routes/adminAnalyticsRouter.js';
 import { operationsRouter, adminOperationsRouter } from './modules/operations/index.js';
 import { intelligenceRouter, adminIntelligenceRouter } from './modules/intelligence/index.js';
-import { agentsRouter, adminAgentsRouter } from './modules/agents/index.js';
-import { socialRouter, adminSocialRouter } from './modules/social/index.js';
 import { knowledgeRouter, adminKnowledgeRouter } from './modules/knowledge/knowledge.routes.js';
 import { simulationRouter, adminSimulationRouter } from './modules/character-simulation/simulation.routes.js';
 
@@ -179,14 +177,6 @@ export const createApp = (): Express => {
   app.use(`${env.API_PREFIX}/personalization`, intelligenceRouter);
   app.use(`${env.API_PREFIX}/intelligence`, intelligenceRouter);
   app.use(`${env.API_PREFIX}/admin/intelligence`, adminIntelligenceRouter);
-
-  // Phase 23 Advanced Agent & Tool Orchestration Routes
-  app.use(`${env.API_PREFIX}/agents`, agentsRouter);
-  app.use(`${env.API_PREFIX}/admin/agents`, adminAgentsRouter);
-
-  // Phase 24 Advanced Social & Communication Layer Routes
-  app.use(`${env.API_PREFIX}/social`, socialRouter);
-  app.use(`${env.API_PREFIX}/admin/social`, adminSocialRouter);
 
   // Phase 26 Production Knowledge, RAG, Web Research & Grounded Intelligence Routes
   app.use(`${env.API_PREFIX}/knowledge`, knowledgeRouter);

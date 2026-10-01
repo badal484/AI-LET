@@ -17,10 +17,6 @@ import { SafetyPrivacyScreen } from '../screens/settings/SafetyPrivacyScreen.js'
 import { PaywallScreen } from '../screens/subscription/PaywallScreen.js';
 import { SubscriptionManagementScreen } from '../screens/subscription/SubscriptionManagementScreen.js';
 import { CreditWalletScreen } from '../screens/subscription/CreditWalletScreen.js';
-import { SocialContentScreen, SocialFeedScreen, ShareConversationScreen } from '../features/social/screens/SocialContentScreens.js';
-import { SocialFollowListScreen, SocialInboxScreen, SocialProfileScreen, SocialProfileSetupScreen, SocialThreadScreen } from '../features/social/screens/SocialPeopleScreens.js';
-import { CommunityScreen, SocialPrivacySettingsScreen } from '../features/social/screens/SocialSettingsScreens.js';
-import { ExperiencesScreen } from '../screens/experiences/ExperiencesScreen.js';
 import { KnowledgeDocumentsScreen } from '../screens/knowledge/KnowledgeDocumentsScreen.js';
 import { CreateCharacterScreen } from '../screens/creator/CreateCharacterScreen.js';
 import type { RootStackParamList } from './types.js';
@@ -54,17 +50,6 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
       <Stack.Screen name="Reminders" component={RemindersScreen} />
       <Stack.Screen name="SafetyPrivacySettings" component={SafetyPrivacyScreen} />
-      <Stack.Screen name="SocialFeed" component={SocialFeedScreen} />
-      <Stack.Screen name="SocialProfile" component={SocialProfileScreen} />
-      <Stack.Screen name="SocialFollowList" component={SocialFollowListScreen} />
-      <Stack.Screen name="SocialContent" component={SocialContentScreen} />
-      <Stack.Screen name="ShareConversation" component={ShareConversationScreen} options={{ presentation: 'modal' }} />
-      <Stack.Screen name="SocialInbox" component={SocialInboxScreen} />
-      <Stack.Screen name="SocialThread" component={SocialThreadScreen} />
-      <Stack.Screen name="Community" component={CommunityScreen} />
-      <Stack.Screen name="SocialPrivacySettings" component={SocialPrivacySettingsScreen} />
-      <Stack.Screen name="SocialProfileSetup" component={SocialProfileSetupScreen} />
-      <Stack.Screen name="Experiences" component={ExperiencesScreen} />
       <Stack.Screen name="KnowledgeDocuments" component={KnowledgeDocumentsScreen} />
     </Stack.Navigator>
   );
