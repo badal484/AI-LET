@@ -29,9 +29,10 @@ import { SkillRegistryService } from '../../agents/SkillRegistryService.js';
 import { chatAIRoutes } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../human/personaPacks/index.js';
 import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situation.js';
+import { localHourIn } from '../human/emotionalState.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberTold, saveLifeState } from '../human/lifeState.js';
+import { applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, saveLifeState } from '../human/lifeState.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
@@ -614,14 +615,23 @@ export class StreamingChatService {
         situations,
         hoursSinceLastUserMessage: hoursSince,
         timeZone: conversation.user.profile?.timezone,
-        home: pack.home,
+        home: pack.home ?? { place: 'your city', timeZone: conversation.user.profile?.timezone || 'Asia/Kolkata' },
       });
       // Continuity: what she told them today, their mood today, things to follow up on, her own story.
       const timeZone = conversation.user.profile?.timezone;
       const life = await loadLifeState(userId, conversation.characterId, timeZone);
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations) });
       const stage = builtContext.activeRelationshipStage ?? null;
-      const plan = planReply(situations, herRecentReplies, pack, { stage, continuity, toldToday: life.day.told, mentor: Boolean(pack.mentor) });
+      const latest = recentMessages[recentMessages.length - 1];
+      const recentlyTalked = Boolean(latest && Date.now() - latest.createdAt.getTime() < 60 * 60_000);
+      const plan = planReply(situations, herRecentReplies, pack, {
+        stage,
+        continuity,
+        toldToday: life.day.told,
+        mentor: Boolean(pack.mentor),
+        recentlyTalked,
+        hour: localHourIn(pack.home?.timeZone ?? timeZone),
+      });
       plannedText = [plan.detail, plan.storyBeat].filter(Boolean).join(' ');
       // Small models skip instructions: the editor pass makes sure the important ones happen.
       if (plan.followUp && (plan.followUp.kind ?? 'event') === 'event') mustMention.push({ word: plan.followUp.topic, why: `You forgot the most important thing: ask how their ${plan.followUp.topic} went.` });
@@ -639,7 +649,8 @@ export class StreamingChatService {
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
       // ("dhaba chalein?") when they just say "hii" the next day.
-      const lastBefore = recentMessages[0];
+      // recentMessages is oldest-first here (reversed above), so the last one is the latest before this turn.
+      const lastBefore = recentMessages[recentMessages.length - 1];
       const gapHours = lastBefore ? (Date.now() - lastBefore.createdAt.getTime()) / 3_600_000 : 0;
       if (gapHours >= 3) {
         const gap = gapHours < 24 ? `${Math.round(gapHours)} hours` : gapHours < 48 ? 'more than a day' : `${Math.round(gapHours / 24)} days`;
@@ -655,6 +666,7 @@ export class StreamingChatService {
       // Only once the reply is actually delivered does it count as "told" (a failed turn changes nothing she said).
       afterDelivery = async () => {
         rememberTold(life, plan.storyBeat ?? plan.detail);
+        rememberDoing(life, plan.detail);
         rememberTask(life, newTask);
         await saveLifeState(userId, conversation.characterId, life);
       };

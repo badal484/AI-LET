@@ -49,7 +49,7 @@ export async function kindTextFirstCheck(params: {
 }
 
 /** What she opens with: a follow-up on their life first, then her own news, then an everyday moment. */
-export function planTextFirst(pack: PersonaPack, life: LifeState, now = Date.now()): ReplyPlan {
+export function planTextFirst(pack: PersonaPack, life: LifeState, now = Date.now(), hour?: number): ReplyPlan {
   const plan: ReplyPlan = {
     moves: 'you are texting them first, out of the blue, like a friend who thought of them. Light and warm. No guilt, no "you forgot me", no pressure to reply',
     texts: '1 or 2',
@@ -67,7 +67,7 @@ export function planTextFirst(pack: PersonaPack, life: LifeState, now = Date.now
     plan.storyBeat = beat;
     return plan;
   }
-  plan.detail = pickLifeDetail({ workMoments: pack.workMoments, lifeDetails: pack.lifeDetails }, ['casual'], [], life.day.told);
+  plan.detail = pickLifeDetail({ workMoments: pack.workMoments, lifeDetails: pack.lifeDetails }, ['casual'], [], life.day.told, hour);
   return plan;
 }
 
@@ -82,7 +82,7 @@ export async function buildTextFirstPrompt(params: {
   stage?: BondStage | null;
 }): Promise<{ systemPrompt: string; commit: () => Promise<void> }> {
   const life = await loadLifeState(params.userId, params.characterId, params.timeZone);
-  const plan = planTextFirst(params.pack, life);
+  const plan = planTextFirst(params.pack, life, Date.now(), localHour(params.pack.home?.timeZone ?? params.timeZone, new Date()));
   const systemPrompt = buildHumanPrompt({
     pack: params.pack,
     userName: params.userName,

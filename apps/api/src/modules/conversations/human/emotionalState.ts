@@ -22,6 +22,10 @@ export interface MomentContext {
   description: string;
 }
 
+export function localHourIn(timeZone: string | null | undefined): number {
+  return localHour(timeZone || 'Asia/Kolkata');
+}
+
 function localHour(timeZone: string): number {
   try {
     return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone }).format(new Date()));
@@ -102,5 +106,7 @@ export function herClock(home: { place: string; timeZone: string }, now = new Da
     return '';
   }
   const part = hour < 5 ? 'the middle of the night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
-  return `For you in ${home.place} it's ${time} (${part}) — your own day (classes, meals, sleep) runs on that clock, and you can mention the time difference naturally.`;
+  return home.place === 'your city'
+    ? `Your own clock: it's ${time} (${part}). Anything you say about your day must fit this time (no "shaam ki chai" at 1 pm, no "good night" in the morning).`
+    : `For you in ${home.place} it's ${time} (${part}) — your own day (classes, meals, sleep) runs on that clock, and you can mention the time difference naturally.`;
 }

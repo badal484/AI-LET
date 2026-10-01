@@ -34,6 +34,8 @@ export interface LifeState {
   userGender?: 'male' | 'female';
   /** They said they're under 18 — no romance or flirting, ever. */
   minor?: boolean;
+  /** What she last told them she's doing, so she doesn't switch activities mid-conversation. */
+  doing?: { what: string; at: number };
 }
 
 /** "main 16 saal ka hoon", "I'm 15", "class 10 mein hoon" → under 18. */
@@ -163,6 +165,8 @@ export interface ContinuityNotes {
   focus?: 'comfort' | 'celebrate' | 'relief';
   /** They're under 18: no romance or flirting. */
   minor?: boolean;
+  /** What she told them she's doing in the last ~2 hours — she stays with it. */
+  doing?: string;
   /** They just told her what to call them — she should say it back. */
   newNickname?: string;
   hasNickname?: boolean;
@@ -246,7 +250,13 @@ export function applyUserTurn(params: {
   if (lowStreak >= 2 && situations.includes('emotional')) {
     lines.push('They have been down for a few messages now. After listening, offer one small comfort or a gentle distraction (a song, a silly question) — still no lectures.');
   }
-  return { lines, followUp, storyBeat, focus, newNickname, hasNickname: Boolean(state.nickname), asksAboutHer: ASKS_ABOUT_HER.test(userText), minor: state.minor };
+  const doing = state.doing && now - state.doing.at < 2 * HOUR ? state.doing.what : undefined;
+  return { lines, followUp, storyBeat, focus, newNickname, hasNickname: Boolean(state.nickname), asksAboutHer: ASKS_ABOUT_HER.test(userText), minor: state.minor, doing };
+}
+
+/** She just told them what she's up to: that's what she's doing for the next couple of hours. */
+export function rememberDoing(state: LifeState, what: string | undefined, now = Date.now()): void {
+  if (what) state.doing = { what: what.slice(0, 160), at: now };
 }
 
 export function rememberTold(state: LifeState, what: string | undefined): void {

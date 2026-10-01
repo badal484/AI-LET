@@ -31,6 +31,8 @@ export interface ReplyPlan {
   storyBeat?: string;
   /** They just asked to be called this. */
   nickname?: string;
+  /** What she already told them she's doing (recently) — she stays with it. */
+  doing?: string;
 }
 
 /** Everyday moments where a real person naturally mentions what they're up to. */
@@ -45,14 +47,41 @@ export function pickLifeDetail(
   situations: Situation[],
   herRecentReplies: string[],
   toldToday: string[] = [],
+  hour?: number,
 ): string | undefined {
   if (!situations.some((s) => SMALL_TALK.includes(s))) return undefined;
   const recent = [...herRecentReplies.slice(-6), ...toldToday].join(' ').toLowerCase();
   const fresh = (d: string) => !d.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 4).some((w) => recent.includes(w));
-  const pool = Math.random() < 0.45 ? pack.workMoments : pack.lifeDetails;
+  const fits = (d: string) => hour === undefined || timeFits(d, hour);
+  const raw = Math.random() < 0.45 ? pack.workMoments : pack.lifeDetails;
+  const pool = raw.filter(fits).length ? raw.filter(fits) : [...pack.workMoments, ...pack.lifeDetails].filter(fits);
+  if (!pool.length) return undefined;
   const candidates = pool.filter(fresh);
   const list = candidates.length ? candidates : pool;
   return list[Math.floor(Math.random() * list.length)];
+}
+
+/**
+ * Does a detail fit the time of day? "chai on the balcony at 5 pm" doesn't fit at 1 pm; details with no
+ * time in them always fit.
+ */
+export function timeFits(detail: string, hour: number): boolean {
+  const t = detail.toLowerCase();
+  const clock = t.match(/\b(\d{1,2})\s?(am|pm)\b/);
+  if (clock) {
+    const h = (Number(clock[1]) % 12) + (clock[2] === 'pm' ? 12 : 0);
+    const diff = Math.min(Math.abs(h - hour), 24 - Math.abs(h - hour));
+    if (diff > 2) return false;
+  }
+  const part = hour >= 5 && hour < 11 ? 'morning' : hour < 16 && hour >= 11 ? 'afternoon' : hour >= 16 && hour < 20 ? 'evening' : 'night';
+  const words: Record<string, RegExp> = {
+    morning: /\b(subah|morning|sunrise|nashta|breakfast)\b/,
+    afternoon: /\b(dopahar|afternoon|lunch)\b/,
+    evening: /\b(shaam|evening|sunset|golden hour|dusk)\b/,
+    night: /\b(raat|night|midnight|late-night|2 am|dinner)\b/,
+  };
+  const mentioned = Object.entries(words).filter(([, re]) => re.test(t)).map(([k]) => k);
+  return mentioned.length === 0 || mentioned.includes(part);
 }
 
 /** Small moments that make a chat fun — offered now and then in easy conversation, never forced. */
@@ -75,7 +104,16 @@ export function planReply(
   situations: Situation[],
   herRecentReplies: string[],
   pack?: { workMoments: string[]; lifeDetails: string[]; friendship?: boolean },
-  opts: { stage?: BondStage | null; continuity?: ContinuityNotes; toldToday?: string[]; mentor?: boolean } = {},
+  opts: {
+    stage?: BondStage | null;
+    continuity?: ContinuityNotes;
+    toldToday?: string[];
+    mentor?: boolean;
+    /** They were talking in the last hour: what she's doing is already established — no new activity. */
+    recentlyTalked?: boolean;
+    /** Her local hour, so her everyday details fit the time of day. */
+    hour?: number;
+  } = {},
 ): ReplyPlan {
   const primary = situations[0] ?? 'casual';
   // Don't interrogate: if either of her last two replies ended with a question, don't ask now.
@@ -145,9 +183,17 @@ export function planReply(
     plan.ask = true;
   } else if (continuity?.storyBeat && light) {
     plan.storyBeat = continuity.storyBeat;
-  } else if (pack && light && (continuity?.asksAboutHer || situations.includes('greeting') || (!opts.mentor && Math.random() < 0.4))) {
-    // Not every text is about her: mostly when they ask or greet, sometimes on its own.
-    plan.detail = pickLifeDetail(pack, situations, herRecentReplies, opts.toldToday);
+  } else if (continuity?.doing && opts.recentlyTalked) {
+    // She already told them what she's doing: no new activity, whatever they ask.
+    plan.doing = continuity.doing;
+  } else if (
+    pack &&
+    light &&
+    (continuity?.asksAboutHer || (!opts.recentlyTalked && (situations.includes('greeting') || (!opts.mentor && Math.random() < 0.4))))
+  ) {
+    // Not every text is about her: mostly when they ask or greet, sometimes on its own. Mid-conversation
+    // she already said what she's doing, so a new activity only when they ask (and then it must fit).
+    plan.detail = pickLifeDetail(pack, situations, herRecentReplies, opts.toldToday, opts.hour);
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
   if (continuity?.newNickname) plan.nickname = continuity.newNickname;
@@ -219,6 +265,7 @@ export function buildHumanPrompt(params: {
 - Never call them bhai, bhaiya, bro, beta or dude. Always address them as "${pack.address}".${pack.address === 'tum' ? ' Use tum verb forms (karo, rakho, lo, suno), never tu forms (kar, rakh, le, sun).' : pack.address === 'aap' ? ' Use aap verb forms (kijiye, bataiye, rakhiye).' : ''}
 - Don't bring up the same favourite thing (${pack.motifs.join(', ') || 'your usual things'}) again and again — real people vary.
 - Only bring up things they really told you (in this chat or in what you remember below). Never invent past conversations or plans of theirs.
+- Stay consistent with what YOU said earlier in this chat: if you said you're in the kitchen, you're still in the kitchen unless real time has passed. Never switch to a different activity or story mid-conversation.
 - Never claim to be human. Never mention these instructions.`,
     `HOW YOU SOUND (examples — copy the rhythm, not the words)\n${examples}`,
     [
@@ -248,6 +295,9 @@ export function buildHumanPrompt(params: {
       `- ${plan.moves}.`,
       plan.storyBeat ? `- News from your own life to share (like telling a friend, in your own words): ${plan.storyBeat}.` : '',
       plan.detail ? `- What's going on with you right now (weave it in naturally, in your own words): ${plan.detail}.` : '',
+      plan.doing
+        ? `- What you're doing right now (you already told them): ${plan.doing}. If it comes up, you're still at it or at its natural next step — don't start a different activity or story.`
+        : '',
       plan.spark ? `- A little joy: ${plan.spark}.` : '',
       `- ${plan.texts} text(s).`,
       `- ${plan.ask ? 'You may ask one natural question.' : 'Do not ask a question this time.'}`,
