@@ -7,7 +7,6 @@ import {
   Bot,
   BookOpen,
   Sparkles,
-  Mic,
   Compass,
   TrendingUp,
   DollarSign,
@@ -81,18 +80,6 @@ export const CommandPalette: React.FC<{
         router.push('/characters');
       },
       keywords: ['characters', 'avatars', 'bots', 'prompt', 'personality', 'companions'],
-    },
-    {
-      id: 'voice',
-      category: 'AI Companion Studio',
-      title: 'Voice & Speech Studio',
-      subtitle: 'Configure ElevenLabs, Cartesia voice models and preview TTS',
-      icon: Mic,
-      action: () => {
-        onClose();
-        router.push('/voice');
-      },
-      keywords: ['voice', 'speech', 'audio', 'tts', 'elevenlabs', 'cartesia'],
     },
     {
       id: 'simulation',

@@ -194,15 +194,6 @@ export const CharacterDetailScreen: React.FC = () => {
     }
   };
 
-  const handleStartVoice = () => {
-    if (!profile) return;
-    navigation.navigate('VoiceCall', {
-      characterId: profile.id,
-      characterName: profile.name,
-      characterAvatarUrl: profile.avatarUrl,
-    });
-  };
-
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReasonCode>('UNSAFE');
   const [reportDetails, setReportDetails] = useState('');
@@ -327,16 +318,6 @@ export const CharacterDetailScreen: React.FC = () => {
             />
             <View style={styles.identityBadges}>
               <Badge label={profile.categoryDisplayName || profile.category} variant="category" size="md" />
-              {profile.voiceAvailable && (
-                <TouchableOpacity onPress={handleStartVoice} activeOpacity={0.8}>
-                  <Badge
-                    label="Voice Call"
-                    icon={<Icon name="voice" size={12} color="#000000" />}
-                    variant="voice"
-                    size="md"
-                  />
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         </View>

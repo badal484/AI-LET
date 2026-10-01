@@ -51,15 +51,7 @@ export type RootStackParamList = {
   NotificationSettings: undefined;
   NotificationCenter: undefined;
   Reminders: undefined;
-  VoiceSettings: undefined;
   SafetyPrivacySettings: undefined;
-  VoiceCall: {
-    characterId: string;
-    conversationId?: string;
-    characterName?: string;
-    characterAvatarUrl?: string;
-    voiceConfig?: any;
-  };
   CreatorProfile: {
     username: string;
   };

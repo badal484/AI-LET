@@ -16,7 +16,6 @@ import {
   Activity,
   Bot,
   BookOpen,
-  Mic,
   Compass,
   Sparkles,
   Users,
@@ -158,7 +157,7 @@ export default function AdminCommandCenterPage() {
               AI Companion Control Center
             </h1>
             <p style={{ fontSize: '14px', color: '#94A3B8', margin: 0 }}>
-              Live engine monitoring for multi-modal dialogue, voice latency, discovery curation, and user engagement.
+              Live engine monitoring for multi-modal dialogue, discovery curation, and user engagement.
             </p>
           </div>
 
@@ -406,58 +405,6 @@ export default function AdminCommandCenterPage() {
               </div>
             </Link>
 
-            {/* Card 4: Voice Telemetry */}
-            <Link
-              href="/voice"
-              style={{
-                padding: '20px',
-                backgroundColor: '#0F121C',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.07)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                textDecoration: 'none',
-                color: 'inherit',
-                transition: 'transform 0.2s ease, border-color 0.2s ease',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.35)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                    color: '#34D399',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '12px',
-                  }}
-                >
-                  <Mic size={18} />
-                </div>
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 4px 0' }}>
-                  Voice & Telemetry
-                </h3>
-                <p style={{ fontSize: '12px', color: '#94A3B8', margin: 0, lineHeight: 1.4 }}>
-                  ElevenLabs/Cartesia bindings, TTFT latency tracking, and speech models.
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '14px', fontSize: '12px', fontWeight: '600', color: '#34D399' }}>
-                <span>Monitor Voice</span>
-                <ChevronRight size={13} />
-              </div>
-            </Link>
           </div>
         </div>
 

@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthGuard, useAdminAuth } from '../../../components/AuthGuard';
 import { AdminCharacterApi } from '../../../services/adminCharacterApi';
-import { AdminVoiceApi } from '../../../services/adminVoiceApi';
 import { AdminDiscoveryApi } from '../../../services/adminDiscoveryApi';
 import {
   Bot,
@@ -28,8 +27,6 @@ import {
   Brain,
   Clock,
   X,
-  Mic,
-  Volume2,
   Compass,
 } from 'lucide-react';
 
@@ -139,11 +136,6 @@ export default function CharacterStudioPage() {
     priority: 50,
   });
 
-  // Voice Preview Sandbox in Character Studio
-  const [voicePreviewLoading, setVoicePreviewLoading] = useState(false);
-  const [voicePreviewAudioUrl, setVoicePreviewAudioUrl] = useState<string | null>(null);
-  const [voicePreviewLatencyMs, setVoicePreviewLatencyMs] = useState<number | null>(null);
-  const [voicePreviewSampleText, setVoicePreviewSampleText] = useState('Hello! It is wonderful to speak with you today.');
 
   const loadCharacterData = useCallback(async () => {
     if (!characterId || !admin) return;
@@ -493,7 +485,7 @@ export default function CharacterStudioPage() {
             { key: 'memory', label: 'Memory', icon: Brain },
             { key: 'proactivity', label: 'Proactivity', icon: Clock },
             { key: 'safety', label: 'Safety & Boundaries', icon: Shield },
-            { key: 'ai_voice', label: 'AI & Voice', icon: Cpu },
+            { key: 'ai_voice', label: 'AI Settings', icon: Cpu },
             { key: 'discovery', label: 'Discovery & Catalog', icon: Compass },
             { key: 'versions', label: 'Versions & Diff', icon: History },
             { key: 'testing', label: 'Testing Playground', icon: Play },
@@ -1447,7 +1439,7 @@ export default function CharacterStudioPage() {
               </div>
             )}
 
-            {/* 11. AI & VOICE TAB */}
+            {/* 11. AI SETTINGS TAB */}
             {activeTab === 'ai_voice' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* AI LLM Settings Card */}
@@ -1492,287 +1484,6 @@ export default function CharacterStudioPage() {
                         style={{ width: '100%', accentColor: 'var(--accent-primary)' }}
                       />
                     </div>
-                  </div>
-                </div>
-
-                {/* Character Voice Configuration Card */}
-                <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Mic size={18} style={{ color: '#10B981' }} /> Character Voice & Real-Time Audio Settings
-                      </h3>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        Configure text-to-speech voice identity, speaking style, speed, and fallback providers.
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <label style={{ fontSize: '13px', fontWeight: '600' }}>Voice Enabled</label>
-                      <input
-                        type="checkbox"
-                        disabled={isVersionImmutable}
-                        checked={versionSnapshot.voiceConfigData?.voiceEnabled ?? true}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            voiceEnabled: e.target.checked,
-                          },
-                        })}
-                        style={{ width: '18px', height: '18px', accentColor: '#10B981', cursor: 'pointer' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Voice Provider</label>
-                      <select
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.provider || 'elevenlabs'}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            provider: e.target.value,
-                          },
-                        })}
-                        style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                      >
-                        <option value="elevenlabs">ElevenLabs (Turbo v2.5)</option>
-                        <option value="openai">OpenAI TTS-1</option>
-                        <option value="mock">Mock Provider (Simulated)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Voice ID</label>
-                      <input
-                        type="text"
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.voiceId || '21m00Tcm4TlvDq8ikWAM'}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            voiceId: e.target.value,
-                          },
-                        })}
-                        style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Default Voice Mode</label>
-                      <select
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.defaultVoiceMode || 'hands_free'}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            defaultVoiceMode: e.target.value,
-                          },
-                        })}
-                        style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                      >
-                        <option value="hands_free">Hands-Free (Natural VAD)</option>
-                        <option value="push_to_talk">Push-to-Talk</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Speaking Style / Persona</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Warm, soothing, conversational"
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.speakingStyle || ''}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            speakingStyle: e.target.value,
-                          },
-                        })}
-                        style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Sliders for Speed, Pitch, Stability */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-                    <div style={{ padding: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Speed: {versionSnapshot.voiceConfigData?.speed ?? 1.0}x
-                      </label>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="2.0"
-                        step="0.05"
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.speed ?? 1.0}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            speed: parseFloat(e.target.value),
-                          },
-                        })}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    <div style={{ padding: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Pitch: {versionSnapshot.voiceConfigData?.pitch ?? 0.0}
-                      </label>
-                      <input
-                        type="range"
-                        min="-5"
-                        max="5"
-                        step="0.5"
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.pitch ?? 0.0}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            pitch: parseFloat(e.target.value),
-                          },
-                        })}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    <div style={{ padding: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Stability: {versionSnapshot.voiceConfigData?.stability ?? 0.75}
-                      </label>
-                      <input
-                        type="range"
-                        min="0.0"
-                        max="1.0"
-                        step="0.05"
-                        disabled={isVersionImmutable}
-                        value={versionSnapshot.voiceConfigData?.stability ?? 0.75}
-                        onChange={e => setVersionSnapshot({
-                          ...versionSnapshot,
-                          voiceConfigData: {
-                            ...(versionSnapshot.voiceConfigData || {}),
-                            stability: parseFloat(e.target.value),
-                          },
-                        })}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Fallback Voice Configuration */}
-                  <div style={{ padding: '14px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-                    <h4 style={{ fontSize: '13px', fontWeight: '700', marginBottom: '10px' }}>Fallback Voice Configuration</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Fallback Provider</label>
-                        <select
-                          disabled={isVersionImmutable}
-                          value={versionSnapshot.voiceConfigData?.fallbackProvider || 'openai'}
-                          onChange={e => setVersionSnapshot({
-                            ...versionSnapshot,
-                            voiceConfigData: {
-                              ...(versionSnapshot.voiceConfigData || {}),
-                              fallbackProvider: e.target.value,
-                            },
-                          })}
-                          style={{ width: '100%', padding: '6px 10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
-                        >
-                          <option value="openai">OpenAI (TTS-1)</option>
-                          <option value="mock">Mock Provider</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Fallback Voice ID</label>
-                        <input
-                          type="text"
-                          disabled={isVersionImmutable}
-                          value={versionSnapshot.voiceConfigData?.fallbackVoiceId || 'alloy'}
-                          onChange={e => setVersionSnapshot({
-                            ...versionSnapshot,
-                            voiceConfigData: {
-                              ...(versionSnapshot.voiceConfigData || {}),
-                              fallbackVoiceId: e.target.value,
-                            },
-                          })}
-                          style={{ width: '100%', padding: '6px 10px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#fff', fontSize: '12px' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Interactive Voice Preview Sandbox */}
-                  <div style={{ padding: '16px', backgroundColor: 'rgba(16, 185, 129, 0.06)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#34D399', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Volume2 size={16} /> Live Voice Synthesis Preview
-                      </span>
-                      <button
-                        type="button"
-                        disabled={voicePreviewLoading}
-                        onClick={async () => {
-                          try {
-                            setVoicePreviewLoading(true);
-                            setVoicePreviewAudioUrl(null);
-                            const res = await AdminVoiceApi.generatePreview({
-                              provider: versionSnapshot.voiceConfigData?.provider || 'elevenlabs',
-                              voiceId: versionSnapshot.voiceConfigData?.voiceId || '21m00Tcm4TlvDq8ikWAM',
-                              language: versionSnapshot.languageData?.primaryLanguage || 'en',
-                              text: voicePreviewSampleText,
-                              speed: versionSnapshot.voiceConfigData?.speed ?? 1.0,
-                              pitch: versionSnapshot.voiceConfigData?.pitch ?? 0.0,
-                              stability: versionSnapshot.voiceConfigData?.stability ?? 0.75,
-                            });
-                            if (res.audioBase64) {
-                              setVoicePreviewAudioUrl(`data:audio/mp3;base64,${res.audioBase64}`);
-                            }
-                            setVoicePreviewLatencyMs(res.latencyMs);
-                          } catch (err: any) {
-                            alert(`Voice preview synthesis failed: ${err.message}`);
-                          } finally {
-                            setVoicePreviewLoading(false);
-                          }
-                        }}
-                        style={{
-                          padding: '6px 14px',
-                          backgroundColor: '#10B981',
-                          color: '#000',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          cursor: voicePreviewLoading ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {voicePreviewLoading ? 'Synthesizing Audio...' : '▶ Synthesize & Hear Voice'}
-                      </button>
-                    </div>
-
-                    <input
-                      type="text"
-                      value={voicePreviewSampleText}
-                      onChange={e => setVoicePreviewSampleText(e.target.value)}
-                      placeholder="Enter sample sentence for voice preview..."
-                      style={{ width: '100%', padding: '8px 12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                    />
-
-                    {voicePreviewAudioUrl && (
-                      <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <audio controls src={voicePreviewAudioUrl} autoPlay style={{ flex: 1, height: '36px' }} />
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          Latency: {voicePreviewLatencyMs} ms
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
