@@ -45,7 +45,9 @@ export function isTeachingMoment(
   const onTopic = pack.domainKeywords.some((k) => t.includes(k.toLowerCase()));
   // Questions in their field, or anything about money/earning (health: body and mind) — the reason people come to them.
   const reason = pack.mentor.field === 'health' ? HEALTH_TOPIC : pack.mentor.field === 'life' ? NO_TOPIC : MONEY_TOPIC;
-  return (onTopic || reason.test(t)) && (QUESTION.test(t) || t.split(/\s+/).length >= 6);
+  // "mujhe internship chahiye", "pehla client chahiye" — a goal in their field is a request for help.
+  const wants = /\b(chahiye|chahta|chahti|chahte|want|need|karna hai|seekhna hai|banana hai)\b/.test(t);
+  return (onTopic || reason.test(t)) && (QUESTION.test(t) || wants || t.split(/\s+/).length >= 6);
 }
 
 const classifyForLesson = (t: string) => classifySituations(t, null);
