@@ -1,8 +1,8 @@
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import type { PersonaPack } from './personaPack.types.js';
 import { buildHumanPrompt, pickLifeDetail, type BondStage, type ReplyPlan } from './compactPrompt.js';
-import { addDatedThreads, currentStoryBeat, loadLifeState, rememberTold, saveLifeState, type LifeState } from './lifeState.js';
-import { formatProfile, localToday, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
+import { addDatedThreads, currentStoryBeat, loadLifeState, rememberTold, restoreTaskThread, saveLifeState, type LifeState } from './lifeState.js';
+import { formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 
 /**
  * Texting first — kindly. A friend who texts "interview kaisa gaya?" feels caring; one who
@@ -90,6 +90,7 @@ export async function buildTextFirstPrompt(params: {
   const today = localToday(params.timeZone).date;
   const dueEvents = takeDueEvents(profile, today);
   if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
+  if (params.pack.mentor) restoreTaskThread(life, openTask(profile));
   const plan = planTextFirst(params.pack, life, Date.now(), localHour(params.pack.home?.timeZone ?? params.timeZone, new Date()));
   const systemPrompt = buildHumanPrompt({
     pack: params.pack,
@@ -102,6 +103,7 @@ export async function buildTextFirstPrompt(params: {
     stage: params.stage,
     continuityLines: life.day.told.length ? [`Earlier today you already told them: ${life.day.told.join('; ')}.`] : [],
     profileText: formatProfile(profile, today),
+    progressText: formatProgress(profile, today),
   });
   return {
     systemPrompt,
@@ -109,7 +111,13 @@ export async function buildTextFirstPrompt(params: {
     commit: async () => {
       rememberTold(life, plan.storyBeat ?? plan.detail);
       await saveLifeState(params.userId, params.characterId, life);
-      if (dueEvents.changed) await UserProfileService.save(params.userId, params.characterId, profile);
+      const askedTask = plan.followUp?.kind === 'task';
+      if (dueEvents.changed || askedTask)
+        await UserProfileService.mutate(params.userId, params.characterId, (p) => {
+          for (const e of p.events) e.handledAt = profile.events.find((x) => x.what === e.what && x.date === e.date)?.handledAt ?? e.handledAt;
+          const open = openTask(p);
+          if (askedTask && open && !open.asked) open.asked = today;
+        });
     },
   };
 }

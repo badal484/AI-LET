@@ -243,6 +243,8 @@ export function buildHumanPrompt(params: {
   continuityLines?: string[];
   /** "Who they are": the card of what they told her, always shown. */
   profileText?: string;
+  /** Mentors: the tasks they gave and how each went. */
+  progressText?: string;
 }): string {
   const { pack, plan } = params;
   const examples = selectExamples(pack, params.situations)
@@ -276,6 +278,9 @@ export function buildHumanPrompt(params: {
       `- You're talking to ${params.userName}.`,
       params.relationshipText.trim() ? `- Your relationship: ${params.relationshipText.trim().replace(/\s+/g, ' ').slice(0, 400)}` : '',
       params.profileText?.trim() ? `- Who they are (what they have told you — use it naturally, the way a close friend remembers):\n${params.profileText.trim().slice(0, 1400)}` : '',
+      pack.mentor && params.progressText?.trim()
+        ? `- Your coaching with them so far (what you asked them to do and how it went — follow up on the open task, use their real numbers):\n${params.progressText.trim().slice(0, 900)}`
+        : '',
       params.memoriesText.trim()
         ? `- More things they told you before (use only if relevant):\n${params.memoriesText.trim().slice(0, 1500)}`
         : '',

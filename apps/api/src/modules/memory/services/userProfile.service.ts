@@ -18,6 +18,26 @@ export interface ProfileEvent {
   handledAt?: string;
 }
 
+/**
+ * A task a mentor gave them ("send 5 proposals") and how it went, so progress survives across days:
+ * "teen workout ho gaye is hafte — best streak yet".
+ */
+export interface ProfileTask {
+  what: string;
+  /** YYYY-MM-DD the task was given. */
+  given: string;
+  result?: TaskResult;
+  /** Their own words, short ("5 bheje, 1 reply aaya"). */
+  note?: string;
+  /** YYYY-MM-DD they reported on it. */
+  reported?: string;
+  /** YYYY-MM-DD the character asked about it (so it isn't asked twice). */
+  asked?: string;
+}
+export type TaskResult = 'done' | 'partly' | 'skipped';
+const RESULTS: TaskResult[] = ['done', 'partly', 'skipped'];
+const MAX_TASKS = 8;
+
 export interface UserProfile {
   name?: string;
   nickname?: string;
@@ -31,13 +51,15 @@ export interface UserProfile {
   jokes: string[];
   facts: string[];
   events: ProfileEvent[];
+  /** Mentors only: the tasks they gave, oldest first. */
+  tasks: ProfileTask[];
 }
 
 const LISTS = ['likes', 'dislikes', 'goals', 'health', 'jokes', 'facts'] as const;
 const MAX_ITEMS = 8;
 const MAX_LEN = 120;
 
-export const emptyProfile = (): UserProfile => ({ people: [], likes: [], dislikes: [], goals: [], health: [], jokes: [], facts: [], events: [] });
+export const emptyProfile = (): UserProfile => ({ people: [], likes: [], dislikes: [], goals: [], health: [], jokes: [], facts: [], events: [], tasks: [] });
 
 const clip = (s: unknown): string | undefined => {
   if (typeof s !== 'string') return undefined;
@@ -63,7 +85,83 @@ export function normalizeProfile(raw: unknown): UserProfile {
       .map((x: any) => ({ what: clip(x?.what) ?? '', date: String(x?.date ?? ''), kind: x?.kind === 'yearly' ? ('yearly' as const) : ('once' as const), handledAt: clip(x?.handledAt) }))
       .filter((x) => x.what && DATE.test(x.date))
       .slice(-12);
+  if (Array.isArray(r['tasks']))
+    p.tasks = r['tasks']
+      .map((x: any) => ({
+        what: clip(x?.what) ?? '',
+        given: String(x?.given ?? ''),
+        result: RESULTS.includes(x?.result) ? (x.result as TaskResult) : undefined,
+        note: clip(x?.note),
+        reported: DATE.test(String(x?.reported ?? '')) ? String(x.reported) : undefined,
+        asked: DATE.test(String(x?.asked ?? '')) ? String(x.asked) : undefined,
+      }))
+      .filter((x) => x.what && DATE.test(x.given))
+      .slice(-MAX_TASKS);
   return p;
+}
+
+/** The task they still owe an answer on (the newest one without a result). */
+export function openTask(profile: UserProfile): ProfileTask | undefined {
+  return [...profile.tasks].reverse().find((t) => !t.result);
+}
+
+/** A mentor just gave this task: it becomes the open one (an older unanswered task stays unanswered). */
+export function addTask(profile: UserProfile, what: string, today: string): void {
+  const task = clip(what.replace(/\s+/g, ' '));
+  if (!task) return;
+  const open = openTask(profile);
+  if (open && same(open.what, task)) return;
+  profile.tasks = [...profile.tasks, { what: task, given: today }].slice(-MAX_TASKS);
+}
+
+/** How they did on a task, from what they told the character. Only an open task can get a result. */
+export function recordTaskResult(profile: UserProfile, update: { what?: string; result?: string; note?: string }, today: string): boolean {
+  if (!RESULTS.includes(update.result as TaskResult)) return false;
+  const what = clip(update.what);
+  const pending = profile.tasks.filter((t) => !t.result);
+  // Models paraphrase: an exact match first, else the only (or newest) open task.
+  const task = (what && pending.find((t) => same(t.what, what))) || pending[pending.length - 1];
+  if (!task) return false;
+  task.result = update.result as TaskResult;
+  task.note = clip(update.note) ?? task.note;
+  task.reported = today;
+  return true;
+}
+
+const RESULT_WORDS: Record<TaskResult, string> = { done: 'did it', partly: 'did part of it', skipped: "didn't do it" };
+
+/**
+ * "Your coaching with them": the open task and their track record, so a mentor can follow up on the
+ * right thing, notice a streak and celebrate real numbers. Empty when they never got a task.
+ */
+export function formatProgress(profile: UserProfile, today: string): string {
+  const p = normalizeProfile(profile);
+  if (!p.tasks.length) return '';
+  const ago = (date: string) => {
+    const d = dayDiff(today, date);
+    return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+  };
+  const lines: string[] = [];
+  const open = openTask(p);
+  if (open) lines.push(`- Open task: "${open.what}" (given ${ago(open.given)}) — they haven't told you how it went yet.`);
+  const done = p.tasks.filter((t) => t.result);
+  if (done.length) {
+    lines.push(
+      `- Before that: ${done
+        .slice(-5)
+        .map((t) => `"${t.what}" — ${RESULT_WORDS[t.result!]}${t.note ? ` (${t.note})` : ''}, ${ago(t.reported ?? t.given)}`)
+        .join('; ')}`,
+    );
+    let streak = 0;
+    for (const t of [...done].reverse()) {
+      if (t.result !== 'done') break;
+      streak++;
+    }
+    if (streak >= 2) lines.push(`- They've done their last ${streak} tasks in a row — notice it and celebrate it.`);
+    const skipped = done.slice(-3).filter((t) => t.result === 'skipped').length;
+    if (skipped >= 2) lines.push('- They skipped a few tasks lately: no guilt — make the next task smaller and easier to start.');
+  }
+  return lines.join('\n');
 }
 
 /** What the model sends back: only what changed. */
@@ -73,6 +171,8 @@ export interface ProfilePatch {
   add?: Partial<Record<(typeof LISTS)[number], string[]>>;
   remove?: string[];
   events?: Array<{ what: string; date: string; kind?: 'once' | 'yearly' }>;
+  /** How an open task went, from what they said ("haan 5 proposals bhej diye"). */
+  tasks?: Array<{ what?: string; result?: string; note?: string }>;
 }
 
 /** Models don't always use the exact shape: people/events nested in "add", lists at the top level. */
@@ -89,10 +189,18 @@ export function normalizePatch(raw: unknown): ProfilePatch {
   const people = [...(Array.isArray(r['people']) ? r['people'] : []), ...(Array.isArray(add['people']) ? (add['people'] as unknown[]) : [])];
   const events = [...(Array.isArray(r['events']) ? r['events'] : []), ...(Array.isArray(add['events']) ? (add['events'] as unknown[]) : [])];
   const remove = [...(Array.isArray(r['remove']) ? r['remove'] : []), ...(Array.isArray(add['remove']) ? (add['remove'] as unknown[]) : [])];
-  return { set: set as ProfilePatch['set'], add: add as ProfilePatch['add'], people: people as ProfilePatch['people'], events: events as ProfilePatch['events'], remove: remove as string[] };
+  const tasks = [...(Array.isArray(r['tasks']) ? r['tasks'] : []), ...(Array.isArray(add['tasks']) ? (add['tasks'] as unknown[]) : [])];
+  return {
+    set: set as ProfilePatch['set'],
+    add: add as ProfilePatch['add'],
+    people: people as ProfilePatch['people'],
+    events: events as ProfilePatch['events'],
+    remove: remove as string[],
+    tasks: tasks as ProfilePatch['tasks'],
+  };
 }
 
-export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: { allowHealth?: boolean } = {}): UserProfile {
+export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: { allowHealth?: boolean; today?: string } = {}): UserProfile {
   const patch = normalizePatch(rawPatch);
   const p = normalizeProfile(profile);
   for (const [k, v] of Object.entries(patch.set ?? {})) {
@@ -136,6 +244,7 @@ export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: {
     } else p.events.push({ what, date: e.date, kind });
   }
   p.events = p.events.slice(-12);
+  for (const t of patch.tasks ?? []) if (t && typeof t === 'object') recordTaskResult(p, t, opts.today ?? localToday().date);
   return p;
 }
 
@@ -234,14 +343,16 @@ export class UserProfileService {
 
   private static readonly PROMPT = `You keep a short profile of what a USER has told a chat CHARACTER about the USER's own life.
 You get the current profile (JSON), today's date, and the latest exchange. Reply with ONLY a JSON patch of what changed:
-{"set":{"name":"","nickname":"","city":"","work":""},"people":[{"relation":"sister","name":"Pooja","note":"getting married"}],"add":{"likes":[],"dislikes":[],"goals":[],"health":[],"jokes":[],"facts":[]},"remove":[],"events":[{"what":"sister Pooja's wedding","date":"YYYY-MM-DD","kind":"once"}]}
-("people" and "events" are top-level keys, not inside "add".)
+{"set":{"name":"","nickname":"","city":"","work":""},"people":[{"relation":"sister","name":"Pooja","note":"getting married"}],"add":{"likes":[],"dislikes":[],"goals":[],"health":[],"jokes":[],"facts":[]},"remove":[],"events":[{"what":"sister Pooja's wedding","date":"YYYY-MM-DD","kind":"once"}],"tasks":[{"what":"send 5 proposals","result":"partly","note":"sent 3, 1 reply"}]}
+("people", "events" and "tasks" are top-level keys, not inside "add".)
 Rules:
 - Facts come ONLY from what the USER says about the USER (their job, city, family and friends with names, likes, goals, plans). The CHARACTER's lines are context only: anything the character says about itself (its job, home, family, activities, stories) is NEVER a user fact. If the user is just quoting or asking about the character, add nothing.
 - "jokes": a running joke or playful nickname the two of them now share (may start from either side), written as "you two joke that …".
 - "health": only health things the user chose to share (e.g. "has PCOS", "knee injury").
 - Events: plans and big dates in the user's life with a real date. Convert relative dates using today's date and weekday ("kal" = tomorrow, "parso" = day after, "agle Sunday", "2 hafte baad" = 14 days, "15 tareekh" = the next 15th). Birthdays/anniversaries: kind "yearly". If no date can be worked out, don't add an event.
 - "remove": exact items from the current profile that the user said are no longer true.
+- "tasks": only when the USER says how a task from the profile's "tasks" list that has no "result" yet went: "done" (did it), "partly" (did some of it), or "skipped" (didn't do it / won't). Copy "what" exactly from the profile and put their numbers or details in "note" (under 12 words). Never invent new tasks and never change a task that already has a result.
+- "goals": what they are working towards (e.g. "first freelance client by December", "lose 5 kg", "frontend job"), kept up to date.
 - Don't store: moods of the moment, greetings, what they ate today, anything about the chat or the AI itself, flirting, or anything sexual.
 - Keep each item short (under 12 words), in English. Leave out keys with nothing new. If nothing changed, reply {}.`;
 
@@ -269,8 +380,9 @@ Rules:
   }): Promise<void> {
     try {
       const text = params.userMessage.trim();
-      // Nothing to learn from "ok", "hmm", emojis.
-      if (text.split(/\s+/).length < 3 && !/\d/.test(text)) return;
+      // Nothing to learn from "ok", "hmm", emojis — unless it answers an open task ("done ✅", "ho gaya").
+      const short = text.split(/\s+/).length < 3 && !/\d/.test(text);
+      if (short && !(await this.hasOpenTask(params.userId, params.characterId))) return;
       const settings = await prisma.userMemorySettings.findUnique({ where: { userId: params.userId } });
       if (settings && !settings.memoryEnabled) return;
       const excluded = Array.isArray(settings?.excludedCharacterIds) ? (settings!.excludedCharacterIds as string[]) : [];
@@ -305,11 +417,36 @@ Rules:
       if (!patch || typeof patch !== 'object' || Object.keys(patch).length === 0) return;
       // Apply to the latest saved card (another process may have updated it meanwhile).
       const latest = await this.load(params.userId, params.characterId);
-      const next = applyPatch(latest, patch, { allowHealth: settings?.allowSensitiveMemory ?? false });
+      const next = applyPatch(latest, patch, { allowHealth: settings?.allowSensitiveMemory ?? false, today: today.date });
       if (JSON.stringify(next) !== JSON.stringify(latest)) await this.save(params.userId, params.characterId, next);
     } catch (err) {
       logger.warn(`Profile update failed: ${err instanceof Error ? err.message : 'Unknown'}`);
     }
+  }
+
+  private static async hasOpenTask(userId: string, characterId: string): Promise<boolean> {
+    return Boolean(openTask(await this.load(userId, characterId)));
+  }
+
+  /**
+   * Change the card in line with the background updates (same queue), so a task recorded now isn't
+   * lost when an update that started earlier saves its older copy. Never throws.
+   */
+  public static mutate(userId: string, characterId: string, change: (profile: UserProfile) => boolean | void): Promise<void> {
+    const key = `${userId}:${characterId}`;
+    const next = (this.queues.get(key) ?? Promise.resolve()).then(async () => {
+      try {
+        const profile = await this.load(userId, characterId);
+        if (change(profile) !== false) await this.save(userId, characterId, profile);
+      } catch (err) {
+        logger.warn(`Profile change failed: ${err instanceof Error ? err.message : 'Unknown'}`);
+      }
+    });
+    this.queues.set(key, next);
+    void next.finally(() => {
+      if (this.queues.get(key) === next) this.queues.delete(key);
+    });
+    return next;
   }
 
   /** Is there a birthday today or a just-passed event to ask about? (Doesn't mark anything.) */

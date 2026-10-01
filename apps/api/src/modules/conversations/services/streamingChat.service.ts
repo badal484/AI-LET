@@ -29,10 +29,10 @@ import { chatAIRoutes } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../human/personaPacks/index.js';
 import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situation.js';
 import { localHourIn } from '../human/emotionalState.js';
-import { formatProfile, localToday, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
+import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { addDatedThreads, applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, saveLifeState } from '../human/lifeState.js';
+import { addDatedThreads, applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
@@ -626,6 +626,7 @@ export class StreamingChatService {
       const today = localToday(timeZone).date;
       const dueEvents = takeDueEvents(profile, today);
       if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
+      if (pack.mentor) restoreTaskThread(life, openTask(profile));
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations) });
       const stage = builtContext.activeRelationshipStage ?? null;
       const latest = recentMessages[recentMessages.length - 1];
@@ -679,8 +680,17 @@ export class StreamingChatService {
         rememberDoing(life, plan.detail);
         rememberTask(life, newTask);
         await saveLifeState(userId, conversation.characterId, life);
-        // Only once she actually brought it up does the event count as handled.
-        if (dueEvents.changed) await UserProfileService.save(userId, conversation.characterId, profile);
+        // Durable record (profile): events she brought up, the task she asked about, the task she gave.
+        // Through the profile queue so a background update can't overwrite it; not awaited.
+        const askedTask = plan.followUp?.kind === 'task';
+        const task = pack.mentor ? newTask : undefined;
+        if (dueEvents.changed || askedTask || task)
+          void UserProfileService.mutate(userId, conversation.characterId, (p) => {
+            for (const e of p.events) e.handledAt = profile.events.find((x) => x.what === e.what && x.date === e.date)?.handledAt ?? e.handledAt;
+            const open = openTask(p);
+            if (askedTask && open && !open.asked) open.asked = today;
+            if (task) addTask(p, task, today);
+          });
       };
       request.systemPrompt = buildHumanPrompt({
         pack,
@@ -694,6 +704,7 @@ export class StreamingChatService {
         stage,
         continuityLines: continuity.lines,
         profileText: formatProfile(profile, today),
+        progressText: formatProgress(profile, today),
       });
       humanMode = true;
       // Size limits follow the situation (a crisis or an honest AI answer needs room to be complete).
