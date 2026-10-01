@@ -236,6 +236,9 @@ export function applyUserTurn(params: {
     if (followUp) followUp.askedAt = now;
   }
 
+  if (userMood === 'low' || state.day.userMoods.slice(0, -1).includes('low')) {
+    lines.push("They already told you they're having a hard time today. Don't ask how their day is going again — respond to what they said.");
+  }
   if (state.day.told.length) {
     lines.push(`Earlier today you already told them: ${state.day.told.join('; ')}. Stay consistent with it and don't repeat it as news.`);
   }

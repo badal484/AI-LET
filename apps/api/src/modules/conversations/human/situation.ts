@@ -26,6 +26,8 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   add('rude', /\b(pagal|chup (kar|ho)|bakwas|stupid|idiot|shut up|dimag mat|bekaar|faltu|nikal|bewakoof|gadhi|gadha|hate you|ullu)\b/);
   add('emotional', /(sab (kuch )?galat|kuch theek nahi|kisi kaam ka nahi|koi kaam ka nahi|worthless|useless feel|reject ho (gaya|gayi)|rejected|suna diya|daant (pad|diya)|ladai ho|fight ho|bura din|bekar din|kharab din|job (chali gayi|se nikal)|fired|dil toot|haar (gaya|gayi)|nothing is going right|koi (samajhta|samjhta) nahi|rona aa raha)/);
   add('emotional', /(sab (kuch )?(bahut )?zyada ho (raha|rahi|gaya)|overwhelm|\b(darr|dar) lag (raha|rahi)|\bnervous\b|ghabrahat|ghabra (raha|rahi))/);
+  // "Baad", "bura din", "kitni baar bataun, bad" — a one-word bad day is still a bad day ("baad mein" is not).
+  if (!/\bmein\b|\bnot (that |too )?bad\b|\b(bura|kharab) nahi\b/.test(t)) add('emotional', /^(bad|baad|bura|bekar|bekaar|worst|kharab|not good|achha nahi|acha nahi|theek nahi)\b|\b(bad|baad|bura|kharab|bekar|worst)\s*[.!?]*$|\b(bad|bura|kharab|bekar|worst) (day|din)\b|\b(din|day) (bad|bura|kharab|bekar)\b/);
   add('emotional', /\b(insult|beizzati|bezzati|humiliat\w*|bura bhala|sabke saamne (daanta|chillaya|suna)|chilla(ya|ye))\b/);
   add('emotional', /\b(sad|udaas|udas|dukhi|rona|ro raha|ro rahi|cry|lonely|akela|akeli|depress|stress|tension|pareshan|anxious|breakup|miss (you|u)|yaad|mood (off|kharab)|hurt|alone|bura lag|daanta|dant|thak gaya|thak gayi|fail)\b/);
   // Good news comes after sadness, so "result aaya, fail ho gaya" stays emotional.

@@ -55,6 +55,13 @@ const GUILT = /(mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar 
 const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein)\b/gi;
 const hindiWords = (text: string) => (text.match(HINDI) ?? []).length;
 
+/** Questions people only need to be asked once per chat (Hinglish and English). */
+const REPEAT_QUESTIONS: RegExp[] = [
+  /(how('?s| is| was) (your|ur) day|(aaj ka |tumhara |tera )?(din|day) kaisa|kaisa (raha|gaya|ja raha) (aaj ka )?(din|day))/i,
+  /(how are you feeling|kaisa (feel|mehsoos) (kar|ho)|kaisi feel kar)/i,
+  /(what('?s| is) your name|tumhara naam kya|aapka naam kya)/i,
+];
+
 export function checkReply(params: {
   bubbles: string[];
   herRecentReplies: string[];
@@ -99,6 +106,9 @@ export function checkReply(params: {
   const recentTexts = new Set(params.herRecentReplies.slice(-12).map(norm));
   const echo = params.bubbles.find((b) => norm(b).split(' ').length >= 3 && recentTexts.has(norm(b)));
   if (echo && !problems.some((p) => p.startsWith('You already said'))) problems.push(`You already said "${echo}" a moment ago. Don't repeat yourself.`);
+    // Asking again what they already answered ("aaj ka din kaisa raha?" twice) feels like she isn't listening.
+  const askedBefore = REPEAT_QUESTIONS.find((re) => params.bubbles.some((b) => re.test(b)) && params.herRecentReplies.slice(-8).some((r) => re.test(r)));
+  if (askedBefore) problems.push("You already asked that and they answered. Don't ask again — respond to what they told you.");
     if (BOT_PHRASES.some((re) => re.test(all))) problems.push('It sounds like a chatbot/assistant. Talk like a friend texting, not a helper.');
   if (params.gender === 'female' && (MASCULINE_SELF.test(all) || MASCULINE_VERB.test(all))) problems.push('Use feminine Hindi forms for yourself (karti, gayi, sakti, bolungi).');
   if (params.gender === 'male' && (FEMININE_SELF.test(all) || FEMININE_VERB.test(all))) problems.push('Use masculine Hindi forms for yourself (karta, gaya, sakta, bolunga).');
