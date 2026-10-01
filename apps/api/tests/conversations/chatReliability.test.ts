@@ -3,7 +3,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
-import { createCharacter, createUser } from '../social/fixtures.js';
+import { createCharacter, createUser } from '../fixtures.js';
 import { redis } from '../../src/infrastructure/redis/redis.js';
 import { StreamingChatService } from '../../src/modules/conversations/services/streamingChat.service.js';
 

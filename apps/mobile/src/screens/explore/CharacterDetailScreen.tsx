@@ -32,7 +32,6 @@ import {
 } from '../../components/common/index.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem, ReportReasonCode } from '@ai-companion/types';
-import { CharacterSocialBar } from '../../features/social/components/CharacterSocialBar.js';
 import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -359,7 +358,6 @@ export const CharacterDetailScreen: React.FC = () => {
           )}
 
           {/* Social: follow (distinct from favorite) + public posts; hidden if social is unavailable */}
-          <CharacterSocialBar slug={profile.slug} />
 
           {/* Relationship Connection Card (if existing interaction) */}
           {relationshipData && (

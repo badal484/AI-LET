@@ -1,13 +1,5 @@
 import { QueueManager } from './infrastructure/queues/QueueManager.js';
 import { AccountDeletionService } from './modules/privacy/services/AccountDeletionService.js';
-import { SocialIntegrityService } from './modules/social/lifecycle/SocialIntegrityService.js';
-import {
-  SocialEvents,
-  registerSocialEventHandlers,
-  ScheduledSocialActionService,
-  SocialMessagingService,
-  SocialNotificationService,
-} from './modules/social/index.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { logger } from './config/logger.js';
@@ -65,28 +57,6 @@ QueueManager.registerWorker('analytics-events', async (job) => {
   return { status: 'INGESTED' };
 }, 8);
 
-// 8. Phase 24 social: notification fanout in batches (never synchronous in API requests)
-registerSocialEventHandlers();
-QueueManager.registerWorker('social-fanout', async (job) => {
-  const result = await SocialNotificationService.processFanoutBatch(job.data);
-  return { status: 'FANNED_OUT', ...result };
-}, 4);
-
-// 9. Phase 24 social: scheduled creator/character actions (fully re-validated at execution time)
-QueueManager.registerWorker('social-actions', async (job) => {
-  return ScheduledSocialActionService.process(job.data);
-}, 2);
-
-// Sweeper: recovers lost scheduled jobs and expires stale message requests.
-const socialSweeper = setInterval(() => {
-  Promise.all([ScheduledSocialActionService.enqueueDue(), SocialMessagingService.expireStaleRequests()])
-    .then(([due, expired]) => {
-      if (due || expired) logger.info('[Worker:social-sweeper] swept', { due, expired });
-    })
-    .catch((err) => logger.warn('[Worker:social-sweeper] sweep failed', { error: err instanceof Error ? err.message : err }));
-}, 5 * 60 * 1000);
-socialSweeper.unref();
-
 /** Runs a periodic job without overlap; failures are logged and never crash the worker. */
 function every(name: string, ms: number, job: () => Promise<unknown>): NodeJS.Timeout {
   let running = false;
@@ -104,14 +74,9 @@ function every(name: string, ms: number, job: () => Promise<unknown>): NodeJS.Ti
   return t;
 }
 
-// Transactional outbox relay (at-least-once; consumers are idempotent via receipts).
-every('social-outbox-relay', 5_000, () => SocialEvents.relayPending(200));
-every('social-outbox-retention', 24 * 3_600_000, () => SocialEvents.purgeExpired());
 // Account deletion pipeline (leased, resumable) and its reconciliation.
 every('account-deletion', 60_000, () => AccountDeletionService.processDue(10));
 every('account-deletion-reconcile', 15 * 60_000, () => AccountDeletionService.reconcile());
-// Social integrity checks (report + unambiguous repairs only).
-every('social-integrity', 60 * 60_000, () => SocialIntegrityService.run({ repair: true }));
 
 logger.info('✅ All background queue workers initialized and listening for jobs.');
 

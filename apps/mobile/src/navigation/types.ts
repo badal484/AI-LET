@@ -55,21 +55,6 @@ export type RootStackParamList = {
   CreatorProfile: {
     username: string;
   };
-  // Phase 24 social layer
-  SocialFeed: undefined;
-  SocialProfile: { handle: string };
-  SocialFollowList: { handle: string; direction: 'followers' | 'following' };
-  SocialContent: { publicId: string };
-  ShareConversation: { conversationId: string };
-  SocialInbox: undefined;
-  SocialThread: { threadId?: string; recipient?: string; displayName?: string };
-  Community: { slug: string };
-  SocialPrivacySettings: undefined;
-  SocialProfileSetup: undefined;
-  // Phase 25: Guided Experiences, Goals & Tasks
-  Experiences: { characterId?: string } | undefined;
-  ExperienceDetail: { experienceSlug: string; title: string; characterId?: string };
-  ActiveGoals: undefined;
   // Phase 26: Knowledge Documents, RAG & Web Research
   KnowledgeDocuments: undefined;
   DocumentViewer: { documentId: string; title: string; filename?: string; mimeType?: string; status?: string };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 import { CreatorAnalyticsService } from '../../src/modules/creators/services/CreatorAnalyticsService.js';
-import { createCharacter, createConversation, createUser, makeCreator } from '../social/fixtures.js';
+import { createCharacter, createConversation, createUser, makeCreator } from '../fixtures.js';
 
 describe('creator analytics are computed from real activity', () => {
   it('counts views, starts, messages, favorites and returning conversations; zero for a new character', async () => {

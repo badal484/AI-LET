@@ -16,7 +16,6 @@ import {
   TrendingUp,
   DollarSign,
   FlaskConical,
-  MessagesSquare,
   BookOpen,
   Sparkles,
   ChevronDown,
@@ -62,7 +61,6 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Discovery & Home', href: '/discovery', icon: Compass },
       { label: 'Notifications & Drops', href: '/notifications', icon: Bell },
-      { label: 'Social Stories & Feed', href: '/social', icon: MessagesSquare },
     ],
   },
   {
