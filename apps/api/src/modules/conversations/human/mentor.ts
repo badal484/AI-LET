@@ -10,6 +10,7 @@ const QUESTION = /\?|\b(kya|kaise|kaisa|kab|kitna|kitne|kitni|kyun|kyu|kaun|kaun
 const MONEY_TOPIC = /\b(paise|paisa|kamai|kamaai|earn|income|business|job|career|hazar|hazaar|lakh|rupaye|return|returns|guaranteed|scam|telegram|trading|crypto|share|shares|double|invest|lagao)\b/;
 const HEALTH_TOPIC = /\b(health|sehat|weight|wazan|vajan|diet|khana|protein|workout|gym|exercise|neend|sleep|stress|anxiety|tension|dard|pain|energy|thakan|habit|routine|doctor)\b/;
 const NO_TOPIC = /(?!)/;
+const ASKS_FOR_HELP = /\b(kya karu|kya karun|kya karoon|kaise|help|madad|suggest|tips?|advice|batao kya|samjhao|what should|how do|how can)\b/i;
 const SAFETY: Situation[] = ['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude'];
 
 /** She asked them something, or asked them to send/write/try something ("intro likh ke bhejo"). */
@@ -24,6 +25,8 @@ export function isTeachingMoment(
   previousUserText?: string,
 ): boolean {
   if (situations.some((s) => SAFETY.includes(s))) return false;
+  // Venting isn't asking for a lesson: comfort first, unless they ask what to do.
+  if (situations.includes('emotional') && !ASKS_FOR_HELP.test(text)) return false;
   // Not a mentor: a real question in their own field still gets a real, helpful answer.
   if (!pack.mentor) {
     const t = text.toLowerCase();
@@ -47,6 +50,15 @@ export function isTeachingMoment(
 
 const classifyForLesson = (t: string) => classifySituations(t, null);
 
+/** Most of the task's words (or their stems, for Hinglish endings) appear in what she said. */
+function wasSaid(task: string, visible: string): boolean {
+  const words = task.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [];
+  if (words.length === 0) return true;
+  const said = visible.toLowerCase();
+  const found = words.filter((w) => said.includes(w.slice(0, Math.max(4, w.length - 2)))).length;
+  return found / words.length >= 0.5;
+}
+
 /** The model marks the task it gave with a hidden last line "[[task: …]]" — pull it out. */
 export function extractTaskTag(text: string): { text: string; task?: string } {
   let task: string | undefined;
@@ -55,6 +67,9 @@ export function extractTaskTag(text: string): { text: string; task?: string } {
     return '';
   });
   const text2 = cleaned.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  // A task only counts if she actually said it: a hidden tag for advice that never made it into the
+  // visible text ("phone switch off karke baitho") was later "followed up" as if she'd given it.
+  if (task && !wasSaid(task, text2)) task = undefined;
   // Models sometimes forget the hidden line but still say "aaj ka kaam: …" — use that.
   if (!task) {
     const said = text2.match(/(?:aaj ka kaam|aaj ka task|tumhara task|homework|is hafte ka kaam)\s*[:\-–]\s*([^\n]{4,200})/i)?.[1];
