@@ -1,7 +1,8 @@
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import type { PersonaPack } from './personaPack.types.js';
 import { buildHumanPrompt, pickLifeDetail, type BondStage, type ReplyPlan } from './compactPrompt.js';
-import { currentStoryBeat, loadLifeState, rememberTold, saveLifeState, type LifeState } from './lifeState.js';
+import { addDatedThreads, currentStoryBeat, loadLifeState, rememberTold, saveLifeState, type LifeState } from './lifeState.js';
+import { formatProfile, localToday, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 
 /**
  * Texting first — kindly. A friend who texts "interview kaisa gaya?" feels caring; one who
@@ -27,6 +28,8 @@ export async function kindTextFirstCheck(params: {
   conversationId: string;
   timeZone?: string | null;
   now?: Date;
+  /** A birthday today or a big event to ask about: worth texting even if they've been away a while. */
+  bigDay?: boolean;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const now = params.now ?? new Date();
   const hour = localHour(params.timeZone, now);
@@ -41,7 +44,8 @@ export async function kindTextFirstCheck(params: {
   ]);
   if (!lastUser) return { ok: false, reason: 'They have never chatted — no texting first.' };
   const hoursSince = (now.getTime() - lastUser.createdAt.getTime()) / 3_600_000;
-  if (hoursSince > TEXT_FIRST.activeWithinHours) return { ok: false, reason: 'No chat in the last 3 days — not chasing them.' };
+  if (hoursSince > (params.bigDay ? 30 * 24 : TEXT_FIRST.activeWithinHours))
+    return { ok: false, reason: params.bigDay ? 'No chat in the last 30 days — not even for a big day.' : 'No chat in the last 3 days — not chasing them.' };
   if (hoursSince < TEXT_FIRST.quietAfterChatHours) return { ok: false, reason: 'They chatted recently — no need to text first.' };
   if (lastMessage?.role === 'assistant' && lastMessage.isProactive) return { ok: false, reason: 'Her last text-first message is still unanswered — never double-text.' };
   if (sentToday >= TEXT_FIRST.maxPerDay) return { ok: false, reason: 'Already texted first twice today.' };
@@ -82,6 +86,10 @@ export async function buildTextFirstPrompt(params: {
   stage?: BondStage | null;
 }): Promise<{ systemPrompt: string; commit: () => Promise<void> }> {
   const life = await loadLifeState(params.userId, params.characterId, params.timeZone);
+  const profile = await UserProfileService.load(params.userId, params.characterId);
+  const today = localToday(params.timeZone).date;
+  const dueEvents = takeDueEvents(profile, today);
+  if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
   const plan = planTextFirst(params.pack, life, Date.now(), localHour(params.pack.home?.timeZone ?? params.timeZone, new Date()));
   const systemPrompt = buildHumanPrompt({
     pack: params.pack,
@@ -93,6 +101,7 @@ export async function buildTextFirstPrompt(params: {
     plan,
     stage: params.stage,
     continuityLines: life.day.told.length ? [`Earlier today you already told them: ${life.day.told.join('; ')}.`] : [],
+    profileText: formatProfile(profile, today),
   });
   return {
     systemPrompt,
@@ -100,6 +109,7 @@ export async function buildTextFirstPrompt(params: {
     commit: async () => {
       rememberTold(life, plan.storyBeat ?? plan.detail);
       await saveLifeState(params.userId, params.characterId, life);
+      if (dueEvents.changed) await UserProfileService.save(params.userId, params.characterId, profile);
     },
   };
 }

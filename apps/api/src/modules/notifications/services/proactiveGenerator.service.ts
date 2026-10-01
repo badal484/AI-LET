@@ -17,6 +17,7 @@ import type {
 import { characterVoiceAIRoute } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../../conversations/human/personaPacks/index.js';
 import { buildTextFirstPrompt, kindTextFirstCheck } from '../../conversations/human/textFirst.js';
+import { UserProfileService } from '../../memory/services/userProfile.service.js';
 
 export interface ProactiveGenerationParams {
   userId: string;
@@ -165,7 +166,8 @@ export class ProactiveGeneratorService {
     const slug = (await prisma.character.findUnique({ where: { id: characterId }, select: { slug: true } }))?.slug;
     const pack = slug ? personaPackFor(slug) : null;
     if (pack && activeIntent !== 'USER_REQUESTED_REMINDER') {
-      const kind = await kindTextFirstCheck({ userId, characterId, conversationId: conversation.id, timeZone: user?.profile?.timezone });
+      const bigDay = await UserProfileService.hasBigDay(userId, characterId, user?.profile?.timezone);
+      const kind = await kindTextFirstCheck({ userId, characterId, conversationId: conversation.id, timeZone: user?.profile?.timezone, bigDay });
       if (!kind.ok) {
         await prisma.proactiveDecisionLog.create({
           data: { userId, characterId, decision: 'SKIP', reasonCode: 'NOT_KIND_TIMING', intentType: activeIntent, confidence: decisionResult.confidence, metadata: { reason: kind.reason } },

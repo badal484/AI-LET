@@ -14,6 +14,7 @@ import { RelationshipContextProvider } from '../../relationships/services/relati
 import { RelationshipAnalyzerService } from '../../relationships/services/relationshipAnalyzer.service.js';
 import { RelationshipStateService } from '../../relationships/services/relationshipState.service.js';
 import { TTSSpeechChunk } from '../gateway/ITextToSpeechProvider.js';
+import { UserProfileService } from '../../memory/services/userProfile.service.js';
 import type { CharacterVoiceSettings } from '@ai-companion/types';
 
 export interface ProcessVoiceTurnParams {
@@ -294,6 +295,14 @@ export class VoiceConversationBridge {
           assistantMessage: accumulatedText,
           sourceMessageId: userMessage.id,
         }).catch((err: any) => logger.warn(`[VoiceBridge] Memory extraction failed: ${err.message}`));
+
+        // Keep the "who they are" card up to date, same as text chat.
+        void UserProfileService.updateFromExchange({
+          userId: params.userId,
+          characterId: params.characterId,
+          userMessage: params.userTranscript,
+          assistantMessage: accumulatedText,
+        });
 
         RelationshipAnalyzerService.analyzeInteraction({
           userMessage: params.userTranscript,

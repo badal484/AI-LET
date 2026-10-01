@@ -241,6 +241,8 @@ export function buildHumanPrompt(params: {
   plan: ReplyPlan;
   stage?: BondStage | null;
   continuityLines?: string[];
+  /** "Who they are": the card of what they told her, always shown. */
+  profileText?: string;
 }): string {
   const { pack, plan } = params;
   const examples = selectExamples(pack, params.situations)
@@ -273,8 +275,12 @@ export function buildHumanPrompt(params: {
       'RIGHT NOW',
       `- You're talking to ${params.userName}.`,
       params.relationshipText.trim() ? `- Your relationship: ${params.relationshipText.trim().replace(/\s+/g, ' ').slice(0, 400)}` : '',
+      params.profileText?.trim() ? `- Who they are (what they have told you — use it naturally, the way a close friend remembers):\n${params.profileText.trim().slice(0, 1400)}` : '',
       params.memoriesText.trim()
-        ? `- What they have told you before (use naturally, only if relevant). This is ALL you know about their life — anything else, ask:\n${params.memoriesText.trim().slice(0, 900)}`
+        ? `- More things they told you before (use only if relevant):\n${params.memoriesText.trim().slice(0, 1500)}`
+        : '',
+      params.profileText?.trim() || params.memoriesText.trim()
+        ? '- That is ALL you know about their life — anything else, ask. Never invent people, dates or plans of theirs.'
         : '- They have not told you anything about their life yet. Don\'t guess or pretend to know — ask.',
       params.conversationSummary?.trim() ? `- Earlier in your chats: ${params.conversationSummary.trim().slice(0, 500)}` : '',
       `- ${bondGuidance(params.stage)}`,
@@ -288,7 +294,11 @@ export function buildHumanPrompt(params: {
       plan.followUp
         ? plan.followUp.kind === 'task'
           ? `- MOST IMPORTANT: last time you gave them this task: "${plan.followUp.said}". Ask whether they did it (casually, no guilt), then respond to what they're saying now.`
-          : plan.followUp.kind === 'care'
+          : plan.followUp.kind === 'birthday'
+            ? `- MOST IMPORTANT: today is a special day for them — "${plan.followUp.said}"! Wish them first ("happy birthday!!" or the right wish), warmly and in your own style, and make it about them.`
+            : plan.followUp.kind === 'dated'
+              ? `- MOST IMPORTANT: they told you about "${plan.followUp.said}" — that has happened now. Ask how it went, excitedly, like a friend who remembered the date.`
+              : plan.followUp.kind === 'care'
             ? `- MOST IMPORTANT: last time they had a hard moment — they said: "${plan.followUp.said}". Gently check how they're feeling about it now, like a friend who remembered (no pressure to talk).`
             : `- MOST IMPORTANT: you remember they told you earlier: "${plan.followUp.said}". Ask how their ${plan.followUp.topic} went — casually, like a friend who remembered.`
         : '',

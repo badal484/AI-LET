@@ -424,6 +424,8 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       const requests = inputs.map((text) => ({
         model: `models/${model}`,
         content: { parts: [{ text }] },
+        // Same size as the stored vectors (memory embeddings are 1536-dimensional).
+        outputDimensionality: 1536,
       }));
 
       const response = await fetch(url, {
