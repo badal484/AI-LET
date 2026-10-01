@@ -32,7 +32,7 @@ import { localHourIn } from '../human/emotionalState.js';
 import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { addDatedThreads, applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
+import { addDatedThreads, applyUserTurn, loadLifeState, localDate, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -630,7 +630,14 @@ export class StreamingChatService {
       const dueEvents = takeDueEvents(profile, today);
       if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
       if (pack.mentor) restoreTaskThread(life, openTask(profile));
-      const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations) });
+      // A chat that started today is their first ever with her: "we talked before" is never true.
+      const firstUserMessage = await prisma.message.findFirst({
+        where: { conversationId, role: 'user' },
+        orderBy: { sequenceNumber: 'asc' },
+        select: { createdAt: true },
+      });
+      const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
+      const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
       const stage = builtContext.activeRelationshipStage ?? null;
       const latest = recentMessages[recentMessages.length - 1];
       const recentlyTalked = Boolean(latest && Date.now() - latest.createdAt.getTime() < 60 * 60_000);

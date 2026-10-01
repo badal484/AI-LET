@@ -39,5 +39,11 @@ describe('She listens', () => {
     expect(extractTaskTag('Baith jao thodi der. Bas deep breath lo.\n[[task: phone switch off kar ke 5 minute bas shaanti se baitho]]').task).toBeUndefined();
     expect(extractTaskTag('Aaj raat phone kitchen mein rakhna, aur kal batana\n[[task: raat ko phone kitchen mein rakhna]]').task).toBe('raat ko phone kitchen mein rakhna');
   });
+
+  it('knows a chat that started today is their first ever', () => {
+    const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: [], storyShared: false }, threads: [] };
+    const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'kaun si humari pehli baat ho rahi hai', situations: ['casual'], userMood: 'neutral', metToday: true });
+    expect(notes.lines.join(' ')).toMatch(/never talked before/);
+  });
 });
 
