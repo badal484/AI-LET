@@ -33,6 +33,8 @@ export interface ProfileTask {
   reported?: string;
   /** YYYY-MM-DD the character asked about it (so it isn't asked twice). */
   asked?: string;
+  /** YYYY-MM-DD a newer task took its place before they reported on it (no longer open). */
+  replaced?: string;
 }
 export type TaskResult = 'done' | 'partly' | 'skipped';
 const RESULTS: TaskResult[] = ['done', 'partly', 'skipped'];
@@ -94,6 +96,7 @@ export function normalizeProfile(raw: unknown): UserProfile {
         note: clip(x?.note),
         reported: DATE.test(String(x?.reported ?? '')) ? String(x.reported) : undefined,
         asked: DATE.test(String(x?.asked ?? '')) ? String(x.asked) : undefined,
+        replaced: DATE.test(String(x?.replaced ?? '')) ? String(x.replaced) : undefined,
       }))
       .filter((x) => x.what && DATE.test(x.given))
       .slice(-MAX_TASKS);
@@ -102,8 +105,11 @@ export function normalizeProfile(raw: unknown): UserProfile {
 
 /** The task they still owe an answer on (the newest one without a result). */
 export function openTask(profile: UserProfile): ProfileTask | undefined {
-  return [...profile.tasks].reverse().find((t) => !t.result);
+  return [...profile.tasks].reverse().find((t) => !t.result && !t.replaced);
 }
+
+// "batao your target role" is a question for right now, not a task for later.
+const QUESTION_TASK = /\b(batana|batao|bataana|bataiye|tell me)\s*$|\bdetails? (share|batana)|\bshare karna\s*$/i;
 
 const words = (t: string) => new Set(t.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2));
 /** "resume ka project section rewrite karna" ≈ "resume ka project section numbers ke saath rewrite karna". */
@@ -122,6 +128,9 @@ export function addTask(profile: UserProfile, what: string, today: string): void
   const open = openTask(profile);
   // Re-stating the open task in other words (often while asking about it) isn't a new task.
   if (open && similarTask(open.what, task)) return;
+  if (QUESTION_TASK.test(task)) return;
+  // The mentor moved on: an older task they never reported on is no longer the open one.
+  for (const t of profile.tasks) if (!t.result && !t.replaced) t.replaced = today;
   profile.tasks = [...profile.tasks, { what: task, given: today }].slice(-MAX_TASKS);
 }
 
@@ -135,7 +144,7 @@ export function recordTaskResult(
 ): boolean {
   if (!RESULTS.includes(update.result as TaskResult)) return false;
   const what = clip(update.what);
-  const pending = profile.tasks.filter((t) => !t.result && !(justGiven && same(t.what, justGiven)));
+  const pending = profile.tasks.filter((t) => !t.result && !t.replaced && !(justGiven && same(t.what, justGiven)));
   // Models paraphrase: an exact match first, else the only (or newest) open task.
   const task = (what && pending.find((t) => same(t.what, what))) || pending[pending.length - 1];
   if (!task) return false;
@@ -160,7 +169,12 @@ export function formatProgress(profile: UserProfile, today: string): string {
   };
   const lines: string[] = [];
   const open = openTask(p);
-  if (open) lines.push(`- Open task: "${open.what}" (given ${ago(open.given)}) — they haven't told you how it went yet.`);
+  if (open)
+    lines.push(
+      dayDiff(today, open.given) <= 0
+        ? `- Task you gave today: "${open.what}" — too soon to ask about it; give them time to do it (ask next time you talk on another day).`
+        : `- Open task: "${open.what}" (given ${ago(open.given)}) — they haven't told you how it went yet.`,
+    );
   const done = p.tasks.filter((t) => t.result);
   if (done.length) {
     lines.push(
@@ -418,7 +432,9 @@ Rules:
         .join('\n');
       const route = backgroundAIRoute();
       const model = route.provider === 'mistral' ? process.env['MISTRAL_PROFILE_MODEL'] || 'mistral-small-latest' : route.model;
-      const res = await AIOrchestrator.executeText(
+      // One retry: a lost update loses a task result or a birthday (quota spikes are common).
+      const call = () =>
+        AIOrchestrator.executeText(
         route.provider as AIProviderName,
         model,
         [
@@ -427,12 +443,17 @@ Rules:
             role: 'user',
             content: `Today is ${today.weekday}, ${today.date}.\nCurrent profile: ${JSON.stringify({
               ...profile,
-              tasks: profile.tasks.filter((t) => !(params.justGivenTask && same(t.what, params.justGivenTask))),
+              tasks: profile.tasks.filter((t) => !t.replaced && !(params.justGivenTask && same(t.what, params.justGivenTask))),
             })}\nLatest exchange:\n${exchange}`,
           },
         ],
         { temperature: 0.1, maxTokens: 500 },
       );
+      const res = await call().catch(async (err) => {
+        logger.warn(`Profile update retrying: ${err instanceof Error ? err.message : 'Unknown'}`);
+        await new Promise((r) => setTimeout(r, 4000));
+        return call();
+      });
       const json = res.content.match(/\{[\s\S]*\}/)?.[0];
       if (!json) return;
       const patch = JSON.parse(json) as ProfilePatch;

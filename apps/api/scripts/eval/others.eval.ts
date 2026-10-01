@@ -49,6 +49,22 @@ const JOURNEYS: Record<string, Journey[]> = {
   neha: [{ id: 'neha-lonely', title: 'A lonely evening', steps: [{ say: 'hi neha' }, { say: 'naye sheher mein akela lagta hai, koi dost nahi hai yahan' }] }],
   'simran-kaur': [
     {
+      id: 'simran-review',
+      title: 'Pasted chat: what should I reply?',
+      steps: [{ say: 'ye chat dekho: "me: hey kaisi ho? / her: theek / me: kya kar rahi ho? / her: kuch nahi, tum?" ab kya reply karu?' }],
+    },
+    {
+      id: 'simran-practice',
+      title: 'Practice date role-play, then feedback',
+      steps: [
+        { say: 'first date ki practice karwa do, bahut nervous hoon' },
+        { say: 'hi! sorry thoda late ho gaya, traffic tha. tumne kya order kiya?' },
+        { say: 'main cold coffee lunga. tum kya karti ho waise?' },
+        { say: 'wow interesting. mujhe trekking pasand hai, tumhe?' },
+        { say: 'kaisa kiya maine?' },
+      ],
+    },
+    {
       id: 'simran-first',
       title: 'First message to a crush, then next day',
       steps: [{ say: 'crush ko pehla message kya bhejun?' }, { say: 'office mein saath kaam karte hain, thodi baat hui hai' }, { later: 20, note: 'next day' }, { say: 'hi simran' }],

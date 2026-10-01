@@ -10,6 +10,7 @@ import {
 } from '../../src/modules/memory/services/userProfile.service.js';
 import { applyUserTurn, restoreTaskThread, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
 import { buildHumanPrompt, planReply } from '../../src/modules/conversations/human/compactPrompt.js';
+import { mentionsTask } from '../../src/modules/conversations/human/taskFollowUp.js';
 import { personaPackFor } from '../../src/modules/conversations/human/personaPacks/index.js';
 
 const life = (): LifeState => ({ firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: [], storyShared: true }, threads: [] });
@@ -30,6 +31,36 @@ describe('Progress tracking: mentors remember the tasks they gave and how they w
     expect(p.tasks).toHaveLength(1);
     addTask(p, '5 jagah apply karna aur referral mangna', '2026-10-02');
     expect(p.tasks).toHaveLength(2);
+  });
+
+  it('a question for right now is not a task', () => {
+    const p = emptyProfile();
+    addTask(p, 'apna target role aur qualification batana', '2026-10-01');
+    addTask(p, 'crush ke baare mein thoda details share karna', '2026-10-01');
+    expect(p.tasks).toEqual([]);
+    addTask(p, 'resume ka project section rewrite karke bhejna', '2026-10-01');
+    expect(p.tasks).toHaveLength(1);
+  });
+
+  it('a new task replaces an older one they never reported on', () => {
+    const p = emptyProfile();
+    addTask(p, 'html file mein naam print karna', '2026-10-01');
+    addTask(p, 'counter app banana', '2026-10-01');
+    expect(p.tasks[0]?.replaced).toBe('2026-10-01');
+    expect(openTask(p)?.what).toBe('counter app banana');
+    expect(recordTaskResult(p, { what: 'html file mein naam print karna', result: 'done' }, '2026-10-02')).toBe(true);
+    expect(p.tasks[1]?.result).toBe('done');
+    expect(p.tasks[0]?.result).toBeUndefined();
+    expect(formatProgress(p, '2026-10-02')).not.toContain('html file');
+  });
+
+  it('notices when a follow-up reply never asked about the task', () => {
+    const task = 'office crush ke liye pehla message draft karna';
+    expect(mentionsTask('oye hi! shaam ho gayi, main aaj ke messages close kar rahi hoon', task)).toBe(false);
+    expect(mentionsTask('oye hi! wo office crush wala message draft kiya?', task)).toBe(true);
+    expect(mentionsTask('hey! kal wala kaam hua?', task)).toBe(true);
+    expect(mentionsTask('hey, kaise ho?', 'counter app banana')).toBe(false);
+    expect(mentionsTask('wo counter app bana?', 'counter app banana')).toBe(true);
   });
 
   it('applies a reported result to the open task (even when the model paraphrases it)', () => {
@@ -80,6 +111,7 @@ describe('Progress tracking: mentors remember the tasks they gave and how they w
     expect(text).toContain('Open task: "workout 4" (given yesterday)');
     expect(text).toContain('"workout 3" — did it');
     expect(text).toContain('last 3 tasks in a row');
+    expect(formatProgress(p, '2026-10-01')).toContain('too soon to ask about it');
     expect(formatProgress(emptyProfile(), '2026-10-02')).toBe('');
   });
 

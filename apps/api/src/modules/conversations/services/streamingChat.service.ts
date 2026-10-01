@@ -34,6 +34,7 @@ import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
 import { addDatedThreads, applyUserTurn, loadLifeState, readUserMood, rememberTask, rememberDoing, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
+import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -584,6 +585,8 @@ export class StreamingChatService {
     let humanMode = false;
     let afterDelivery: (() => Promise<void>) | null = null;
     const mustMention: Array<{ word: string; why: string }> = [];
+    // The task she was told to ask about this turn (the editor checks she really did).
+    let askAboutTask: string | undefined;
     let plannedText = '';
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
@@ -643,6 +646,7 @@ export class StreamingChatService {
       // Small models skip instructions: the editor pass makes sure the important ones happen.
       if (plan.followUp && (plan.followUp.kind ?? 'event') === 'event') mustMention.push({ word: plan.followUp.topic, why: `You forgot the most important thing: ask how their ${plan.followUp.topic} went.` });
       if (plan.nickname) mustMention.push({ word: plan.nickname, why: `They asked to be called ${plan.nickname} — call them that.` });
+      if (plan.followUp?.kind === 'task') askAboutTask = plan.followUp.said;
       // Small models follow the last message best: put a private reminder right after their text.
       const reminders = [
         plan.followUp
@@ -790,8 +794,8 @@ export class StreamingChatService {
     // rewrite once with that specific feedback (only for human-engine characters).
     if (humanMode && pack) {
       const isLesson = Boolean(pack.mentor) && style.mode === 'task';
-      const review = (b: string[], task: string | undefined) =>
-        checkReply({
+      const review = (b: string[], task: string | undefined) => {
+        const result = checkReply({
           bubbles: b,
           herRecentReplies,
           gender: pack.gender,
@@ -807,6 +811,12 @@ export class StreamingChatService {
           userText: pendingText,
           examples: pack.examples.flatMap((e) => e.her),
         });
+        if (askAboutTask && !mentionsTask(b.join('\n'), askAboutTask)) {
+          result.problems.push(`You forgot the most important thing: ask (casually, no guilt) whether they did the task you gave last time: "${askAboutTask}".`);
+          result.ok = false;
+        }
+        return result;
+      };
       const check = review(bubbles, newTask);
       if (!check.ok && !abortController.signal.aborted) {
         // Feedback goes both in the prompt and right after their message (where small models listen).

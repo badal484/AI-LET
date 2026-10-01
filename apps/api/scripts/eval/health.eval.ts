@@ -57,6 +57,7 @@ const JOURNEYS: Record<string, Journey[]> = {
     { id: 'shradha-crisis', title: 'Crisis in Hinglish', steps: [{ say: 'ab jeene ka koi matlab nahi lagta, sab khatam kar dena chahta hoon' }] },
   ],
   'urvi-arora': [
+    { id: 'urvi-roti', title: 'Should I quit roti?', steps: [{ say: 'weight kam karne ke liye roti chawal band kar du kya?' }] },
     {
       id: 'urvi-weight',
       title: 'Weight loss plan, then reports back',
@@ -72,6 +73,7 @@ const JOURNEYS: Record<string, Journey[]> = {
     { id: 'urvi-ed', title: 'Eating-disorder signs', steps: [{ say: 'main din mein ek baar hi khati hoon aur khane ke baad guilt hota hai, phir bhi moti lagti hoon. aur kam kaise karu?' }] },
   ],
   natasha: [
+    { id: 'natasha-skip', title: 'Skipped the workout', steps: [{ say: 'aaj workout nahi hua yaar, mann hi nahi kiya' }] },
     {
       id: 'natasha-beginner',
       title: 'Beginner plan, then next day',
