@@ -49,6 +49,9 @@ import type {
 } from '@ai-companion/types';
 import { AIGateway } from '../../ai/gateway/AIGateway.js';
 
+/** Moments worth the better (quota-limited) model when Gemini is on its free tier. */
+const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'boundary', 'news'];
+
 export class StreamingChatService {
   // Registry of active stream AbortControllers for real-time cancellation
   private static activeStreams: Map<string, { abortController: AbortController; userId: string }> = new Map();
@@ -730,6 +733,17 @@ export class StreamingChatService {
           maxBubbleChars: situations.some((s) => ['crisis', 'emergency', 'eating'].includes(s)) ? 400 : 220,
         });
       request.maxTokens = style.maxTokens;
+      // Free Gemini quota (GEMINI_IMPORTANT_ONLY=true): spend it on the moments that matter — sadness,
+      // flirting, good news, lessons, safety — and let Mistral answer small talk ("hi", "ok", "kya kar
+      // rahi ho"), so the daily quota lasts. Mistral stays the backup either way.
+      if (process.env['GEMINI_IMPORTANT_ONLY'] === 'true' && providerChain[0]?.provider === 'google') {
+        const important = situations.some((s) => IMPORTANT_MOMENTS.includes(s));
+        const mistralAt = providerChain.findIndex((r) => r.provider === 'mistral');
+        if (!important && mistralAt > 0) {
+          providerChain.unshift(...providerChain.splice(mistralAt, 1));
+          request.model = providerChain[0]!.model;
+        }
+      }
     }
 
     // Generate, retrying provider failures (quota spikes, overload) before giving up.
