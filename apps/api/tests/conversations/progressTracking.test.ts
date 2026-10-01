@@ -23,12 +23,30 @@ describe('Progress tracking: mentors remember the tasks they gave and how they w
     expect(openTask(p)?.what).toBe('send 5 proposals');
   });
 
+  it('a re-worded open task is not a second task', () => {
+    const p = emptyProfile();
+    addTask(p, 'resume ka project section numbers ke saath rewrite karna', '2026-10-01');
+    addTask(p, 'resume ka project section rewrite karna', '2026-10-02');
+    expect(p.tasks).toHaveLength(1);
+    addTask(p, '5 jagah apply karna aur referral mangna', '2026-10-02');
+    expect(p.tasks).toHaveLength(2);
+  });
+
   it('applies a reported result to the open task (even when the model paraphrases it)', () => {
     const p = emptyProfile();
     addTask(p, 'send 5 proposals on Upwork', '2026-10-01');
     const next = applyPatch(p, { tasks: [{ what: 'sent proposals', result: 'partly', note: '3 sent, 1 reply' }] }, { today: '2026-10-02' });
     expect(next.tasks[0]).toMatchObject({ result: 'partly', note: '3 sent, 1 reply', reported: '2026-10-02' });
     expect(openTask(next)).toBeUndefined();
+  });
+
+  it('a task given in this very exchange cannot be judged yet', () => {
+    const p = emptyProfile();
+    addTask(p, 'resume ka project section rewrite karna', '2026-10-01');
+    const next = applyPatch(p, { tasks: [{ what: 'resume', result: 'partly', note: 'started' }] }, { today: '2026-10-01', justGivenTask: 'Resume ka project section rewrite karna' });
+    expect(openTask(next)?.what).toBe('resume ka project section rewrite karna');
+    const later = applyPatch(next, { tasks: [{ what: 'resume', result: 'done' }] }, { today: '2026-10-02' });
+    expect(later.tasks[0]?.result).toBe('done');
   });
 
   it('ignores invented results and tasks that are already closed', () => {
