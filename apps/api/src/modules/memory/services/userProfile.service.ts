@@ -144,10 +144,13 @@ export function recordTaskResult(
 ): boolean {
   if (!RESULTS.includes(update.result as TaskResult)) return false;
   const what = clip(update.what);
-  const pending = profile.tasks.filter((t) => !t.result && !t.replaced && !(justGiven && same(t.what, justGiven)));
+  // A task replaced today can still get its result: they usually report on it in the same message
+  // that makes the mentor give the next task (which marks the old one replaced first).
+  const pending = profile.tasks.filter((t) => !t.result && (!t.replaced || t.replaced === today) && !(justGiven && same(t.what, justGiven)));
   // Models paraphrase: an exact match first, else the only (or newest) open task.
   const task = (what && pending.find((t) => same(t.what, what))) || pending[pending.length - 1];
   if (!task) return false;
+  task.replaced = undefined;
   task.result = update.result as TaskResult;
   task.note = clip(update.note) ?? task.note;
   task.reported = today;
@@ -443,7 +446,7 @@ Rules:
             role: 'user',
             content: `Today is ${today.weekday}, ${today.date}.\nCurrent profile: ${JSON.stringify({
               ...profile,
-              tasks: profile.tasks.filter((t) => !t.replaced && !(params.justGivenTask && same(t.what, params.justGivenTask))),
+              tasks: profile.tasks.filter((t) => (!t.replaced || t.replaced === today.date) && !(params.justGivenTask && same(t.what, params.justGivenTask))),
             })}\nLatest exchange:\n${exchange}`,
           },
         ],

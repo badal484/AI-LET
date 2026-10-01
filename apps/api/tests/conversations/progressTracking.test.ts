@@ -42,6 +42,18 @@ describe('Progress tracking: mentors remember the tasks they gave and how they w
     expect(p.tasks).toHaveLength(1);
   });
 
+  it('they report on a task in the same message that gets them the next one: the result still counts', () => {
+    const p = emptyProfile();
+    addTask(p, 'resume ke ek project mein number jodna', '2026-10-01');
+    // The mentor's reply gave the next task first (that marks the old one replaced)…
+    addTask(p, '3 target jobs save karna', '2026-10-02');
+    // …then the background update records what they said about the old one.
+    const next = applyPatch(p, { tasks: [{ what: 'resume project', result: 'done', note: 'rewrote, 3 applied' }] }, { today: '2026-10-02', justGivenTask: '3 target jobs save karna' });
+    expect(next.tasks[0]).toMatchObject({ result: 'done', note: 'rewrote, 3 applied' });
+    expect(next.tasks[0]?.replaced).toBeUndefined();
+    expect(openTask(next)?.what).toBe('3 target jobs save karna');
+  });
+
   it('a new task replaces an older one they never reported on', () => {
     const p = emptyProfile();
     addTask(p, 'html file mein naam print karna', '2026-10-01');

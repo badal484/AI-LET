@@ -86,6 +86,10 @@ describe('October 2026 characters', () => {
       expect(mentorPromptSection(pack(slug))).toContain('MONEY & HONESTY');
     }
     expect(promisesIncome('Upwork pe 3 mahine mein 1 lakh mahina pakka income')).toBe(true);
+    expect(promisesIncome('Internship mil jaayegi, bas pehle ye batao')).toBe(true);
+    expect(promisesIncome('pehla client pakka mil jayega')).toBe(true);
+    expect(promisesIncome('koi guarantee nahi ki job mil jayegi')).toBe(false);
+    expect(promisesIncome('replies aane ke chances badhenge')).toBe(false);
     expect(isTeachingMoment(pack('arjun-mehra'), 'mujhe internship chahiye', classifySituations('mujhe internship chahiye', 1))).toBe(true);
     expect(isTeachingMoment(pack('arjun-mehra'), 'hi arjun', classifySituations('hi arjun', 1))).toBe(false);
     const q = 'mujhe pehla 500 dollar ka freelance client chahiye';
