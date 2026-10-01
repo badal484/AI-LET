@@ -87,10 +87,15 @@ export const HomeScreen: React.FC = () => {
 
   const handleFeedScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (Date.now() < jumpingUntil.current) return;
-    const y = e.nativeEvent.contentOffset.y;
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    const y = contentOffset.y;
+    // Only the true end of the page counts as "the last row" (the short last row never reaches the top).
+    const atEnd = y > 20 && y + layoutMeasurement.height >= contentSize.height - 48;
     const next = activeSectionAt(
       Object.entries(sectionY.current).map(([id, top]) => ({ id, y: top })),
       y,
+      80,
+      atEnd,
     );
     const resolved = y < 20 ? null : next;
     if (resolved !== activeSectionId) setActiveSectionId(resolved);
@@ -196,6 +201,10 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScroll={handleFeedScroll}
+        // Re-check where the page came to rest: the last throttled scroll event can arrive just
+        // before the very bottom, which left the previous row's chip highlighted.
+        onMomentumScrollEnd={handleFeedScroll}
+        onScrollEndDrag={handleFeedScroll}
         scrollEventThrottle={32}
         refreshControl={
           <RefreshControl

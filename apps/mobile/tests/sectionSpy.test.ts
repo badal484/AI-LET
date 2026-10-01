@@ -15,6 +15,11 @@ describe('Home chips follow the scroll', () => {
     expect(activeSectionAt(sections, 2000)).toBe('astrology');
   });
 
+  it('highlights the last row only at the true bottom of the page', () => {
+    expect(activeSectionAt(sections, 700)).toBe('friendship');
+    expect(activeSectionAt(sections, 700, 80, true)).toBe('astrology');
+  });
+
   it('is "All" above the first section', () => {
     expect(activeSectionAt([{ id: 'love', y: 300 }], 0)).toBeNull();
   });
