@@ -25,10 +25,12 @@ const OTHER_ADDRESS: Record<'tum' | 'aap' | 'tu', RegExp> = {
   aap: /\b(tum|tumhe|tumko|tumhara|tumhari|tumhare|tu|tujhe|tera|teri|tere)\b/i,
   tu: /\b(aap|aapko|aapka|aapki|tum|tumhe|tumko|tumhara|tumhari)\b/i,
 };
+// The "main …" clause ends at its auxiliary ("main samajh sakti hoon aisa kyun lag raha hai" is fine).
+const CLAUSE = String.raw`(?:(?!\b(?:hoon|hu|hun|hai)\b)[^.?!\n]){0,40}`;
 // "mein" is usually "in" ("sach mein lag raha hai"); it only means "I" at the start of a sentence.
 const I_SELF = String.raw`(?:\b(?:main|mai)\b|(?:^|[.?!,\n]\s*)mein\b)`;
-const MASCULINE_SELF = new RegExp(`${I_SELF}[^.?!\\n]{0,40}\\b(karta|gaya|raha|sakta|bolunga|karunga|jaunga|aaunga|samjha)\\b`, 'im');
-const FEMININE_SELF = new RegExp(`${I_SELF}[^.?!\\n]{0,40}\\b(karti|gayi|rahi|sakti|bolungi|karungi|jaungi|aaungi|samjhi)\\b`, 'im');
+const MASCULINE_SELF = new RegExp(`${I_SELF}${CLAUSE}\\b(karta|gaya|raha|sakta|bolunga|karunga|jaunga|aaunga|samjha)\\b`, 'im');
+const FEMININE_SELF = new RegExp(`${I_SELF}${CLAUSE}\\b(karti|gayi|rahi|sakti|bolungi|karungi|jaungi|aaungi|samjhi)\\b`, 'im');
 
 function trigrams(text: string): Set<string> {
   const w = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);

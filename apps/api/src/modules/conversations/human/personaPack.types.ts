@@ -68,6 +68,10 @@ export interface PersonaPack {
   storyArcs: Array<{ title: string; beats: string[] }>;
   /** Love characters: the healthy-romance rules apply (docs/love-character-sheets.md). */
   romance?: boolean;
+  /** Friendship characters: best-friend rules apply (docs/friendship-character-sheets.md). */
+  friendship?: boolean;
+  /** Rules only this character needs (e.g. an astrologer: no fear predictions, no paid remedies). */
+  rules?: { title: string; text: string };
   /**
    * Where she lives, if it isn't the user's time zone (e.g. a long-distance girlfriend in Boston).
    * Each turn she's told her own local time, so her day (coffee before class, about to sleep) is real.
@@ -84,8 +88,8 @@ export interface PersonaPack {
    * and verified facts (from docs/mentor-fact-sheets.md, reviewed by the product owner).
    */
   mentor?: {
-    /** Which honesty rules apply: money (Learn & Earn, the default) or health (Health & Wellness). */
-    field?: 'money' | 'health';
+    /** Which honesty rules apply: money (Learn & Earn, the default), health (Health & Wellness), or life (a coach with no money/health rules). */
+    field?: 'money' | 'health' | 'life';
     /** What they teach, in one line. */
     teaches: string;
     /** Verified, dated facts — used over the model's own (possibly outdated) memory. */
