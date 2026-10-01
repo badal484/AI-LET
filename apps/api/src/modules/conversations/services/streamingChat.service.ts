@@ -769,6 +769,7 @@ export class StreamingChatService {
           health: pack.mentor?.field === 'health',
           situations: turnSituations,
           userText: pendingText,
+          examples: pack.examples.flatMap((e) => e.her),
         });
       const check = review(bubbles, newTask);
       if (!check.ok && !abortController.signal.aborted) {
