@@ -968,6 +968,7 @@ export class StreamingChatService {
       assistantMessage: deliveredText,
       previousAssistantMessage: herRecentReplies[herRecentReplies.length - 1],
       timeZone: conversation.user.profile?.timezone,
+      justGivenTask: pack?.mentor ? newTask : undefined,
     });
 
     MemoryExtractionService.processConversationMessage({

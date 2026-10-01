@@ -105,20 +105,37 @@ export function openTask(profile: UserProfile): ProfileTask | undefined {
   return [...profile.tasks].reverse().find((t) => !t.result);
 }
 
+const words = (t: string) => new Set(t.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2));
+/** "resume ka project section rewrite karna" ≈ "resume ka project section numbers ke saath rewrite karna". */
+export function similarTask(a: string, b: string): boolean {
+  if (same(a, b)) return true;
+  const x = words(a);
+  const y = words(b);
+  const shared = [...x].filter((w) => y.has(w)).length;
+  return shared / Math.min(x.size, y.size) >= 0.75 && shared >= 2;
+}
+
 /** A mentor just gave this task: it becomes the open one (an older unanswered task stays unanswered). */
 export function addTask(profile: UserProfile, what: string, today: string): void {
   const task = clip(what.replace(/\s+/g, ' '));
   if (!task) return;
   const open = openTask(profile);
-  if (open && same(open.what, task)) return;
+  // Re-stating the open task in other words (often while asking about it) isn't a new task.
+  if (open && similarTask(open.what, task)) return;
   profile.tasks = [...profile.tasks, { what: task, given: today }].slice(-MAX_TASKS);
 }
 
 /** How they did on a task, from what they told the character. Only an open task can get a result. */
-export function recordTaskResult(profile: UserProfile, update: { what?: string; result?: string; note?: string }, today: string): boolean {
+export function recordTaskResult(
+  profile: UserProfile,
+  update: { what?: string; result?: string; note?: string },
+  today: string,
+  /** The task given in this very exchange: it can't have a result yet. */
+  justGiven?: string,
+): boolean {
   if (!RESULTS.includes(update.result as TaskResult)) return false;
   const what = clip(update.what);
-  const pending = profile.tasks.filter((t) => !t.result);
+  const pending = profile.tasks.filter((t) => !t.result && !(justGiven && same(t.what, justGiven)));
   // Models paraphrase: an exact match first, else the only (or newest) open task.
   const task = (what && pending.find((t) => same(t.what, what))) || pending[pending.length - 1];
   if (!task) return false;
@@ -200,7 +217,7 @@ export function normalizePatch(raw: unknown): ProfilePatch {
   };
 }
 
-export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: { allowHealth?: boolean; today?: string } = {}): UserProfile {
+export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: { allowHealth?: boolean; today?: string; justGivenTask?: string } = {}): UserProfile {
   const patch = normalizePatch(rawPatch);
   const p = normalizeProfile(profile);
   for (const [k, v] of Object.entries(patch.set ?? {})) {
@@ -244,7 +261,7 @@ export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: {
     } else p.events.push({ what, date: e.date, kind });
   }
   p.events = p.events.slice(-12);
-  for (const t of patch.tasks ?? []) if (t && typeof t === 'object') recordTaskResult(p, t, opts.today ?? localToday().date);
+  for (const t of patch.tasks ?? []) if (t && typeof t === 'object') recordTaskResult(p, t, opts.today ?? localToday().date, opts.justGivenTask);
   return p;
 }
 
@@ -351,7 +368,7 @@ Rules:
 - "health": only health things the user chose to share (e.g. "has PCOS", "knee injury").
 - Events: plans and big dates in the user's life with a real date. Convert relative dates using today's date and weekday ("kal" = tomorrow, "parso" = day after, "agle Sunday", "2 hafte baad" = 14 days, "15 tareekh" = the next 15th). Birthdays/anniversaries: kind "yearly". If no date can be worked out, don't add an event.
 - "remove": exact items from the current profile that the user said are no longer true.
-- "tasks": only when the USER says how a task from the profile's "tasks" list that has no "result" yet went: "done" (did it), "partly" (did some of it), or "skipped" (didn't do it / won't). Copy "what" exactly from the profile and put their numbers or details in "note" (under 12 words). Never invent new tasks and never change a task that already has a result.
+- "tasks": only for a task in the profile's "tasks" list that has no "result" yet, and only when the USER clearly reports on it: "done" (did it), "partly" (did some of it), or "skipped" (didn't do it / won't). Answering a question or chatting about the topic is NOT a report. Copy "what" exactly from the profile and put their numbers or details in "note" (under 12 words). Never invent new tasks and never change a task that already has a result.
 - "goals": what they are working towards (e.g. "first freelance client by December", "lose 5 kg", "frontend job"), kept up to date.
 - Don't store: moods of the moment, greetings, what they ate today, anything about the chat or the AI itself, flirting, or anything sexual.
 - Keep each item short (under 12 words), in English. Leave out keys with nothing new. If nothing changed, reply {}.`;
@@ -377,6 +394,8 @@ Rules:
     assistantMessage?: string;
     previousAssistantMessage?: string;
     timeZone?: string | null;
+    /** A task the character gave in this reply — the user hasn't had a chance to do it yet. */
+    justGivenTask?: string;
   }): Promise<void> {
     try {
       const text = params.userMessage.trim();
@@ -406,7 +425,10 @@ Rules:
           { role: 'system', content: this.PROMPT },
           {
             role: 'user',
-            content: `Today is ${today.weekday}, ${today.date}.\nCurrent profile: ${JSON.stringify(profile)}\nLatest exchange:\n${exchange}`,
+            content: `Today is ${today.weekday}, ${today.date}.\nCurrent profile: ${JSON.stringify({
+              ...profile,
+              tasks: profile.tasks.filter((t) => !(params.justGivenTask && same(t.what, params.justGivenTask))),
+            })}\nLatest exchange:\n${exchange}`,
           },
         ],
         { temperature: 0.1, maxTokens: 500 },
@@ -417,7 +439,7 @@ Rules:
       if (!patch || typeof patch !== 'object' || Object.keys(patch).length === 0) return;
       // Apply to the latest saved card (another process may have updated it meanwhile).
       const latest = await this.load(params.userId, params.characterId);
-      const next = applyPatch(latest, patch, { allowHealth: settings?.allowSensitiveMemory ?? false, today: today.date });
+      const next = applyPatch(latest, patch, { allowHealth: settings?.allowSensitiveMemory ?? false, today: today.date, justGivenTask: params.justGivenTask });
       if (JSON.stringify(next) !== JSON.stringify(latest)) await this.save(params.userId, params.characterId, next);
     } catch (err) {
       logger.warn(`Profile update failed: ${err instanceof Error ? err.message : 'Unknown'}`);
