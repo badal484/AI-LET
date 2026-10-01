@@ -20,7 +20,6 @@ import {
   MessagesSquare,
   BookOpen,
   Sparkles,
-  Code2,
   ChevronDown,
   ChevronRight,
   Search,
@@ -83,7 +82,6 @@ const navSections: NavSection[] = [
     defaultOpen: false,
     items: [
       { label: 'A/B Experiments', href: '/analytics/experiments', icon: FlaskConical },
-      { label: 'Developer Platform', href: '/developer-platform', icon: Code2 },
       { label: 'System & Cluster', href: '/infrastructure', icon: Settings },
     ],
   },
