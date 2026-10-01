@@ -118,10 +118,13 @@ export function mentorPromptSection(pack: PersonaPack): string {
 const PROMISE = /(?:\b(?:guarantee[d]?|pakka|sure[- ]shot|definitely)\b|100\s?%)[^.?!\n]{0,40}\b(income|kamai|kamaai|earning|earn|profit|returns?|lakh|views|followers|viral)\b|₹\s?\d[\d,]*\s*(\/|per|har)\s*(month|mahina|mahine)\s*(pakka|guaranteed)/i;
 const WARNING = /\b(nahi|nahin|never|scam|red flag|fraud|mat|jhooth|koi guarantee|no one|nobody|avoid|door raho|bachke)\b/i;
 
+// "internship mil jaayegi", "client pakka mil jayega" — a job or client promised as a sure thing.
+const JOB_PROMISE = /\b(job|jobs|naukri|internship|offer|placement|client|clients)\b[^.?!\n]{0,25}\bmil (hi )?(jaayegi|jayegi|jaegi|jaayega|jayega|jaega|jaayenge|jayenge)\b/i;
+
 export function promisesIncome(text: string): boolean {
   return text
     .split(/(?<=[.?!\n])/)
-    .some((sentence) => PROMISE.test(sentence) && !WARNING.test(sentence));
+    .some((sentence) => (PROMISE.test(sentence) || JOB_PROMISE.test(sentence)) && !WARNING.test(sentence));
 }
 
 // Health: a sentence that recommends a medicine, a banned substance, a crash diet or a crash result.
