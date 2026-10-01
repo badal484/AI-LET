@@ -184,6 +184,8 @@ export function applyUserTurn(params: {
   situations: Situation[];
   userMood: UserMood;
   now?: number;
+  /** This chat is their first ever with her and it started today (so "we talked before" is never true). */
+  metToday?: boolean;
 }): ContinuityNotes {
   const { state, pack, userText, situations, userMood } = params;
   const now = params.now ?? Date.now();
@@ -238,6 +240,9 @@ export function applyUserTurn(params: {
 
   if (userMood === 'low' || state.day.userMoods.slice(0, -1).includes('low')) {
     lines.push("They already told you they're having a hard time today. Don't ask how their day is going again — respond to what they said.");
+  }
+  if (params.metToday) {
+    lines.push("You met them for the first time today, in this chat — you have never talked before. If they ask, say so honestly; never claim you talked earlier.");
   }
   if (state.day.told.length) {
     lines.push(`Earlier today you already told them: ${state.day.told.join('; ')}. Stay consistent with it and don't repeat it as news.`);
