@@ -13,8 +13,6 @@ import { PersonalizationSettingsScreen } from '../screens/settings/Personalizati
 import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen.js';
 import { NotificationCenterScreen } from '../screens/notifications/NotificationCenterScreen.js';
 import { RemindersScreen } from '../screens/notifications/RemindersScreen.js';
-import { VoiceCallScreen } from '../screens/voice/VoiceCallScreen.js';
-import { VoiceSettingsScreen } from '../screens/voice/VoiceSettingsScreen.js';
 import { SafetyPrivacyScreen } from '../screens/settings/SafetyPrivacyScreen.js';
 import { PaywallScreen } from '../screens/subscription/PaywallScreen.js';
 import { SubscriptionManagementScreen } from '../screens/subscription/SubscriptionManagementScreen.js';
@@ -55,7 +53,6 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="NotificationSettings" component={NotificationPreferencesScreen} />
       <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
       <Stack.Screen name="Reminders" component={RemindersScreen} />
-      <Stack.Screen name="VoiceSettings" component={VoiceSettingsScreen} />
       <Stack.Screen name="SafetyPrivacySettings" component={SafetyPrivacyScreen} />
       <Stack.Screen name="SocialFeed" component={SocialFeedScreen} />
       <Stack.Screen name="SocialProfile" component={SocialProfileScreen} />
@@ -69,11 +66,6 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="SocialProfileSetup" component={SocialProfileSetupScreen} />
       <Stack.Screen name="Experiences" component={ExperiencesScreen} />
       <Stack.Screen name="KnowledgeDocuments" component={KnowledgeDocumentsScreen} />
-      <Stack.Screen
-        name="VoiceCall"
-        component={VoiceCallScreen}
-        options={{ gestureEnabled: false }}
-      />
     </Stack.Navigator>
   );
 };

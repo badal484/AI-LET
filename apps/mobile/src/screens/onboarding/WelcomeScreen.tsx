@@ -70,12 +70,12 @@ export const WelcomeScreen: React.FC = () => {
 
           <View style={styles.featureItem}>
             <View style={styles.featureIconContainer}>
-              <Icon name="mic" size={20} color={darkThemeColors.accent} />
+              <Icon name="send" size={20} color={darkThemeColors.accent} />
             </View>
             <View style={styles.featureTextContainer}>
-              <Text style={styles.featureTitle}>Real-Time Voice &amp; Chat</Text>
+              <Text style={styles.featureTitle}>Chats That Feel Real</Text>
               <Text style={styles.featureSubtitle}>
-                Instant streaming text and ultra-low latency interactive voice.
+                Replies like a real friend on WhatsApp, and they remember what matters to you.
               </Text>
             </View>
           </View>

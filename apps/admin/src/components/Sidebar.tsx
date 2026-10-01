@@ -12,7 +12,6 @@ import {
   Bell,
   ShieldCheck,
   Settings,
-  Mic,
   Compass,
   TrendingUp,
   DollarSign,
@@ -54,7 +53,6 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Characters & Avatars', href: '/characters', icon: Bot, badge: 'Core', badgeColor: '#A855F7' },
       { label: 'Knowledge & RAG', href: '/ai/knowledge', icon: BookOpen },
-      { label: 'Voice & Speech', href: '/voice', icon: Mic, badge: 'Live', badgeColor: '#10B981' },
       { label: 'Simulation & Sandbox', href: '/character-simulation', icon: Sparkles },
       { label: 'AI Routing & Models', href: '/ai', icon: BrainCircuit },
     ],

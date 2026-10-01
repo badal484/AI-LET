@@ -27,7 +27,6 @@ import {
   adminNotificationRouter,
 } from './modules/notifications/index.js';
 import { adminAIRouter, adminEvaluationRouter, feedbackRouter } from './modules/ai/index.js';
-import { voiceRoutes, adminVoiceRoutes } from './modules/voice/index.js';
 import { billingRouter, adminBillingRouter } from './modules/billing/index.js';
 import { homeRouter, discoveryRouter, searchRouter, adminDiscoveryRouter } from './modules/discovery/index.js';
 
@@ -138,10 +137,6 @@ export const createApp = (): Express => {
   app.use(`${env.API_PREFIX}/feedback`, feedbackRouter);
   app.use(`${env.API_PREFIX}/admin/ai`, adminAIRouter);
   app.use(`${env.API_PREFIX}/admin/evaluation`, adminEvaluationRouter);
-
-  // Phase 9 Voice Conversation & Real-Time Audio Infrastructure Routes
-  app.use(`${env.API_PREFIX}/voice`, voiceRoutes);
-  app.use(`${env.API_PREFIX}/admin/voice`, adminVoiceRoutes);
 
   // Phase 11 Monetization, Subscriptions, Credits, Entitlements & Billing Routes
   app.use(`${env.API_PREFIX}/billing`, billingRouter);

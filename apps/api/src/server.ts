@@ -4,7 +4,6 @@ import { logger } from './config/logger.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { API_CONSTANTS } from './config/constants.js';
-import { VoiceWebSocketServer } from './modules/voice/realtime/VoiceWebSocketServer.js';
 
 const app = createApp();
 
@@ -14,9 +13,6 @@ const server = app.listen(env.PORT, () => {
     `📡 Health endpoints available at http://localhost:${env.PORT}/health and http://localhost:${env.PORT}${env.API_PREFIX}/health`,
   );
 });
-
-// Initialize Phase 9 Real-Time Voice WebSocket Server
-VoiceWebSocketServer.getInstance().initialize(server);
 
 let isShuttingDown = false;
 

@@ -86,14 +86,6 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
               variant="category"
               size="sm"
             />
-            {character.voiceAvailable && (
-              <Badge
-                label="Voice"
-                variant="voice"
-                size="sm"
-                icon={<Icon name="voice" size={10} color={darkThemeColors.voiceActive} />}
-              />
-            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -205,14 +197,6 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
             variant="category"
             size="sm"
           />
-          {character.voiceAvailable && (
-            <Badge
-              label="Voice"
-              variant="voice"
-              size="sm"
-              icon={<Icon name="voice" size={10} color={darkThemeColors.voiceActive} />}
-            />
-          )}
         </View>
       </View>
     </TouchableOpacity>

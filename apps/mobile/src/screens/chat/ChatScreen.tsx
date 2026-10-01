@@ -815,23 +815,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             </View>
           </TouchableOpacity>
 
-          {/* Header Right Actions: Call + Menu */}
+          {/* Header Right Actions: Menu */}
           <View style={styles.headerRightActions}>
-            <TouchableOpacity
-              style={styles.callButton}
-              onPress={() => {
-                navigation.navigate('VoiceCall', {
-                  characterId: characterEffectiveId,
-                  conversationId: activeConversationId || undefined,
-                  characterName: characterName,
-                  characterAvatarUrl: characterAvatarUrl,
-                });
-              }}
-              activeOpacity={0.7}
-            >
-              <Icon name="phone" size={20} color="#C084FC" />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={styles.menuButton}
               onPress={() => setIsMenuVisible(true)}
@@ -1092,21 +1077,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 }}
               >
                 <Text style={styles.menuItemText}>View Profile & Lore</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setIsMenuVisible(false);
-                  navigation.navigate('VoiceCall', {
-                    characterId: characterEffectiveId,
-                    conversationId: activeConversationId || undefined,
-                    characterName: characterName,
-                    characterAvatarUrl: characterAvatarUrl,
-                  });
-                }}
-              >
-                <Text style={styles.menuItemText}>Start Voice Call</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.menuItem} onPress={handleResetRelationship}>
@@ -1478,16 +1448,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  callButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(168, 85, 247, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.35)',
   },
   menuButton: {
     width: 38,

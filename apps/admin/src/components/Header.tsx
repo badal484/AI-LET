@@ -17,7 +17,6 @@ export const Header: React.FC<{ onOpenOmnibar?: () => void }> = ({ onOpenOmnibar
   const getBreadcrumbTitle = (seg: string) => {
     switch (seg) {
       case 'characters': return 'Characters & Avatars';
-      case 'voice': return 'Voice Infrastructure';
       case 'discovery': return 'Discovery & Home';
       case 'ai': return 'AI Operations';
       case 'models': return 'Model Routing';

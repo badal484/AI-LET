@@ -18,7 +18,7 @@ import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
 import type { CharacterCatalogItem } from '@ai-companion/types';
-import { Icon, IconButton } from '../../components/common/index.js';
+import { IconButton } from '../../components/common/index.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CategoryRouteProp = RouteProp<RootStackParamList, 'CategoryBrowser'>;
@@ -76,11 +76,6 @@ export const CategoryBrowserScreen: React.FC = () => {
               <Text style={styles.tagPillText}>#{tag.displayName}</Text>
             </View>
           ))}
-          {item.voiceAvailable && (
-            <View style={styles.voicePill}>
-              <Icon name="voice" size={11} color={darkThemeColors.accent} />
-            </View>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -289,15 +284,6 @@ const styles = StyleSheet.create({
   tagPillText: {
     fontSize: 10,
     color: darkThemeColors.textMuted,
-  },
-  voicePill: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  voicePillText: {
-    fontSize: 10,
   },
   loadingContainer: {
     padding: spacing.xxl,
