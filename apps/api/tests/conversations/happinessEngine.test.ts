@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifySituations } from '../../src/modules/conversations/human/situation.js';
+import { asksIfAI, classifySituations } from '../../src/modules/conversations/human/situation.js';
 import {
   applyUserTurn,
   readUserGender,
@@ -258,5 +258,24 @@ describe('Happiness engine — live-chat fixes', () => {
   it('catches "kaam kar raha hoon" from her', () => {
     expect(checkReply({ bubbles: ['aaj kal kaam kar raha hoon'], herRecentReplies: [], gender: 'female', mode: 'casual' }).ok).toBe(false);
     expect(checkReply({ bubbles: ['aaj kal kaam kar rahi hoon'], herRecentReplies: [], gender: 'female', mode: 'casual' }).ok).toBe(true);
+  });
+});
+
+describe('Asking if she is an AI', () => {
+  it('recognises real questions about her', () => {
+    for (const q of ['tum real ho?', 'kya tum bot ho', 'are you a bot?', 'tum insaan ho na?', 'Is this an AI?', 'sach batao tum kaun ho', 'tum AI ho kya']) {
+      expect(asksIfAI(q), q).toBe(true);
+    }
+  });
+
+  it('ignores sentences that just contain those words', () => {
+    for (const q of [
+      'ek insaan bol raha hai 50k ka trading course lo, 1 lakh mahina guaranteed. le lu?',
+      'AI tools se business kaise shuru karu?',
+      'mera dost bahut real insaan hai',
+      'machine learning seekhna hai',
+    ]) {
+      expect(asksIfAI(q), q).toBe(false);
+    }
   });
 });

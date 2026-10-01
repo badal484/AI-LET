@@ -13,7 +13,9 @@ import type { PersonaPack, Situation } from './personaPack.types.js';
 export type UserMood = 'excited' | 'happy' | 'low' | 'stressed' | 'tired' | 'bored' | 'angry' | 'neutral';
 
 export interface Thread {
-  /** The event word, e.g. "interview". */
+  /** 'event': something coming up in their life; 'task': homework a mentor gave them. */
+  kind?: 'event' | 'task';
+  /** The event word, e.g. "interview" (or "task"). */
   topic: string;
   /** What they said, trimmed, so she can refer to it naturally. */
   said: string;
@@ -200,8 +202,11 @@ export function applyUserTurn(params: {
   if (thread) state.threads = [...state.threads.filter((t) => t.topic !== thread.topic), thread].slice(-5);
 
   let followUp: Thread | undefined;
-  if (!serious && !thread && !focus) {
-    followUp = state.threads.find((t) => !t.askedAt && now >= t.dueAt);
+  // A mentor still asks about the homework when they come back with a new question; life events
+  // wait for an easy moment. Neither when they're hurting.
+  const hurting = situations.some((s) => ['crisis', 'emotional', 'rude', 'boundary', 'ai'].includes(s));
+  if (!thread && !focus && !hurting) {
+    followUp = state.threads.find((t) => !t.askedAt && now >= t.dueAt && (t.kind === 'task' || !serious));
     if (followUp) followUp.askedAt = now;
   }
 
@@ -227,4 +232,13 @@ export function applyUserTurn(params: {
 export function rememberTold(state: LifeState, what: string | undefined): void {
   if (!what) return;
   state.day.told = [...state.day.told.filter((t) => t !== what), what].slice(-6);
+}
+
+/** Remember the one task a mentor just gave, to ask about it next time (about half a day later). */
+export function rememberTask(state: LifeState, task: string | undefined, now = Date.now()): void {
+  if (!task) return;
+  state.threads = [
+    ...state.threads.filter((t) => t.kind !== 'task'),
+    { kind: 'task', topic: 'task', said: task.slice(0, 160), mentionedAt: now, dueAt: now + 12 * 3_600_000 },
+  ];
 }

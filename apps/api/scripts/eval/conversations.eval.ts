@@ -16,7 +16,7 @@ import 'dotenv/config';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { PrismaClient, type RelationshipStage } from '@prisma/client';
 import { signAccessToken } from '../../src/security/tokens.js';
 import { redis } from '../../src/infrastructure/redis/redis.js';
@@ -107,7 +107,7 @@ const API = process.env['EVAL_API_URL'] || 'http://localhost:4000/api/v1';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const HOUR = 3_600_000;
 
-async function send(conversationId: string, headers: Record<string, string>, text: string): Promise<string[]> {
+export async function send(conversationId: string, headers: Record<string, string>, text: string): Promise<string[]> {
   const res = await fetch(`${API}/conversations/${conversationId}/messages`, {
     method: 'POST',
     headers: { ...headers, Accept: 'text/event-stream' },
@@ -132,7 +132,7 @@ async function send(conversationId: string, headers: Record<string, string>, tex
 }
 
 /** Simulate time passing: move this conversation's history (and her memory of it) `hours` back. */
-async function timeTravel(userId: string, characterId: string, conversationId: string, hours: number) {
+export async function timeTravel(userId: string, characterId: string, conversationId: string, hours: number) {
   const ms = hours * HOUR;
   await p.$executeRaw`UPDATE messages SET created_at = created_at - make_interval(secs => ${ms / 1000}) WHERE conversation_id = ${conversationId}::uuid`;
   const lifeKey = `human:life:${userId}:${characterId}`;
@@ -266,7 +266,8 @@ async function main() {
   redis.disconnect();
 }
 
-main().catch(async (err) => {
+// Run only when started directly (other eval scripts import send/timeTravel from here).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(async (err) => {
   console.error(err);
   await p.$disconnect();
   redis.disconnect();

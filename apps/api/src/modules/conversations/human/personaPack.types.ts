@@ -17,6 +17,10 @@ export type Situation =
   | 'task'
   | 'opinion'
   | 'crisis'
+  /** Warning-sign symptoms (chest pain, can't breathe, fainting…) — they need a doctor now. */
+  | 'emergency'
+  /** Signs of an eating disorder (purging, starving, losing control around food). */
+  | 'eating'
   | 'bye'
   | 'return'
   | 'photo'
@@ -67,4 +71,18 @@ export interface PersonaPack {
   /** Her favourite things that easily turn into a tic (e.g. chai) — at most once every few replies. */
   motifs: string[];
   examples: PersonaExample[];
+  /**
+   * Mentors (Learn & Earn etc.) teach: complete answers, one task at a time, follow-up next time,
+   * and verified facts (from docs/mentor-fact-sheets.md, reviewed by the product owner).
+   */
+  mentor?: {
+    /** Which honesty rules apply: money (Learn & Earn, the default) or health (Health & Wellness). */
+    field?: 'money' | 'health';
+    /** What they teach, in one line. */
+    teaches: string;
+    /** Verified, dated facts — used over the model's own (possibly outdated) memory. */
+    facts: string;
+    /** What this mentor must never do. */
+    never: string;
+  };
 }

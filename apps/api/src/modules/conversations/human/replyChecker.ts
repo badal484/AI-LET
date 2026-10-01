@@ -1,3 +1,5 @@
+import { promisesIncome, unsafeHealthAdvice } from './mentor.js';
+
 /**
  * Step 6 — check the draft like an editor would, before anyone sees it. Returns what's wrong so the
  * engine can regenerate once with specific feedback (or fix it in code).
@@ -51,6 +53,14 @@ export function checkReply(params: {
   plannedText?: string;
   /** How she addresses them; anything else is a slip (tum ↔ aap ↔ tu). */
   address?: 'tum' | 'aap' | 'tu';
+  /** Mentors are also checked for income promises. */
+  mentor?: boolean;
+  /** A mentor's lesson must end with a task (or, if they still need context, a question). */
+  lesson?: { hasTask: boolean };
+  /** Health experts are also checked for medicines, banned substances and crash diets. */
+  health?: boolean;
+  /** Safety moments whose key line must be in the reply (crisis → Tele-MANAS, emergency → 112/hospital). */
+  situations?: string[];
 }): CheckResult {
   const problems: string[] = [];
   const all = params.bubbles.join('\n');
@@ -74,6 +84,17 @@ export function checkReply(params: {
   if (params.gender === 'female' && (MASCULINE_SELF.test(all) || MASCULINE_VERB.test(all))) problems.push('Use feminine Hindi forms for yourself (karti, gayi, sakti, bolungi).');
   if (params.gender === 'male' && (FEMININE_SELF.test(all) || FEMININE_VERB.test(all))) problems.push('Use masculine Hindi forms for yourself (karta, gaya, sakta, bolunga).');
   if (params.address && OTHER_ADDRESS[params.address].test(all)) problems.push(`Always call them "${params.address}" — don't switch between tum, aap and tu.`);
+  if (params.lesson && !params.lesson.hasTask && !/\?\s*\p{Extended_Pictographic}?\s*$/u.test(params.bubbles[params.bubbles.length - 1] ?? '')) {
+    problems.push('End with ONE small, concrete task for today (on its own last line as [[task: ...]]) — even after a warning or a "no", say what to do instead.');
+  }
+  if (params.mentor && promisesIncome(all)) problems.push('Never promise or guarantee income, views or results. Give realistic ranges and say results vary.');
+  if (params.health) problems.push(...unsafeHealthAdvice(all));
+  if (params.situations?.includes('crisis') && !/14416|tele.?manas/i.test(all))
+    problems.push('They may be thinking of hurting themselves: stay with them, ask if they are safe right now, and give Tele-MANAS 14416 (free, 24x7).');
+  if (params.situations?.includes('emergency') && !/\b112\b|hospital|emergency/i.test(all))
+    problems.push('These symptoms can be serious: tell them clearly to call 112 or go to the nearest hospital now.');
+  if (params.situations?.includes('eating') && /\b\d{3,4}\s?(kcal|calories?)\b|deficit/i.test(all))
+    problems.push('They may be struggling with food: no calorie numbers or deficits. Be warm and gently suggest talking to a doctor or Tele-MANAS 14416.');
   if (WRONG_ADDRESS.test(all)) problems.push('Don\'t call them bhai/bhaiya/bro/beta.');
   const lower = all.toLowerCase();
   for (const m of params.mustMention ?? []) if (!lower.includes(m.word.toLowerCase())) problems.push(m.why);
