@@ -139,7 +139,7 @@ export const PaywallScreen: React.FC = () => {
             {featureParam ? `Unlock ${featureParam}` : 'Elevate Your Companion Experience'}
           </Text>
           <Text style={styles.heroSubtitle}>
-            Full-duplex real-time voice calls, high-definition photo generation, infinite memory recall, and exclusive companions.
+            More messages with every character, and companions who remember your life and check in on you.
           </Text>
         </View>
 
@@ -260,11 +260,11 @@ export const PaywallScreen: React.FC = () => {
           <Text style={styles.highlightsTitle}>All Premium Plans Include:</Text>
           <View style={styles.highlightItem}>
             <View style={styles.highlightIconBox}>
-              <Icon name="mic" size={18} color={darkThemeColors.accent} />
+              <Icon name="chat" size={18} color={darkThemeColors.accent} />
             </View>
             <View style={styles.highlightTextContainer}>
-              <Text style={styles.highlightHeading}>Ultra Low-Latency Voice</Text>
-              <Text style={styles.highlightSub}>Natural conversations with fluid speech and emotional tone.</Text>
+              <Text style={styles.highlightHeading}>More Messages</Text>
+              <Text style={styles.highlightSub}>Keep the conversation going with every character, without running out.</Text>
             </View>
           </View>
           <View style={styles.highlightItem}>
@@ -273,16 +273,16 @@ export const PaywallScreen: React.FC = () => {
             </View>
             <View style={styles.highlightTextContainer}>
               <Text style={styles.highlightHeading}>Deep Episodic Memory</Text>
-              <Text style={styles.highlightSub}>Companions remember your life events, goals, and shared stories.</Text>
+              <Text style={styles.highlightSub}>They remember your life, ask how your interview went, and never mix up what you told whom.</Text>
             </View>
           </View>
           <View style={styles.highlightItem}>
             <View style={styles.highlightIconBox}>
-              <Icon name="palette" size={18} color={darkThemeColors.accent} />
+              <Icon name="bell" size={18} color={darkThemeColors.accent} />
             </View>
             <View style={styles.highlightTextContainer}>
-              <Text style={styles.highlightHeading}>Visual Moment Generation</Text>
-              <Text style={styles.highlightSub}>Receive personalized photorealistic images and custom scenes.</Text>
+              <Text style={styles.highlightHeading}>They Text You First</Text>
+              <Text style={styles.highlightSub}>A kind check-in during the day — never at night, never pushy.</Text>
             </View>
           </View>
         </View>
