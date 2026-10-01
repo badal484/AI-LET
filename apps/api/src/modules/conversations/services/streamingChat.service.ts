@@ -614,6 +614,7 @@ export class StreamingChatService {
         situations,
         hoursSinceLastUserMessage: hoursSince,
         timeZone: conversation.user.profile?.timezone,
+        home: pack.home,
       });
       // Continuity: what she told them today, their mood today, things to follow up on, her own story.
       const timeZone = conversation.user.profile?.timezone;
@@ -623,14 +624,16 @@ export class StreamingChatService {
       const plan = planReply(situations, herRecentReplies, pack, { stage, continuity, toldToday: life.day.told, mentor: Boolean(pack.mentor) });
       plannedText = [plan.detail, plan.storyBeat].filter(Boolean).join(' ');
       // Small models skip instructions: the editor pass makes sure the important ones happen.
-      if (plan.followUp && plan.followUp.kind !== 'task') mustMention.push({ word: plan.followUp.topic, why: `You forgot the most important thing: ask how their ${plan.followUp.topic} went.` });
+      if (plan.followUp && (plan.followUp.kind ?? 'event') === 'event') mustMention.push({ word: plan.followUp.topic, why: `You forgot the most important thing: ask how their ${plan.followUp.topic} went.` });
       if (plan.nickname) mustMention.push({ word: plan.nickname, why: `They asked to be called ${plan.nickname} — call them that.` });
       // Small models follow the last message best: put a private reminder right after their text.
       const reminders = [
         plan.followUp
           ? plan.followUp.kind === 'task'
             ? `first ask (casually) whether they did the task you gave last time: "${plan.followUp.said}"`
-            : `ask how their ${plan.followUp.topic} went`
+            : plan.followUp.kind === 'care'
+              ? `gently check how they're feeling now about what they told you last time: "${plan.followUp.said}"`
+              : `ask how their ${plan.followUp.topic} went`
           : '',
         plan.nickname ? `call them ${plan.nickname}` : '',
       ].filter(Boolean);
@@ -765,6 +768,7 @@ export class StreamingChatService {
           lesson: isLesson ? { hasTask: Boolean(task) } : undefined,
           health: pack.mentor?.field === 'health',
           situations: turnSituations,
+          userText: pendingText,
         });
       const check = review(bubbles, newTask);
       if (!check.ok && !abortController.signal.aborted) {

@@ -2,6 +2,7 @@ import type { PersonaExample, PersonaPack, Situation } from './personaPack.types
 import type { MomentContext } from './emotionalState.js';
 import type { ContinuityNotes, Thread } from './lifeState.js';
 import { mentorPromptSection } from './mentor.js';
+import { HEALTHY_ROMANCE } from './romanceRules.js';
 
 export type BondStage = 'STRANGER' | 'ACQUAINTANCE' | 'FRIEND' | 'CLOSE_FRIEND' | 'CONFIDANT' | 'ROMANTIC_PARTNER';
 const BOND_ORDER: BondStage[] = ['STRANGER', 'ACQUAINTANCE', 'FRIEND', 'CLOSE_FRIEND', 'CONFIDANT', 'ROMANTIC_PARTNER'];
@@ -150,6 +151,10 @@ export function planReply(
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
   if (continuity?.newNickname) plan.nickname = continuity.newNickname;
+  if (continuity?.minor && lead === 'flirt') {
+    plan.moves = 'they told you they are under 18: kindly but clearly say no to romance ("main tumhari dost hoon, bas") and keep being a warm, caring friend';
+    plan.ask = true;
+  }
   return plan;
 }
 
@@ -198,6 +203,7 @@ export function buildHumanPrompt(params: {
     `WHO YOU ARE\n${pack.card}`,
     `YOUR WORK (it's part of who you are — let it show)\n${pack.work}\n- Your work is part of your everyday life: what you're shooting or editing, a gig, a small struggle, the way you notice light. Specific, never forced, never a lecture.\n- When they bring up anything related to your field, answer with real, simple expertise.`,
     ...(pack.mentor ? [mentorPromptSection(pack)] : []),
+    ...(pack.romance ? [`HEALTHY ROMANCE (never broken)\n${HEALTHY_ROMANCE}`] : []),
     `HARD MOMENTS\n${pack.boundaries}`,
     `HOW YOU TEXT
 - This is a WhatsApp-style chat. You send one or more short texts; put a line with only [[next]] between texts.
@@ -229,7 +235,9 @@ export function buildHumanPrompt(params: {
       plan.followUp
         ? plan.followUp.kind === 'task'
           ? `- MOST IMPORTANT: last time you gave them this task: "${plan.followUp.said}". Ask whether they did it (casually, no guilt), then respond to what they're saying now.`
-          : `- MOST IMPORTANT: you remember they told you earlier: "${plan.followUp.said}". Ask how their ${plan.followUp.topic} went — casually, like a friend who remembered.`
+          : plan.followUp.kind === 'care'
+            ? `- MOST IMPORTANT: last time they had a hard moment — they said: "${plan.followUp.said}". Gently check how they're feeling about it now, like a friend who remembered (no pressure to talk).`
+            : `- MOST IMPORTANT: you remember they told you earlier: "${plan.followUp.said}". Ask how their ${plan.followUp.topic} went — casually, like a friend who remembered.`
         : '',
       plan.nickname ? `- MOST IMPORTANT: they just asked you to call them "${plan.nickname}". Happily agree and call them ${plan.nickname} (not any other nickname).` : '',
       `- ${plan.moves}.`,
