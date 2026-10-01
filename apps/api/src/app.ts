@@ -51,7 +51,6 @@ import { agentsRouter, adminAgentsRouter } from './modules/agents/index.js';
 import { socialRouter, adminSocialRouter } from './modules/social/index.js';
 import { knowledgeRouter, adminKnowledgeRouter } from './modules/knowledge/knowledge.routes.js';
 import { simulationRouter, adminSimulationRouter } from './modules/character-simulation/simulation.routes.js';
-import { publicApiRouter, developerConsoleRouter, oauthRouter, adminDeveloperPlatformRouter } from './modules/developer-platform/index.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -201,13 +200,6 @@ export const createApp = (): Express => {
   // Phase 27 Advanced Character Simulation, Goals, Routines & Long-Horizon Behavior Routes
   app.use(`${env.API_PREFIX}/simulation`, simulationRouter);
   app.use(`${env.API_PREFIX}/admin/simulation`, adminSimulationRouter);
-
-  // Phase 28 Developer Platform, Public API, SDK, Webhooks & Extensibility Routes
-  app.use('/v1', publicApiRouter);
-  app.use('/oauth', oauthRouter);
-  app.use(`${env.API_PREFIX}/oauth`, oauthRouter);
-  app.use(`${env.API_PREFIX}/developers`, developerConsoleRouter);
-  app.use(`${env.API_PREFIX}/admin/developer-platform`, adminDeveloperPlatformRouter);
 
   // 404 Route Catch-All
   app.use('*', (req, _res, next) => {

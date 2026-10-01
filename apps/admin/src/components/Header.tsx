@@ -28,7 +28,6 @@ export const Header: React.FC<{ onOpenOmnibar?: () => void }> = ({ onOpenOmnibar
       case 'creators': return 'Creators Directory';
       case 'notifications': return 'Notifications & Drops';
       case 'social': return 'Social Studio';
-      case 'developer-platform': return 'Developer Platform';
       case 'infrastructure': return 'System Cluster';
       case 'analytics': return 'Analytics';
       case 'growth': return 'Growth & Retention';

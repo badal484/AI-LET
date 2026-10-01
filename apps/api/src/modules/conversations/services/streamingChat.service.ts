@@ -530,11 +530,14 @@ export class StreamingChatService {
       select: { role: true, content: true, createdAt: true },
     });
     const latestSummary = await ConversationSummaryService.getLatestSummary(conversationId);
-    const activeGoal = await UserGoalService.getInstance().getActiveGoal(userId, conversation.characterId);
+    // Human-engine characters (a persona pack) get their own compact prompt; goals and skills only feed the
+    // legacy prompt, so they're skipped for them.
+    const pack = personaPackFor(conversation.character.slug);
+    const activeGoal = pack ? null : await UserGoalService.getInstance().getActiveGoal(userId, conversation.characterId);
     const activeGoalText = activeGoal
       ? `Goal Title: "${activeGoal.title}" (Category: ${activeGoal.category}, Progress: ${(activeGoal.progress * 100).toFixed(0)}%)`
       : null;
-    const activeSkills = await SkillRegistryService.getInstance().getCharacterSkills(conversation.characterId);
+    const activeSkills = pack ? [] : await SkillRegistryService.getInstance().getCharacterSkills(conversation.characterId);
     const activeSkillText =
       activeSkills.length > 0 ? activeSkills.map((s) => `- ${s.name} (${s.slug}): ${s.description}`).join('\n') : null;
 
@@ -582,7 +585,6 @@ export class StreamingChatService {
     };
 
     // Human engine: characters with a persona pack get the compact, situation-aware prompt.
-    const pack = personaPackFor(conversation.character.slug);
     const herRecentReplies = recentMessages.filter((m) => m.role === 'assistant').map((m) => m.content);
     let humanMode = false;
     let afterDelivery: (() => Promise<void>) | null = null;

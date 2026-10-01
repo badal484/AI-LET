@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   CreditCard,
   Bell,
-  Code2,
   Settings,
   Plus,
   ArrowRight,
@@ -190,18 +189,6 @@ export const CommandPalette: React.FC<{
         router.push('/moderation');
       },
       keywords: ['moderation', 'safety', 'nsfw', 'jailbreak', 'reports'],
-    },
-    {
-      id: 'developer',
-      category: 'Advanced Tools',
-      title: 'Developer Platform & API Keys',
-      subtitle: 'Manage public API tokens, webhooks and integrations',
-      icon: Code2,
-      action: () => {
-        onClose();
-        router.push('/developer-platform');
-      },
-      keywords: ['developer', 'api', 'keys', 'webhooks', 'sdk'],
     },
     {
       id: 'infrastructure',
