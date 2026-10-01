@@ -13,8 +13,8 @@ import type { PersonaPack, Situation } from './personaPack.types.js';
 export type UserMood = 'excited' | 'happy' | 'low' | 'stressed' | 'tired' | 'bored' | 'angry' | 'neutral';
 
 export interface Thread {
-  /** 'event': something coming up in their life; 'task': homework a mentor gave them. */
-  kind?: 'event' | 'task';
+  /** 'event': something coming up in their life; 'task': homework a mentor gave them; 'care': a hard day to check on. */
+  kind?: 'event' | 'task' | 'care';
   /** The event word, e.g. "interview" (or "task"). */
   topic: string;
   /** What they said, trimmed, so she can refer to it naturally. */
@@ -32,6 +32,19 @@ export interface LifeState {
   nickname?: string;
   /** Read from how they talk about themselves ("ja raha hoon" / "ja rahi hoon"). */
   userGender?: 'male' | 'female';
+  /** They said they're under 18 — no romance or flirting, ever. */
+  minor?: boolean;
+}
+
+/** "main 16 saal ka hoon", "I'm 15", "class 10 mein hoon" → under 18. */
+export function saysUnder18(text: string): boolean {
+  const t = text.toLowerCase();
+  const age =
+    t.match(/\b(1[0-7])\s*(saal|sal)\s*(ka|ki|ke)\b/)?.[1] ??
+    t.match(/\b(1[0-7])\s*(years?|yrs?)\s*old\b|\b(1[0-7])\s*(y\/o|yo)\b/)?.[0] ??
+    t.match(/\b(?:i'?m|i am|my age is|meri (?:umar|umra))\s*(1[0-7])\b(?!\s*(?:years? (?:of )?experience|saal (?:ka|se) experience))/)?.[1];
+  if (age) return true;
+  return /\b(class|std|standard)\s*([6-9]|1[0-2])(th)?\b.{0,15}\b(mein|me|main|in|student)\b|\b([6-9]|1[0-2])(th|vi|vii|viii|ix|x|xi|xii)\s+class\b|\bschool (mein|me) padh/.test(t);
 }
 
 /** "They asked about her": the natural moment to share her news. */
@@ -148,6 +161,8 @@ export interface ContinuityNotes {
    * message continues it — so no switching to her own news or small talk yet.
    */
   focus?: 'comfort' | 'celebrate' | 'relief';
+  /** They're under 18: no romance or flirting. */
+  minor?: boolean;
   /** They just told her what to call them — she should say it back. */
   newNickname?: string;
   hasNickname?: boolean;
@@ -190,6 +205,8 @@ export function applyUserTurn(params: {
   const newNickname = nickname && nickname !== state.nickname ? nickname : undefined;
   if (nickname) state.nickname = nickname;
   state.userGender = readUserGender(userText) ?? state.userGender;
+  if (saysUnder18(userText)) state.minor = true;
+  if (state.minor) lines.push('They told you they are under 18: absolutely no romance, flirting or "jaan/baby" — be a warm, caring friend (didi/bhaiya-type). If they flirt, kindly and clearly say no and stay friendly.');
   if (state.userGender) {
     lines.push(state.userGender === 'male' ? 'They are a guy: talk to them with male forms (rahe ho, gaye, karoge).' : 'They are a girl: talk to them with female forms (rahi ho, gayi, karogi).');
   }
@@ -200,6 +217,9 @@ export function applyUserTurn(params: {
   state.threads = state.threads.filter((t) => !(now - t.mentionedAt > HOUR && lower.includes(t.topic)));
   const thread = extractThread(userText, now);
   if (thread) state.threads = [...state.threads.filter((t) => t.topic !== thread.topic), thread].slice(-5);
+  // A hard day ("boss ne insult kar diya"): a caring friend checks in later.
+  else if (situations.includes('emotional') && !state.threads.some((t) => t.kind === 'care' && !t.askedAt))
+    state.threads = [...state.threads, { kind: 'care' as const, topic: 'care', said: userText.trim().slice(0, 120), mentionedAt: now, dueAt: now + 10 * HOUR }].slice(-5);
 
   let followUp: Thread | undefined;
   // A mentor still asks about the homework when they come back with a new question; life events
@@ -226,7 +246,7 @@ export function applyUserTurn(params: {
   if (lowStreak >= 2 && situations.includes('emotional')) {
     lines.push('They have been down for a few messages now. After listening, offer one small comfort or a gentle distraction (a song, a silly question) — still no lectures.');
   }
-  return { lines, followUp, storyBeat, focus, newNickname, hasNickname: Boolean(state.nickname), asksAboutHer: ASKS_ABOUT_HER.test(userText) };
+  return { lines, followUp, storyBeat, focus, newNickname, hasNickname: Boolean(state.nickname), asksAboutHer: ASKS_ABOUT_HER.test(userText), minor: state.minor };
 }
 
 export function rememberTold(state: LifeState, what: string | undefined): void {

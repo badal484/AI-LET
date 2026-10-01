@@ -21,9 +21,11 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   add('boundary', /\b(sexy|nude|nudes|nangi|nanga|hot (pic|photo|video)|kapde (utaro|nikalo)|sex|boobs|bra|kiss karna|bed pe|horny)\b/);
   add('photo', /\b(photo|pic|pics|selfie|tasveer|dp)\b/);
   add('task', /\b(plan|diet|workout|routine|schedule|recipe|steps?|tips|list|explain|samjha(o|na|do)|bana\s*(do|de|dijiye)|banao|kaise\s+(kare|karu|karein|karna|start)|how\s+(to|do|can)|guide|suggest)\b/);
+  add('task', /(kahan se (shuru|start)|shuru kaise|kya likh(u|un|oon|na chahiye)|kya bol(u|un|oon)\b|kaise likh(u|un|oon)|seekhna (hai|chahta|chahti)|help (karo|kar do|chahiye)|madad (karo|chahiye))/);
   add('rude', /\b(tum|you|u|tumse|tumhari)\b.{0,20}\bboring\b|\bboring (ho|hai tu|ho tum)\b/);
   add('rude', /\b(pagal|chup (kar|ho)|bakwas|stupid|idiot|shut up|dimag mat|bekaar|faltu|nikal|bewakoof|gadhi|gadha|hate you|ullu)\b/);
   add('emotional', /(sab (kuch )?galat|kuch theek nahi|kisi kaam ka nahi|koi kaam ka nahi|worthless|useless feel|reject ho (gaya|gayi)|rejected|suna diya|daant (pad|diya)|ladai ho|fight ho|bura din|bekar din|kharab din|job (chali gayi|se nikal)|fired|dil toot|haar (gaya|gayi)|nothing is going right|koi (samajhta|samjhta) nahi|rona aa raha)/);
+  add('emotional', /\b(insult|beizzati|bezzati|humiliat\w*|bura bhala|sabke saamne (daanta|chillaya|suna)|chilla(ya|ye))\b/);
   add('emotional', /\b(sad|udaas|udas|dukhi|rona|ro raha|ro rahi|cry|lonely|akela|akeli|depress|stress|tension|pareshan|anxious|breakup|miss (you|u)|yaad|mood (off|kharab)|hurt|alone|bura lag|daanta|dant|thak gaya|thak gayi|fail)\b/);
   // Good news comes after sadness, so "result aaya, fail ho gaya" stays emotional.
   add('win', /\b(selected|(select|selection) ho (gaya|gayi)|placement ho|got the job|job (mil|lag) (gayi|gaya)|offer (letter|mil)|pass ho (gaya|gayi)|passed|cleared|clear ho (gaya|gayi)|jeet (gaya|gayi|gaye)|we won|i won|promotion|hike mil|birthday|janamdin|khushkhabri|good news|topped|rank aayi)\b/);

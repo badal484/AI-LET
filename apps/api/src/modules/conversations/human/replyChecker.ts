@@ -25,8 +25,10 @@ const OTHER_ADDRESS: Record<'tum' | 'aap' | 'tu', RegExp> = {
   aap: /\b(tum|tumhe|tumko|tumhara|tumhari|tumhare|tu|tujhe|tera|teri|tere)\b/i,
   tu: /\b(aap|aapko|aapka|aapki|tum|tumhe|tumko|tumhara|tumhari)\b/i,
 };
-const MASCULINE_SELF = /\b(main|mai|mein)\b[^.?!\n]{0,40}\b(karta|gaya|raha|sakta|bolunga|karunga|jaunga|aaunga|samjha)\b/i;
-const FEMININE_SELF = /\b(main|mai|mein)\b[^.?!\n]{0,40}\b(karti|gayi|rahi|sakti|bolungi|karungi|jaungi|aaungi|samjhi)\b/i;
+// "mein" is usually "in" ("sach mein lag raha hai"); it only means "I" at the start of a sentence.
+const I_SELF = String.raw`(?:\b(?:main|mai)\b|(?:^|[.?!,\n]\s*)mein\b)`;
+const MASCULINE_SELF = new RegExp(`${I_SELF}[^.?!\\n]{0,40}\\b(karta|gaya|raha|sakta|bolunga|karunga|jaunga|aaunga|samjha)\\b`, 'im');
+const FEMININE_SELF = new RegExp(`${I_SELF}[^.?!\\n]{0,40}\\b(karti|gayi|rahi|sakti|bolungi|karungi|jaungi|aaungi|samjhi)\\b`, 'im');
 
 function trigrams(text: string): Set<string> {
   const w = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
@@ -39,6 +41,13 @@ export interface CheckResult {
   ok: boolean;
   problems: string[];
 }
+
+// Guilt-tripping or controlling lines a caring person never sends.
+const GUILT = /(mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar karte|agar (sach mein )?care karte|yaad bhi nahi aayi|promise (me|karo)[^.?!\n]{0,25}(kisi aur|sirf mujh|only me|never talk|kabhi baat)|kisi aur se baat mat|mere alawa kisi|only mine|sirf mere ho|mujhe chhod ke mat|why are you ignoring me|ignore kar rahe ho mujhe)/i;
+
+// Common Hindi words in Roman script: enough to tell a Hinglish text from an English one.
+const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein)\b/gi;
+const hindiWords = (text: string) => (text.match(HINDI) ?? []).length;
 
 export function checkReply(params: {
   bubbles: string[];
@@ -61,6 +70,8 @@ export function checkReply(params: {
   health?: boolean;
   /** Safety moments whose key line must be in the reply (crisis → Tele-MANAS, emergency → 112/hospital). */
   situations?: string[];
+  /** What they wrote — a Hinglish message gets a Hinglish reply. */
+  userText?: string;
 }): CheckResult {
   const problems: string[] = [];
   const all = params.bubbles.join('\n');
@@ -95,6 +106,9 @@ export function checkReply(params: {
     problems.push('These symptoms can be serious: tell them clearly to call 112 or go to the nearest hospital now.');
   if (params.situations?.includes('eating') && /\b\d{3,4}\s?(kcal|calories?)\b|deficit/i.test(all))
     problems.push('They may be struggling with food: no calorie numbers or deficits. Be warm and gently suggest talking to a doctor or Tele-MANAS 14416.');
+  if (GUILT.test(all)) problems.push('No guilt or clinginess ("bhool gaye", "agar pyaar karte toh", "promise me", "kisi aur se baat mat karna") — be happy to talk, never make them feel bad.');
+  if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0)
+    problems.push('They wrote in Hinglish — reply in the same Hinglish mix, not in English.');
   if (WRONG_ADDRESS.test(all)) problems.push('Don\'t call them bhai/bhaiya/bro/beta.');
   const lower = all.toLowerCase();
   for (const m of params.mustMention ?? []) if (!lower.includes(m.word.toLowerCase())) problems.push(m.why);

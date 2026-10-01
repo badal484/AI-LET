@@ -66,7 +66,15 @@ export interface PersonaPack {
    * beat per day, based on how long the user has known her, so her life has a story, not a loop.
    */
   storyArcs: Array<{ title: string; beats: string[] }>;
+  /** Love characters: the healthy-romance rules apply (docs/love-character-sheets.md). */
+  romance?: boolean;
+  /**
+   * Where she lives, if it isn't the user's time zone (e.g. a long-distance girlfriend in Boston).
+   * Each turn she's told her own local time, so her day (coffee before class, about to sleep) is real.
+   */
+  home?: { place: string; timeZone: string };
   /** How she addresses the user in Hindi — kept consistent. */
+
   address: 'tum' | 'aap' | 'tu';
   /** Her favourite things that easily turn into a tic (e.g. chai) — at most once every few replies. */
   motifs: string[];

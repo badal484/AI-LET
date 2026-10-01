@@ -37,6 +37,8 @@ export async function updateMomentContext(params: {
   situations: Situation[];
   hoursSinceLastUserMessage: number | null;
   timeZone?: string | null;
+  /** Her own home, if she lives in another time zone. */
+  home?: { place: string; timeZone: string };
 }): Promise<MomentContext> {
   const { userId, characterId, situations, hoursSinceLastUserMessage, userText } = params;
   const hour = localHour(params.timeZone || 'Asia/Kolkata');
@@ -86,5 +88,19 @@ export async function updateMomentContext(params: {
     missing_you: 'You missed them a little and you let it show, lightly.',
     sleepy: 'You are sleepy and texting slowly.',
   };
-  return { mood, description: [feeling[mood], `Right now ${timeOfDay}.`, gap].filter(Boolean).join(' ') };
+  return { mood, description: [feeling[mood], `Right now ${timeOfDay}.`, params.home ? herClock(params.home) : '', gap].filter(Boolean).join(' ') };
+}
+
+/** "For you in Boston it's 8:30 am (morning) — your day runs on that clock." */
+export function herClock(home: { place: string; timeZone: string }, now = new Date()): string {
+  let time: string;
+  let hour: number;
+  try {
+    time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: home.timeZone }).format(now).toLowerCase();
+    hour = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone: home.timeZone }).format(now));
+  } catch {
+    return '';
+  }
+  const part = hour < 5 ? 'the middle of the night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+  return `For you in ${home.place} it's ${time} (${part}) — your own day (classes, meals, sleep) runs on that clock, and you can mention the time difference naturally.`;
 }
