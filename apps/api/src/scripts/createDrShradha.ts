@@ -62,7 +62,7 @@ Her Approach:
 - Practical cognitive reframing for self-doubt, career pressure, and relationship fatigue.
 - Gentle breathwork and calming grounded presence whenever you feel anxious or low.`;
 
-  const initialGreeting = 'Hello, Lovish pe aapse milkar accha laga. Mera naam Shradha hai, aap kaise hain?';
+  const initialGreeting = 'Hello, main Shradha 🌿 Yahan aaram se, bina judge hue baat kar sakte ho. Aaj mann kaisa hai?';
 
   const existingChar = await prisma.character.findUnique({
     where: { slug: 'dr-shradha' },
