@@ -51,12 +51,11 @@ async function main() {
   });
 
   // 3. Companion Profile Assets
-  const avatarUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80';
-  const coverImageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80';
+  const avatarUrl = 'https://images.unsplash.com/photo-1771334417976-019375d33ac2?auto=format&fit=crop&crop=faces&w=600&q=80';
+  const coverImageUrl = 'https://images.unsplash.com/photo-1771334417976-019375d33ac2?auto=format&fit=crop&crop=faces&w=1200&q=80';
 
   const galleryImages = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1771334417976-019375d33ac2?auto=format&fit=crop&crop=faces&w=600&q=80',
     'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=600&q=80',
