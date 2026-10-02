@@ -258,6 +258,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     characterProfile?.tagline ||
     'Ready to converse. Choose a starter below or ask anything.';
 
+  // Experts (Learn & Earn, Health, Coaching, Astrology): a visible "Helpful? 👍 👎" under their latest answer.
+  const characterCategory = String(
+    (conversation?.character as { category?: string } | undefined)?.category ??
+      (characterProfile as { category?: string } | undefined)?.category ??
+      '',
+  ).toLowerCase();
+  const isExpert = ['learn-earn', 'health', 'coaching', 'astrology'].includes(characterCategory);
+  const [ratedIds, setRatedIds] = useState<Set<string>>(() => new Set());
+
   const characterEffectiveId: string =
     characterId || conversation?.character?.id || characterProfile?.id || '';
 
@@ -708,15 +717,44 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         </View>
       );
     }
+    const isLatestAnswer =
+      isExpert &&
+      !isTyping &&
+      item.role === 'assistant' &&
+      !item.id.startsWith('crisis-') &&
+      item.id === allMessages.find((m) => m.role === 'assistant')?.id;
+    const rate = (rating: 'positive' | 'negative') => {
+      setRatedIds((prev) => new Set(prev).add(item.id));
+      handleFeedback(item.id, rating);
+    };
     return (
-      <MessageBubble
-        message={item}
-        characterAvatarUrl={characterAvatarUrl}
-        characterName={characterName}
-        isStreaming={item.id === TYPING_ITEM_ID}
-        onRetry={handleRetry}
-        onFeedback={handleFeedback}
-      />
+      <>
+        <MessageBubble
+          message={item}
+          characterAvatarUrl={characterAvatarUrl}
+          characterName={characterName}
+          isStreaming={item.id === TYPING_ITEM_ID}
+          onRetry={handleRetry}
+          onFeedback={handleFeedback}
+        />
+        {isLatestAnswer && (
+          <View style={styles.helpfulRow}>
+            {ratedIds.has(item.id) ? (
+              <Text style={styles.helpfulText}>Thanks for telling us 🙏</Text>
+            ) : (
+              <>
+                <Text style={styles.helpfulText}>Helpful?</Text>
+                <TouchableOpacity onPress={() => rate('positive')} accessibilityRole="button" accessibilityLabel="This answer helped">
+                  <Text style={styles.helpfulBtn}>👍</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => rate('negative')} accessibilityRole="button" accessibilityLabel="This answer did not help">
+                  <Text style={styles.helpfulBtn}>👎</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
+      </>
     );
   };
 
@@ -1013,7 +1051,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
-                maxLength={4000}
+                maxLength={8000}
                 selectionColor="#A78BFA"
               />
 
@@ -1526,6 +1564,21 @@ const styles = StyleSheet.create({
   },
   messageArea: {
     flex: 1,
+  },
+  helpfulRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginLeft: 56,
+    marginTop: -2,
+    marginBottom: 8,
+  },
+  helpfulText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  helpfulBtn: {
+    fontSize: 16,
   },
   floatingDateContainer: {
     position: 'absolute',

@@ -36,8 +36,10 @@ import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, r
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
-import { extractCode, isCodeBubble, restoreCode } from '../human/codeBlocks.js';
+import { extractCode, isCodeBubble, looksLikeUnfencedCode, restoreCode } from '../human/codeBlocks.js';
+import { checkCodeSyntax, describeIssues, type CodeIssue } from '../human/codeCheck.js';
 import { detectRequest, extractDeliveredTag, stillOpen, wasDelivered, type OpenRequest } from '../human/requests.js';
+import { applyProjectPatch, extractProjectTag, projectLines, type ProjectPatch } from '../human/project.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -619,6 +621,9 @@ export class StreamingChatService {
     let openRequest: OpenRequest | undefined;
     let mustDeliver = false;
     let settleRequest: ((delivered: boolean) => void) | null = null;
+    // Project memory: what a mentor and the user are building together, updated by a hidden tag.
+    let saveProject: ((patch: ProjectPatch) => Promise<void>) | null = null;
+    let recapProject: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
     let turnSituations: string[] = [];
@@ -676,6 +681,17 @@ export class StreamingChatService {
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
+      if (pack.mentor) {
+        // After a break, a mentor opens with a one-line recap of the project and the next step.
+        const sinceLast = recentMessages[0] ? Date.now() - recentMessages[0].createdAt.getTime() : 0;
+        const newSession = sinceLast >= 3 * 3_600_000;
+        continuity.lines.push(...projectLines(profile.project, { newSession }));
+        if (newSession && profile.project) recapProject = profile.project.goal;
+        saveProject = async (patch) => {
+          const fresh = await UserProfileService.load(userId, conversation.characterId);
+          await UserProfileService.save(userId, conversation.characterId, applyProjectPatch(fresh, patch, today));
+        };
+      }
       // She remembers what they asked for: one quick question first is fine, then she hands it over herself.
       if (pack.mentor || pack.domainKeywords.includes('code')) {
         const askedNow = detectRequest(pendingText, { codeDomain: pack.domainKeywords.includes('code') });
@@ -728,6 +744,7 @@ export class StreamingChatService {
         plan.nickname ? `call them ${plan.nickname}` : '',
               TIRED_OF_QUESTIONS.test(pendingText) ? "they said you ask too many questions — don't ask any question this time" : '',
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
+              recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
       // ("dhaba chalein?") when they just say "hii" the next day.
@@ -793,7 +810,17 @@ export class StreamingChatService {
       // Free Gemini quota (GEMINI_IMPORTANT_ONLY=true): the main model is kept for the moments that matter —
       // sadness, flirting, good news, lessons, safety — and small talk ("hi", "ok", "kya kar rahi ho") goes
       // to Flash-Lite, which has a separate daily quota. Mistral stays the last backup.
-      if (process.env['GEMINI_IMPORTANT_ONLY'] === 'true' && providerChain[0]?.provider === 'google') {
+      // Code always gets the strongest model — no Flash-Lite, no small Mistral (one broken script loses trust).
+      const codeTurn = pack.domainKeywords.includes('code') && (openRequest?.kind === 'code' || looksLikeUnfencedCode(pendingText) || pendingText.includes('```'));
+      if (codeTurn) {
+        const strong = providerChain.filter((r) => r.provider === 'google' && !/lite/i.test(r.model));
+        if (strong.length && !strong.some((r) => r.model === 'gemini-3.8-flash')) strong.push({ provider: 'google', model: 'gemini-3.8-flash' });
+        if (strong.length) {
+          providerChain.splice(0, providerChain.length, ...strong);
+          request.model = providerChain[0]!.model;
+        }
+      }
+      if (!codeTurn && process.env['GEMINI_IMPORTANT_ONLY'] === 'true' && providerChain[0]?.provider === 'google') {
         const important = situations.some((s) => IMPORTANT_MOMENTS.includes(s));
         if (!important) {
           // Small talk: Gemini Flash-Lite — its own free daily quota, and far better Hinglish than the
@@ -848,9 +875,13 @@ export class StreamingChatService {
     newTask = tagged.task;
     const deliveredMark = extractDeliveredTag(tagged.text);
     let deliveredTag = deliveredMark.delivered;
+    const projectMark = extractProjectTag(deliveredMark.text);
+    let projectPatch = projectMark.patch;
     // Code is set aside before the chat cleanup (which joins lines) and put back untouched at the end.
-    const coded = extractCode(deliveredMark.text);
+    const coded = extractCode(projectMark.text);
     let codeBlocks = coded.blocks;
+    // Broken code loses trust: syntax-check it (parse only, never run) so the editor pass can fix it.
+    let codeIssues = humanMode && codeBlocks.length ? await checkCodeSyntax(codeBlocks) : [];
     let replyText = this.cleanModelText(coded.text);
 
     // A reply cut off by the token cap ends mid-sentence: keep it up to the last complete sentence.
@@ -879,7 +910,7 @@ export class StreamingChatService {
     if (humanMode && pack) {
       const isLesson = Boolean(pack.mentor) && style.mode === 'task';
       const tiredOfQuestions = TIRED_OF_QUESTIONS.test(pendingText);
-      const review = (b: string[], task: string | undefined, code: unknown[] = codeBlocks, tag: boolean = deliveredTag) => {
+      const review = (b: string[], task: string | undefined, code: unknown[] = codeBlocks, tag: boolean = deliveredTag, issues: CodeIssue[] = codeIssues) => {
         const result = checkReply({
           bubbles: b,
           herRecentReplies,
@@ -902,6 +933,10 @@ export class StreamingChatService {
           userText: pendingText,
           examples: pack.examples.flatMap((e) => e.her),
         });
+        if (issues.length) {
+          result.problems.push(...describeIssues(issues));
+          result.ok = false;
+        }
         if (askAboutTask && !mentionsTask(b.join('\n'), askAboutTask)) {
           result.problems.push(`You forgot the most important thing: ask (casually, no guilt) whether they did the task you gave last time: "${askAboutTask}".`);
           result.ok = false;
@@ -924,14 +959,18 @@ export class StreamingChatService {
         if (retry.content) {
           const retryTagged = extractTaskTag(retry.content);
           const retryMark = extractDeliveredTag(retryTagged.text);
-          const retryCoded = extractCode(retryMark.text);
+          const retryProject = extractProjectTag(retryMark.text);
+          const retryCoded = extractCode(retryProject.text);
+          const retryIssues = retryCoded.blocks.length ? await checkCodeSyntax(retryCoded.blocks) : [];
           const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retryCoded.text)), style);
           // Keep whichever draft is better — a rewrite isn't automatically an improvement.
-          if (rewritten.length && review(rewritten, retryTagged.task, retryCoded.blocks, retryMark.delivered).problems.length <= check.problems.length) {
+          if (rewritten.length && review(rewritten, retryTagged.task, retryCoded.blocks, retryMark.delivered, retryIssues).problems.length <= check.problems.length) {
             bubbles = rewritten;
             newTask = retryTagged.task ?? newTask;
             codeBlocks = retryCoded.blocks;
             deliveredTag = retryMark.delivered;
+            projectPatch = retryProject.patch ?? projectPatch;
+            codeIssues = retryIssues;
           }
         }
       }
@@ -943,6 +982,11 @@ export class StreamingChatService {
     if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
     // Code goes back exactly as written, each block as its own message (shown as a code box in the app).
     bubbles = restoreCode(bubbles, codeBlocks);
+    // Still not parsing after the rewrite: say so honestly rather than hand over a script that won't run.
+    if (codeIssues.length) {
+      const i = codeIssues[0]!;
+      bubbles.push(`ek baat: is code mein${i.line ? ` line ${i.line} pe` : ''} ek syntax issue lag raha hai — chalane pe error aaye toh mujhe bhejna, turant theek kar dunga`);
+    }
     // Handed over → the request is closed; otherwise her one question/stall is used up.
     if (openRequest) settleRequest?.(wasDelivered(openRequest, { bubbles, codeBlocks: codeBlocks.length, tagged: deliveredTag }));
     if (bubbles.length === 0) return false;
@@ -1016,6 +1060,9 @@ export class StreamingChatService {
 
     if (delivered.length === 0) return true;
     await afterDelivery?.();
+    if (projectPatch && saveProject) {
+      await saveProject(projectPatch).catch((err) => logger.warn(`Project memory not saved: ${err instanceof Error ? err.message : 'Unknown'}`));
+    }
     const deliveredText = delivered.map((d) => d.content).join('\n');
     const firstReplyId = delivered[0]!.id;
     const lastReplyId = delivered[delivered.length - 1]!.id;
