@@ -184,6 +184,9 @@ export interface ContinuityNotes {
  * Update the state with this message and decide what she should carry into her reply.
  * Mutates `state`; the caller records what she mentioned (`rememberTold`) and saves it.
  */
+/** "kar liya", "try kiya tha", "ho gaya", "done" — they did what was asked. */
+const REPORTS_DONE = /\b(try (kiya|kiya tha|kar liya|kar li|kari)|kar (liya|li|diya|di)( tha| thi)?|kiya tha|ho gaya|ho gayi|done|bhej (diya|di)|likh (liya|li|diya)|bana (liya|li|diya)|complete (kar|ho))\b/i;
+
 export function applyUserTurn(params: {
   state: LifeState;
   pack: PersonaPack;
@@ -247,6 +250,13 @@ export function applyUserTurn(params: {
     state.threads = [...state.threads, { kind: 'care' as const, topic: 'care', said: userText.trim().slice(0, 120), mentionedAt: now, dueAt: now + 10 * HOUR }].slice(-5);
 
   let followUp: Thread | undefined;
+  // They're already telling her they did it ("haan kal wala try kiya tha"): react to how it went —
+  // asking "try kiya?" now would show she wasn't listening.
+  const pendingTask = state.threads.find((t) => t.kind === 'task' && !t.askedAt && now >= t.dueAt);
+  if (pendingTask && REPORTS_DONE.test(userText)) {
+    pendingTask.askedAt = now;
+    lines.push(`They just told you how the task you gave ("${pendingTask.said}") went. React to that and ask one specific detail about how it went — don't ask whether they did it.`);
+  }
   // A mentor still asks about the homework when they come back with a new question; life events
   // wait for an easy moment. Neither when they're hurting.
   const hurting = situations.some((s) => ['crisis', 'emotional', 'rude', 'boundary', 'ai'].includes(s));

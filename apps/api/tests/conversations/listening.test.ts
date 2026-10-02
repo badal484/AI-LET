@@ -66,6 +66,17 @@ describe('She listens', () => {
     expect(checkReply({ ...base, bubbles: ['good night!'], userText: 'chalo bye', userHour: 23 }).ok).toBe(true);
   });
 
+  it('when they say they did the task, she asks how it went — not whether they did it', () => {
+    const state: LifeState = {
+      firstMetAt: Date.now() - 86_400_000,
+      day: { date: '2026-10-02', told: [], userMoods: [], storyShared: false },
+      threads: [{ kind: 'task', topic: 'task', said: 'ek reel ka script likho', mentionedAt: Date.now() - 86_400_000, dueAt: Date.now() - 1000 }],
+    };
+    const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'haan kal wala try kiya tha, theek raha', situations: ['casual'], userMood: 'neutral' });
+    expect(notes.followUp).toBeUndefined();
+    expect(notes.lines.join(' ')).toMatch(/don't ask whether they did it/);
+  });
+
   it('a goodbye after a hard day is soft, not a bare "ok"', () => {
     const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: ['low'], storyShared: false }, threads: [] };
     const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'chalo bye', situations: ['bye'], userMood: 'neutral' });
