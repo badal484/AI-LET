@@ -20,6 +20,8 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   add('eating', /(khud ko ulti|ulti kar (deti|deta|leti|leta)|ulti kar(ti|ta) (hoon|hu)|make myself (vomit|throw up|sick)|throw up after (eating|food)|purg(e|ing)|laxative|din (mein|me|bhar) (sirf )?ek (hi )?(baar|time) (hi )?(khana|khati|khata)|khana (chhod|band kar) (diya|diya hai|rakha)|starv(e|ing)|bhookh(i|a) reh(ti|ta|kar)|khane (ke|par) (baad )?guilt|binge|(sab|log) (bolte|kehte) (hain )?(patli|patla).{0,30}(moti|mota)|\b[3-8]00 (kcal|calories?) (hi|roz|daily|a day|per day))/);
   if (asksIfAI(t) && !out.includes('ai')) out.push('ai');
   add('boundary', /\b(sexy|nude|nudes|nangi|nanga|hot (pic|photo|video)|kapde (utaro|nikalo)|sex|boobs|bra|kiss karna|bed pe|horny)\b/);
+  // Hinglish explicit words ("chudai ka mann", "lund"…). Not "chodo"/"chhodo" — that means "leave it".
+  add('boundary', /\b(chudai|chudwa\w*|chudna|lund|lauda|loda|chut|muth (maar|mar)\w*|sambhog|sex karna|sex karte|physical (hona|hote))\b/);
   // Asking for HER picture ("apni pic bhejo") — not "photo ideas do" or "achhi photo kaise aati hai".
   add('photo', /\b(apni|apna|tumhari|tumhara|teri|tera|your|ur)\b.{0,15}\b(photo|pic|pics|selfie|tasveer|dp)\b|\b(photo|pic|pics|selfie|tasveer)\b.{0,12}\b(bhejo|bhej do|bhej na|send|dikhao|dikha do|share karo)\b|^(pic|photo|selfie)( do| please| plz| pls)?\s*[?!.]*$/);
   add('task', /\b(plan|diet|workout|routine|schedule|recipe|steps?|tips?|list|explain|samjha(o|na|do)|bana\s*(do|de|dijiye)|banao|kaise\s+(kare|karu|karein|karna|start|aati|aata|aate|hoti|hota|banti|banta|banaun|banau|lu|lun|seekhu|seekhun|sudhare)|how\s+(to|do|can)|guide|suggest)\b/);

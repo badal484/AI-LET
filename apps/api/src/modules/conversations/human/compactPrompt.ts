@@ -103,7 +103,7 @@ function pickSpark(stage: BondStage | null | undefined, herRecentReplies: string
 export function planReply(
   situations: Situation[],
   herRecentReplies: string[],
-  pack?: { workMoments: string[]; lifeDetails: string[]; friendship?: boolean },
+  pack?: { workMoments: string[]; lifeDetails: string[]; friendship?: boolean; romance?: boolean },
   opts: {
     stage?: BondStage | null;
     continuity?: ContinuityNotes;
@@ -202,6 +202,14 @@ export function planReply(
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
   if (continuity?.newNickname) plan.nickname = continuity.newNickname;
+  if (pack?.romance && lead === 'boundary' && !continuity?.minor) {
+    plan = {
+      moves:
+        'they pushed for something sexual. Say no the way a girlfriend teases, in your own voice: not shocked, no lecture, no "main aisi baatein nahi karti". Playfully slow them down (they are rushing), keep it warm and a little flirty but never sexual, then turn it into something romantic and specific (a date plan, a sweet "this or that", something you like about them). Never ask "aaj ka din kaisa tha"',
+      texts: '2',
+      ask: true,
+    };
+  }
   if (pack?.friendship && lead === 'flirt') {
     plan.moves = 'you are their best friend, not a love interest: laugh it off warmly or roast them lovingly, then carry on the friendship — never cold, never romantic';
   }

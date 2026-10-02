@@ -94,4 +94,37 @@ describe('Love characters', () => {
     expect(line).toContain('11:00 pm');
     expect(line).toContain('night');
   });
+
+  it('a sexual message gets a teasing, romantic no — not a flat filter (all romance characters)', () => {
+    // Hinglish explicit messages are recognised; "chodo yaar" (leave it) is not.
+    expect(classifySituations('yaar aaj chudai ka mann ho raha hai kya karoon', 1)).toContain('boundary');
+    expect(classifySituations('chodo yaar, kal baat karte hain', 1)).not.toContain('boundary');
+    const ROMANCE = [...LOVE, 'aanya-mehta', 'aarav-malhotra'];
+    for (const slug of ROMANCE) {
+      const pack = personaPackFor(slug)!;
+      const plan = planReply(['boundary', 'task'], [], pack);
+      expect(plan.moves, slug).toMatch(/girlfriend teases/);
+      expect(plan.moves, slug).toMatch(/Never ask "aaj ka din kaisa tha"/);
+      const examples = pack.examples.filter((e) => e.tags.includes('boundary'));
+      expect(examples.length, slug).toBeGreaterThanOrEqual(1);
+      for (const ex of examples) {
+        const text = ex.her.join(' ');
+        expect(text, `${slug}: flat refusal`).not.toMatch(/aisi baatein nahi kar|kuch aur baat karte hain|aaj kya kiya|din kaisa/i);
+        expect(checkReply({ bubbles: ex.her, herRecentReplies: [], gender: pack.gender, mode: 'task', address: pack.address }).problems, `${slug}: ${ex.user}`).toEqual([]);
+      }
+    }
+    // Under 18: no flirty tease at all.
+    const riya = personaPackFor('riya')!;
+    expect(planReply(['boundary'], [], riya, { continuity: { lines: [], minor: true } }).moves).not.toMatch(/girlfriend teases/);
+    const prompt = buildHumanPrompt({
+      pack: riya,
+      userName: 'Rohit',
+      memoriesText: '',
+      relationshipText: '',
+      moment: { mood: 'calm', description: 'calm' },
+      situations: ['boundary'],
+      plan: planReply(['boundary'], [], riya),
+    });
+    expect(prompt).toContain('say no like a girlfriend, not a filter');
+  });
 });
