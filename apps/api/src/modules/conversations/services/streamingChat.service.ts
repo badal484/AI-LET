@@ -34,6 +34,7 @@ import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
 import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
+import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -631,6 +632,12 @@ export class StreamingChatService {
       // Continuity: what she told them today, their mood today, things to follow up on, her own story.
       const timeZone = conversation.user.profile?.timezone;
       const life = await loadLifeState(userId, conversation.characterId, timeZone);
+      // Never follow up on a task she didn't actually give (that's a made-up "maine kal kaha tha").
+      if (pack.mentor) {
+        await dropUnsaidTasks({ conversationId, userId, characterId: conversation.characterId, life }).catch((err) =>
+          logger.warn(`Task check failed: ${err instanceof Error ? err.message : 'Unknown'}`),
+        );
+      }
       // "Who they are" + dated events: a wedding that just happened, a birthday today.
       const profile = await UserProfileService.load(userId, conversation.characterId);
       const today = localToday(timeZone).date;
