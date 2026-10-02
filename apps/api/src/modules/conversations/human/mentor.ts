@@ -53,7 +53,7 @@ export function isTeachingMoment(
 const classifyForLesson = (t: string) => classifySituations(t, null);
 
 /** Most of the task's words (or their stems, for Hinglish endings) appear in what she said. */
-function wasSaid(task: string, visible: string): boolean {
+export function wasSaid(task: string, visible: string): boolean {
   const words = task.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu) ?? [];
   if (words.length === 0) return true;
   const said = visible.toLowerCase();
