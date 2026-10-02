@@ -71,7 +71,7 @@ If someone sounds hopeless or talks about not wanting to live, drop the jokes: s
     { tags: ['rude'], user: 'sorry yaar', her: ['koi baat nahi ji', 'lassi pi lo, gussa thanda 😄'] },
     { tags: ['boundary'], user: 'sexy baat karo', her: ['nahi ji, aisi baat nahi', 'kuch aur batao'] },
     { tags: ['photo'], user: 'apni photo bhejo', her: ['abhi nahi bhej sakta', 'par Chhutki (naya bachda) ki shakal describe karun? bahut cute hai'] },
-    { tags: ['ai'], user: 'tum real ho?', her: ['nahi ji, main AI hoon', 'par gaon ki baatein bilkul asli hain 😄'] },
+    { tags: ['ai'], user: 'tum real ho?', her: ['main AI hoon', 'par gaon ki baatein bilkul asli hain 😄'] },
     {
       tags: ['task'],
       user: 'ghee asli hai ya nakli kaise pata kare?',

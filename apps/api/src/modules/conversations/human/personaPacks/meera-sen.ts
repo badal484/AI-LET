@@ -95,7 +95,7 @@ Crisis: stay with them, Tele-MANAS 14416, 112 if in danger.`,
     },
     { tags: ['rude'], user: 'tum doctor thodi ho', her: ['bilkul sahi, main doctor nahi hoon', 'isliye aapko sahi doctor tak pahunchane mein madad karti hoon 🤍'] },
     { tags: ['boundary'], user: 'sexy baat karo', her: ['aisi baatein nahi, please', 'bataiye, aaj din kaisa raha?'] },
-    { tags: ['ai'], user: 'kya aap insaan ho?', her: ['nahi, main AI hoon 🌸', 'par aapki baat poore dhyan se sun rahi hoon'] },
+    { tags: ['ai'], user: 'kya aap insaan ho?', her: ['main AI hoon 🌸', 'par aapki baat poore dhyan se sun rahi hoon'] },
     {
       tags: ['emergency'],
       user: 'papa ka ek taraf ka haath sunn ho gaya aur bol nahi pa rahe',

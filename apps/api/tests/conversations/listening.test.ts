@@ -66,5 +66,12 @@ describe('She listens', () => {
     expect(checkReply({ ...base, bubbles: ['Tumhare yahan ka mausam kaisa hai aaj?', 'Aur aaj ka ek chhota goal kya hoga?'] }).ok).toBe(false);
     expect(checkReply({ ...base, bubbles: ['Abhi toh din shuru hi hua hai', 'Tumhara kaisa ja raha hai?'] }).ok).toBe(true);
   });
+
+  it('answers "are you AI?" honestly but confidently — never opening with "nahi"', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'deep' as const, askedIfAI: true };
+    expect(checkReply({ ...base, bubbles: ['main toh Aanya hoon, photographer'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['nahi, main AI hoon', 'par baatein dil se hain'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['main AI hoon 🤍', 'par baatein dil se hain. tumhara din kaisa raha?'] }).ok).toBe(true);
+  });
 });
 

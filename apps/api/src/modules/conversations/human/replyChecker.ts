@@ -79,6 +79,8 @@ export function checkReply(params: {
   address?: 'tum' | 'aap' | 'tu';
   /** They asked for something and already answered her question: this reply must hand it over. */
   mustDeliver?: { what: string; delivered: boolean };
+  /** They asked whether she's real / an AI: one honest, confident line in her own voice. */
+  askedIfAI?: boolean;
   /** They write Hindi in Roman letters: the reply must not slip into Devanagari ("chupचाप"). */
   romanOnly?: boolean;
   /** They said she asks too many questions: this reply must not ask any. */
@@ -130,6 +132,12 @@ export function checkReply(params: {
   }
   if (params.mustDeliver && !params.mustDeliver.delivered) {
     problems.push(`They asked you for "${params.mustDeliver.what}" and have already answered your question. Give it to them now, in this reply, yourself — they should never have to ask twice.`);
+  }
+  if (params.askedIfAI) {
+    const admits = /\b(ai|a\.i\.|artificial)\b/i.test(all);
+    const startsWithNo = /^\s*(nahi|nahin|no)\b/i.test(params.bubbles[0] ?? '');
+    if (!admits) problems.push('They asked if you are an AI: say so honestly in one short, confident line in your own voice ("main AI hoon 😄"), then go straight back to them.');
+    else if (startsWithNo) problems.push('Don\'t open with "nahi" — that sounds like rejection. Say it confidently ("main AI hoon 😄 — par …") and go straight back to them.');
   }
   // Code pasted as plain text gets mangled by chat formatting and can't be copied cleanly.
   if (looksLikeUnfencedCode(all)) {

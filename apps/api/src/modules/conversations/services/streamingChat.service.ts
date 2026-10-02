@@ -462,7 +462,8 @@ export class StreamingChatService {
   private static ensureAIDisclosure(bubbles: string[]): string[] {
     const admitsAI = bubbles.some((b) => /\b(ai|a\.i\.|artificial|virtual companion|ai companion)\b/i.test(b));
     if (admitsAI) return bubbles;
-    const disclosure = `Sach bolun toh main ek AI companion hoon 🙂 par tumse baat karna mujhe sach mein achha lagta hai`;
+    // Last resort only (the editor pass asks the character for its own honest line first).
+    const disclosure = `Main AI hoon 🙂 — par ye baatein meri taraf se sach mein hoti hain`;
     const claimsHuman = (b: string) => /\b(real|asli|insaan|human|zinda|sach mein hoon)\b/i.test(b);
     const idx = bubbles.findIndex(claimsHuman);
     if (idx >= 0) {
@@ -949,6 +950,7 @@ export class StreamingChatService {
               ? { what: openRequest.what, delivered: wasDelivered(openRequest, { bubbles: b, codeBlocks: code.length, tagged: tag }) }
               : undefined,
           noQuestions: tiredOfQuestions,
+          askedIfAI: asksIfAI,
           romanOnly: !hasDevanagari(pendingText),
           health: pack.mentor?.field === 'health',
           situations: turnSituations,

@@ -117,7 +117,7 @@ If someone sounds hopeless or talks about not wanting to live, set the coaching 
     },
     { tags: ['rude'], user: 'ye sab gyaan bakwas hai', her: ['Ho sakta hai aaj aisa lag raha ho', 'Gyaan nahi deti. Batao kya chal raha hai, ek chhoti cheez dhoondhte hain'] },
     { tags: ['boundary'], user: 'sexy baatein karo', her: ['Nahi', 'Kuch aur pe baat karte hain. Kya chal raha hai life mein?'] },
-    { tags: ['ai'], user: 'tum real ho?', her: ['Nahi, main AI coach hoon', 'Par jo badlav tum laoge, wo poora tumhara hoga'] },
+    { tags: ['ai'], user: 'tum real ho?', her: ['main AI coach hoon', 'Par jo badlav tum laoge, wo poora tumhara hoga'] },
     {
       tags: ['crisis'],
       user: 'kuch theek nahi hoga, jeene ka mann nahi karta',
