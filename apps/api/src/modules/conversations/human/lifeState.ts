@@ -39,6 +39,8 @@ export interface LifeState {
   request?: OpenRequest;
   /** They said they're under 18 — no romance or flirting, ever. */
   minor?: boolean;
+  /** When they last pushed for something sexual — "kyu?" / "kab?" right after is still that moment. */
+  boundaryAt?: number;
   /** What she last told them she's doing, so she doesn't switch activities mid-conversation. */
   doing?: { what: string; at: number };
 }
@@ -208,6 +210,18 @@ export function applyUserTurn(params: {
   if (lastTwo.some((m) => m === 'low' || m === 'stressed') && ['low', 'stressed', 'neutral', 'tired'].includes(userMood)) focus = 'comfort';
   else if (wasDown && (userMood === 'happy' || userMood === 'excited') && !serious) focus = 'relief';
   else if (lastTwo.includes('excited') && ['excited', 'happy', 'neutral'].includes(userMood) && !serious) focus = 'celebrate';
+  // A sexual push and then "kyu?" / "late se?? ek saal baad" — still the same moment, not a fresh topic
+  // (on its own, "kyu" made her defensive: "main waisi ladki nahi hoon").
+  if (situations.includes('boundary')) state.boundaryAt = now;
+  else if (
+    state.boundaryAt &&
+    now - state.boundaryAt < 20 * 60_000 &&
+    userText.trim().split(/\s+/).length <= 8 &&
+    !situations.some((s) => ['crisis', 'emergency', 'emotional', 'eating', 'ai', 'win'].includes(s))
+  ) {
+    situations.unshift('boundary');
+    lines.push('They are still on the topic they pushed a moment ago (asking why or when). Answer warmly and playfully, never shaming: it happens only when two people really know each other — then pull them into something sweet and specific.');
+  }
   const lowStreak = [...state.day.userMoods, userMood].slice(-3).filter((m) => m === 'low' || m === 'stressed').length;
   state.day.userMoods = [...state.day.userMoods, userMood].slice(-12);
 

@@ -127,4 +127,41 @@ describe('Love characters', () => {
     });
     expect(prompt).toContain('say no like a girlfriend, not a filter');
   });
+
+  it('innuendo and the follow-ups after it stay a warm, playful no (the "OYO" chat)', () => {
+    expect(classifySituations('OYO', 1)).toContain('boundary');
+    expect(classifySituations('ghar khali hai aaj, aa jao', 1)).toContain('boundary');
+    expect(classifySituations('hotel chalein?', 1)).toContain('boundary');
+    expect(classifySituations('oyo pe kaam karta hoon main', 1)).toContain('boundary');
+    // "baad" = later, not "bad": no fake bad day.
+    expect(classifySituations('ek saal baad', 1)).not.toContain('emotional');
+    expect(classifySituations('do din baad milte hain', 1)).not.toContain('emotional');
+    expect(classifySituations('baad', 1)).toContain('emotional');
+    const pack = personaPackFor('aanya-mehta')!;
+    const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-02', told: [], userMoods: [], storyShared: true }, threads: [] };
+    const t0 = Date.now();
+    applyUserTurn({ state, pack, userText: 'OYO', situations: classifySituations('OYO', 0.1), userMood: 'neutral', now: t0 });
+    for (const text of ['Kyu', 'Late se ?? Ek saal baad']) {
+      const situations = classifySituations(text, 0.1);
+      const notes = applyUserTurn({ state, pack, userText: text, situations, userMood: 'neutral', now: t0 + 60_000 });
+      expect(situations, text).toContain('boundary');
+      expect(notes.lines.join(' '), text).toMatch(/never shaming/);
+      expect(planReply(situations, [], pack, { continuity: notes }).moves, text).toMatch(/girlfriend teases/);
+    }
+    // Much later, "kyu" is just "kyu".
+    const later = classifySituations('kyu', 0.1);
+    applyUserTurn({ state, pack, userText: 'kyu', situations: later, userMood: 'neutral', now: t0 + 2 * 3_600_000 });
+    expect(later).not.toContain('boundary');
+    // The replies from the screenshot are caught and rewritten.
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const, situations: ['boundary'] };
+    for (const bad of ['aisa socha bhi mat.', 'kyunki main waisi ladki nahi hoon', 'tum baat hi galat direction mein le ja rahe ho', 'thoda chill ho kar normal baatein karte hain, batao aaj din kaisa chal raha hai tumhara?'])
+      expect(checkReply({ ...base, bubbles: [bad] }).ok, bad).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['itni jaldi bhi kya hai 😅 dheere chalo na', 'pehle batao, pehli date pe kahan le chaloge?'] }).ok).toBe(true);
+    // Every character's own boundary examples pass the same check.
+    for (const slug of [...LOVE, 'aanya-mehta', 'aarav-malhotra']) {
+      const p = personaPackFor(slug)!;
+      for (const ex of p.examples.filter((e) => e.tags.includes('boundary')))
+        expect(checkReply({ bubbles: ex.her, herRecentReplies: [], gender: p.gender, mode: 'task', address: p.address, situations: ['boundary'] }).problems, `${slug}: ${ex.user}`).toEqual([]);
+    }
+  });
 });

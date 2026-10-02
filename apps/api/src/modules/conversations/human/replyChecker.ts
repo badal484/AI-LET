@@ -68,6 +68,8 @@ const REPEAT_QUESTIONS: RegExp[] = [
 ];
 
 // Guilt for being away ("kisi tarah waqt nikal hi aaya aapka", "finally yaad aayi") — never.
+// A cold or shaming no to a sexual push ("main waisi ladki nahi hoon", "galat direction mein le ja rahe ho").
+const COLD_NO = /(waisi ladki nahi|waisa ladka nahi|aisi ladki nahi|galat direction|chill ho kar|normal baat(ein|e) karte|aisa socha bhi mat|socha bhi kaise|sharam (karo|nahi aati)|tameez se|aisi baatein nahi kar|din kaisa (raha|chal|tha|gaya)|kuch aur baat karte)/i;
 const AWAY_GUILT = /(waqt nikal (hi )?(aaya|liya|paaye|paye)|finally yaad aa(yi|i)|yaad aa hi (gayi|gaya)|aakhir (aa|yaad aa) hi gaye|kitna intezaar karwaya|bhool (hi )?gaye the (mujhe|kya)|ab (jaake|ja ke) yaad aayi)/i;
 const GOOD_NIGHT = /\b(good ?night|gn|shubh ratri|so jao|so jaana|sweet dreams)\b/i;
 const SLEEP_TALK = /\b(so (raha|rahi|jaunga|jaungi|jaata|jaati)|sone (ja|ka)|neend|good ?night|gn|sleep|night)\b/i;
@@ -170,6 +172,8 @@ export function checkReply(params: {
   if (params.userHour !== undefined && params.userHour >= 7 && params.userHour < 19 && GOOD_NIGHT.test(all) && !SLEEP_TALK.test(params.userText ?? '')) {
     problems.push(`It is ${params.userHour}:00 for them — daytime. No "good night" or "so jao"; say bye for the day you're actually in.`);
   }
+  if (params.situations?.includes('boundary') && COLD_NO.test(all))
+    problems.push('Say no without shaming or a cold brush-off ("waisi ladki nahi", "galat direction", "chill ho kar normal baatein", "din kaisa"): tease them for rushing, stay warm, then turn it into something sweet and specific.');
   if (AWAY_GUILT.test(all)) problems.push('That makes them feel guilty for being away. Be simply glad they are here.');
   if (params.askedIfAI) {
     const admits = /\b(ai|a\.i\.|artificial)\b/i.test(all);
