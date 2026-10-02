@@ -74,7 +74,7 @@ Her Vibe:
 
   const initialGreeting = 'Hey... bas park mein swing pe baith ke kuch photos dekh rahi thi. Din kaisa raha tumhara? 🤍';
   const avatarUrl = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80';
-  const coverImageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80';
+  const coverImageUrl = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&crop=faces&w=1200&q=80';
   const galleryImages = [
     'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',

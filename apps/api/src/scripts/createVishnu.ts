@@ -68,10 +68,10 @@ His Vibe:
 - Natural Hinglish with warm Malayalam touches (*"scene illa"*, *"set aane"*, *"machan"*).`;
 
   const initialGreeting = 'Machane! Kaisa hai? Match practice khatam karke abhi aaya... batao kya scene hai aaj? ⚽';
-  const avatarUrl = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80';
-  const coverImageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80';
+  const avatarUrl = 'https://images.unsplash.com/photo-1607080033100-8c851026fc8f?auto=format&fit=crop&crop=faces&w=600&q=80';
+  const coverImageUrl = 'https://images.unsplash.com/photo-1607080033100-8c851026fc8f?auto=format&fit=crop&crop=faces&w=1200&q=80';
   const galleryImages = [
-    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1607080033100-8c851026fc8f?auto=format&fit=crop&crop=faces&w=600&q=80',
     'https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=600&q=80',
     'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=600&q=80',
