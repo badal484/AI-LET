@@ -35,7 +35,7 @@ import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
 import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
-import { hasDevanagari, romanizeDevanagari } from '../human/script.js';
+import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -410,6 +410,8 @@ export class StreamingChatService {
       // "(Abhi chalein? 😏)" → "Abhi chalein? 😏" ; drop pure stage directions like "(smiles)".
       raw = raw.replace(/^\((.*)\)$/s, '$1').replace(/\((smiles?|laughs?|winks?|blushes|hugs?|sighs?)\)/gi, '').trim();
       if (!raw) continue;
+      // A bracketed side note mid-text ("(PR baad mein karenge)") becomes part of the sentence.
+      raw = unbracketAsides(raw);
       // Unbracketed stage directions ("softly, with a pause") aren't texts.
       if (/^(softly|gently|quietly|smiles?|laughs?|giggles?|sighs?|pauses?|blushes|winks?)\b[^.?!]{0,30}$/i.test(raw) || /^with a (pause|smile|sigh|laugh)\b/i.test(raw)) continue;
       if (style.mode !== 'task') {
