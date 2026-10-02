@@ -53,6 +53,8 @@ export class ChatStreamClient {
     abortSignal?: AbortSignal,
     /** Regenerate the reply for this (failed) message instead of sending new text. */
     retryMessageId?: string,
+    /** WhatsApp-style reply: the message this one answers. */
+    replyToMessageId?: string,
   ): Promise<void> {
     let accessToken: string | null = null;
     try {
@@ -327,6 +329,7 @@ export class ChatStreamClient {
           JSON.stringify({
             content,
             clientRequestId,
+            ...(replyToMessageId ? { replyToMessageId } : {}),
           }),
         );
       } catch (err: any) {

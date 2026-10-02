@@ -369,6 +369,20 @@ export class ConversationService {
     const lastItem = items[items.length - 1];
     const nextCursor = hasMore && lastItem ? lastItem.id : null;
 
+    // Quotes (WhatsApp-style replies): a short snippet of the quoted message; a cleared one is "unavailable".
+    const quotedIds = [...new Set(items.map((m) => m.replyToMessageId).filter((id): id is string => Boolean(id)))];
+    const quoted = quotedIds.length
+      ? await prisma.message.findMany({ where: { id: { in: quotedIds }, conversationId }, select: { id: true, role: true, content: true, createdAt: true } })
+      : [];
+    const quoteFor = (id: string | null) => {
+      if (!id) return null;
+      const q = quoted.find((x) => x.id === id);
+      const gone = !q || (conversation.clearedAt && q.createdAt <= conversation.clearedAt);
+      return gone
+        ? { id, role: 'assistant' as const, snippet: '', available: false }
+        : { id, role: q.role as 'user' | 'assistant', snippet: quoteSnippet(q.content), available: true };
+    };
+
     const formattedMessages: ChatMessageItem[] = items.map(m => ({
       id: m.id,
       conversationId: m.conversationId,
@@ -382,6 +396,7 @@ export class ConversationService {
       sequenceNumber: m.sequenceNumber,
       retryCount: m.retryCount,
       replyToMessageId: m.replyToMessageId,
+      replyTo: quoteFor(m.replyToMessageId),
       parts: m.parts.map(p => ({
         id: p.id,
         partType: p.partType as any,
@@ -554,3 +569,11 @@ export class ConversationService {
     };
   }
 }
+
+/** A one-line preview of a quoted message ("💻 Code" for code). */
+export function quoteSnippet(content: string): string {
+  if (content.startsWith('```')) return '💻 Code';
+  const oneLine = content.replace(/\s+/g, ' ').trim();
+  return oneLine.length > 140 ? `${oneLine.slice(0, 137)}…` : oneLine;
+}
+
