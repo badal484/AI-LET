@@ -633,6 +633,8 @@ export interface ChatMessageItem {
   sequenceNumber: number;
   retryCount: number;
   replyToMessageId?: string | null;
+  /** The message this one replies to (WhatsApp-style quote), when there is one. */
+  replyTo?: { id: string; role: MessageRole; snippet: string; available: boolean } | null;
   parts: MessagePartData[];
   metadata?: MessageGenerationMetadataData | null;
   feedback?: MessageFeedbackData | null;

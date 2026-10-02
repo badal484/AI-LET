@@ -593,6 +593,8 @@ export const sendMessageSchema = z.object({
     ),
   clientRequestId: z.string().min(1).max(100).optional(),
   idempotencyKey: z.string().min(1).max(100).optional(),
+  /** Reply to a specific earlier message in the same chat (WhatsApp-style quote). */
+  replyToMessageId: z.string().uuid().optional(),
 });
 
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;

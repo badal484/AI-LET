@@ -266,6 +266,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   ).toLowerCase();
   const isExpert = ['learn-earn', 'health', 'coaching', 'astrology'].includes(characterCategory);
   const [ratedIds, setRatedIds] = useState<Set<string>>(() => new Set());
+  // WhatsApp-style reply: the message being replied to (shown above the typing box), and a quote's jump target.
+  const [replyTarget, setReplyTarget] = useState<{ id: string; role: 'user' | 'assistant'; snippet: string } | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const characterEffectiveId: string =
     characterId || conversation?.character?.id || characterProfile?.id || '';
@@ -424,7 +427,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   };
 
   /** Opens one server turn: stores the message (unless retrying) and receives her reply bubbles. */
-  const runTurn = async (opts: { content: string; clientRequestId: string; retryMessageId?: string; restoreOnReject: boolean }) => {
+  const runTurn = async (opts: {
+    content: string;
+    clientRequestId: string;
+    retryMessageId?: string;
+    restoreOnReject: boolean;
+    replyTo?: { id: string; role: 'user' | 'assistant'; snippet: string };
+  }) => {
     if (!effectiveConvId) return;
     let saved = Boolean(opts.retryMessageId);
     // Set when the server answered a blocked crisis message with caring words instead of an error.
@@ -446,6 +455,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               content: opts.content,
               status: 'SENT',
               clientRequestId: payload.clientRequestId ?? opts.clientRequestId,
+              replyToMessageId: opts.replyTo?.id ?? null,
+              replyTo: opts.replyTo ? { ...opts.replyTo, available: true } : null,
               sequenceNumber: payload.sequenceNumber,
               retryCount: 0,
               parts: [],
@@ -524,6 +535,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         },
         undefined,
         opts.retryMessageId,
+        opts.replyTo?.id,
       );
     } catch (err: any) {
       if (!saved) {
@@ -544,6 +556,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     if (!content || !effectiveConvId) return;
     if (!textToSend) setInputText('');
     setSendError(null);
+    const replying = replyTarget ?? undefined;
+    setReplyTarget(null);
 
     const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const now = new Date().toISOString();
@@ -559,13 +573,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         retryCount: 0,
         parts: [],
         clientRequestId,
+        replyToMessageId: replying?.id ?? null,
+        replyTo: replying ? { ...replying, available: true } : null,
         createdAt: now,
         updatedAt: now,
       } as ChatMessageItem,
       ...prev,
     ]);
     scrollToBottom();
-    await runTurn({ content, clientRequestId, restoreOnReject: !textToSend });
+    await runTurn({ content, clientRequestId, restoreOnReject: !textToSend, replyTo: replying });
   };
 
   /** Ask her to answer whatever is still unanswered (after a failure). */
@@ -707,6 +723,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   const TYPING_ITEM_ID = 'typing-indicator';
 
+  // Swipe / long-press "Reply" on a message.
+  const handleReply = (m: ChatMessageItem) => {
+    setReplyTarget({
+      id: m.id,
+      role: m.role === 'user' ? 'user' : 'assistant',
+      snippet: m.content.startsWith('```') ? '💻 Code' : m.content.replace(/\s+/g, ' ').slice(0, 140),
+    });
+  };
+
+  // Tap a quote: scroll to the original and highlight it for a moment.
+  const jumpTo = (messageId: string) => {
+    const index = listData.findIndex((x) => x.id === messageId);
+    if (index < 0) {
+      ToastService.show({ message: 'That message is further up — scroll up to load it.', type: 'info', duration: 2000 });
+      return;
+    }
+    flatListRef.current?.scrollToIndex({ index, viewPosition: 0.5, animated: true });
+    setHighlightId(messageId);
+    setTimeout(() => setHighlightId((h) => (h === messageId ? null : h)), 1600);
+  };
+
   const renderMessageItem = ({ item }: { item: ChatMessageItem | DateDivider }) => {
     if (isDateDivider(item)) {
       return (
@@ -736,6 +773,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           isStreaming={item.id === TYPING_ITEM_ID}
           onRetry={handleRetry}
           onFeedback={handleFeedback}
+          onReply={handleReply}
+          onQuotePress={jumpTo}
+          highlighted={highlightId === item.id}
         />
         {isLatestAnswer && (
           <View style={styles.helpfulRow}>
@@ -949,6 +989,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           <View style={styles.messageArea}>
             <FlatList
               ref={flatListRef}
+              onScrollToIndexFailed={(info) =>
+                flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })
+              }
               data={listData}
               keyExtractor={item => item.id}
               renderItem={renderMessageItem}
@@ -1030,6 +1073,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             },
           ]}
         >
+          {replyTarget && (
+            <View style={styles.replyBar}>
+              <View style={styles.replyBarAccent} />
+              <View style={styles.replyBarBody}>
+                <Text style={styles.replyBarName}>{replyTarget.role === 'user' ? 'You' : characterName}</Text>
+                <Text style={styles.replyBarText} numberOfLines={1}>
+                  {replyTarget.snippet}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setReplyTarget(null)} accessibilityRole="button" accessibilityLabel="Cancel reply" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={styles.replyBarClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.inputRow}>
             {/* Pill Container */}
             <View style={styles.pillInputContainer}>
@@ -1564,6 +1621,39 @@ const styles = StyleSheet.create({
   },
   messageArea: {
     flex: 1,
+  },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginBottom: 6,
+    paddingRight: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    overflow: 'hidden',
+  },
+  replyBarAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    backgroundColor: '#A78BFA',
+  },
+  replyBarBody: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  replyBarName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E9D5FF',
+  },
+  replyBarText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  replyBarClose: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   helpfulRow: {
     flexDirection: 'row',

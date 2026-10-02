@@ -9,6 +9,8 @@ import {
   ScrollView,
   Platform,
   Clipboard,
+  PanResponder,
+  Vibration,
 } from 'react-native';
 import { Avatar } from './Avatar.js';
 import { ToastService } from './Toast.js';
@@ -31,6 +33,12 @@ export interface MessageBubbleProps {
   onRetry?: (content: string, message?: ChatMessageItem) => void;
   onFeedback?: (messageId: string, rating: 'positive' | 'negative') => void;
   onSelectMedia?: (mediaUrl: string) => void;
+  /** Swipe right / long-press "Reply": answer this specific message (WhatsApp-style). */
+  onReply?: (message: ChatMessageItem) => void;
+  /** Tap a quote to jump to the original message. */
+  onQuotePress?: (messageId: string) => void;
+  /** Briefly highlighted after jumping to it from a quote. */
+  highlighted?: boolean;
 }
 
 const TypingDotsIndicator: React.FC = () => {
@@ -83,6 +91,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isTypingNext = false,
   onRetry,
   onFeedback,
+  onReply,
+  onQuotePress,
+  highlighted,
 }) => {
   const [showActions, setShowActions] = useState(false);
   const isUser = message.role === 'user' || message.senderType === 'USER';
@@ -122,9 +133,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const formattedTime = message.createdAt ? messageTime(message.createdAt) : '';
 
+  // Swipe right to reply (like WhatsApp). Only real, stored messages can be quoted.
+  const canReply = Boolean(onReply) && !isStreaming && !isFailed && !/^(temp-|crisis-)/.test(message.id);
+  const replyRef = React.useRef<(() => void) | null>(null);
+  replyRef.current = canReply ? () => onReply?.(message) : null;
+  const swipeX = React.useRef(new Animated.Value(0)).current;
+  const swipe = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => g.dx > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderMove: (_e, g) => swipeX.setValue(Math.max(0, Math.min(g.dx, 72))),
+      onPanResponderRelease: (_e, g) => {
+        if (g.dx > 52 && replyRef.current) {
+          Vibration.vibrate(10);
+          replyRef.current();
+        }
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true }).start();
+      },
+      onPanResponderTerminate: () => Animated.spring(swipeX, { toValue: 0, useNativeDriver: true }).start(),
+    }),
+  ).current;
+  const replyTo = message.replyTo;
+
   return (
-    <View
+    <Animated.View
+      {...(canReply ? swipe.panHandlers : {})}
       style={[
+        { transform: [{ translateX: swipeX }] },
         styles.messageRow,
         isUser ? styles.userRow : styles.assistantRow,
       ]}
@@ -162,11 +196,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   isUser ? styles.userBubble : styles.assistantBubble,
                   isFailed && styles.failedBubble,
                   isStreaming && styles.streamingBubble,
+                  highlighted && styles.highlightBubble,
                   ((arr.length > 1 && pIdx < arr.length - 1) || isTypingNext) && { marginBottom: 6 },
                 ]}
                 accessibilityRole="text"
                 accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${paragraph}`}
               >
+                {pIdx === 0 && replyTo && (
+                  <TouchableOpacity
+                    style={[styles.quote, isUser ? styles.quoteOnUser : styles.quoteOnAssistant]}
+                    activeOpacity={0.8}
+                    disabled={!replyTo.available}
+                    onPress={() => onQuotePress?.(replyTo.id)}
+                    accessibilityLabel="Go to the quoted message"
+                  >
+                    <Text style={styles.quoteName}>{replyTo.role === 'user' ? 'You' : characterName || 'Them'}</Text>
+                    <Text style={styles.quoteText} numberOfLines={2}>
+                      {replyTo.available ? replyTo.snippet : 'Message unavailable'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 {(() => {
                   const fenced = /^```([\w+#.-]*)\n([\s\S]*?)\n?```$/.exec(paragraph);
                   // Code they paste (no fences) is shown as a code box too.
@@ -254,6 +303,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <Icon name="share" size={13} color={darkThemeColors.textMuted} />
               <Text style={styles.actionLabel}>Share/Copy</Text>
             </TouchableOpacity>
+            {canReply && (
+              <TouchableOpacity
+                style={styles.actionItem}
+                onPress={() => {
+                  setShowActions(false);
+                  onReply?.(message);
+                }}
+              >
+                <Icon name="arrow-left" size={13} color={darkThemeColors.textMuted} />
+                <Text style={styles.actionLabel}>Reply</Text>
+              </TouchableOpacity>
+            )}
 
             {!isUser && onFeedback && (
               <>
@@ -295,7 +356,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         )}
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -364,6 +425,35 @@ const styles = StyleSheet.create({
     borderColor: darkThemeColors.danger,
     borderWidth: 1,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  quote: {
+    borderLeftWidth: 3,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginBottom: 6,
+  },
+  quoteOnUser: {
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    borderLeftColor: '#F0ABFC',
+  },
+  quoteOnAssistant: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderLeftColor: '#A78BFA',
+  },
+  quoteName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E9D5FF',
+    marginBottom: 1,
+  },
+  quoteText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.75)',
+  },
+  highlightBubble: {
+    borderWidth: 2,
+    borderColor: '#F0ABFC',
   },
   codeCard: {
     borderRadius: 10,

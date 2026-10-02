@@ -167,6 +167,10 @@ export class StreamingChatService {
             })
           : null;
 
+        // A WhatsApp-style reply: only to a message from this same chat.
+        const replyTo = input.replyToMessageId
+          ? await prisma.message.findFirst({ where: { id: input.replyToMessageId, conversationId }, select: { id: true } })
+          : null;
         saved =
           existing ??
           (await this.createSequencedMessage(conversationId, {
@@ -174,6 +178,7 @@ export class StreamingChatService {
             role: 'user',
             content,
             status: 'SENT',
+            replyToMessageId: replyTo?.id ?? null,
             clientRequestId: input.clientRequestId,
             idempotencyKey: input.idempotencyKey,
             parts: { create: { partType: 'text', content, orderIndex: 0 } },
@@ -338,7 +343,7 @@ export class StreamingChatService {
       where: { conversationId, role: 'user', sequenceNumber: { gt: lastReply?.sequenceNumber ?? 0 } },
       orderBy: { sequenceNumber: 'desc' },
       take: 10,
-      select: { id: true, content: true, sequenceNumber: true },
+      select: { id: true, content: true, sequenceNumber: true, replyToMessageId: true },
     });
     return pending.reverse();
   }
@@ -529,7 +534,7 @@ export class StreamingChatService {
   private static async replyToPending(params: {
     conversation: Awaited<ReturnType<typeof StreamingChatService.loadOwnedConversation>>;
     characterRuntime: Awaited<ReturnType<typeof CharacterService.resolveRuntime>>;
-    pending: Array<{ id: string; content: string; sequenceNumber: number }>;
+    pending: Array<{ id: string; content: string; sequenceNumber: number; replyToMessageId?: string | null }>;
     userId: string;
     lockToken: string;
     abortController: AbortController;
@@ -599,6 +604,15 @@ export class StreamingChatService {
     // A first chat must feel like a first chat (no "kahan gayab the?", no pretending to know them).
     const firstChatHint =
       recentMessages.length === 0 ? " This is your very first conversation with them: you've never talked before, so don't act like you know them or ask where they were." : '';
+    // They replied to a specific message (swipe-to-reply): the character must know which one, even if it's old.
+    const quotedIds = pending.map((m) => m.replyToMessageId).filter((id): id is string => Boolean(id));
+    const quotedMessages = quotedIds.length
+      ? await prisma.message.findMany({ where: { id: { in: quotedIds }, conversationId }, select: { id: true, role: true, content: true } })
+      : [];
+    const quoteNote = quotedMessages
+      .map((q) => `(they are replying to ${q.role === 'assistant' ? 'your' : 'their own'} earlier message: "${q.content.replace(/\s+/g, ' ').slice(0, 300)}")`)
+      .join('\n');
+
     const request = {
       model: providerChain[0]!.model,
       // A one-line hint for THIS turn, last in the prompt, where small models follow it best.
@@ -608,6 +622,10 @@ export class StreamingChatService {
       // Sized to what the user sent: a casual text can't produce a paragraph; a real task has room.
       maxTokens: style.maxTokens,
     };
+    if (quoteNote) {
+      const last = request.messages[request.messages.length - 1];
+      if (last?.role === 'user') request.messages[request.messages.length - 1] = { ...last, content: `${quoteNote}\n${last.content}` };
+    }
 
     // Human engine: characters with a persona pack get the compact, situation-aware prompt.
     const herRecentReplies = recentMessages.filter((m) => m.role === 'assistant').map((m) => m.content);
@@ -646,7 +664,11 @@ export class StreamingChatService {
       turnSituations = situations;
       // Mentors: a real question in their field is a lesson, not small talk.
       const lessonBefore = hoursSince !== null && hoursSince < 3 ? previousUserMessage?.content : undefined;
-      if (isTeachingMoment(pack, pendingText, situations, herRecentReplies[herRecentReplies.length - 1], lessonBefore) && !situations.includes('task'))
+      // Quoting a mentor's message with "samjha nahi / kaise" is a request to explain that exact thing.
+      const quotedHer = quotedMessages.find((q) => q.role === 'assistant')?.content;
+      if (pack.mentor && quotedHer && /\b(kaise|samjh\w*|samajh\w*|nahi aaya|explain|how|matlab|kya hai|kyu|kyun)\b/i.test(pendingText) && !situations.includes('task'))
+        situations.unshift('task');
+      if (isTeachingMoment(pack, pendingText, situations, quotedHer ?? herRecentReplies[herRecentReplies.length - 1], lessonBefore) && !situations.includes('task'))
         situations.unshift('task');
       const moment = await updateMomentContext({
         userId,
