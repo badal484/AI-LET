@@ -220,7 +220,8 @@ export function applyUserTurn(params: {
     state.boundaryAt &&
     now - state.boundaryAt < 20 * 60_000 &&
     userText.trim().split(/\s+/).length <= 8 &&
-    !situations.some((s) => ['crisis', 'emergency', 'emotional', 'eating', 'ai', 'win'].includes(s))
+    // Sulking at her no ("katti", "baat nahi karni") is not another push — she wins them back instead.
+    !situations.some((s) => ['crisis', 'emergency', 'emotional', 'eating', 'ai', 'win', 'sulk'].includes(s))
   ) {
     situations.unshift('boundary');
     lines.push('They are still on the topic they pushed a moment ago (asking why or when). Answer warmly and playfully, never shaming: it happens only when two people really know each other — then pull them into something sweet and specific.');

@@ -65,7 +65,7 @@ const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|impl
 const TIRED_OF_QUESTIONS = /(bahut|zyada|itne|kitne) (sawaal|sawal|questions?)|sawaal (mat|band)|too many questions|stop asking|interrogat|poochti rehti|poochte rehte|puchti rehti/i;
 
 /** Moments worth the better (quota-limited) model when Gemini is on its free tier. */
-const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'boundary', 'news'];
+const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'sulk', 'boundary', 'news'];
 
 export class StreamingChatService {
   // Registry of active stream AbortControllers for real-time cancellation
@@ -87,7 +87,8 @@ export class StreamingChatService {
    */
   private static readonly MAX_BUBBLES = 8;
   private static readonly MAX_TURNS_PER_REQUEST = 6;
-  private static readonly BUBBLE_DELIMITER = /\s*\[\[\s*next\s*\]\]\s*/gi;
+  // Also "[next]": models sometimes drop a bracket, and the literal marker showed up as a bubble.
+  private static readonly BUBBLE_DELIMITER = /\s*\[\[?\s*next\s*\]\]?\s*/gi;
   private static readonly SAFE_FALLBACK =
     'Main abhi iss baare mein baat nahi kar sakti, par batao tumhara din kaisa chal raha hai?';
 
@@ -671,6 +672,20 @@ export class StreamingChatService {
       const hoursSince = previousUserMessage ? (Date.now() - previousUserMessage.createdAt.getTime()) / 3_600_000 : null;
       const situations = classifySituations(pendingText, hoursSince);
       turnSituations = situations;
+      // Something she turned down in the last few messages ("OYO", "sex chahiye") — the usual reason for a sulk.
+      const refusedAsk = recentMessages
+        .filter((m) => m.role === 'user' && Date.now() - m.createdAt.getTime() < 6 * 3_600_000)
+        .slice(-4)
+        .reverse()
+        .find((m) => classifySituations(m.content, null).includes('boundary'));
+      // "No", "hmm", "jao" soon after she turned them down is sulking at her, not small talk
+      // (seen live: "No" → "Katti" → "baat nahi karna" each got "jab mann ho baat kar lena").
+      if (
+        !situations.includes('sulk') &&
+        refusedAsk &&
+        /^(no+|nahi+|nhi|na+|hmm+|hm+|k|ok+|okay|theek hai|thik hai|jao|bye|huh|hmph|😒|🙄|😤|😑|😔)[\s.!?]*$/i.test(pendingText.trim())
+      )
+        situations.unshift('sulk');
       // Mentors: a real question in their field is a lesson, not small talk.
       const lessonBefore = hoursSince !== null && hoursSince < 3 ? previousUserMessage?.content : undefined;
       // Quoting a mentor's message with "samjha nahi / kaise" is a request to explain that exact thing.
@@ -799,6 +814,9 @@ export class StreamingChatService {
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
               courseNote,
+              situations[0] === 'sulk' && refusedAsk
+                ? `they're sulking because you said no when they asked "${refusedAsk.content.slice(0, 60)}" — that's the reason (not a joke): say it softly ("us baat pe naraz ho?"), keep your no, and win them back warmly`
+                : '',
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
       // ("dhaba chalein?") when they just say "hii" the next day.

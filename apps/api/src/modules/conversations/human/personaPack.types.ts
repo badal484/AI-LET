@@ -12,6 +12,8 @@ export type Situation =
   | 'flirt'
   | 'emotional'
   | 'rude'
+  /** "katti", "baat nahi karni tumse", "naraz hoon" — upset with HER; they want to be won back, not left alone. */
+  | 'sulk'
   | 'boundary'
   | 'ai'
   | 'task'
