@@ -1,3 +1,4 @@
+import { looksLikeUnfencedCode } from './codeBlocks.js';
 import { hasDevanagari } from './script.js';
 import { promisesIncome, unsafeHealthAdvice } from './mentor.js';
 
@@ -124,6 +125,10 @@ export function checkReply(params: {
   // Two questions in one casual reply feels like an interview, not a chat (a lesson may need more context).
   if (params.mode !== 'task' && (all.match(/\?/g) ?? []).length >= 2) {
     problems.push('Ask at most one question in a reply — two feels like an interview. Keep the one that matters, or none.');
+  }
+  // Code pasted as plain text gets mangled by chat formatting and can't be copied cleanly.
+  if (looksLikeUnfencedCode(all)) {
+    problems.push('Put code inside a ``` block with its language (```python … ```), never as plain text.');
   }
   if (params.romanOnly && hasDevanagari(all)) {
     problems.push('Write Hindi words in Roman letters like they do (chupchaap, not चुपचाप). No Devanagari.');

@@ -36,6 +36,7 @@ import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, r
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
+import { extractCode, isCodeBubble, restoreCode } from '../human/codeBlocks.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -52,6 +53,9 @@ import type {
   AIProviderName,
 } from '@ai-companion/types';
 import { AIGateway } from '../../ai/gateway/AIGateway.js';
+
+/** "can you give me code?", "script likh do" — a code answer needs more room than a chat reply. */
+const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|implement|likh (do|ke do)|bana (do|ke do))\b/i;
 
 /** "tum bahut sawaal poochti ho" — they want her to stop asking. */
 const TIRED_OF_QUESTIONS = /(bahut|zyada|itne|kitne) (sawaal|sawal|questions?)|sawaal (mat|band)|too many questions|stop asking|interrogat|poochti rehti|poochte rehte|puchti rehti/i;
@@ -361,6 +365,8 @@ export class StreamingChatService {
    * Four long paragraphs within seconds is what gave the AI away.
    */
   private static typingDelayMs(text: string): number {
+    // Code is pasted, not typed.
+    if (isCodeBubble(text)) return Math.round((1800 + Math.floor(Math.random() * 800)) * this.pacingScale());
     const thinking = 600 + Math.floor(Math.random() * 700);
     const typing = text.length * 100;
     return Math.round(Math.min(12_000, Math.max(1200, thinking + typing)) * this.pacingScale());
@@ -754,7 +760,7 @@ export class StreamingChatService {
       // Size limits follow the situation (a crisis or an honest AI answer needs room to be complete).
       // A mentor's lesson needs room (lists + a task line); running out of tokens cut lessons mid-sentence.
       if (situations.includes('task'))
-        Object.assign(style, { mode: 'task', maxTokens: pack.mentor ? 1600 : 900, maxBubbles: pack.mentor?.field === 'life' ? 3 : pack.mentor ? 5 : 4, maxBubbleChars: 2000 });
+        Object.assign(style, { mode: 'task', maxTokens: pack.mentor ? (ASKS_FOR_CODE.test(pendingText) ? 2600 : 1600) : 900, maxBubbles: pack.mentor?.field === 'life' ? 3 : pack.mentor ? 5 : 4, maxBubbleChars: 2000 });
       else if (situations.some((s) => ['crisis', 'emergency', 'eating', 'ai', 'emotional', 'boundary'].includes(s)))
         Object.assign(style, {
           mode: 'deep',
@@ -819,7 +825,10 @@ export class StreamingChatService {
 
     const tagged = extractTaskTag(generated.content);
     newTask = tagged.task;
-    let replyText = this.cleanModelText(tagged.text);
+    // Code is set aside before the chat cleanup (which joins lines) and put back untouched at the end.
+    const coded = extractCode(tagged.text);
+    let codeBlocks = coded.blocks;
+    let replyText = this.cleanModelText(coded.text);
 
     // A reply cut off by the token cap ends mid-sentence: keep it up to the last complete sentence.
     if (generated.finishReason === 'length') {
@@ -887,11 +896,13 @@ export class StreamingChatService {
         );
         if (retry.content) {
           const retryTagged = extractTaskTag(retry.content);
-          const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retryTagged.text)), style);
+          const retryCoded = extractCode(retryTagged.text);
+          const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retryCoded.text)), style);
           // Keep whichever draft is better — a rewrite isn't automatically an improvement.
           if (rewritten.length && review(rewritten, retryTagged.task).problems.length <= check.problems.length) {
             bubbles = rewritten;
             newTask = retryTagged.task ?? newTask;
+            codeBlocks = retryCoded.blocks;
           }
         }
       }
@@ -901,6 +912,8 @@ export class StreamingChatService {
     if (asksIfAI) bubbles = this.ensureAIDisclosure(bubbles);
     // They text Hindi in Roman letters: a Devanagari slip ("chupचाप") is spelled out the way they write.
     if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
+    // Code goes back exactly as written, each block as its own message (shown as a code box in the app).
+    bubbles = restoreCode(bubbles, codeBlocks);
     if (bubbles.length === 0) return false;
 
     const totalDurationMs = Date.now() - startTime;
@@ -979,7 +992,12 @@ export class StreamingChatService {
     await prisma.conversation.update({
       where: { id: conversationId },
       // A new message brings a chat deleted from the Chats tab back to the list.
-      data: { lastMessageAt: new Date(), lastMessageSnippet: delivered[delivered.length - 1]!.content.slice(0, 120), unreadCount: 0, hiddenAt: null },
+      data: {
+        lastMessageAt: new Date(),
+        lastMessageSnippet: isCodeBubble(delivered[delivered.length - 1]!.content) ? '💻 Code' : delivered[delivered.length - 1]!.content.slice(0, 120),
+        unreadCount: 0,
+        hiddenAt: null,
+      },
     });
 
     // Compatibility summary event for clients that do not render bubbles individually.

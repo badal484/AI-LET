@@ -6,6 +6,9 @@ import {
   StyleSheet,
   Share,
   Animated,
+  ScrollView,
+  Platform,
+  Clipboard,
 } from 'react-native';
 import { Avatar } from './Avatar.js';
 import { ToastService } from './Toast.js';
@@ -91,6 +94,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const isInitialTyping = isStreaming && paragraphsToRender.length === 0;
 
+  // Code arrives as its own message ("```python\n…\n```"): shown exactly as written, with a Copy button.
+  const copyCode = (code: string) => {
+    Clipboard.setString(code);
+    ToastService.show({ message: 'Code copied', type: 'info', duration: 1500 });
+  };
+
   const handleCopy = async () => {
     try {
       await Share.share({
@@ -150,15 +159,37 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 accessibilityRole="text"
                 accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${paragraph}`}
               >
-                <Text
-                  style={[
-                    styles.messageText,
-                    isUser ? styles.userText : styles.assistantText,
-                  ]}
-                  selectable
-                >
-                  {paragraph}
-                </Text>
+                {(() => {
+                  const code = /^```([\w+#.-]*)\n([\s\S]*?)\n?```$/.exec(paragraph);
+                  if (!code) {
+                    return (
+                      <Text
+                        style={[
+                          styles.messageText,
+                          isUser ? styles.userText : styles.assistantText,
+                        ]}
+                        selectable
+                      >
+                        {paragraph}
+                      </Text>
+                    );
+                  }
+                  return (
+                    <View style={styles.codeCard}>
+                      <View style={styles.codeHeader}>
+                        <Text style={styles.codeLang}>{code[1] || 'code'}</Text>
+                        <TouchableOpacity onPress={() => copyCode(code[2] ?? '')} accessibilityRole="button" accessibilityLabel="Copy code">
+                          <Text style={styles.codeCopy}>Copy</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <Text style={styles.codeText} selectable>
+                          {code[2]}
+                        </Text>
+                      </ScrollView>
+                    </View>
+                  );
+                })()}
 
                 {isCancelled && pIdx === arr.length - 1 && (
                   <Text style={styles.cancelledLabel}>[Generation stopped]</Text>
@@ -323,6 +354,38 @@ const styles = StyleSheet.create({
     borderColor: darkThemeColors.danger,
     borderWidth: 1,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  codeCard: {
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    overflow: 'hidden',
+    minWidth: 220,
+  },
+  codeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  codeLang: {
+    color: '#A78BFA',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'lowercase',
+  },
+  codeCopy: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  codeText: {
+    color: '#E5E7EB',
+    fontSize: 12.5,
+    lineHeight: 18,
+    padding: 10,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
   },
   messageText: {
     fontSize: 15,
