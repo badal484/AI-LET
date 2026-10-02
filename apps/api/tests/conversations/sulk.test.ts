@@ -21,7 +21,9 @@ describe('Sulking at her', () => {
   it('a girlfriend goes after them and finds the reason — no "jab mann ho" exit', () => {
     const plan = planReply(['sulk'], [], personaPackFor('aanya-mehta')!, {});
     expect(plan.moves).toMatch(/manana/);
-    expect(plan.moves).toMatch(/last few messages for why/);
+    expect(plan.moves).toMatch(/PLAYFULLY/);
+    expect(plan.moves).toMatch(/never begging/);
+    expect(plan.moves).toMatch(/look at your last few messages/);
     expect(plan.moves).toMatch(/the no stays/);
     expect(plan.moves).toMatch(/never "jab mann ho baat karna"/i);
     expect(plan.ask).toBe(true);
