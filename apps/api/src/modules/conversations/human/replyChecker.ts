@@ -1,3 +1,4 @@
+import { hasDevanagari } from './script.js';
 import { promisesIncome, unsafeHealthAdvice } from './mentor.js';
 
 /**
@@ -75,6 +76,8 @@ export function checkReply(params: {
   plannedText?: string;
   /** How she addresses them; anything else is a slip (tum ↔ aap ↔ tu). */
   address?: 'tum' | 'aap' | 'tu';
+  /** They write Hindi in Roman letters: the reply must not slip into Devanagari ("chupचाप"). */
+  romanOnly?: boolean;
   /** They said she asks too many questions: this reply must not ask any. */
   noQuestions?: boolean;
   /** Mentors are also checked for income promises. */
@@ -121,6 +124,9 @@ export function checkReply(params: {
   // Two questions in one casual reply feels like an interview, not a chat (a lesson may need more context).
   if (params.mode !== 'task' && (all.match(/\?/g) ?? []).length >= 2) {
     problems.push('Ask at most one question in a reply — two feels like an interview. Keep the one that matters, or none.');
+  }
+  if (params.romanOnly && hasDevanagari(all)) {
+    problems.push('Write Hindi words in Roman letters like they do (chupchaap, not चुपचाप). No Devanagari.');
   }
   if (params.noQuestions && params.bubbles.some((b) => /\?\s*\p{Extended_Pictographic}?\s*$/u.test(b.trim()))) {
     problems.push("They told you that you ask too many questions. Don't ask anything now — acknowledge it lightly and just be with them.");

@@ -35,6 +35,7 @@ import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
 import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
+import { hasDevanagari, romanizeDevanagari } from '../human/script.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -845,6 +846,7 @@ export class StreamingChatService {
           mentor: Boolean(pack.mentor),
           lesson: isLesson && !tiredOfQuestions ? { hasTask: Boolean(task) } : undefined,
           noQuestions: tiredOfQuestions,
+          romanOnly: !hasDevanagari(pendingText),
           health: pack.mentor?.field === 'health',
           situations: turnSituations,
           userText: pendingText,
@@ -883,6 +885,8 @@ export class StreamingChatService {
       if (cleaned.length) bubbles = cleaned;
     }
     if (asksIfAI) bubbles = this.ensureAIDisclosure(bubbles);
+    // They text Hindi in Roman letters: a Devanagari slip ("chupचाप") is spelled out the way they write.
+    if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
     if (bubbles.length === 0) return false;
 
     const totalDurationMs = Date.now() - startTime;
