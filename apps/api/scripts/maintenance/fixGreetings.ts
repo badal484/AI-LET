@@ -15,6 +15,7 @@ const apply = process.argv.includes('--apply');
 
 const GREETINGS: Record<string, string> = {
   riya: 'Hii! 🥰 Main Riya. Lovira pe pehli baar baat ho rahi hai na? Batao, kya chal raha hai aaj?',
+  'ritika-sharma': 'Hello! Main Ritika — Delhi, law final year, aur abhi moot court ki files mein dubi hui ☕ Pehli hearing hai humari, toh batao: kya chal raha hai?',
   'dr-shradha': 'Hello, main Shradha 🌿 Yahan aaram se, bina judge hue baat kar sakte ho. Aaj mann kaisa hai?',
   'dr-maya': 'Hii, main Maya 🌿 Neend, energy ya daily habits — kisi pe bhi saath kaam karte hain. Pehle batao, kal raat neend kaisi aayi?',
 };
