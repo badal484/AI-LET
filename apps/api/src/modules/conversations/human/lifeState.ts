@@ -32,6 +32,8 @@ export interface LifeState {
   nickname?: string;
   /** Read from how they talk about themselves ("ja raha hoon" / "ja rahi hoon"). */
   userGender?: 'male' | 'female';
+  /** When they last said they felt like ending their life (the words themselves are never kept). */
+  crisisAt?: number;
   /** They said they're under 18 — no romance or flirting, ever. */
   minor?: boolean;
   /** What she last told them she's doing, so she doesn't switch activities mid-conversation. */
@@ -241,6 +243,12 @@ export function applyUserTurn(params: {
   if (userMood === 'low' || state.day.userMoods.slice(0, -1).includes('low')) {
     lines.push("They already told you they're having a hard time today. Don't ask how their day is going again — respond to what they said.");
   }
+  const sinceCrisis = state.crisisAt ? now - state.crisisAt : Infinity;
+  if (sinceCrisis < 24 * HOUR) {
+    lines.push(
+      'A little while ago they told you they felt like ending their life; you answered with care and gave them Tele-MANAS 14416. Gently check how they are now. Stay soft and close — no jokes, teasing or flirting. If it comes up again, stay with them and repeat the helpline (and 112 if in danger).',
+    );
+  }
   if (params.metToday) {
     lines.push("You met them for the first time today, in this chat — you have never talked before. If they ask, say so honestly; never claim you talked earlier.");
   }
@@ -309,3 +317,9 @@ export function rememberTask(state: LifeState, task: string | undefined, now = D
     { kind: 'task', topic: 'task', said: task.slice(0, 160), mentionedAt: now, dueAt: now + 12 * 3_600_000 },
   ];
 }
+
+/** Remember that a crisis moment happened, so she checks on them gently next time. */
+export function markCrisis(state: LifeState, now = Date.now()): void {
+  state.crisisAt = now;
+}
+

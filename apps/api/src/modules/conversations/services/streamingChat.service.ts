@@ -32,13 +32,15 @@ import { localHourIn } from '../human/emotionalState.js';
 import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { addDatedThreads, applyUserTurn, loadLifeState, localDate, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
+import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
+import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
   StreamMessageCompletedPayload,
+  StreamCrisisSupportPayload,
   StreamMessageFailedPayload,
   StreamHeartbeatPayload,
   StreamMessageSavedPayload,
@@ -133,12 +135,14 @@ export class StreamingChatService {
           requestId: req.headers['x-request-id'] as string,
         });
         if (inputSafety.decision === 'BLOCK' || inputSafety.decision === 'ESCALATE') {
+          if (isCrisisMessage(content)) return this.sendCrisisSupport(res, conversation, userId, content);
           this.sendSingleSseError(res, ErrorCode.CONTENT_MODERATION_BLOCKED, inputSafety.reason || 'Message blocked by safety policy.');
           return;
         }
 
         const moderationResult = await ModerationService.checkUserMessage(userId, conversationId, content);
         if (!moderationResult.isAllowed) {
+          if (isCrisisMessage(content)) return this.sendCrisisSupport(res, conversation, userId, content);
           this.sendSingleSseError(res, ErrorCode.CONTENT_MODERATION_BLOCKED, moderationResult.reason || 'Content blocked by moderation policy');
           return;
         }
@@ -1149,6 +1153,40 @@ export class StreamingChatService {
   private static emitSseEvent<T>(res: Response, event: StreamEventType, data: T): void {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     (res as any).flush?.();
+  }
+
+  /**
+   * A blocked message saying they feel like ending their life: the AI still never sees it, but instead of
+   * an error they get fixed, caring words with real helplines, and she remembers (not the words) to check
+   * on them gently next time. The usual block signal follows, so nothing about the block changes.
+   */
+  private static async sendCrisisSupport(
+    res: Response,
+    conversation: { id: string; characterId: string; character: { gender?: string | null }; user?: { profile?: { timezone?: string | null } | null } | null },
+    userId: string,
+    content?: string,
+  ): Promise<void> {
+    const g = String(conversation.character.gender ?? '').toLowerCase();
+    const gender = /^(female|woman|f)$/.test(g) ? 'female' : /^(male|man|m)$/.test(g) ? 'male' : null;
+    this.initSseResponse(res);
+    this.emitSseEvent<StreamCrisisSupportPayload>(res, 'crisis.support', {
+      conversationId: conversation.id,
+      messages: crisisSupportMessages(content ?? '', gender),
+    });
+    this.emitSseEvent<StreamMessageFailedPayload>(res, 'message.failed', {
+      conversationId: conversation.id,
+      errorCode: ErrorCode.CONTENT_MODERATION_BLOCKED,
+      errorMessage: 'crisis_support',
+      retryable: false,
+    });
+    res.end();
+    try {
+      const life = await loadLifeState(userId, conversation.characterId, conversation.user?.profile?.timezone);
+      markCrisis(life);
+      await saveLifeState(userId, conversation.characterId, life);
+    } catch (err) {
+      logger.warn(`Could not record crisis moment: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
   }
 
   private static sendSingleSseError(res: Response, code: string, message: string): void {
