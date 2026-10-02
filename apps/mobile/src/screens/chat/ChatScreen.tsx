@@ -418,6 +418,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const runTurn = async (opts: { content: string; clientRequestId: string; retryMessageId?: string; restoreOnReject: boolean }) => {
     if (!effectiveConvId) return;
     let saved = Boolean(opts.retryMessageId);
+    // Set when the server answered a blocked crisis message with caring words instead of an error.
+    let supported = false;
     activeTurnsRef.current += 1;
     try {
       await ChatStreamClient.streamMessage(
@@ -472,8 +474,35 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             refetchRelationship();
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
           },
+          onCrisisSupport: payload => {
+            supported = true;
+            setIsTyping(false);
+            setSendError(null);
+            // Shown on this phone only (the blocked text never reaches the server): her caring words and
+            // the helplines, right after their message — never an error in that moment.
+            const at = Date.now();
+            const care = payload.messages.map(
+              (text, i) =>
+                ({
+                  id: `crisis-${opts.clientRequestId}-${i}`,
+                  conversationId: effectiveConvId,
+                  senderType: 'CHARACTER',
+                  role: 'assistant',
+                  content: text,
+                  status: 'SENT',
+                  sequenceNumber: Number.MAX_SAFE_INTEGER,
+                  retryCount: 0,
+                  parts: [],
+                  createdAt: new Date(at + i).toISOString(),
+                  updatedAt: new Date(at + i).toISOString(),
+                }) as ChatMessageItem,
+            );
+            setOptimisticMessages(prev => [...care.reverse(), ...prev]);
+            scrollToBottom();
+          },
           onFailed: payload => {
             setIsTyping(false);
+            if (supported) return;
             if (!saved) {
               // Refused before it was stored (blocked, rate-limited, offline): never lose the text.
               setOptimisticMessages(prev => prev.filter(m => m.clientRequestId !== opts.clientRequestId));

@@ -661,7 +661,17 @@ export type StreamEventType =
   | 'message.bubble'
   | 'reply.delayed'
   | 'reply.failed'
-  | 'turn.completed';
+  | 'turn.completed'
+  // A message about wanting to end their life is never sent to the AI; instead the person gets a fixed,
+  // caring reply with real helplines right away (then the usual message.failed for the blocked text).
+  | 'crisis.support';
+
+/** Fixed, caring words and helplines for someone who said they feel like ending their life. */
+export interface StreamCrisisSupportPayload {
+  conversationId: string;
+  /** Shown as messages from the character, in order. */
+  messages: string[];
+}
 
 /** The user's message has been stored (it is never lost after this event). */
 export interface StreamMessageSavedPayload {

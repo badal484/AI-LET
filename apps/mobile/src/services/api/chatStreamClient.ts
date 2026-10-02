@@ -12,6 +12,7 @@ import type {
   StreamMessageQueuedPayload,
   StreamMessageBubblePayload,
   StreamReplyStatusPayload,
+  StreamCrisisSupportPayload,
 } from '@ai-companion/types';
 
 export interface ChatStreamCallbacks {
@@ -33,6 +34,8 @@ export interface ChatStreamCallbacks {
   onReplyDelayed?: (payload: StreamReplyStatusPayload) => void;
   onReplyFailed?: (payload: StreamReplyStatusPayload) => void;
   onTurnCompleted?: () => void;
+  /** They said they feel like ending their life: fixed caring words + helplines (shown as her messages). */
+  onCrisisSupport?: (payload: StreamCrisisSupportPayload) => void;
 }
 
 export class ChatStreamClient {
@@ -167,6 +170,9 @@ export class ChatStreamClient {
             case 'turn.completed':
               isCompleted = true;
               callbacks.onTurnCompleted?.();
+              break;
+            case 'crisis.support':
+              callbacks.onCrisisSupport?.(parsed);
               break;
           }
         } catch (jsonErr) {
