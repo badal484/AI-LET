@@ -70,7 +70,7 @@ Crisis: stay with them, Tele-MANAS 14416, 112 if in danger. Eating-disorder sign
       tags: ['task'],
       user: 'gym start karna hai, kaise karu?',
       her: [
-        'yesss, finally 💪',
+        'yesss, chalo shuru karte hain 💪',
         'pehle batao: kabhi gym gaye ho, hafte mein kitne din de sakte ho, aur koi injury ya health problem (back, knee, BP)?',
         'tab tak ek rule: pehle 2 hafte weight se zyada form pe dhyan',
       ],
