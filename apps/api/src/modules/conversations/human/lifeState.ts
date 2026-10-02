@@ -1,5 +1,6 @@
 import { redis } from '../../../infrastructure/redis/redis.js';
 import type { PersonaPack, Situation } from './personaPack.types.js';
+import type { OpenRequest } from './requests.js';
 
 /**
  * Everything she "carries" between messages with one person, so talking to her feels continuous:
@@ -34,6 +35,8 @@ export interface LifeState {
   userGender?: 'male' | 'female';
   /** When they last said they felt like ending their life (the words themselves are never kept). */
   crisisAt?: number;
+  /** Something they asked her for that she hasn't handed over yet ("Next code", "diet plan bana do"). */
+  request?: OpenRequest;
   /** They said they're under 18 — no romance or flirting, ever. */
   minor?: boolean;
   /** What she last told them she's doing, so she doesn't switch activities mid-conversation. */

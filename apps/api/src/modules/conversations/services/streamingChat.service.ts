@@ -37,6 +37,7 @@ import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.j
 import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
 import { extractCode, isCodeBubble, restoreCode } from '../human/codeBlocks.js';
+import { detectRequest, extractDeliveredTag, stillOpen, wasDelivered, type OpenRequest } from '../human/requests.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
@@ -614,6 +615,10 @@ export class StreamingChatService {
     // The task she was told to ask about this turn (the editor checks she really did).
     let askAboutTask: string | undefined;
     let plannedText = '';
+    // Open request: something they asked for and haven't got yet ("Next code", "diet plan bana do").
+    let openRequest: OpenRequest | undefined;
+    let mustDeliver = false;
+    let settleRequest: ((delivered: boolean) => void) | null = null;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
     let turnSituations: string[] = [];
@@ -671,6 +676,21 @@ export class StreamingChatService {
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
+      // She remembers what they asked for: one quick question first is fine, then she hands it over herself.
+      if (pack.mentor || pack.domainKeywords.includes('code')) {
+        const askedNow = detectRequest(pendingText, { codeDomain: pack.domainKeywords.includes('code') });
+        const pendingRequest = stillOpen(life.request);
+        // Asking again for something still owed: no second stall.
+        life.request = askedNow ? (pendingRequest?.asked ? { ...askedNow, asked: true } : askedNow) : pendingRequest;
+        openRequest = life.request;
+        const hurting = situations.some((s) => ['crisis', 'emergency', 'emotional', 'eating'].includes(s));
+        mustDeliver = Boolean(openRequest?.asked && !hurting);
+        settleRequest = (delivered) => {
+          if (!life.request) return;
+          if (delivered) life.request = undefined;
+          else life.request.asked = true;
+        };
+      }
       // They cleared the chat on their screen: she still remembers (real life), but tactfully — she doesn't
       // bring up what was said before unless they do.
       if (clearedAt && Date.now() - clearedAt.getTime() < 24 * 3_600_000) {
@@ -707,6 +727,7 @@ export class StreamingChatService {
           : '',
         plan.nickname ? `call them ${plan.nickname}` : '',
               TIRED_OF_QUESTIONS.test(pendingText) ? "they said you ask too many questions — don't ask any question this time" : '',
+              mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
       // ("dhaba chalein?") when they just say "hii" the next day.
@@ -825,8 +846,10 @@ export class StreamingChatService {
 
     const tagged = extractTaskTag(generated.content);
     newTask = tagged.task;
+    const deliveredMark = extractDeliveredTag(tagged.text);
+    let deliveredTag = deliveredMark.delivered;
     // Code is set aside before the chat cleanup (which joins lines) and put back untouched at the end.
-    const coded = extractCode(tagged.text);
+    const coded = extractCode(deliveredMark.text);
     let codeBlocks = coded.blocks;
     let replyText = this.cleanModelText(coded.text);
 
@@ -856,7 +879,7 @@ export class StreamingChatService {
     if (humanMode && pack) {
       const isLesson = Boolean(pack.mentor) && style.mode === 'task';
       const tiredOfQuestions = TIRED_OF_QUESTIONS.test(pendingText);
-      const review = (b: string[], task: string | undefined) => {
+      const review = (b: string[], task: string | undefined, code: unknown[] = codeBlocks, tag: boolean = deliveredTag) => {
         const result = checkReply({
           bubbles: b,
           herRecentReplies,
@@ -868,6 +891,10 @@ export class StreamingChatService {
           address: pack.address,
           mentor: Boolean(pack.mentor),
           lesson: isLesson && !tiredOfQuestions ? { hasTask: Boolean(task) } : undefined,
+          mustDeliver:
+            mustDeliver && openRequest
+              ? { what: openRequest.what, delivered: wasDelivered(openRequest, { bubbles: b, codeBlocks: code.length, tagged: tag }) }
+              : undefined,
           noQuestions: tiredOfQuestions,
           romanOnly: !hasDevanagari(pendingText),
           health: pack.mentor?.field === 'health',
@@ -896,13 +923,15 @@ export class StreamingChatService {
         );
         if (retry.content) {
           const retryTagged = extractTaskTag(retry.content);
-          const retryCoded = extractCode(retryTagged.text);
+          const retryMark = extractDeliveredTag(retryTagged.text);
+          const retryCoded = extractCode(retryMark.text);
           const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retryCoded.text)), style);
           // Keep whichever draft is better — a rewrite isn't automatically an improvement.
-          if (rewritten.length && review(rewritten, retryTagged.task).problems.length <= check.problems.length) {
+          if (rewritten.length && review(rewritten, retryTagged.task, retryCoded.blocks, retryMark.delivered).problems.length <= check.problems.length) {
             bubbles = rewritten;
             newTask = retryTagged.task ?? newTask;
             codeBlocks = retryCoded.blocks;
+            deliveredTag = retryMark.delivered;
           }
         }
       }
@@ -914,6 +943,8 @@ export class StreamingChatService {
     if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
     // Code goes back exactly as written, each block as its own message (shown as a code box in the app).
     bubbles = restoreCode(bubbles, codeBlocks);
+    // Handed over → the request is closed; otherwise her one question/stall is used up.
+    if (openRequest) settleRequest?.(wasDelivered(openRequest, { bubbles, codeBlocks: codeBlocks.length, tagged: deliveredTag }));
     if (bubbles.length === 0) return false;
 
     const totalDurationMs = Date.now() - startTime;
