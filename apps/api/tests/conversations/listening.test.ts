@@ -46,6 +46,11 @@ describe('She listens', () => {
     expect(classifySituations('mujhe ek chhota sa monologue practice ke liye do', 0.1)).toContain('task');
   });
 
+  it('never comments on its own way of talking', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const };
+    expect(checkReply({ ...base, bubbles: ['Sorry, I\'ll be more natural! 🌸 Appointment ke liye clinic call kijiye.'] }).ok).toBe(false);
+  });
+
   it('no translated-English sympathy ("sorry to hear that")', () => {
     expect(checkReply({ bubbles: ['Oh no, I am so sorry to hear that.'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(false);
     expect(checkReply({ bubbles: ['ohh yaar', 'kya hua aaj?'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(true);
