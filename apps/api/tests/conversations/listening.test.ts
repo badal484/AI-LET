@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { classifySituations } from '../../src/modules/conversations/human/situation.js';
-import { checkReply } from '../../src/modules/conversations/human/replyChecker.js';
+import { checkReply, clockFits } from '../../src/modules/conversations/human/replyChecker.js';
 import { extractTaskTag, isTeachingMoment } from '../../src/modules/conversations/human/mentor.js';
 import { applyUserTurn, extractThread, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
 import { aarohiNair } from '../../src/modules/conversations/human/personaPacks/aarohi-nair.js';
@@ -34,6 +34,24 @@ describe('She listens', () => {
   it('no translated-English sympathy ("sorry to hear that")', () => {
     expect(checkReply({ bubbles: ['Oh no, I am so sorry to hear that.'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(false);
     expect(checkReply({ bubbles: ['ohh yaar', 'kya hua aaj?'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(true);
+  });
+
+  it('a time she says it is now matches her real clock', () => {
+    expect(clockFits('abhi yahan 3:15 subah ke ho rahe hain', 6)).toBe(false);
+    expect(clockFits('main na abhi raat ke teen baje case study kar rahi hoon', 6)).toBe(false);
+    expect(clockFits('abhi subah ke saat baje hain', 6)).toBe(true);
+    expect(clockFits('abhi raat ke 3 baje hain', 6)).toBe(false);
+    expect(clockFits('abhi 7 baje hain yahan', 6)).toBe(true);
+    expect(clockFits('abhi 7 baje hain yahan', 19)).toBe(true);
+    expect(clockFits('kal 3 baje class hai, abhi padh rahi hoon', 6)).toBe(true);
+    expect(clockFits('abhi 2 ghante se padh rahi hoon', 6)).toBe(true);
+  });
+
+  it('no "good night" in their afternoon unless they are going to sleep', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const, userHour: 16 };
+    expect(checkReply({ ...base, bubbles: ['jao aaram se so jao', 'good night!'], userText: 'chalo bye' }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['good night!'], userText: 'so raha hoon thodi der' }).ok).toBe(true);
+    expect(checkReply({ ...base, bubbles: ['good night!'], userText: 'chalo bye', userHour: 23 }).ok).toBe(true);
   });
 
   it('a goodbye after a hard day is soft, not a bare "ok"', () => {

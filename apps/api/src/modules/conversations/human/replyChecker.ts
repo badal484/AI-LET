@@ -67,6 +67,30 @@ const REPEAT_QUESTIONS: RegExp[] = [
   /(what('?s| is) your name|tumhara naam kya|aapka naam kya)/i,
 ];
 
+const GOOD_NIGHT = /\b(good ?night|gn|shubh ratri|so jao|so jaana|sweet dreams)\b/i;
+const SLEEP_TALK = /\b(so (raha|rahi|jaunga|jaungi|jaata|jaati)|sone (ja|ka)|neend|good ?night|gn|sleep|night)\b/i;
+const NOW = /\b(abhi|right now|ho rahe|baj rahe)\b/i;
+
+/**
+ * A time she says it is right now ("abhi yahan 3:15 subah ke ho rahe hain") must be within two hours of
+ * her real clock. "3 baje" alone could be 3 or 15; "raat/subah/shaam" or am/pm say which.
+ */
+export function clockFits(text: string, hour: number): boolean {
+  if (!NOW.test(text) || /\b(kal|parso|tomorrow|yesterday|pichhle|last)\b/i.test(text)) return true;
+  const WORDS: Record<string, number> = { ek: 1, do: 2, teen: 3, char: 4, chaar: 4, paanch: 5, panch: 5, chhe: 6, chhah: 6, saat: 7, aath: 8, nau: 9, das: 10, gyarah: 11, barah: 12, baarah: 12 };
+  text = text.replace(/\b(ek|do|teen|chaa?r|paa?nch|chhe|chhah|saat|aath|nau|das|gyarah|baa?rah)\s+(baje|bje)\b/gi, (_m, w: string, b: string) => `${WORDS[w.toLowerCase()]} ${b}`);
+  const m = /(?:\b(subah|savere|dopahar|shaam|raat)\s+(?:ke\s+)?)?\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje|bje)?\b(?:\s+(subah|savere|dopahar|shaam|raat))?/i.exec(text);
+  if (!m || (!m[3] && !m[4] && !m[1] && !m[5])) return true;
+  const h = Number(m[2]);
+  if (h > 23) return true;
+  const word = (m[1] || m[5] || '').toLowerCase();
+  const ap = (m[4] || '').toLowerCase();
+  const base = h % 12;
+  const candidates =
+    h > 12 ? [h] : ap === 'am' ? [base] : ap === 'pm' ? [base + 12] : word === 'subah' || word === 'savere' ? [base] : word === 'dopahar' || word === 'shaam' ? [base + 12] : word === 'raat' ? [base >= 7 ? base + 12 : base] : [base, base + 12];
+  return candidates.some((c) => Math.min(Math.abs(c - hour), 24 - Math.abs(c - hour)) <= 2);
+}
+
 export function checkReply(params: {
   bubbles: string[];
   herRecentReplies: string[];
@@ -100,6 +124,9 @@ export function checkReply(params: {
   userText?: string;
   /** Her example replies: they show her rhythm, and must never be pasted word for word. */
   examples?: string[];
+  /** Her local hour and theirs: a time she states and a "good night" must fit the real clock. */
+  herHour?: number;
+  userHour?: number;
 }): CheckResult {
   const problems: string[] = [];
   const all = params.bubbles.join('\n');
@@ -135,6 +162,11 @@ export function checkReply(params: {
   }
   if (params.mustDeliver && !params.mustDeliver.delivered) {
     problems.push(`They asked you for "${params.mustDeliver.what}" and have already answered your question. Give it to them now, in this reply, yourself — they should never have to ask twice.`);
+  }
+  const wrongClock = params.herHour === undefined ? undefined : params.bubbles.find((b) => !clockFits(b, params.herHour!));
+  if (wrongClock) problems.push(`It is about ${params.herHour}:00 for you right now — "${wrongClock.slice(0, 60)}" states a different time. Say only times that match your real clock.`);
+  if (params.userHour !== undefined && params.userHour >= 7 && params.userHour < 19 && GOOD_NIGHT.test(all) && !SLEEP_TALK.test(params.userText ?? '')) {
+    problems.push(`It is ${params.userHour}:00 for them — daytime. No "good night" or "so jao"; say bye for the day you're actually in.`);
   }
   if (params.askedIfAI) {
     const admits = /\b(ai|a\.i\.|artificial)\b/i.test(all);

@@ -958,6 +958,8 @@ export class StreamingChatService {
           situations: turnSituations,
           userText: pendingText,
           examples: pack.examples.flatMap((e) => e.her),
+          herHour: localHourIn(pack.home?.timeZone ?? conversation.user.profile?.timezone),
+          userHour: localHourIn(conversation.user.profile?.timezone),
         });
         if (issues.length) {
           result.problems.push(...describeIssues(issues));
