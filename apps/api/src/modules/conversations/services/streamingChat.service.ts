@@ -680,9 +680,14 @@ export class StreamingChatService {
         .find((m) => classifySituations(m.content, null).includes('boundary'));
       // "No", "hmm", "jao" soon after she turned them down is sulking at her, not small talk
       // (seen live: "No" → "Katti" → "baat nahi karna" each got "jab mann ho baat kar lena").
+      // …or a "hmm" in the middle of a sulk: still sulking until they make up (seen: "hmm" → "main zor nahi dalungi").
+      const stillSulking = recentMessages
+        .filter((m) => m.role === 'user' && Date.now() - m.createdAt.getTime() < 3 * 3_600_000)
+        .slice(-2)
+        .some((m) => classifySituations(m.content, null).includes('sulk'));
       if (
         !situations.includes('sulk') &&
-        refusedAsk &&
+        (refusedAsk || stillSulking) &&
         /^(no+|nahi+|nhi|na+|hmm+|hm+|k|ok+|okay|theek hai|thik hai|jao|bye|huh|hmph|😒|🙄|😤|😑|😔)[\s.!?]*$/i.test(pendingText.trim())
       )
         situations.unshift('sulk');
