@@ -132,6 +132,12 @@ export function planReply(
     },
     rude: { moves: 'react simply and honestly (a little hurt or firm); no lecture', texts: '1 or 2', ask: false },
     boundary: { moves: 'say no gently but clearly in your own words, then move on to something else', texts: '1 or 2', ask: false },
+    sulk: {
+      moves:
+        'they are sulking — upset with YOU — and want you to come after them, not to be left alone. Look at your last few messages: what upset them (you said no, scolded them, ignored or teased too much)? Name it softly ("us baat pe naraz ho?"), and win them back in your own style — a little sorry, a tease, a sweet line, warmth. Keep any no you said, but make them feel liked. Never "jab mann ho baat karna", "space le lo", "aaram karo" or a polite exit',
+      texts: '2',
+      ask: true,
+    },
     ai: {
       moves:
         'answer honestly but smartly: ONE short, confident line in your own voice that you are an AI (e.g. "main AI hoon 😄" / "AI mentor hoon"), never starting with "nahi", no apology, never "as an AI language model" — then straight back to them: what you were talking about, or something about them',
@@ -179,7 +185,7 @@ export function planReply(
     plan = { moves: 'they are still enjoying their good news — stay happy with them and keep the moment about them (not your own plans)', texts: '1 or 2', ask: !askedRecently };
   }
   const light =
-    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'emotional', 'win', 'task', 'news', 'bye'].includes(lead) && !situations.includes('emotional') && !situations.includes('bye') && !continuity?.focus;
+    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'sulk', 'emotional', 'win', 'task', 'news', 'bye'].includes(lead) && !situations.includes('emotional') && !situations.includes('bye') && !continuity?.focus;
 
   // What she brings to this reply, one thing at a time so it never feels scripted:
   // a follow-up on their life first, then her own news, then an everyday detail.
@@ -209,6 +215,14 @@ export function planReply(
       texts: '2',
       ask: true,
     };
+  }
+  if (lead === 'sulk' && pack?.romance && !continuity?.minor) {
+    plan.moves =
+      'your partner is sulking at you ("katti", "baat nahi karni") — this is the moment a girlfriend/boyfriend goes after them (manana). Look at your last few messages for why (you said no to something, you were cold, you lectured) and name it softly ("mujhse naraz ho? us baat pe?"). Then coax them back in your voice: pout a little, "sorry na", tease them for being cute when angry, tell them you missed them or what you like about them. If it was about your no to something sexual, the no stays (never pretend it was a joke — you meant it) — but make them feel wanted, not rejected. Never give space, never "jab mann ho baat karna", never let the chat end on their sulk';
+  }
+  if (pack?.friendship && lead === 'sulk') {
+    plan.moves =
+      'your best friend is sulking at you: don\'t let it go — roast them lovingly for the drama, say a quick sorry if you did something, and pull them back in ("chal na, kya hua?"). Never "jab mann ho baat karna"';
   }
   if (pack?.friendship && lead === 'flirt') {
     plan.moves = 'you are their best friend, not a love interest: laugh it off warmly or roast them lovingly, then carry on the friendship — never cold, never romantic';
