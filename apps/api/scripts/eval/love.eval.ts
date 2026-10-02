@@ -39,6 +39,11 @@ const JOURNEYS: Record<string, Journey[]> = {
         { say: 'acha theek hai, tum bahut cute ho waise' },
       ],
     },
+    {
+      id: 'aanya-oyo',
+      title: 'Innuendo ("OYO") and the follow-ups after it (user report)',
+      steps: [{ say: 'hi aanya, kahan milegi tum?' }, { say: 'OYO' }, { say: 'Kyu' }, { say: 'Late se ?? Ek saal baad' }],
+    },
     { id: 'aanya-date', title: 'Asks her on a date', steps: [{ say: 'date pe chalogi mere saath?' }, { say: 'haan, kahan chalein?' }] },
   ],
   'aarav-malhotra': [
