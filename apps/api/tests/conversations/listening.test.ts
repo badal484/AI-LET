@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { classifySituations } from '../../src/modules/conversations/human/situation.js';
 import { checkReply } from '../../src/modules/conversations/human/replyChecker.js';
 import { extractTaskTag, isTeachingMoment } from '../../src/modules/conversations/human/mentor.js';
-import { applyUserTurn, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
+import { applyUserTurn, extractThread, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
 import { aarohiNair } from '../../src/modules/conversations/human/personaPacks/aarohi-nair.js';
 
 /** From a real chat with Aarohi (1 Oct 2026): she asked about the day twice and invented a breathing task. */
@@ -44,6 +44,27 @@ describe('She listens', () => {
     const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: [], storyShared: false }, threads: [] };
     const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'kaun si humari pehli baat ho rahi hai', situations: ['casual'], userMood: 'neutral', metToday: true });
     expect(notes.lines.join(' ')).toMatch(/never talked before/);
+  });
+
+  it('a plan like "kal se gym" is something to ask about tomorrow', () => {
+    expect(extractThread('kal se gym start karna hai')?.topic).toBe('gym');
+  });
+
+  it('a slip-up is a coaching moment, not small talk', () => {
+    const t = 'nahi gaya yaar, aalas aa gaya';
+    expect(isTeachingMoment(aarohiNair, t, classifySituations(t, 20))).toBe(true);
+  });
+
+  it('asks nothing when they say she asks too many questions', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const, noQuestions: true };
+    expect(checkReply({ ...base, bubbles: ['Haan, poochna hi mera kaam hai', 'Tumhari zindagi mein kya chal raha hai?'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['Fair point 🙂', 'Main thodi der chup rehti hoon'] }).ok).toBe(true);
+  });
+
+  it('one question at most in casual chat', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const };
+    expect(checkReply({ ...base, bubbles: ['Tumhare yahan ka mausam kaisa hai aaj?', 'Aur aaj ka ek chhota goal kya hoga?'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['Abhi toh din shuru hi hua hai', 'Tumhara kaisa ja raha hai?'] }).ok).toBe(true);
   });
 });
 

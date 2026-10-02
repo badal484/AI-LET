@@ -114,7 +114,7 @@ export function readUserMood(text: string, situations: Situation[]): UserMood {
 }
 
 const EVENT =
-  /\b(interview|exam|paper|test|result|presentation|meeting|date|trip|flight|train|doctor|appointment|match|audition|viva|shaadi|wedding|party|joining|surgery|operation|deadline|pitch|recital|performance)\b/;
+  /\b(interview|exam|paper|test|result|presentation|meeting|date|trip|flight|train|doctor|appointment|match|audition|viva|shaadi|wedding|party|joining|surgery|operation|deadline|pitch|recital|performance|gym|workout|walk|run|diet|class|course|tuition|practice|routine)\b/;
 const PAST = /\b(tha|thi|the|gaya|gayi|gaye|hua|hui|ho gaya|ho gayi|was|went|did|had|yesterday)\b/;
 const WHEN: Array<[RegExp, number]> = [
   [/\b(parso|day after tomorrow)\b/, 40],
