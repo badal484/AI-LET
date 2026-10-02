@@ -16,14 +16,16 @@ export interface OpenRequest {
 const OPEN_FOR_MS = 6 * 3_600_000;
 
 const ASKS_FOR_CODE = /\b(code|script|snippet|program|implement)\b|\bnext (code|step|part|wala)\b/i;
-const THING = /\b(plan|diet|routine|schedule|list|ideas?|roadmap|resume|cv|template|example|examples|recipe|steps|caption|captions|pitch|email|message|reply|post|script|outline|tips|exercises?|questions)\b/i;
+const THING = /\b(plan|diet|routine|schedule|list|ideas?|roadmap|resume|cv|template|example|examples|recipe|steps|caption|captions|pitch|email|message|reply|post|script|outline|tips?|exercises?|questions)\b/i;
 const ASK_VERB = /\b(bana|banao|bana do|bana de|likh|likho|likh do|bhej|bhejo|bhej do|de do|dedo|do na|dijiye|chahiye|batao|give|send|share|make|write|suggest|next|aur ek|ek aur)\b/i;
 
 /** "Next code", "diet plan bana do", "5 video ideas do" — something she should hand over. */
 export function detectRequest(text: string, opts: { codeDomain: boolean }, now = Date.now()): OpenRequest | null {
   const t = text.trim();
   if (opts.codeDomain && ASKS_FOR_CODE.test(t)) return { what: t.slice(0, 140), kind: 'code', at: now };
-  if (THING.test(t) && ASK_VERB.test(t)) return { what: t.slice(0, 140), kind: 'deliverable', at: now };
+  // "3 photo ideas do", "tips de": a bare "do"/"de" right after the thing asks for it.
+  const bareAsk = new RegExp(`${THING.source}.{0,25}\\b(do|de|dena|dijiye)\\b`, 'i');
+  if (THING.test(t) && (ASK_VERB.test(t) || bareAsk.test(t))) return { what: t.slice(0, 140), kind: 'deliverable', at: now };
   return null;
 }
 
