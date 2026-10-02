@@ -246,6 +246,9 @@ export function applyUserTurn(params: {
   if (userMood === 'low' || state.day.userMoods.slice(0, -1).includes('low')) {
     lines.push("They already told you they're having a hard time today. Don't ask how their day is going again — respond to what they said.");
   }
+  if (situations.includes('bye') && wasDown) {
+    lines.push('They had a hard day and are saying bye: a soft goodbye — hope tomorrow is lighter, tell them to rest. Not a bare "ok".');
+  }
   const sinceCrisis = state.crisisAt ? now - state.crisisAt : Infinity;
   if (sinceCrisis < 24 * HOUR) {
     lines.push(

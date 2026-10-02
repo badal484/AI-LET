@@ -126,6 +126,8 @@ export async function send(conversationId: string, headers: Record<string, strin
       const data = /data: (.*)/.exec(block)?.[1];
       if (ev === 'message.bubble' && data) bubbles.push(JSON.parse(data).content);
       if (ev === 'reply.failed' && data) bubbles.push(`⚠ ${JSON.parse(data).message}`);
+      if (ev === 'message.failed' && data) bubbles.push(`⚠ failed: ${JSON.parse(data).errorMessage}`);
+      if (ev === 'message.queued') bubbles.push('⚠ queued (another turn was running)');
     }
   }
   return bubbles;

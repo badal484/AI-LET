@@ -8,10 +8,10 @@ import { aarohiNair } from '../../src/modules/conversations/human/personaPacks/a
 /** From a real chat with Aarohi (1 Oct 2026): she asked about the day twice and invented a breathing task. */
 describe('She listens', () => {
   it('a one-word bad day is a bad day', () => {
-    for (const t of ['Baad', 'bad', 'Kitna baar bataau bad', 'aaj ka din bura tha', 'worst day']) {
+    for (const t of ['Baad', 'bad', 'Kitna baar bataau bad', 'aaj ka din bura tha', 'worst day', 'aaj din thoda kharab tha yaar', 'din achha nahi gaya']) {
       expect(classifySituations(t, 0.1), t).toContain('emotional');
     }
-    for (const t of ['not bad', 'baad mein baat karte hain', 'itna bura nahi tha']) {
+    for (const t of ['not bad', 'baad mein baat karte hain', 'itna bura nahi tha', 'din kharab nahi tha']) {
       expect(classifySituations(t, 0.1), t).not.toContain('emotional');
     }
   });
@@ -20,6 +20,12 @@ describe('She listens', () => {
     const recent = ['Hey there! How is your day going?', 'Lagta hai aaj ka din kaafi bhari raha tumhare liye.'];
     expect(checkReply({ bubbles: ['Tumhare liye aaj ka din kaisa raha?'], herRecentReplies: recent, gender: 'female', mode: 'casual' }).ok).toBe(false);
     expect(checkReply({ bubbles: ['Bura din. Kya hua aaj?'], herRecentReplies: recent, gender: 'female', mode: 'casual' }).ok).toBe(true);
+  });
+
+  it('a goodbye after a hard day is soft, not a bare "ok"', () => {
+    const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: ['low'], storyShared: false }, threads: [] };
+    const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'chalo bye', situations: ['bye'], userMood: 'neutral' });
+    expect(notes.lines.join(' ')).toMatch(/soft goodbye/);
   });
 
   it('remembers the bad day for the rest of the chat', () => {
