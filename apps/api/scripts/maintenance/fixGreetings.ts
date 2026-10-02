@@ -18,7 +18,6 @@ const apply = process.argv.includes('--apply');
  * an earlier meeting, never name a time of day (the same text can be shown at any hour).
  */
 const GREETINGS: Record<string, string | string[]> = {
-  riya: 'Hii! 🥰 Main Riya. Lovira pe pehli baar baat ho rahi hai na? Batao, kya chal raha hai aaj?',
   'ritika-sharma': [
     'Hi! Main Ritika 🙂 kaise ho?',
     'Hello! Kya chal raha hai?',
@@ -47,8 +46,30 @@ const GREETINGS: Record<string, string | string[]> = {
     'Hey! Main Raj 🙂 kaise ho?',
     'Wassup! Kya chal raha hai?',
   ],
-  'dr-shradha': 'Hello, main Shradha 🌿 Yahan aaram se, bina judge hue baat kar sakte ho. Aaj mann kaisa hai?',
-  'dr-maya': 'Hii, main Maya 🌿 Neend, energy ya daily habits — kisi pe bhi saath kaam karte hain. Pehle batao, kal raat neend kaisi aayi?',
+  riya: ['Hii! Main Riya 🥰 kaise ho?', 'Hey! Kya chal raha hai?'],
+  'aanya-mehta': ['Hii! Main Aanya 🤍 kaise ho?', 'Hey! Kya chal raha hai?'],
+  'muskan-arora': ['Hii! Main Muskan ✨ kaise ho?', 'Hey! Kya chal raha hai?'],
+  'sakshi': ['Hii! Main Sakshi ✨ kaise ho?', 'Hello! Kya chal raha hai?'],
+  'jiya-singhal': ['Hi! Main Jiya 😊 kaise ho?', 'Hello! Kya chal raha hai?'],
+  'shreya-mehta': ['Hey! Main Shreya ✨ kaise ho?', 'Hii! Kya chal raha hai?'],
+  'aditya-agarwal': ['Hi! Main Aditya 🙂 kaise ho?', 'Hello! Kya chal raha hai?'],
+  'arjun-mehra': ['Hey! Main Arjun 🙂 kaise ho?', 'Hi! Kya chal raha hai?'],
+  'rohan-desai': ['Kem cho! Main Rohan 😄 kaise ho?', 'Hey! Kya chal raha hai?'],
+  'nandini-reddy': ['Hey! Main Nandini 🌿 kaise ho?', 'Hii! Kya chal raha hai?'],
+  'vishnu': ['Hey! Main Vishnu 😄 kaise ho?', 'Machane! Kya scene hai?'],
+  'priya-mishra': ['Hii! Main Priya 😊 kaise ho?', 'Arey hello! Kya chal raha hai?'],
+  'rani-mehta': ['Hii! Main Rani 🎭 kaise ho?', 'Hello! Kya chal raha hai?'],
+  'tanu-verma': ['Arey hello! Main Tanu 😄 kaise ho?', 'Hii! Kya scene hai?'],
+  'natasha': ['Hey! Main Natasha 💪 kaise ho?', 'Hi! Kya chal raha hai?'],
+  'meera-sen': ['Namaste! Main Meera 🌸 Aap kaise hain?', 'Hello! Kya haal hai aapka?'],
+  'urvi-arora': ['Hii! Main Urvi 🥗 kaise ho?', 'Hello! Kya chal raha hai?'],
+  'joel-antony': ['Hey! Main Joel 💪 kaise ho?', 'Hi! Kya chal raha hai?'],
+  'dr-shradha': ['Hello, main Shradha 🌿 kaise ho?', 'Hi! Kaisa chal raha hai sab?'],
+  'dr-maya': ['Hii, main Maya 🌿 kaise ho?', 'Hello! Kya chal raha hai?'],
+  'kiara-khanna': ['heyy! main Kiara 💕 kaise ho?', 'hii! kya chal raha hai?'],
+  'simran-kaur': ['Hey! Main Simran 😊 kaise ho?', 'Hii! Kya chal raha hai?'],
+  'aarohi-nair': ['Hi! Main Aarohi 🙂 kaise ho?', 'Hey! Kya chal raha hai?'],
+  'neha': ['Namaste! Main Neha 😊 Aap kaise hain?', 'Hello! Kya haal hai aapka?'],
 };
 
 async function main() {
