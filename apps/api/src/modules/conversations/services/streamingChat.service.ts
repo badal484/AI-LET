@@ -41,6 +41,7 @@ import { checkCodeSyntax, describeIssues, type CodeIssue } from '../human/codeCh
 import { detectRequest, extractDeliveredTag, stillOpen, wasDelivered, type OpenRequest } from '../human/requests.js';
 import { applyProjectPatch, extractProjectTag, projectLines, type ProjectPatch } from '../human/project.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
+import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
@@ -645,6 +646,11 @@ export class StreamingChatService {
     // Project memory: what a mentor and the user are building together, updated by a hidden tag.
     let saveProject: ((patch: ProjectPatch) => Promise<void>) | null = null;
     let recapProject: string | undefined;
+    // Course: a whole language taught in order (human/course.ts), progress kept by a hidden tag.
+    let saveCourse: ((patch: CoursePatch) => Promise<void>) | null = null;
+    let inCourse = false;
+    let courseNote = '';
+    let courseStage: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
     let turnSituations: string[] = [];
@@ -697,6 +703,23 @@ export class StreamingChatService {
       const dueEvents = takeDueEvents(profile, today);
       if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
       if (pack.mentor) restoreTaskThread(life, openTask(profile));
+      // "JavaScript sikhao" starts (or resumes) a full course; inside one, "done"/"next"/a doubt is the lesson.
+      if (pack.mentor?.courses?.length) {
+        const wanted = detectCourseRequest(pendingText, pack.mentor.courses);
+        if (wanted && activeCourse(profile)?.id !== wanted) {
+          applyCoursePatch(profile, { start: wanted }, today);
+          await UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, { start: wanted }, today));
+        }
+        const course = activeCourse(profile);
+        const unsafe = situations.some((s) => ['crisis', 'emergency', 'eating', 'boundary', 'emotional'].includes(s));
+        if (course && !unsafe && (wanted || continuesCourse(course, pendingText, hoursSince))) {
+          inCourse = true;
+          if (!situations.includes('task')) situations.unshift('task');
+        }
+        if (course) {
+          saveCourse = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, patch, today));
+        }
+      }
       // A chat that started today is their first ever with her: "we talked before" is never true.
       const firstUserMessage = await prisma.message.findFirst({
         where: { conversationId, role: 'user' },
@@ -711,6 +734,11 @@ export class StreamingChatService {
         const sinceLast = recentMessages[0] ? Date.now() - recentMessages[0].createdAt.getTime() : 0;
         const newSession = sinceLast >= 3 * 3_600_000;
         continuity.lines.push(...projectLines(profile.project, { newSession }));
+        if (inCourse || (newSession && activeCourse(profile))) continuity.lines.push(...courseLines(profile, { newSession }));
+        if (inCourse) courseNote = courseReminder(profile, pendingText);
+        courseStage = activeCourse(profile)?.stage;
+        if (!saveCourse && pack.mentor.courses?.length)
+          saveCourse = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, patch, today));
         if (newSession && profile.project) recapProject = profile.project.goal;
         saveProject = async (patch) => {
           const fresh = await UserProfileService.load(userId, conversation.characterId);
@@ -770,6 +798,7 @@ export class StreamingChatService {
               TIRED_OF_QUESTIONS.test(pendingText) ? "they said you ask too many questions — don't ask any question this time" : '',
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
+              courseNote,
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
       // ("dhaba chalein?") when they just say "hii" the next day.
@@ -902,8 +931,10 @@ export class StreamingChatService {
     let deliveredTag = deliveredMark.delivered;
     const projectMark = extractProjectTag(deliveredMark.text);
     let projectPatch = projectMark.patch;
+    const courseMark = extractCourseTag(projectMark.text);
+    let coursePatch = courseMark.patch;
     // Code is set aside before the chat cleanup (which joins lines) and put back untouched at the end.
-    const coded = extractCode(projectMark.text);
+    const coded = extractCode(courseMark.text);
     let codeBlocks = coded.blocks;
     // Broken code loses trust: syntax-check it (parse only, never run) so the editor pass can fix it.
     let codeIssues = humanMode && codeBlocks.length ? await checkCodeSyntax(codeBlocks) : [];
@@ -965,6 +996,15 @@ export class StreamingChatService {
           result.problems.push(...describeIssues(issues));
           result.ok = false;
         }
+        if (inCourse) {
+          const problems = courseProblems({ text: b.join('\n'), code: (code as Array<{ code: string }>).map((x) => x.code), userName: conversation.user.profile?.displayName ?? undefined });
+          if (courseStage === 'quiz' && !answersCheck(pendingText) && announcesPass(b.join('\n')))
+            problems.push("They haven't answered your lesson-check questions yet — don't say the lesson is done and don't answer the questions for them. Reply to what they said, then ask them to answer the check questions.");
+          if (problems.length) {
+            result.problems.push(...problems);
+            result.ok = false;
+          }
+        }
         if (askAboutTask && !mentionsTask(b.join('\n'), askAboutTask)) {
           result.problems.push(`You forgot the most important thing: ask (casually, no guilt) whether they did the task you gave last time: "${askAboutTask}".`);
           result.ok = false;
@@ -988,7 +1028,8 @@ export class StreamingChatService {
           const retryTagged = extractTaskTag(retry.content);
           const retryMark = extractDeliveredTag(retryTagged.text);
           const retryProject = extractProjectTag(retryMark.text);
-          const retryCoded = extractCode(retryProject.text);
+          const retryCourse = extractCourseTag(retryProject.text);
+          const retryCoded = extractCode(retryCourse.text);
           const retryIssues = retryCoded.blocks.length ? await checkCodeSyntax(retryCoded.blocks) : [];
           const rewritten = this.polishBubbles(this.splitBubbles(this.cleanModelText(retryCoded.text)), style);
           // Keep whichever draft is better — a rewrite isn't automatically an improvement.
@@ -998,6 +1039,7 @@ export class StreamingChatService {
             codeBlocks = retryCoded.blocks;
             deliveredTag = retryMark.delivered;
             projectPatch = retryProject.patch ?? projectPatch;
+            coursePatch = retryCourse.patch ?? coursePatch;
             codeIssues = retryIssues;
           }
         }
@@ -1090,6 +1132,10 @@ export class StreamingChatService {
     await afterDelivery?.();
     if (projectPatch && saveProject) {
       await saveProject(projectPatch).catch((err) => logger.warn(`Project memory not saved: ${err instanceof Error ? err.message : 'Unknown'}`));
+    }
+    coursePatch = settleCoursePatch(coursePatch, delivered.map((d) => d.content).join('\n'), pendingText);
+    if (coursePatch && saveCourse) {
+      await saveCourse(coursePatch).catch((err) => logger.warn(`Course progress not saved: ${err instanceof Error ? err.message : 'Unknown'}`));
     }
     const deliveredText = delivered.map((d) => d.content).join('\n');
     const firstReplyId = delivered[0]!.id;

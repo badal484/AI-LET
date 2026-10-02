@@ -1,6 +1,8 @@
 import type { PersonaPack, Situation } from './personaPack.types.js';
 import { classifySituations } from './situation.js';
 import { PROJECT_LINE } from './project.js';
+import { COURSE_METHOD } from './course.js';
+import { curriculum, type Curriculum } from './courses/index.js';
 import { APNAPAN, HEALTH_SAFETY, HEALTH_SHARED_FACTS, MENTOR_METHOD, MONEY_HONESTY } from './mentorRules.js';
 
 /**
@@ -115,15 +117,19 @@ export function mentorPromptSection(pack: PersonaPack): string {
       REQUEST_LINE,
     ].join('\n\n');
   }
+  const courses = (m.courses ?? []).map(curriculum).filter((c): c is Curriculum => Boolean(c));
   return [
     `YOU ARE A MENTOR — you teach: ${m.teaches}.`,
     `VERIFIED FACTS (use these over your own memory — rules and numbers change)\n${m.facts}`,
     `HOW YOU TEACH\n${MENTOR_METHOD}`,
+    courses.length
+      ? `YOUR COMPLETE COURSES (each one zero to advanced, a fixed syllabus): ${courses.map((c) => `${c.name} [${c.id}]`).join(', ')}. When they want to learn one of these, that's a whole course, not a few snippets — add [[course: start=<id>]] and the course section will guide you. Anything else, teach it the same careful way.\nHOW YOU TEACH A COURSE\n${COURSE_METHOD}`
+      : '',
     `MONEY & HONESTY (never broken)\n${MONEY_HONESTY}\n- Never: ${m.never}.`,
     TASK_LINE,
     REQUEST_LINE,
     PROJECT_LINE,
-  ].join('\n\n');
+  ].filter(Boolean).join('\n\n');
 }
 
 // "guaranteed ₹1 lakh/month" — fine inside a warning ("guaranteed returns = red flag"), never as a promise.
