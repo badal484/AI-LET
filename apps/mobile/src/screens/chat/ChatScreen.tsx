@@ -620,31 +620,54 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     refetchRelationship();
   };
 
-  const handleResetRelationship = () => {
+  // "Clear chat": gone from this screen, but they still remember — like deleting a chat on your phone.
+  const handleClearChat = () => {
     setIsMenuVisible(false);
+    if (!effectiveConvId) return;
     Alert.alert(
-      'Reset Relationship',
-      `Are you sure you want to reset your relationship history with ${characterName} back to baseline?`,
+      'Clear chat?',
+      `Messages will disappear from your screen. ${characterName} will still remember what you talked about.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
+          text: 'Clear chat',
+          onPress: async () => {
+            try {
+              await ConversationApi.clearChat(effectiveConvId, false);
+              setOptimisticMessages([]);
+              await queryClient.resetQueries({ queryKey: ['messages', effectiveConvId] });
+              queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              ToastService.show({ message: 'Chat cleared.', type: 'info', duration: 2000 });
+            } catch {
+              ToastService.show({ message: 'Could not clear the chat. Try again.', type: 'error', duration: 2500 });
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // "Start fresh": they truly forget this person — chats, memories and the bond.
+  const handleStartFresh = () => {
+    setIsMenuVisible(false);
+    if (!effectiveConvId) return;
+    Alert.alert(
+      `Start fresh with ${characterName}?`,
+      `${characterName} will forget everything about you — your chats, what they remember and your bond. You'll meet as strangers. This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start fresh',
           style: 'destructive',
           onPress: async () => {
             try {
-              await RelationshipApi.resetRelationship(characterEffectiveId);
-              refetchRelationship();
-              ToastService.show({
-                message: 'Relationship reset to baseline.',
-                type: 'info',
-                duration: 2500,
-              });
+              await ConversationApi.startFresh(effectiveConvId);
+              queryClient.removeQueries({ queryKey: ['messages', effectiveConvId] });
+              queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              ToastService.show({ message: `${characterName} has forgotten everything.`, type: 'info', duration: 2500 });
+              navigation.goBack();
             } catch {
-              ToastService.show({
-                message: 'Failed to reset relationship.',
-                type: 'error',
-                duration: 2500,
-              });
+              ToastService.show({ message: 'Could not start fresh. Try again.', type: 'error', duration: 2500 });
             }
           },
         },
@@ -1108,10 +1131,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 <Text style={styles.menuItemText}>View Profile & Lore</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem} onPress={handleResetRelationship}>
-                <Text style={[styles.menuItemText, { color: '#F87171' }]}>
-                  Reset Relationship to Baseline
-                </Text>
+              <TouchableOpacity style={styles.menuItem} onPress={handleClearChat}>
+                <Text style={styles.menuItemText}>Clear chat</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.menuItem} onPress={handleStartFresh}>
+                <Text style={[styles.menuItemText, { color: '#F87171' }]}>Start fresh with {characterName}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1275,10 +1300,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   style={styles.bondResetBtn}
                   onPress={() => {
                     setIsBondModalVisible(false);
-                    handleResetRelationship();
+                    handleStartFresh();
                   }}
                 >
-                  <Text style={styles.bondResetBtnText}>Reset Baseline</Text>
+                  <Text style={styles.bondResetBtnText}>Start fresh</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

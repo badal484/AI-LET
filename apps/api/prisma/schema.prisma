@@ -774,6 +774,10 @@ model Conversation {
   proactiveActions      ProactiveAction[]
   voiceSessions         VoiceSession[]
   archivedAt            DateTime?             @map("archived_at") @db.Timestamptz(6)
+  /// "Clear chat": messages before this are hidden from the user (the character still has them).
+  clearedAt             DateTime?             @map("cleared_at") @db.Timestamptz(6)
+  /// "Delete chat" from the Chats tab: hidden from the list until a new message arrives.
+  hiddenAt              DateTime?             @map("hidden_at") @db.Timestamptz(6)
   deletedAt             DateTime?             @map("deleted_at") @db.Timestamptz(6)
   createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)

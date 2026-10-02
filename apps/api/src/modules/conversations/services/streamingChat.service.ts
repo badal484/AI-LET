@@ -661,7 +661,13 @@ export class StreamingChatService {
         select: { createdAt: true },
       });
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
+      const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
+      // They cleared the chat on their screen: she still remembers (real life), but tactfully — she doesn't
+      // bring up what was said before unless they do.
+      if (clearedAt && Date.now() - clearedAt.getTime() < 24 * 3_600_000) {
+        continuity.lines.push("They cleared this chat on their screen a little while ago. You still remember everything, but don't bring up what was said before unless they do.");
+      }
       const stage = builtContext.activeRelationshipStage ?? null;
       const latest = recentMessages[recentMessages.length - 1];
       const recentlyTalked = Boolean(latest && Date.now() - latest.createdAt.getTime() < 60 * 60_000);
@@ -970,7 +976,8 @@ export class StreamingChatService {
 
     await prisma.conversation.update({
       where: { id: conversationId },
-      data: { lastMessageAt: new Date(), lastMessageSnippet: delivered[delivered.length - 1]!.content.slice(0, 120), unreadCount: 0 },
+      // A new message brings a chat deleted from the Chats tab back to the list.
+      data: { lastMessageAt: new Date(), lastMessageSnippet: delivered[delivered.length - 1]!.content.slice(0, 120), unreadCount: 0, hiddenAt: null },
     });
 
     // Compatibility summary event for clients that do not render bubbles individually.
