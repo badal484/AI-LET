@@ -52,6 +52,9 @@ import type {
 } from '@ai-companion/types';
 import { AIGateway } from '../../ai/gateway/AIGateway.js';
 
+/** "tum bahut sawaal poochti ho" — they want her to stop asking. */
+const TIRED_OF_QUESTIONS = /(bahut|zyada|itne|kitne) (sawaal|sawal|questions?)|sawaal (mat|band)|too many questions|stop asking|interrogat|poochti rehti|poochte rehte|puchti rehti/i;
+
 /** Moments worth the better (quota-limited) model when Gemini is on its free tier. */
 const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'boundary', 'news'];
 
@@ -682,6 +685,7 @@ export class StreamingChatService {
                   : `ask how their ${plan.followUp.topic} went`
           : '',
         plan.nickname ? `call them ${plan.nickname}` : '',
+              TIRED_OF_QUESTIONS.test(pendingText) ? "they said you ask too many questions — don't ask any question this time" : '',
       ].filter(Boolean);
       // After a break, the old chat is over: without this the model answers her own stale question
       // ("dhaba chalein?") when they just say "hii" the next day.
@@ -744,14 +748,15 @@ export class StreamingChatService {
           maxBubbleChars: situations.some((s) => ['crisis', 'emergency', 'eating'].includes(s)) ? 400 : 220,
         });
       request.maxTokens = style.maxTokens;
-      // Free Gemini quota (GEMINI_IMPORTANT_ONLY=true): spend it on the moments that matter — sadness,
-      // flirting, good news, lessons, safety — and let Mistral answer small talk ("hi", "ok", "kya kar
-      // rahi ho"), so the daily quota lasts. Mistral stays the backup either way.
+      // Free Gemini quota (GEMINI_IMPORTANT_ONLY=true): the main model is kept for the moments that matter —
+      // sadness, flirting, good news, lessons, safety — and small talk ("hi", "ok", "kya kar rahi ho") goes
+      // to Flash-Lite, which has a separate daily quota. Mistral stays the last backup.
       if (process.env['GEMINI_IMPORTANT_ONLY'] === 'true' && providerChain[0]?.provider === 'google') {
         const important = situations.some((s) => IMPORTANT_MOMENTS.includes(s));
-        const mistralAt = providerChain.findIndex((r) => r.provider === 'mistral');
-        if (!important && mistralAt > 0) {
-          providerChain.unshift(...providerChain.splice(mistralAt, 1));
+        if (!important) {
+          // Small talk: Gemini Flash-Lite — its own free daily quota, and far better Hinglish than the
+          // small Mistral model (which wrote "Sheri." and "Tumhara phone kahan hai?" for Aarohi).
+          providerChain.unshift({ provider: 'google', model: process.env['GEMINI_SMALLTALK_MODEL'] || 'gemini-3.5-flash-lite' });
           request.model = providerChain[0]!.model;
         }
       }
@@ -826,6 +831,7 @@ export class StreamingChatService {
     // rewrite once with that specific feedback (only for human-engine characters).
     if (humanMode && pack) {
       const isLesson = Boolean(pack.mentor) && style.mode === 'task';
+      const tiredOfQuestions = TIRED_OF_QUESTIONS.test(pendingText);
       const review = (b: string[], task: string | undefined) => {
         const result = checkReply({
           bubbles: b,
@@ -837,7 +843,8 @@ export class StreamingChatService {
           plannedText,
           address: pack.address,
           mentor: Boolean(pack.mentor),
-          lesson: isLesson ? { hasTask: Boolean(task) } : undefined,
+          lesson: isLesson && !tiredOfQuestions ? { hasTask: Boolean(task) } : undefined,
+          noQuestions: tiredOfQuestions,
           health: pack.mentor?.field === 'health',
           situations: turnSituations,
           userText: pendingText,

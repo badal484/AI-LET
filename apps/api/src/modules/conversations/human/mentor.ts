@@ -11,6 +11,7 @@ const MONEY_TOPIC = /\b(paise|paisa|kamai|kamaai|earn|income|business|job|career
 const HEALTH_TOPIC = /\b(health|sehat|weight|wazan|vajan|diet|khana|protein|workout|gym|exercise|neend|sleep|stress|anxiety|tension|dard|pain|energy|thakan|habit|routine|doctor)\b/;
 const NO_TOPIC = /(?!)/;
 const ASKS_FOR_HELP = /\b(kya karu|kya karun|kya karoon|kaise|help|madad|suggest|tips?|advice|batao kya|samjhao|what should|how do|how can)\b/i;
+const SLIP = /\b(nahi (kar )?pa(ya|yi|aya|ayi)|nahi (gaya|gayi|hua|hui|kiya|ki)|skip (kar|ho)|miss (ho|kar)|aalas|alas aa|lazy|bhool (gaya|gayi)|couldn'?t|didn'?t)\b/i;
 const SAFETY: Situation[] = ['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude'];
 
 /** She asked them something, or asked them to send/write/try something ("intro likh ke bhejo"). */
@@ -33,6 +34,8 @@ export function isTeachingMoment(
     return pack.domainKeywords.some((k) => t.includes(k.toLowerCase())) && QUESTION.test(t);
   }
   if (situations.includes('task')) return true;
+  // "nahi gaya yaar, aalas aa gaya": a missed day is exactly when a coach helps (no guilt, smaller step).
+  if (SLIP.test(text)) return true;
   // They're answering the mentor's question ("cooking ka, 5 ghante, sirf phone"), sending the practice
   // she asked for, or reporting progress ("3 interested hain"): that's the lesson continuing, not small talk.
   const last = (herLastReply ?? '').trim();

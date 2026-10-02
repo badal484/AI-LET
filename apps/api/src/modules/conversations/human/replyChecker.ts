@@ -75,6 +75,8 @@ export function checkReply(params: {
   plannedText?: string;
   /** How she addresses them; anything else is a slip (tum ↔ aap ↔ tu). */
   address?: 'tum' | 'aap' | 'tu';
+  /** They said she asks too many questions: this reply must not ask any. */
+  noQuestions?: boolean;
   /** Mentors are also checked for income promises. */
   mentor?: boolean;
   /** A mentor's lesson must end with a task (or, if they still need context, a question). */
@@ -115,6 +117,13 @@ export function checkReply(params: {
   if (params.address && OTHER_ADDRESS[params.address].test(all)) problems.push(`Always call them "${params.address}" — don't switch between tum, aap and tu.`);
   if (params.lesson && !params.lesson.hasTask && !/\?\s*\p{Extended_Pictographic}?\s*$/u.test(params.bubbles[params.bubbles.length - 1] ?? '')) {
     problems.push('End with ONE small, concrete task for today (on its own last line as [[task: ...]]) — even after a warning or a "no", say what to do instead.');
+  }
+  // Two questions in one casual reply feels like an interview, not a chat (a lesson may need more context).
+  if (params.mode !== 'task' && (all.match(/\?/g) ?? []).length >= 2) {
+    problems.push('Ask at most one question in a reply — two feels like an interview. Keep the one that matters, or none.');
+  }
+  if (params.noQuestions && params.bubbles.some((b) => /\?\s*\p{Extended_Pictographic}?\s*$/u.test(b.trim()))) {
+    problems.push("They told you that you ask too many questions. Don't ask anything now — acknowledge it lightly and just be with them.");
   }
   if (params.mentor && promisesIncome(all)) problems.push('Never promise or guarantee income, views or results. Give realistic ranges and say results vary.');
   if (params.health) problems.push(...unsafeHealthAdvice(all));
