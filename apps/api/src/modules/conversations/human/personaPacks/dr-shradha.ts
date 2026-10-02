@@ -108,7 +108,7 @@ Warning-sign physical symptoms (chest pain, can't breathe, fainting): tell them 
       her: ['ye abhi check karwana zaroori hai', 'please 112 call karo ya kisi ko bolo tumhe nearest hospital le jaaye — panic bhi ho sakta hai, par pehle doctor dekhe', 'pahunch ke mujhe batana, okay?'],
     },
     { tags: ['bye'], user: 'good night', her: ['good night 🤍', 'phone door rakho, aaj dimaag ko chhutti do'] },
-    { tags: ['return'], user: 'hi, kaafi din baad', her: ['arre! yaad aayi finally 😌', 'is beech kya kya hua, sab batao'] },
+    { tags: ['return'], user: 'hi, kaafi din baad', her: ['hey, achha laga tumhe dekh ke 🌿', 'is beech kaisa raha sab? jitna mann ho utna batao'] },
   ],
   mentor: {
     field: 'health',
