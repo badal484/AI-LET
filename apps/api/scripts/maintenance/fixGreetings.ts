@@ -13,15 +13,48 @@ import { PrismaClient } from '@prisma/client';
 const p = new PrismaClient();
 const apply = process.argv.includes('--apply');
 
-const GREETINGS: Record<string, string> = {
+/**
+ * Several openings each, picked at random, so two people never get the same scripted line. Each sounds
+ * like that person (not a résumé intro), never pretends an earlier meeting, and names no time of day —
+ * the same text can be shown at any hour.
+ */
+const GREETINGS: Record<string, string | string[]> = {
   riya: 'Hii! 🥰 Main Riya. Lovira pe pehli baar baat ho rahi hai na? Batao, kya chal raha hai aaj?',
-  'ritika-sharma': 'Hello! Main Ritika — Delhi, law final year, aur abhi moot court ki files mein dubi hui ☕ Pehli hearing hai humari, toh batao: kya chal raha hai?',
-  'kabir-sethi': 'Hey! Main Kabir — Bandra mein café gigs aur thode jingles 🎸 Pehli baar baat ho rahi hai, toh batao, aaj ka din kaisa gaya?',
-  'aarav-malhotra': 'hey 🙂 main Aarav — product designer, Bangalore. pehli baar baat ho rahi hai, din kaisa ja raha hai?',
-  'ishita-rao': 'Hii! Main Ishita — Hyderabad se, abhi Boston mein MBA kar rahi hoon 🤍 Tumhare yahan din kaisa raha?',
-  'zoya-qureshi': 'Assalamu alaikum! Main Zoya 🤍 Chhat pe baarish ke baad itni pyari hawa chal rahi hai… aap bataiye, aapka din kaisa raha?',
-  'sandeep-chaudhary': 'Ram Ram ji! Main Sandeep, apni dairy wala 🥛 Subah ke 4 baje se kaam nipta ke abhi chai pe baitha hoon. Tum sunao, kya haal chaal?',
-  'raj-bansal': 'Wassup! Main Raj — YouTube aur content ka banda 📈 Channel shuru karna hai ya pehle se chal raha hai? Batao, kahan se start karein?',
+  'ritika-sharma': [
+    'Hi! Ek second, ye case file band karti hoon… haan, ab bolo 😏',
+    'Hello! Ritika here. Objection pehle hi: aaj kuch boring mat sunana, 200 page padh ke aayi hoon 😩',
+    'Hi 🙂 Seedha sawaal, jaise court mein: tumhara din kaisa ja raha hai?',
+  ],
+  'kabir-sethi': [
+    'Hey 🎸 bas guitar tune kar raha tha. Kya scene hai tumhara?',
+    'Heyy, Kabir here. Ek gaane ki line kab se atki hui hai… chhodo, tum batao, kaise ho?',
+    'Hi! Sach batao, aajkal repeat pe kaunsa gaana chal raha hai? 🎧',
+  ],
+  'aarav-malhotra': [
+    'hey 🙂 aarav here. kya chal raha hai?',
+    'hi! abhi ek app screen teesri baar redesign ki, ab jaake sahi lag rahi hai 😅 tum batao?',
+    'hey. kuch interesting batao, mera dimaag pixels mein atka hua hai 😄',
+  ],
+  'ishita-rao': [
+    'Hii 🤍 Ishita here, Boston se. Tumhare yahan kya chal raha hai?',
+    'Hey! Case study se 5 minute ka break liya hai, perfect timing 😄 Kaise ho?',
+    'Hii! Hyderabad ki ladki, abhi Boston mein MBA ke chakkar mein 🙈 Tum apne baare mein batao?',
+  ],
+  'zoya-qureshi': [
+    'Assalamu alaikum 🤍 Main Zoya. Aap kaise hain?',
+    'Aadab! Abhi ek naam-plate pe calligraphy kar rahi thi, ungliyon pe syahi lagi hai 🙈 Aap sunaaiye?',
+    'Hello 🤍 Kehte hain achhi baatein bhi shayari jaisi hoti hain… aap bataiye, kya haal hai?',
+  ],
+  'sandeep-chaudhary': [
+    'Ram Ram ji! 🥛 Kya haal chaal?',
+    'Ram Ram! Bhaisiyon ko chaara daal ke abhi fursat mili hai 😄 Tum sunao, kaisa chal raha?',
+    'Haanji! Sandeep, apni dairy wala 🥛 Tension wala din hai ya chill wala?',
+  ],
+  'raj-bansal': [
+    'Wassup! Raj here 📈 Channel shuru karna hai ya pehle se chal raha hai?',
+    'Hey! Ek thumbnail ke 6 version bana ke baitha hoon, sab ek jaise lag rahe hain 😅 Tum batao, YouTube pe kya plan hai?',
+    'Yo! Content ki baat karni hai ya bas hello bolne aaye ho? Dono chalega 😄',
+  ],
   'dr-shradha': 'Hello, main Shradha 🌿 Yahan aaram se, bina judge hue baat kar sakte ho. Aaj mann kaisa hai?',
   'dr-maya': 'Hii, main Maya 🌿 Neend, energy ya daily habits — kisi pe bhi saath kaam karte hain. Pehle batao, kal raat neend kaisi aayi?',
 };
@@ -33,10 +66,11 @@ async function main() {
     const v = c?.currentPublishedVersion;
     if (!c || !v) throw new Error(`No published version for ${slug}`);
     const comm = (v.communicationData as Record<string, unknown> | null) ?? {};
-    console.log(`${slug}: "${comm['initialGreeting'] ?? '(none)'}" → "${greeting}"`);
+    const list = Array.isArray(greeting) ? greeting : [greeting];
+    console.log(`${slug}: "${comm['initialGreeting'] ?? '(none)'}" → ${list.map((g) => `"${g}"`).join(' | ')}`);
     backup.push({ versionId: v.id, slug, communicationData: comm });
     if (apply) {
-      await p.characterVersion.update({ where: { id: v.id }, data: { communicationData: { ...comm, initialGreeting: greeting } as never } });
+      await p.characterVersion.update({ where: { id: v.id }, data: { communicationData: { ...comm, initialGreeting: list[0], initialGreetings: list } as never } });
     }
   }
   if (!apply) return console.log('(dry run — pass --apply to change)');
