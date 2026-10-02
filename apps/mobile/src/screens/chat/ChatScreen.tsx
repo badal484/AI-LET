@@ -43,6 +43,8 @@ import { MessageFeedbackModal } from '../../components/chat/MessageFeedbackModal
 import { spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem, ConversationDetail } from '@ai-companion/types';
 import { dayLabel, isDateDivider, withDateDividers, type DateDivider } from '../../utils/chatDates.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { looksLikeRealHelp, mayAskHelpful } from '../../utils/feedbackPrompt.js';
 import type { CharacterReportCreateInput } from '@ai-companion/validation';
 
 type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
@@ -266,6 +268,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   ).toLowerCase();
   const isExpert = ['learn-earn', 'health', 'coaching', 'astrology'].includes(characterCategory);
   const [ratedIds, setRatedIds] = useState<Set<string>>(() => new Set());
+  // The answer currently showing "Helpful?" (the last message of a real-help answer), if any.
+  const [helpfulId, setHelpfulId] = useState<string | null>(null);
   // WhatsApp-style reply: the message being replied to (shown above the typing box), and a quote's jump target.
   const [replyTarget, setReplyTarget] = useState<{ id: string; role: 'user' | 'assistant'; snippet: string } | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -324,6 +328,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     m => !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId),
   );
   const allMessages = [...pendingOptimistic, ...serverMessages];
+
+  // "Helpful?" only after real help (code, a plan, a proper explanation) — never small talk — under the
+  // LAST message of that answer, at most once a day per chat, and gone once they reply.
+  const latestAnswer: ChatMessageItem[] = [];
+  for (const m of allMessages) {
+    if (m.role !== 'assistant' || m.id.startsWith('crisis-')) break;
+    latestAnswer.push(m);
+  }
+  const latestAnswerId = latestAnswer[0]?.id;
+  useEffect(() => {
+    if (!isExpert || isTyping || !effectiveConvId || !latestAnswerId || helpfulId === latestAnswerId) return;
+    if (!looksLikeRealHelp(latestAnswer.map((m) => m.content).reverse())) return;
+    const key = `lovira:helpful-asked:${effectiveConvId}`;
+    let cancelled = false;
+    (async () => {
+      let last: number | null = null;
+      try {
+        last = Number(await AsyncStorage.getItem(key)) || null;
+      } catch {
+        /* storage unavailable: still ask */
+      }
+      if (cancelled || !mayAskHelpful(last)) return;
+      setHelpfulId(latestAnswerId);
+      AsyncStorage.setItem(key, String(Date.now())).catch(() => undefined);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpert, isTyping, effectiveConvId, latestAnswerId]);
 
   // 5. Scroll Management
   // WhatsApp-style floating date: shows the day you're looking at while scrolling, then fades.
@@ -754,12 +788,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         </View>
       );
     }
-    const isLatestAnswer =
-      isExpert &&
-      !isTyping &&
-      item.role === 'assistant' &&
-      !item.id.startsWith('crisis-') &&
-      item.id === allMessages.find((m) => m.role === 'assistant')?.id;
+    const isLatestAnswer = !isTyping && item.id === helpfulId && item.id === latestAnswerId && allMessages[0]?.id === item.id;
     const rate = (rating: 'positive' | 'negative') => {
       setRatedIds((prev) => new Set(prev).add(item.id));
       handleFeedback(item.id, rating);
