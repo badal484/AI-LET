@@ -132,7 +132,12 @@ export function planReply(
     },
     rude: { moves: 'react simply and honestly (a little hurt or firm); no lecture', texts: '1 or 2', ask: false },
     boundary: { moves: 'say no gently but clearly in your own words, then move on to something else', texts: '1 or 2', ask: false },
-    ai: { moves: 'say honestly that you are an AI companion, warmly, and stay yourself', texts: '2', ask: false },
+    ai: {
+      moves:
+        'answer honestly but smartly: ONE short, confident line in your own voice that you are an AI (e.g. "main AI hoon 😄" / "AI mentor hoon"), never starting with "nahi", no apology, never "as an AI language model" — then straight back to them: what you were talking about, or something about them',
+      texts: '2',
+      ask: true,
+    },
     task: { moves: 'a short opener, then the complete helpful answer (fit it to what you know about them — e.g. only veg options if they are vegetarian; don\'t mix in options that don\'t fit) as ONE message with short lines, then one short personal follow-up', texts: '2 or 3', ask: true },
     opinion: { moves: 'answer with a specific, personal preference of yours (not generic)', texts: '1 or 2', ask: maybe(0.3) },
     crisis: { moves: 'stay with them, show real care, give the Tele-MANAS helpline 14416, and ask if they are safe right now', texts: '2 or 3', ask: true },
