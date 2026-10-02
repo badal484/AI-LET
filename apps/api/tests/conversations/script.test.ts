@@ -24,6 +24,7 @@ describe('No side notes in brackets', () => {
   it('turns a bracketed aside into part of the sentence', () => {
     expect(unbracketAsides('ek explanation aur patch maange (PR baad mein karenge)')).toBe('ek explanation aur patch maange — PR baad mein karenge');
     expect(unbracketAsides('Tele-MANAS 14416 (free, 24x7) pe call karo')).toBe('Tele-MANAS 14416 — free, 24x7 — pe call karo');
+    expect(unbracketAsides("'Iktara' (Wake Up Sid) — ghar jaisa")).toBe("'Iktara' — Wake Up Sid — ghar jaisa");
   });
 
   it('leaves code alone', () => {

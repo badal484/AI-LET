@@ -77,7 +77,7 @@ export function unbracketAsides(text: string): string {
     if (isCall || looksLikeCode) return match;
     // Mid-sentence it needs a dash on both sides; at the end of a sentence, one is enough.
     const after = all.slice(offset + match.length);
-    const midSentence = /^\s*[^\s.!?,;:]/.test(after);
+    const midSentence = /^\s*[^\s.!?,;:—–-]/.test(after);
     return `${before} — ${inner.trim()}${midSentence ? ' —' : ''}`;
   });
 }
