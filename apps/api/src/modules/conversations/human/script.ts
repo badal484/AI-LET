@@ -64,3 +64,20 @@ export function romanizeDevanagari(text: string): string {
   }
   return out;
 }
+
+/**
+ * People don't put side notes in brackets when they text: "…patch maange (PR baad mein karenge)" reads
+ * like a document. A bracketed aside becomes part of the sentence ("… — PR baad mein karenge"). Code stays
+ * as it is: a bracket right after a word (print("hi"), fix(bug)) or with code-like characters inside.
+ */
+export function unbracketAsides(text: string): string {
+  return text.replace(/(\S?)(\s*)\(([^()\n]{2,90})\)/g, (match, before: string, space: string, inner: string, offset: number, all: string) => {
+    const isCall = before !== '' && space === '' && /[\w'"\]]/.test(before);
+    const looksLikeCode = /[=;{}<>`_\\/]|\w\.\w|=>|\w\(/.test(inner);
+    if (isCall || looksLikeCode) return match;
+    // Mid-sentence it needs a dash on both sides; at the end of a sentence, one is enough.
+    const after = all.slice(offset + match.length);
+    const midSentence = /^\s*[^\s.!?,;:]/.test(after);
+    return `${before} — ${inner.trim()}${midSentence ? ' —' : ''}`;
+  });
+}

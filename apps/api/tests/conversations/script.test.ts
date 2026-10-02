@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasDevanagari, romanizeDevanagari } from '../../src/modules/conversations/human/script.js';
+import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../../src/modules/conversations/human/script.js';
 import { checkReply } from '../../src/modules/conversations/human/replyChecker.js';
 
 /** From a real Aarohi chat: "ya bas paanch minute chupचाप baithna". */
@@ -18,3 +18,18 @@ describe('Hindi stays in Roman letters when they write that way', () => {
     expect(checkReply({ ...base, bubbles: ['bas paanch minute chupchaap baithna'] }).ok).toBe(true);
   });
 });
+
+/** From a real Dev chat: "…aur patch maange (PR baad mein karenge)". */
+describe('No side notes in brackets', () => {
+  it('turns a bracketed aside into part of the sentence', () => {
+    expect(unbracketAsides('ek explanation aur patch maange (PR baad mein karenge)')).toBe('ek explanation aur patch maange — PR baad mein karenge');
+    expect(unbracketAsides('Tele-MANAS 14416 (free, 24x7) pe call karo')).toBe('Tele-MANAS 14416 — free, 24x7 — pe call karo');
+  });
+
+  it('leaves code alone', () => {
+    for (const code of ['print("hi") likho', 'fix(bug) commit karo', 'use arr.map((x) => x * 2)', 'config (settings.json) mein jao']) {
+      expect(unbracketAsides(code)).toBe(code);
+    }
+  });
+});
+
