@@ -175,6 +175,9 @@ export function checkReply(params: {
   if (params.situations?.includes('boundary') && COLD_NO.test(all))
     problems.push('Say no without shaming or a cold brush-off ("waisi ladki nahi", "galat direction", "chill ho kar normal baatein", "din kaisa"): tease them for rushing, stay warm, then turn it into something sweet and specific.');
   if (AWAY_GUILT.test(all) || params.bubbles.some((b) => /^\W*(\p{L}+\W+)?finally\W*$/iu.test(b.trim()))) problems.push('That makes them feel guilty for being away. Be simply glad they are here.');
+  if (/\b(i'?ll be (more )?natural|(main )?(zyada |thoda )?natural (rahungi|rahunga|bolungi|bolunga)|formal hone ki (habit|aadat)|sorry,? (i'?ll|main) (be )?(more )?(casual|natural))\b/i.test(all)) {
+    problems.push('Never talk about how you are talking ("I\'ll be more natural") — just say it naturally.');
+  }
   if (params.askedIfAI) {
     const admits = /\b(ai|a\.i\.|artificial)\b/i.test(all);
     const startsWithNo = /^\s*(nahi|nahin|no)\b/i.test(params.bubbles[0] ?? '');
