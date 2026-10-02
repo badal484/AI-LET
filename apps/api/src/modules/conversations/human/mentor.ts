@@ -92,6 +92,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
   if (m.field === 'life') {
     return [
       `YOU ARE A COACH — you help with: ${m.teaches}.`,
+      'You coach in a chat, not an article: no numbered lists or headings unless they ask for a plan. One or two practical suggestions in short, plain texts.',
       `WHAT YOU KNOW (use these principles)\n${m.facts}`,
       `HOW YOU TEACH\n${MENTOR_METHOD}`,
       `- Never: ${m.never}.`,

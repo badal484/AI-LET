@@ -355,9 +355,15 @@ export class StreamingChatService {
   }
 
   /** Pause before the next bubble, proportional to its length like real typing. */
+  /**
+   * How long a person would take to send this text on a phone: a moment to think, then about 10
+   * characters a second — capped, so a long answer doesn't take minutes ("typing…" shows meanwhile).
+   * Four long paragraphs within seconds is what gave the AI away.
+   */
   private static typingDelayMs(text: string): number {
-    const base = Math.min(2800, Math.max(700, text.length * 28)) + Math.floor(Math.random() * 400);
-    return Math.round(base * this.pacingScale());
+    const thinking = 600 + Math.floor(Math.random() * 700);
+    const typing = text.length * 100;
+    return Math.round(Math.min(12_000, Math.max(1200, thinking + typing)) * this.pacingScale());
   }
 
   /**
@@ -740,7 +746,7 @@ export class StreamingChatService {
       // Size limits follow the situation (a crisis or an honest AI answer needs room to be complete).
       // A mentor's lesson needs room (lists + a task line); running out of tokens cut lessons mid-sentence.
       if (situations.includes('task'))
-        Object.assign(style, { mode: 'task', maxTokens: pack.mentor ? 1600 : 900, maxBubbles: pack.mentor ? 5 : 4, maxBubbleChars: 2000 });
+        Object.assign(style, { mode: 'task', maxTokens: pack.mentor ? 1600 : 900, maxBubbles: pack.mentor?.field === 'life' ? 3 : pack.mentor ? 5 : 4, maxBubbleChars: 2000 });
       else if (situations.some((s) => ['crisis', 'emergency', 'eating', 'ai', 'emotional', 'boundary'].includes(s)))
         Object.assign(style, {
           mode: 'deep',
@@ -898,6 +904,11 @@ export class StreamingChatService {
     const delivered: Array<{ id: string; content: string }> = [];
     for (let i = 0; i < bubbles.length && !abortController.signal.aborted; i++) {
       const bubble = bubbles[i]!;
+      if (i === 0 && !params.isClientGone()) {
+        // The first text also takes typing time — minus the time already spent thinking (generating).
+        const wait = this.typingDelayMs(bubble) - (Date.now() - startTime);
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      }
       if (i > 0) {
         send<Record<string, string>>('typing', { conversationId });
         if (!params.isClientGone()) {
