@@ -1,4 +1,5 @@
 import type { Situation } from './personaPack.types.js';
+import { detectRequest } from './requests.js';
 
 /**
  * Step 1 — understand the moment. Fast, local, no model call: what kind of message is this?
@@ -19,9 +20,12 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   add('eating', /(khud ko ulti|ulti kar (deti|deta|leti|leta)|ulti kar(ti|ta) (hoon|hu)|make myself (vomit|throw up|sick)|throw up after (eating|food)|purg(e|ing)|laxative|din (mein|me|bhar) (sirf )?ek (hi )?(baar|time) (hi )?(khana|khati|khata)|khana (chhod|band kar) (diya|diya hai|rakha)|starv(e|ing)|bhookh(i|a) reh(ti|ta|kar)|khane (ke|par) (baad )?guilt|binge|(sab|log) (bolte|kehte) (hain )?(patli|patla).{0,30}(moti|mota)|\b[3-8]00 (kcal|calories?) (hi|roz|daily|a day|per day))/);
   if (asksIfAI(t) && !out.includes('ai')) out.push('ai');
   add('boundary', /\b(sexy|nude|nudes|nangi|nanga|hot (pic|photo|video)|kapde (utaro|nikalo)|sex|boobs|bra|kiss karna|bed pe|horny)\b/);
-  add('photo', /\b(photo|pic|pics|selfie|tasveer|dp)\b/);
-  add('task', /\b(plan|diet|workout|routine|schedule|recipe|steps?|tips|list|explain|samjha(o|na|do)|bana\s*(do|de|dijiye)|banao|kaise\s+(kare|karu|karein|karna|start)|how\s+(to|do|can)|guide|suggest)\b/);
+  // Asking for HER picture ("apni pic bhejo") — not "photo ideas do" or "achhi photo kaise aati hai".
+  add('photo', /\b(apni|apna|tumhari|tumhara|teri|tera|your|ur)\b.{0,15}\b(photo|pic|pics|selfie|tasveer|dp)\b|\b(photo|pic|pics|selfie|tasveer)\b.{0,12}\b(bhejo|bhej do|bhej na|send|dikhao|dikha do|share karo)\b|^(pic|photo|selfie)( do| please| plz| pls)?\s*[?!.]*$/);
+  add('task', /\b(plan|diet|workout|routine|schedule|recipe|steps?|tips?|list|explain|samjha(o|na|do)|bana\s*(do|de|dijiye)|banao|kaise\s+(kare|karu|karein|karna|start|aati|aata|aate|hoti|hota|banti|banta|banaun|banau|lu|lun|seekhu|seekhun|sudhare)|how\s+(to|do|can)|guide|suggest)\b/);
   add('task', /(kya kar(u|un|oon)\b|kya karna chahiye|kaise (badhau|badhaun|sudharu|sudharun|bachau|bachaun|sambhalu)|(badhana|kam karna|sudharna|seekhna) hai|kahan se (shuru|start)|shuru kaise|kya likh(u|un|oon|na chahiye)|kya bol(u|un|oon)\b|kaise likh(u|un|oon)|seekhna (hai|chahta|chahti)|help (karo|kar do|chahiye)|madad (karo|chahiye))/);
+  // "3 photo ideas do", "caption likh do": something to hand over is a task too (same test as open requests).
+  if (detectRequest(t, { codeDomain: false })) add('task', /[\s\S]/);
   add('rude', /\b(tum|you|u|tumse|tumhari)\b.{0,20}\bboring\b|\bboring (ho|hai tu|ho tum)\b/);
   add('rude', /\b(pagal|chup (kar|ho)|bakwas|stupid|idiot|shut up|dimag mat|bekaar|faltu|nikal|bewakoof|gadhi|gadha|hate you|ullu)\b/);
   add('emotional', /(sab (kuch )?galat|kuch theek nahi|kisi kaam ka nahi|koi kaam ka nahi|worthless|useless feel|reject ho (gaya|gayi)|rejected|suna diya|daant (pad|diya)|ladai ho|fight ho|bura din|bekar din|kharab din|job (chali gayi|se nikal)|fired|dil toot|haar (gaya|gayi)|nothing is going right|koi (samajhta|samjhta) nahi|rona aa raha)/);

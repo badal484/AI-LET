@@ -22,6 +22,15 @@ describe('She listens', () => {
     expect(checkReply({ bubbles: ['Bura din. Kya hua aaj?'], herRecentReplies: recent, gender: 'female', mode: 'casual' }).ok).toBe(true);
   });
 
+  it('a request for ideas or tips is a real request, and "photo" alone is not asking for her picture', () => {
+    for (const t of ['mere liye 3 photo ideas do aaj ke liye', 'phone se achhi photo kaise aati hai?', 'mujhe ek tip do', 'list do na']) {
+      expect(classifySituations(t, 0.1), t).toContain('task');
+      expect(classifySituations(t, 0.1), t).not.toContain('photo');
+    }
+    for (const t of ['apni pic bhejo', 'photo bhejo na', 'selfie do']) expect(classifySituations(t, 0.1), t).toContain('photo');
+    for (const t of ['do din se bimar hoon', 'do ideas hain mere paas']) expect(classifySituations(t, 0.1), t).not.toContain('task');
+  });
+
   it('a goodbye after a hard day is soft, not a bare "ok"', () => {
     const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: ['low'], storyShared: false }, threads: [] };
     const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'chalo bye', situations: ['bye'], userMood: 'neutral' });

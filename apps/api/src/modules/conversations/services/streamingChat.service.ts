@@ -396,6 +396,8 @@ export class StreamingChatService {
     const text = userText.toLowerCase();
     const isTask =
       /\b(plan|diet|workout|routine|schedule|recipe|steps?|tips|list|explain|samjha(o|na)|bana\s*(do|de|dijiye)|banao|kaise\s+(kare|karu|karein|karna)|how\s+(to|do|can)|guide|suggest)\b/.test(text) ||
+      // Same test the open-request memory uses ("3 photo ideas do"), so both agree it's a request.
+      detectRequest(userText, { codeDomain: false }) !== null ||
       userText.length > 280;
     if (isTask) {
       return { mode: 'task', maxTokens: 900, maxBubbles: 4, maxBubbleChars: 2000, hint: 'They asked for real help: a short opener, the complete answer in one clean message with short lines, then one short follow-up.' };
@@ -418,7 +420,7 @@ export class StreamingChatService {
       bubbles = bubbles
         .flatMap((b) => b.split('\n'))
         .map((l) => l.trim())
-        .filter((l) => l && !/^([-*•]|\d+[.)])\s/.test(l) && !/:\s*$/.test(l));
+        .filter((l) => l && !/^([-*•]|\d+[.)])\s/.test(l) && !/:\s*$/.test(l) && !/^[\d\s.)*•-]+$/.test(l));
     }
     for (let raw of bubbles) {
       // "(Abhi chalein? 😏)" → "Abhi chalein? 😏" ; drop pure stage directions like "(smiles)".
