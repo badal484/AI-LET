@@ -31,6 +31,18 @@ describe('She listens', () => {
     for (const t of ['do din se bimar hoon', 'do ideas hain mere paas']) expect(classifySituations(t, 0.1), t).not.toContain('task');
   });
 
+  it('no guilt for being away', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const };
+    expect(checkReply({ ...base, bubbles: ['assalam-o-alaikum', 'kisi tarah waqt nikal hi aaya aapka.'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['oh, finally yaad aayi'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['arre aap! achha laga', 'sab khairiyat?'] }).ok).toBe(true);
+  });
+
+  it('"sher sunao" is a request', () => {
+    expect(classifySituations('ek sher sunao na', 0.1)).toContain('task');
+    expect(classifySituations('career ke liye ek tarot reading do', 0.1)).toContain('task');
+  });
+
   it('no translated-English sympathy ("sorry to hear that")', () => {
     expect(checkReply({ bubbles: ['Oh no, I am so sorry to hear that.'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(false);
     expect(checkReply({ bubbles: ['ohh yaar', 'kya hua aaj?'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(true);

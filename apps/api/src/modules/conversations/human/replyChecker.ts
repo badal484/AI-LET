@@ -67,6 +67,8 @@ const REPEAT_QUESTIONS: RegExp[] = [
   /(what('?s| is) your name|tumhara naam kya|aapka naam kya)/i,
 ];
 
+// Guilt for being away ("kisi tarah waqt nikal hi aaya aapka", "finally yaad aayi") — never.
+const AWAY_GUILT = /(waqt nikal (hi )?(aaya|liya|paaye|paye)|finally yaad aa(yi|i)|yaad aa hi (gayi|gaya)|aakhir (aa|yaad aa) hi gaye|kitna intezaar karwaya|bhool (hi )?gaye the (mujhe|kya)|ab (jaake|ja ke) yaad aayi)/i;
 const GOOD_NIGHT = /\b(good ?night|gn|shubh ratri|so jao|so jaana|sweet dreams)\b/i;
 const SLEEP_TALK = /\b(so (raha|rahi|jaunga|jaungi|jaata|jaati)|sone (ja|ka)|neend|good ?night|gn|sleep|night)\b/i;
 const NOW = /\b(abhi|right now|ho rahe|baj rahe)\b/i;
@@ -168,6 +170,7 @@ export function checkReply(params: {
   if (params.userHour !== undefined && params.userHour >= 7 && params.userHour < 19 && GOOD_NIGHT.test(all) && !SLEEP_TALK.test(params.userText ?? '')) {
     problems.push(`It is ${params.userHour}:00 for them — daytime. No "good night" or "so jao"; say bye for the day you're actually in.`);
   }
+  if (AWAY_GUILT.test(all)) problems.push('That makes them feel guilty for being away. Be simply glad they are here.');
   if (params.askedIfAI) {
     const admits = /\b(ai|a\.i\.|artificial)\b/i.test(all);
     const startsWithNo = /^\s*(nahi|nahin|no)\b/i.test(params.bubbles[0] ?? '');
