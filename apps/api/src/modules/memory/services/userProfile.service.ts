@@ -55,6 +55,19 @@ export interface UserProfile {
   events: ProfileEvent[];
   /** Mentors only: the tasks they gave, oldest first. */
   tasks: ProfileTask[];
+  /** Mentors only: what they're building together (a tool, a channel, a business) — so every session can pick up where it left off. */
+  project?: ProfileProject;
+}
+
+export interface ProfileProject {
+  goal: string;
+  /** Tools / language / platform ("Python + OpenAI API", "YouTube cooking channel"). */
+  stack?: string;
+  /** Steps finished, oldest first. */
+  done: string[];
+  next?: string;
+  /** YYYY-MM-DD of the last change. */
+  updated: string;
 }
 
 const LISTS = ['likes', 'dislikes', 'goals', 'health', 'jokes', 'facts'] as const;
@@ -100,6 +113,17 @@ export function normalizeProfile(raw: unknown): UserProfile {
       }))
       .filter((x) => x.what && DATE.test(x.given))
       .slice(-MAX_TASKS);
+  const proj = r['project'] as Record<string, unknown> | undefined;
+  const goal = clip(proj?.['goal']);
+  if (goal) {
+    p.project = {
+      goal,
+      stack: clip(proj?.['stack']),
+      done: Array.isArray(proj?.['done']) ? (proj!['done'] as unknown[]).map(clip).filter((x): x is string => Boolean(x)).slice(-MAX_ITEMS) : [],
+      next: clip(proj?.['next']),
+      updated: DATE.test(String(proj?.['updated'] ?? '')) ? String(proj!['updated']) : '',
+    };
+  }
   return p;
 }
 

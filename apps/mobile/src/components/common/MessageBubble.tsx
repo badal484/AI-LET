@@ -17,6 +17,9 @@ import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem } from '@ai-companion/types';
 import { messageTime } from '../../utils/chatDates.js';
 
+/** A line that is clearly code (for code people paste without ``` fences). */
+const CODE_LINE = /^\s*(import |from \S+ import |def |class |const |let |var |function |return |if \(|for \(|while \(|async |await |print\(|console\.log\()|[;{}]\s*$|\)\s*:\s*$|^\s*[\w.]+\s*=\s*[\w.]+\(|^\s*(Traceback|File ".+", line \d+|\w+Error:)/;
+
 export interface MessageBubbleProps {
   message: ChatMessageItem;
   characterAvatarUrl?: string | null;
@@ -94,6 +97,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const isInitialTyping = isStreaming && paragraphsToRender.length === 0;
 
+  const looksLikePastedCode = (text: string) => {
+    const lines = text.split('\n');
+    return lines.length >= 3 && lines.filter((l) => CODE_LINE.test(l)).length >= 2;
+  };
+
   // Code arrives as its own message ("```python\n…\n```"): shown exactly as written, with a Copy button.
   const copyCode = (code: string) => {
     Clipboard.setString(code);
@@ -160,7 +168,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${paragraph}`}
               >
                 {(() => {
-                  const code = /^```([\w+#.-]*)\n([\s\S]*?)\n?```$/.exec(paragraph);
+                  const fenced = /^```([\w+#.-]*)\n([\s\S]*?)\n?```$/.exec(paragraph);
+                  // Code they paste (no fences) is shown as a code box too.
+                  const code = fenced ?? (isUser && looksLikePastedCode(paragraph) ? ['', '', paragraph] : null);
                   if (!code) {
                     return (
                       <Text

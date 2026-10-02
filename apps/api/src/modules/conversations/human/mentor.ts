@@ -1,5 +1,6 @@
 import type { PersonaPack, Situation } from './personaPack.types.js';
 import { classifySituations } from './situation.js';
+import { PROJECT_LINE } from './project.js';
 import { APNAPAN, HEALTH_SAFETY, HEALTH_SHARED_FACTS, MENTOR_METHOD, MONEY_HONESTY } from './mentorRules.js';
 
 /**
@@ -121,6 +122,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
     `MONEY & HONESTY (never broken)\n${MONEY_HONESTY}\n- Never: ${m.never}.`,
     TASK_LINE,
     REQUEST_LINE,
+    PROJECT_LINE,
   ].join('\n\n');
 }
 
