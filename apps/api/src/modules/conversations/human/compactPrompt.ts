@@ -179,7 +179,7 @@ export function planReply(
     plan = { moves: 'they are still enjoying their good news — stay happy with them and keep the moment about them (not your own plans)', texts: '1 or 2', ask: !askedRecently };
   }
   const light =
-    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'emotional', 'win', 'task', 'news'].includes(lead) && !situations.includes('emotional') && !continuity?.focus;
+    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'emotional', 'win', 'task', 'news', 'bye'].includes(lead) && !situations.includes('emotional') && !situations.includes('bye') && !continuity?.focus;
 
   // What she brings to this reply, one thing at a time so it never feels scripted:
   // a follow-up on their life first, then her own news, then an everyday detail.

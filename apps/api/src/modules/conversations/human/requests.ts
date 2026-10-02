@@ -16,7 +16,7 @@ export interface OpenRequest {
 const OPEN_FOR_MS = 6 * 3_600_000;
 
 const ASKS_FOR_CODE = /\b(code|script|snippet|program|implement)\b|\bnext (code|step|part|wala)\b/i;
-const THING = /\b(plan|diet|routine|schedule|list|ideas?|roadmap|resume|cv|template|example|examples|recipe|steps|caption|captions|pitch|email|message|reply|post|script|outline|tips?|exercises?|questions|shayari|sher|poem|poetry|kavita|lyrics|song|gaana|gaane|story|kahani|joke|jokes|quote|quotes|wish|wishes|bio|status|playlist|names?|reading|readings|prediction|horoscope|kundli|kundali)\b/i;
+const THING = /\b(plan|diet|routine|schedule|list|ideas?|roadmap|resume|cv|template|example|examples|recipe|steps|caption|captions|pitch|email|message|reply|post|script|outline|tips?|exercises?|questions|shayari|sher|poem|poetry|kavita|lyrics|song|gaana|gaane|story|kahani|joke|jokes|quote|quotes|wish|wishes|bio|status|playlist|names?|reading|readings|prediction|horoscope|kundli|kundali|monologue|dialogue|dialogues|scene)\b/i;
 const ASK_VERB = /\b(bana|banao|bana do|bana de|likh|likho|likh do|bhej|bhejo|bhej do|de do|dedo|do na|dijiye|chahiye|batao|give|send|share|make|write|suggest|next|aur ek|ek aur|sunao|sunaao|suna do|sunaiye|sunaye)\b/i;
 
 /** "Next code", "diet plan bana do", "5 video ideas do" — something she should hand over. */

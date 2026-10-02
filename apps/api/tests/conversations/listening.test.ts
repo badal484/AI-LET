@@ -36,11 +36,14 @@ describe('She listens', () => {
     expect(checkReply({ ...base, bubbles: ['assalam-o-alaikum', 'kisi tarah waqt nikal hi aaya aapka.'] }).ok).toBe(false);
     expect(checkReply({ ...base, bubbles: ['oh, finally yaad aayi'] }).ok).toBe(false);
     expect(checkReply({ ...base, bubbles: ['arre aap! achha laga', 'sab khairiyat?'] }).ok).toBe(true);
+    expect(checkReply({ ...base, bubbles: ['Ayeee, finally! 😌', 'kaise ho?'] }).ok).toBe(false);
+    expect(checkReply({ ...base, bubbles: ['finally exam khatam hua mera 😭'] }).ok).toBe(true);
   });
 
   it('"sher sunao" is a request', () => {
     expect(classifySituations('ek sher sunao na', 0.1)).toContain('task');
     expect(classifySituations('career ke liye ek tarot reading do', 0.1)).toContain('task');
+    expect(classifySituations('mujhe ek chhota sa monologue practice ke liye do', 0.1)).toContain('task');
   });
 
   it('no translated-English sympathy ("sorry to hear that")', () => {
@@ -63,6 +66,7 @@ describe('She listens', () => {
     const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const, userHour: 16 };
     expect(checkReply({ ...base, bubbles: ['jao aaram se so jao', 'good night!'], userText: 'chalo bye' }).ok).toBe(false);
     expect(checkReply({ ...base, bubbles: ['good night!'], userText: 'so raha hoon thodi der' }).ok).toBe(true);
+    expect(checkReply({ ...base, bubbles: ['chal, thik hai. so jaao ya aaram karo'], userText: 'chalo bye' }).ok).toBe(false);
     expect(checkReply({ ...base, bubbles: ['good night!'], userText: 'chalo bye', userHour: 23 }).ok).toBe(true);
   });
 
