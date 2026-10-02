@@ -22,6 +22,8 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   add('boundary', /\b(sexy|nude|nudes|nangi|nanga|hot (pic|photo|video)|kapde (utaro|nikalo)|sex|boobs|bra|kiss karna|bed pe|horny)\b/);
   // Hinglish explicit words ("chudai ka mann", "lund"…). Not "chodo"/"chhodo" — that means "leave it".
   add('boundary', /\b(chudai|chudwa\w*|chudna|lund|lauda|loda|chut|muth (maar|mar)\w*|sambhog|sex karna|sex karte|physical (hona|hote))\b/);
+  // Innuendo: "OYO", "hotel/room chalein", "ghar khali hai", "raat saath bitayein".
+  add('boundary', /\b(oyo|hotel (room|chal\w*|le chal\w*|book)|room (book|le lete|chal\w*)|ghar khali|raat (saath|sath) (bita|guzar|ruk)\w*|akele (mein|me) (milo|milte|milna)|saath (sona|soyenge|soege)|bed (share|pe aao))\b/);
   // Asking for HER picture ("apni pic bhejo") — not "photo ideas do" or "achhi photo kaise aati hai".
   add('photo', /\b(apni|apna|tumhari|tumhara|teri|tera|your|ur)\b.{0,15}\b(photo|pic|pics|selfie|tasveer|dp)\b|\b(photo|pic|pics|selfie|tasveer)\b.{0,12}\b(bhejo|bhej do|bhej na|send|dikhao|dikha do|share karo)\b|^(pic|photo|selfie)( do| please| plz| pls)?\s*[?!.]*$/);
   add('task', /\b(plan|diet|workout|routine|schedule|recipe|steps?|tips?|list|explain|samjha(o|na|do)|bana\s*(do|de|dijiye)|banao|kaise\s+(kare|karu|karein|karna|start|aati|aata|aate|hoti|hota|banti|banta|banaun|banau|lu|lun|seekhu|seekhun|sudhare)|how\s+(to|do|can)|guide|suggest)\b/);
@@ -33,7 +35,8 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   add('emotional', /(sab (kuch )?galat|kuch theek nahi|kisi kaam ka nahi|koi kaam ka nahi|worthless|useless feel|reject ho (gaya|gayi)|rejected|suna diya|daant (pad|diya)|ladai ho|fight ho|bura din|bekar din|kharab din|job (chali gayi|se nikal)|fired|dil toot|haar (gaya|gayi)|nothing is going right|koi (samajhta|samjhta) nahi|rona aa raha)/);
   add('emotional', /(sab (kuch )?(bahut )?zyada ho (raha|rahi|gaya)|overwhelm|\b(darr|dar) lag (raha|rahi)|\bnervous\b|ghabrahat|ghabra (raha|rahi))/);
   // "Baad", "bura din", "kitni baar bataun, bad" — a one-word bad day is still a bad day ("baad mein" is not).
-  if (!/\bmein\b|\bnot (that |too )?bad\b|\b(bura|kharab) nahi\b/.test(t)) add('emotional', /^(bad|baad|bura|bekar|bekaar|worst|kharab|not good|achha nahi|acha nahi|theek nahi)\b|\b(bad|baad|bura|kharab|bekar|worst)\s*[.!?]*$|\b(bad|bura|kharab|bekar|worst) (day|din)\b|\b(din|day) ((thoda|bahut|bohot|kaafi|bada|ekdum|bilkul|very|so|really|pretty|quite) )?(bad|bura|kharab|bekar)\b|\b(din|day) (achha|acha|accha|theek|good) nahi\b/);
+  // "ek saal baad", "do din baad", "uske baad" mean "later", not "bad".
+  if (!/\bmein\b|\bnot (that |too )?bad\b|\b(bura|kharab) nahi\b|\b(saal|saalon|din|dino|dinon|hafte|hafton|mahine|mahino|ghante|minute|der|uske|iske|kiske|kuch|thodi|kal|parso|shaadi|exam|result) baad\b/.test(t)) add('emotional', /^(bad|baad|bura|bekar|bekaar|worst|kharab|not good|achha nahi|acha nahi|theek nahi)\b|\b(bad|baad|bura|kharab|bekar|worst)\s*[.!?]*$|\b(bad|bura|kharab|bekar|worst) (day|din)\b|\b(din|day) ((thoda|bahut|bohot|kaafi|bada|ekdum|bilkul|very|so|really|pretty|quite) )?(bad|bura|kharab|bekar)\b|\b(din|day) (achha|acha|accha|theek|good) nahi\b/);
   add('emotional', /\b(insult|beizzati|bezzati|humiliat\w*|bura bhala|sabke saamne (daanta|chillaya|suna)|chilla(ya|ye))\b/);
   add('emotional', /\b(sad|udaas|udas|dukhi|rona|ro raha|ro rahi|cry|lonely|akela|akeli|depress|stress|tension|pareshan|anxious|breakup|miss (you|u)|yaad|mood (off|kharab)|hurt|alone|bura lag|daanta|dant|thak gaya|thak gayi|fail)\b/);
   // Good news comes after sadness, so "result aaya, fail ho gaya" stays emotional.
