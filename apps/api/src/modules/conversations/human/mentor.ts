@@ -83,6 +83,9 @@ export function extractTaskTag(text: string): { text: string; task?: string } {
   return { text: text2, task };
 }
 
+const REQUEST_LINE =
+  'When they ask you for something (code, a plan, ideas, a list): you may ask one quick question first, but once they answer, hand it over yourself in that reply — never make them ask twice. When you hand it over, add the very last line [[delivered]] (they never see it).';
+
 const TASK_LINE =
   'When you give them a task (something they will DO after this chat — not a question for them to answer now), add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.';
 
@@ -97,6 +100,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
       `HOW YOU TEACH\n${MENTOR_METHOD}`,
       `- Never: ${m.never}.`,
       TASK_LINE,
+      REQUEST_LINE,
     ].join('\n\n');
   }
   if (m.field === 'health') {
@@ -107,6 +111,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
       `HEALTH SAFETY (never broken — it wins over flirting, fun and "keep it short")\n${HEALTH_SAFETY}\n- Never: ${m.never}.`,
       `APNAPAN (how they should feel with you)\n${APNAPAN}`,
       TASK_LINE,
+      REQUEST_LINE,
     ].join('\n\n');
   }
   return [
@@ -115,6 +120,7 @@ export function mentorPromptSection(pack: PersonaPack): string {
     `HOW YOU TEACH\n${MENTOR_METHOD}`,
     `MONEY & HONESTY (never broken)\n${MONEY_HONESTY}\n- Never: ${m.never}.`,
     TASK_LINE,
+    REQUEST_LINE,
   ].join('\n\n');
 }
 

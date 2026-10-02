@@ -77,6 +77,8 @@ export function checkReply(params: {
   plannedText?: string;
   /** How she addresses them; anything else is a slip (tum ↔ aap ↔ tu). */
   address?: 'tum' | 'aap' | 'tu';
+  /** They asked for something and already answered her question: this reply must hand it over. */
+  mustDeliver?: { what: string; delivered: boolean };
   /** They write Hindi in Roman letters: the reply must not slip into Devanagari ("chupचाप"). */
   romanOnly?: boolean;
   /** They said she asks too many questions: this reply must not ask any. */
@@ -125,6 +127,9 @@ export function checkReply(params: {
   // Two questions in one casual reply feels like an interview, not a chat (a lesson may need more context).
   if (params.mode !== 'task' && (all.match(/\?/g) ?? []).length >= 2) {
     problems.push('Ask at most one question in a reply — two feels like an interview. Keep the one that matters, or none.');
+  }
+  if (params.mustDeliver && !params.mustDeliver.delivered) {
+    problems.push(`They asked you for "${params.mustDeliver.what}" and have already answered your question. Give it to them now, in this reply, yourself — they should never have to ask twice.`);
   }
   // Code pasted as plain text gets mangled by chat formatting and can't be copied cleanly.
   if (looksLikeUnfencedCode(all)) {
