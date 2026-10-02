@@ -13,6 +13,9 @@ conversationRouter.post('/', ConversationController.createConversation);
 conversationRouter.get('/', ConversationController.listConversations);
 conversationRouter.get('/:conversationId', ConversationController.getConversation);
 conversationRouter.delete('/:conversationId', ConversationController.deleteConversation);
+// "Clear chat" / "Delete chat" (gone from your screen, she remembers) and "Start fresh" (she forgets).
+conversationRouter.post('/:conversationId/clear', ConversationController.clearChat);
+conversationRouter.post('/:conversationId/start-fresh', ConversationController.startFresh);
 
 // 2. Messages & Real-Time Streaming
 conversationRouter.get('/:conversationId/messages', ConversationController.getMessages);

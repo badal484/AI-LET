@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +26,7 @@ import { darkThemeColors, spacing } from '../../theme/index.js';
 import { ApiClient } from '../../services/api/client.js';
 import { SecureAuthStorage } from '../../services/auth/SecureAuthStorage.js';
 import { chatListTime } from '../../utils/chatDates.js';
+import { ToastService } from '../../components/common/Toast.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -73,6 +75,61 @@ export const ConversationsScreen: React.FC = () => {
   };
 
 
+  // Long-press a chat (like WhatsApp): "Delete chat" — gone from your list and screen, but they still
+  // remember you — or "Start fresh" — they forget everything (the real privacy option).
+  const handleChatActions = (item: ConversationSummary) => {
+    const name = item.character.name;
+    Alert.alert(name, undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: `Start fresh with ${name}`, style: 'destructive', onPress: () => confirmStartFresh(item) },
+      { text: 'Delete chat', onPress: () => confirmDeleteChat(item) },
+    ]);
+  };
+
+  const confirmDeleteChat = (item: ConversationSummary) => {
+    const name = item.character.name;
+    Alert.alert('Delete this chat?', `It will disappear from your chats. ${name} will still remember you and what you talked about.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete chat',
+        onPress: async () => {
+          try {
+            await ConversationApi.clearChat(item.id, true);
+            queryClient.removeQueries({ queryKey: ['messages', item.id] });
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          } catch {
+            ToastService.show({ message: 'Could not delete the chat. Try again.', type: 'error', duration: 2500 });
+          }
+        },
+      },
+    ]);
+  };
+
+  const confirmStartFresh = (item: ConversationSummary) => {
+    const name = item.character.name;
+    Alert.alert(
+      `Start fresh with ${name}?`,
+      `${name} will forget everything about you — your chats, what they remember and your bond. You'll meet as strangers. This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start fresh',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ConversationApi.startFresh(item.id);
+              queryClient.removeQueries({ queryKey: ['messages', item.id] });
+              queryClient.invalidateQueries({ queryKey: ['conversations'] });
+              ToastService.show({ message: `${name} has forgotten everything.`, type: 'info', duration: 2500 });
+            } catch {
+              ToastService.show({ message: 'Could not start fresh. Try again.', type: 'error', duration: 2500 });
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const renderConversationItem = ({ item }: { item: ConversationSummary }) => {
     return (
       <TouchableOpacity
@@ -80,6 +137,7 @@ export const ConversationsScreen: React.FC = () => {
         activeOpacity={0.75}
         onPressIn={() => prefetchConversation(item)}
         onPress={() => handleOpenConversation(item)}
+        onLongPress={() => handleChatActions(item)}
         accessibilityRole="button"
         accessibilityLabel={`Chat with ${item.character.name}: ${item.lastMessageSnippet || 'Conversation open'}`}
       >

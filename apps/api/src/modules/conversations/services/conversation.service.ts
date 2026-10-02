@@ -1,3 +1,4 @@
+import { redis } from '../../../infrastructure/redis/redis.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
 import { ErrorCode } from '@ai-companion/config';
@@ -146,6 +147,8 @@ export class ConversationService {
       userId,
       status,
       deletedAt: null,
+      // "Delete chat" from the Chats tab hides it until a new message arrives.
+      hiddenAt: null,
     };
 
     if (query.cursor) {
@@ -251,7 +254,7 @@ export class ConversationService {
     // 1. Verify conversation ownership
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId, deletedAt: null },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, clearedAt: true },
     });
 
     if (!conversation) {
@@ -273,6 +276,8 @@ export class ConversationService {
       // Failures are shown as a retry chip, never as a character message; empty placeholders from
       // interrupted generations are not messages at all.
       NOT: { role: 'assistant', status: { in: ['FAILED', 'STREAMING', 'PENDING'] } },
+      // "Clear chat": gone from their screen (she still has it, like the other person in real life).
+      ...(conversation.clearedAt ? { createdAt: { gt: conversation.clearedAt } } : {}),
     };
 
     if (query.cursor) {
@@ -421,6 +426,73 @@ export class ConversationService {
       nextCursor,
       hasMore,
     };
+  }
+
+  /**
+   * "Clear chat" (and "Delete chat" from the Chats tab, with removeFromList): the messages disappear
+   * from the user's screen, but she remembers — like deleting a chat on your own phone in real life.
+   */
+  public static async clearChat(userId: string, conversationId: string, removeFromList: boolean): Promise<void> {
+    await this.ownedConversation(userId, conversationId);
+    const now = new Date();
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { clearedAt: now, unreadCount: 0, lastMessageSnippet: null, ...(removeFromList ? { hiddenAt: now } : {}) },
+    });
+    logger.info(`Cleared chat ${conversationId} for user ${userId}${removeFromList ? ' (removed from list)' : ''}`);
+  }
+
+  /**
+   * "Start fresh": she truly forgets them — messages, memories, what she knew about them, the bond, her
+   * follow-ups, plans, reminders and goals with them. Kept: their favourites/follows (not her memory),
+   * and billing, usage and safety records (needed for legal and safety reasons).
+   */
+  public static async startFresh(userId: string, conversationId: string): Promise<void> {
+    const conversation = await this.ownedConversation(userId, conversationId);
+    const characterId = conversation.characterId;
+    const pair = { userId, characterId };
+    await prisma.$transaction([
+      prisma.memoryAccessLog.deleteMany({ where: pair }),
+      prisma.memory.deleteMany({ where: { userId, OR: [{ characterId }, { conversationId }] } }),
+      prisma.userCharacterProfile.deleteMany({ where: pair }),
+      prisma.relationship.deleteMany({ where: pair }),
+      prisma.proactiveAction.deleteMany({ where: pair }),
+      prisma.userReminder.deleteMany({ where: pair }),
+      prisma.userGoal.deleteMany({ where: pair }),
+      prisma.openConversationalThread.deleteMany({ where: pair }),
+      prisma.characterCommitment.deleteMany({ where: pair }),
+      prisma.characterWorldStateEvent.deleteMany({ where: pair }),
+      prisma.characterWorldState.deleteMany({ where: pair }),
+      prisma.characterSimulationEvent.deleteMany({ where: pair }),
+      prisma.simulationStateSnapshot.deleteMany({ where: pair }),
+      prisma.simulationRunRecord.deleteMany({ where: pair }),
+      prisma.characterPlan.deleteMany({ where: pair }),
+      prisma.characterGoal.deleteMany({ where: pair }),
+      prisma.characterSimulationState.deleteMany({ where: pair }),
+      prisma.conversation.delete({ where: { id: conversationId } }),
+    ]);
+    // Her short-term state lives in Redis: mood, today's continuity, bond and tone caches.
+    try {
+      await redis.del(
+        `human:life:${userId}:${characterId}`,
+        `human:mood:${userId}:${characterId}`,
+        `rel:user:${userId}:char:${characterId}`,
+        `tone:user:${userId}:char:${characterId}`,
+      );
+    } catch (err) {
+      logger.warn(`Start fresh: could not clear cached state: ${err instanceof Error ? err.message : 'Unknown'}`);
+    }
+    logger.info(`Started fresh: user ${userId} with character ${characterId}`);
+  }
+
+  private static async ownedConversation(userId: string, conversationId: string) {
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId, deletedAt: null },
+      select: { id: true, userId: true, characterId: true },
+    });
+    if (!conversation) throw new NotFoundError('Conversation not found', ErrorCode.CONVERSATION_NOT_FOUND);
+    if (conversation.userId !== userId) throw new ForbiddenError('Access denied to conversation', ErrorCode.CONVERSATION_ACCESS_DENIED);
+    return conversation;
   }
 
   /**

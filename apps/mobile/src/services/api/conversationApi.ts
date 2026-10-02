@@ -107,6 +107,23 @@ export class ConversationApi {
   }
 
   /**
+   * "Clear chat" (removeFromList: false) or "Delete chat" from the Chats tab (removeFromList: true):
+   * the messages disappear from this user's screen, but the character still remembers them.
+   */
+  public static async clearChat(conversationId: string, removeFromList = false): Promise<void> {
+    const client = ApiClient.getInstance();
+    await client.post(`/conversations/${conversationId}/clear`, { removeFromList });
+  }
+
+  /**
+   * "Start fresh": the character forgets everything about this user (chats, memories, bond).
+   */
+  public static async startFresh(conversationId: string): Promise<void> {
+    const client = ApiClient.getInstance();
+    await client.post(`/conversations/${conversationId}/start-fresh`, {});
+  }
+
+  /**
    * Deletes a conversation.
    */
   public static async deleteConversation(conversationId: string): Promise<void> {

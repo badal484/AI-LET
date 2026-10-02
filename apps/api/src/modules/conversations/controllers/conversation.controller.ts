@@ -77,6 +77,29 @@ export class ConversationController {
     }
   }
 
+  public static async clearChat(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.userId || (req as any).user?.id || (req as any).userPrincipal?.userId;
+      const conversationId = req.params['conversationId'] as string;
+      const removeFromList = req.body?.removeFromList === true;
+      await ConversationService.clearChat(userId, conversationId, removeFromList);
+      ApiResponse.success(res, { cleared: true, removedFromList: removeFromList }, 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async startFresh(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.userId || (req as any).user?.id || (req as any).userPrincipal?.userId;
+      const conversationId = req.params['conversationId'] as string;
+      await ConversationService.startFresh(userId, conversationId);
+      ApiResponse.success(res, { startedFresh: true }, 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async submitFeedback(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.userId || (req as any).user?.id || (req as any).userPrincipal?.userId;

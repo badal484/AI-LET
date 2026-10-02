@@ -308,6 +308,8 @@ export class ProactiveGeneratorService {
         lastMessageAt: new Date(),
         lastMessageSnippet: generatedText.slice(0, 100),
         unreadCount: { increment: 1 },
+        // Her message brings a chat deleted from the Chats tab back to the list (like WhatsApp).
+        hiddenAt: null,
       },
     });
 
