@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Share,
   Animated,
-  ScrollView,
   Platform,
   Clipboard,
   PanResponder,
@@ -18,6 +17,7 @@ import { Icon } from './Icon.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem } from '@ai-companion/types';
 import { messageTime } from '../../utils/chatDates.js';
+import { withInlineCode } from '../../utils/inlineCode.js';
 
 /** A line that is clearly code (for code people paste without ``` fences). */
 const CODE_LINE = /^\s*(import |from \S+ import |def |class |const |let |var |function |return |if \(|for \(|while \(|async |await |print\(|console\.log\()|[;{}]\s*$|\)\s*:\s*$|^\s*[\w.]+\s*=\s*[\w.]+\(|^\s*(Traceback|File ".+", line \d+|\w+Error:)/;
@@ -229,7 +229,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         ]}
                         selectable
                       >
-                        {paragraph}
+                        {withInlineCode(paragraph, styles.inlineCode)}
                       </Text>
                     );
                   }
@@ -241,11 +241,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                           <Text style={styles.codeCopy}>Copy</Text>
                         </TouchableOpacity>
                       </View>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {/* Long lines wrap: a sideways scroller with no visible bar looked like cut-off code on phones. */}
+                      <View>
                         <Text style={styles.codeText} selectable>
                           {code[2]}
                         </Text>
-                      </ScrollView>
+                      </View>
                     </View>
                   );
                 })()}
@@ -486,6 +487,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     padding: 10,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
+  inlineCode: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontSize: 14,
+    color: '#F0ABFC',
+    backgroundColor: 'rgba(10, 6, 20, 0.6)',
   },
   messageText: {
     fontSize: 15,

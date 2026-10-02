@@ -57,6 +57,26 @@ export interface UserProfile {
   tasks: ProfileTask[];
   /** Mentors only: what they're building together (a tool, a channel, a business) — so every session can pick up where it left off. */
   project?: ProfileProject;
+  /** Mentors only: full courses they're taking (one per language), the newest-updated one is active. */
+  courses?: ProfileCourse[];
+}
+
+/** Where they are in a course (see conversations/human/course.ts). */
+export interface ProfileCourse {
+  /** Curriculum id ("javascript"). */
+  id: string;
+  /** Current lesson, numbered across the whole course (1…N). */
+  lesson: number;
+  /** Topic numbers of the current lesson already taught and practised. */
+  covered: number[];
+  /** intake = asking their level; teach; quiz = lesson check asked; project = level project; complete. */
+  stage: 'intake' | 'teach' | 'quiz' | 'project' | 'complete';
+  /** Lessons finished (passed, or skipped after a check). */
+  done: number[];
+  /** What they told about their level and time ("knows HTML, 1 hr a day"). */
+  about?: string;
+  started: string;
+  updated: string;
 }
 
 export interface ProfileProject {
@@ -123,6 +143,24 @@ export function normalizeProfile(raw: unknown): UserProfile {
       next: clip(proj?.['next']),
       updated: DATE.test(String(proj?.['updated'] ?? '')) ? String(proj!['updated']) : '',
     };
+  }
+  if (Array.isArray(r['courses'])) {
+    const nums = (x: unknown) => (Array.isArray(x) ? [...new Set(x.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n < 500))].sort((a, b) => a - b) : []);
+    const STAGES: ProfileCourse['stage'][] = ['intake', 'teach', 'quiz', 'project', 'complete'];
+    const courses = r['courses']
+      .map((x: any) => ({
+        id: typeof x?.id === 'string' ? x.id.slice(0, 40) : '',
+        lesson: Number.isInteger(x?.lesson) && x.lesson > 0 ? (x.lesson as number) : 1,
+        covered: nums(x?.covered),
+        stage: STAGES.includes(x?.stage) ? (x.stage as ProfileCourse['stage']) : 'teach',
+        done: nums(x?.done),
+        about: clip(x?.about),
+        started: DATE.test(String(x?.started ?? '')) ? String(x.started) : '',
+        updated: DATE.test(String(x?.updated ?? '')) ? String(x.updated) : '',
+      }))
+      .filter((x) => x.id)
+      .slice(-10);
+    if (courses.length) p.courses = courses;
   }
   return p;
 }

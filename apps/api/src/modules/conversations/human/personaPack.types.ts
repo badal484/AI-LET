@@ -96,5 +96,7 @@ export interface PersonaPack {
     facts: string;
     /** What this mentor must never do. */
     never: string;
+    /** Complete courses this mentor teaches from zero to advanced (ids from human/courses). */
+    courses?: string[];
   };
 }
