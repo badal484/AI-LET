@@ -16,6 +16,9 @@ const BOT_PHRASES: RegExp[] = [
   /is there anything else/i,
   /i hope this helps/i,
   /main samajh sakti hoon ki aap/i,
+  // Translated-English sympathy: no Indian friend texts this.
+  /(so|very|really)? ?sorry to hear (that|this)/i,
+  /that must be (so |really )?(hard|tough|difficult)/i,
 ];
 // "samajhta hu", "karta hoon" — first-person verb forms carry gender even without "main".
 // "jaunga", "khaunga" (I will…) are first-person on their own too.

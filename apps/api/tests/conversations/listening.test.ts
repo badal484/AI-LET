@@ -31,6 +31,11 @@ describe('She listens', () => {
     for (const t of ['do din se bimar hoon', 'do ideas hain mere paas']) expect(classifySituations(t, 0.1), t).not.toContain('task');
   });
 
+  it('no translated-English sympathy ("sorry to hear that")', () => {
+    expect(checkReply({ bubbles: ['Oh no, I am so sorry to hear that.'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(false);
+    expect(checkReply({ bubbles: ['ohh yaar', 'kya hua aaj?'], herRecentReplies: [], gender: 'female', mode: 'deep' }).ok).toBe(true);
+  });
+
   it('a goodbye after a hard day is soft, not a bare "ok"', () => {
     const state: LifeState = { firstMetAt: Date.now(), day: { date: '2026-10-01', told: [], userMoods: ['low'], storyShared: false }, threads: [] };
     const notes = applyUserTurn({ state, pack: aarohiNair, userText: 'chalo bye', situations: ['bye'], userMood: 'neutral' });

@@ -1,6 +1,6 @@
 /**
  * Opening messages that used the wrong app name ("Lovish"), pretended an earlier meeting on a first
- * chat ("Kahan gayab the?"), or were missing (Dr MAYA fell back to a line naming Shradha).
+ * chat ("Kahan gayab the?", "Kitna miss karwaya", "finally online"), called a stranger "baby"/"bhai", or were missing (Dr MAYA fell back to a line naming Shradha).
  *   npx tsx scripts/maintenance/fixGreetings.ts           # dry run
  *   npx tsx scripts/maintenance/fixGreetings.ts --apply   # applies (backup first)
  */
@@ -16,6 +16,12 @@ const apply = process.argv.includes('--apply');
 const GREETINGS: Record<string, string> = {
   riya: 'Hii! 🥰 Main Riya. Lovira pe pehli baar baat ho rahi hai na? Batao, kya chal raha hai aaj?',
   'ritika-sharma': 'Hello! Main Ritika — Delhi, law final year, aur abhi moot court ki files mein dubi hui ☕ Pehli hearing hai humari, toh batao: kya chal raha hai?',
+  'kabir-sethi': 'Hey! Main Kabir — Bandra mein café gigs aur thode jingles 🎸 Pehli baar baat ho rahi hai, toh batao, aaj ka din kaisa gaya?',
+  'aarav-malhotra': 'hey 🙂 main Aarav — product designer, Bangalore. pehli baar baat ho rahi hai, din kaisa ja raha hai?',
+  'ishita-rao': 'Hii! Main Ishita — Hyderabad se, abhi Boston mein MBA kar rahi hoon 🤍 Tumhare yahan din kaisa raha?',
+  'zoya-qureshi': 'Assalamu alaikum! Main Zoya 🤍 Chhat pe baarish ke baad itni pyari hawa chal rahi hai… aap bataiye, aapka din kaisa raha?',
+  'sandeep-chaudhary': 'Ram Ram ji! Main Sandeep, apni dairy wala 🥛 Subah ke 4 baje se kaam nipta ke abhi chai pe baitha hoon. Tum sunao, kya haal chaal?',
+  'raj-bansal': 'Wassup! Main Raj — YouTube aur content ka banda 📈 Channel shuru karna hai ya pehle se chal raha hai? Batao, kahan se start karein?',
   'dr-shradha': 'Hello, main Shradha 🌿 Yahan aaram se, bina judge hue baat kar sakte ho. Aaj mann kaisa hai?',
   'dr-maya': 'Hii, main Maya 🌿 Neend, energy ya daily habits — kisi pe bhi saath kaam karte hain. Pehle batao, kal raat neend kaisi aayi?',
 };
