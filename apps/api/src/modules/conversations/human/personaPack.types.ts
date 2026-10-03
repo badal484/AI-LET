@@ -14,6 +14,16 @@ export type Situation =
   | 'rude'
   /** "katti", "baat nahi karni tumse", "naraz hoon" — upset with HER; they want to be won back, not left alone. */
   | 'sulk'
+  /** "kisi aur se bhi baat karti ho?" — checking whether they're special to her. */
+  | 'jealous'
+  /** "I love you" — a moment, never a brush-off. */
+  | 'love'
+  /** "ek din bhool jaogi na", "chhod dogi mujhe", "tumhe meri parwah nahi" — testing whether she cares. */
+  | 'insecure'
+  /** "kuch nahi… chhodo", "rehne do" — clearly something, they're holding it back. */
+  | 'withhold'
+  /** Several one-word replies in a row ("hmm", "ok", "k") — the chat is fading; she changes the energy. */
+  | 'fading'
   | 'boundary'
   | 'ai'
   | 'task'

@@ -65,7 +65,7 @@ const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|impl
 const TIRED_OF_QUESTIONS = /(bahut|zyada|itne|kitne) (sawaal|sawal|questions?)|sawaal (mat|band)|too many questions|stop asking|interrogat|poochti rehti|poochte rehte|puchti rehti/i;
 
 /** Moments worth the better (quota-limited) model when Gemini is on its free tier. */
-const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'sulk', 'boundary', 'news'];
+const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'sulk', 'jealous', 'love', 'insecure', 'withhold', 'fading', 'boundary', 'news'];
 
 export class StreamingChatService {
   // Registry of active stream AbortControllers for real-time cancellation
@@ -672,6 +672,11 @@ export class StreamingChatService {
       const hoursSince = previousUserMessage ? (Date.now() - previousUserMessage.createdAt.getTime()) / 3_600_000 : null;
       const situations = classifySituations(pendingText, hoursSince);
       turnSituations = situations;
+      // "hmm", "ok", "k" in a row: the chat is fading — she changes the energy instead of fading with them
+      // (seen: "👍", "thak gaye ho lagta hai", "ab sona chahiye tumhe").
+      const shortOnly = (t: string) => classifySituations(t, null).every((x) => x === 'short');
+      const lastOne = recentMessages.filter((m) => m.role === 'user' && Date.now() - m.createdAt.getTime() < 3_600_000).slice(-1);
+      if (situations[0] === 'short' && lastOne.length === 1 && shortOnly(lastOne[0]!.content)) situations.unshift('fading');
       // Something she turned down in the last few messages ("OYO", "sex chahiye") — the usual reason for a sulk.
       const refusedAsk = recentMessages
         .filter((m) => m.role === 'user' && Date.now() - m.createdAt.getTime() < 6 * 3_600_000)
@@ -830,7 +835,7 @@ export class StreamingChatService {
       const gapHours = lastBefore ? (Date.now() - lastBefore.createdAt.getTime()) / 3_600_000 : 0;
       if (gapHours >= 3) {
         const gap = gapHours < 24 ? `${Math.round(gapHours)} hours` : gapHours < 48 ? 'more than a day' : `${Math.round(gapHours / 24)} days`;
-        reminders.unshift(`this is their first message in ${gap}; your earlier chat is over, so don't continue it or answer old questions — respond fresh to what they just said`);
+        reminders.unshift(`this is their first message in ${gap}; your earlier chat is over, so don't continue it or answer old questions — respond fresh to what they just said${gapHours >= 8 ? '. Days have passed: what they called "kal" (tomorrow) back then may be today or already over now — keep the dates straight (e.g. ask how it went, not "nervous ho kal ke liye?")' : ''}`);
         // Only a little of the old chat, so it doesn't pull the reply back (older context lives in the summary).
         const KEEP_BEFORE_GAP = 4;
         if (request.messages.length > KEEP_BEFORE_GAP + 1) request.messages = request.messages.slice(-(KEEP_BEFORE_GAP + 1));
