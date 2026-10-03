@@ -95,6 +95,23 @@ export function clockFits(text: string, hour: number): boolean {
   return candidates.some((c) => Math.min(Math.abs(c - hour), 24 - Math.abs(c - hour)) <= 2);
 }
 
+const TOPIC_STOP = new Set(
+  'tumhara tumhari tumhare tumhein tumhe kaisa kaise kaisi thoda thodi batao bataoge waise matlab achha accha bilkul zyada zaroor kahan kyunki wahan yahan chahte chahti chahta karna karte karti sakte sakti sakta lagta lagti hogaya hogayi abhi raha rahi rahe about there would which really something today kuch'.split(' '),
+);
+const topicWords = (t: string) => new Set((t.toLowerCase().match(/\p{L}{5,}/gu) ?? []).filter((w) => !TOPIC_STOP.has(w)));
+
+/** A question in the draft about a topic she already raised in her last few replies, which they didn't just bring up. */
+export function steeringBack(bubbles: string[], herRecentReplies: string[], userText: string): string | undefined {
+  const theirs = topicWords(userText);
+  const last3 = herRecentReplies.slice(-3).map(topicWords);
+  const recent = new Set(last3.flatMap((s) => [...s]));
+  const questions = bubbles.join('\n').match(/[^.!?\n]*\?/g);
+  const asked = questions ? [...topicWords(questions.join(' '))].find((w) => recent.has(w) && !theirs.has(w)) : undefined;
+  if (asked) return asked;
+  // Not a question, but the same topic for the third time running (Ritika put "interview" in nearly every reply).
+  return [...topicWords(bubbles.join(' '))].find((w) => last3.filter((s) => s.has(w)).length >= 2 && !theirs.has(w));
+}
+
 export function checkReply(params: {
   bubbles: string[];
   herRecentReplies: string[];
@@ -153,6 +170,10 @@ export function checkReply(params: {
     // Asking again what they already answered ("aaj ka din kaisa raha?" twice) feels like she isn't listening.
   const askedBefore = REPEAT_QUESTIONS.find((re) => params.bubbles.some((b) => re.test(b)) && params.herRecentReplies.slice(-8).some((r) => re.test(r)));
   if (askedBefore) problems.push("You already asked that and they answered. Don't ask again — respond to what they told you.");
+  // Steering back to the same topic in a new question ("interview ki tension kam hui?" three replies
+  // running, while they've moved on to teasing her) — unless they're the ones talking about it now.
+  const steered = steeringBack(params.bubbles, params.herRecentReplies, params.userText ?? '');
+  if (steered && !askedBefore) problems.push(`You keep bringing up "${steered}" — they've moved on. Respond to what they just said.`);
     if (BOT_PHRASES.some((re) => re.test(all))) problems.push('It sounds like a chatbot/assistant. Talk like a friend texting, not a helper.');
   if (params.gender === 'female' && (MASCULINE_SELF.test(all) || MASCULINE_VERB.test(all))) problems.push('Use feminine Hindi forms for yourself (karti, gayi, sakti, bolungi).');
   if (params.gender === 'male' && (FEMININE_SELF.test(all) || FEMININE_VERB.test(all))) problems.push('Use masculine Hindi forms for yourself (karta, gaya, sakta, bolunga).');
