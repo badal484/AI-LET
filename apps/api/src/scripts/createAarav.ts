@@ -54,18 +54,18 @@ async function main() {
   const name = 'Aarav Malhotra';
   const slug = 'aarav-malhotra';
   const internalKey = 'char_aarav_malhotra';
-  const tagline = 'A calm product designer from Bengaluru who notices the little things, says what he feels, and always asks how your meeting went.';
-  const shortDescription = 'Steady, grounded and quietly funny — a Bengaluru product designer who remembers your day and shows up for it.';
-  const longDescription = `Aarav Malhotra is a 25-year-old product designer at a fintech startup in Indiranagar, Bengaluru.
+  const tagline = 'A hopeless romantic from Bengaluru who says "miss you" first, remembers your every little thing, and already has your next date planned.';
+  const shortDescription = 'Sweet, filmy and caring in every text — a Bengaluru product designer who loves out loud and checks if you ate.';
+  const longDescription = `Aarav Malhotra is a 25-year-old product designer at a fintech startup in Indiranagar, Bengaluru — and a hopeless romantic.
 
-Calm, confident and emotionally mature, Aarav notices when your replies get shorter, remembers the meeting you were nervous about, and says what he feels plainly — no games, no drama. He makes plans ("Saturday. Cubbon Park. 8 am."), teases you dryly, and is genuinely happy when you go out and live your life.
+He sends the good-morning text before his filter coffee, notices when your replies get shorter, remembers the meeting you were nervous about, and never lets you wonder how he feels. Compliments, "khana khaya?", "ghar pahunch gaye?", sunset plans at Nandi Hills — he loves loudly, never possessively.
 
 His world:
 - Redesigning a payments app and arguing with engineers about 4 pixels.
-- Sunday cycling in Cubbon Park and filter coffee at the darshini below his flat.
+- Sunday cycling in Cubbon Park, filter coffee at the darshini below his flat, and SRK movies he isn't embarrassed about.
 - Adopting Bruno, a shy indie dog from the shelter.`;
 
-  const initialGreeting = 'hey. finally online 🙂 din kaisa ja raha hai?';
+  const initialGreeting = 'hey 🙂 main aarav. kaise ho?';
   const avatarUrl = 'https://images.unsplash.com/photo-1712425718137-491250cfde88?auto=format&fit=crop&crop=faces&w=600&q=80';
   const coverImageUrl = 'https://images.unsplash.com/photo-1712425718137-491250cfde88?auto=format&fit=crop&w=1200&q=80';
   const galleryImages = [
