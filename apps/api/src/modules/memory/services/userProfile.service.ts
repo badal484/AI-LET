@@ -57,8 +57,21 @@ export interface UserProfile {
   tasks: ProfileTask[];
   /** Mentors only: what they're building together (a tool, a channel, a business) — so every session can pick up where it left off. */
   project?: ProfileProject;
+  /** How they like to talk — learned from the chat, so she talks their way, not hers. */
+  style?: ProfileStyle;
   /** Mentors only: full courses they're taking (one per language), the newest-updated one is active. */
   courses?: ProfileCourse[];
+}
+
+export interface ProfileStyle {
+  /** The tone they enjoy: "flirty", "caring", "funny", "deep", "quick and short"… */
+  tone?: string;
+  /** Topics that light them up (long replies, emojis, questions back). */
+  enjoys: string[];
+  /** Topics they answer with one word or ignore — her work, her day, a subject she keeps raising. */
+  boredBy: string[];
+  /** How they write: "short Hinglish, lots of emojis". */
+  writes?: string;
 }
 
 /** Where they are in a course (see conversations/human/course.ts). */
@@ -143,6 +156,12 @@ export function normalizeProfile(raw: unknown): UserProfile {
       next: clip(proj?.['next']),
       updated: DATE.test(String(proj?.['updated'] ?? '')) ? String(proj!['updated']) : '',
     };
+  }
+  const st = r['style'] as Record<string, unknown> | undefined;
+  if (st && typeof st === 'object') {
+    const items = (x: unknown) => (Array.isArray(x) ? x.map(clip).filter((v): v is string => Boolean(v)).slice(-6) : []);
+    const style: ProfileStyle = { tone: clip(st['tone']), enjoys: items(st['enjoys']), boredBy: items(st['boredBy']), writes: clip(st['writes']) };
+    if (style.tone || style.writes || style.enjoys.length || style.boredBy.length) p.style = style;
   }
   if (Array.isArray(r['courses'])) {
     const nums = (x: unknown) => (Array.isArray(x) ? [...new Set(x.map(Number).filter((n) => Number.isInteger(n) && n > 0 && n < 500))].sort((a, b) => a - b) : []);
@@ -269,6 +288,7 @@ export interface ProfilePatch {
   events?: Array<{ what: string; date: string; kind?: 'once' | 'yearly' }>;
   /** How an open task went, from what they said ("haan 5 proposals bhej diye"). */
   tasks?: Array<{ what?: string; result?: string; note?: string }>;
+  style?: { tone?: string; enjoys?: string[]; bored_by?: string[]; boredBy?: string[]; writes?: string };
 }
 
 /** Models don't always use the exact shape: people/events nested in "add", lists at the top level. */
@@ -293,6 +313,7 @@ export function normalizePatch(raw: unknown): ProfilePatch {
     events: events as ProfilePatch['events'],
     remove: remove as string[],
     tasks: tasks as ProfilePatch['tasks'],
+    style: r['style'] && typeof r['style'] === 'object' ? (r['style'] as ProfilePatch['style']) : undefined,
   };
 }
 
@@ -341,6 +362,24 @@ export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: {
   }
   p.events = p.events.slice(-12);
   for (const t of patch.tasks ?? []) if (t && typeof t === 'object') recordTaskResult(p, t, opts.today ?? localToday().date, opts.justGivenTask);
+  if (patch.style) {
+    const st: ProfileStyle = p.style ?? { enjoys: [], boredBy: [] };
+    st.tone = clip(patch.style.tone) ?? st.tone;
+    st.writes = clip(patch.style.writes) ?? st.writes;
+    const list = (x: unknown) => (Array.isArray(x) ? x.map(clip).filter((v): v is string => Boolean(v)) : []);
+    // A topic they now enjoy is no longer boring, and the other way round.
+    for (const t of list(patch.style.enjoys)) {
+      st.boredBy = st.boredBy.filter((x) => !same(x, t));
+      if (!st.enjoys.some((x) => same(x, t))) st.enjoys.push(t);
+    }
+    for (const t of list(patch.style.bored_by ?? patch.style.boredBy)) {
+      st.enjoys = st.enjoys.filter((x) => !same(x, t));
+      if (!st.boredBy.some((x) => same(x, t))) st.boredBy.push(t);
+    }
+    st.enjoys = st.enjoys.slice(-6);
+    st.boredBy = st.boredBy.slice(-6);
+    if (st.tone || st.writes || st.enjoys.length || st.boredBy.length) p.style = st;
+  }
   return p;
 }
 
@@ -393,6 +432,16 @@ export function formatProfile(profile: UserProfile, today: string): string {
     .sort((a, b) => a.d - b.d)
     .map(({ e, d }) => `${e.what} — ${d === 0 ? 'TODAY' : d === 1 ? 'tomorrow' : d < 0 ? `${-d} day(s) ago` : `on ${pretty(e.kind === 'yearly' ? `${today.slice(0, 4)}${e.date.slice(4)}` : e.date)} (in ${d} days)`}`);
   if (upcoming.length) lines.push(`- Dates coming up / just passed: ${upcoming.join('; ')}`);
+  if (p.style) {
+    const s = p.style;
+    const parts = [
+      s.tone && `they enjoy a ${s.tone} vibe — lean into it`,
+      s.enjoys.length && `topics that light them up: ${s.enjoys.join(', ')}`,
+      s.boredBy.length && `topics that bore them (don't bring these up): ${s.boredBy.join(', ')}`,
+      s.writes && `they write ${s.writes} — match their length and style`,
+    ].filter(Boolean);
+    if (parts.length) lines.push(`- TALK THEIR WAY: ${parts.join('; ')}`);
+  }
   return lines.join('\n');
 }
 
@@ -439,8 +488,8 @@ export class UserProfileService {
 
   private static readonly PROMPT = `You keep a short profile of what a USER has told a chat CHARACTER about the USER's own life.
 You get the current profile (JSON), today's date, and the latest exchange. Reply with ONLY a JSON patch of what changed:
-{"set":{"name":"","nickname":"","city":"","work":""},"people":[{"relation":"sister","name":"Pooja","note":"getting married"}],"add":{"likes":[],"dislikes":[],"goals":[],"health":[],"jokes":[],"facts":[]},"remove":[],"events":[{"what":"sister Pooja's wedding","date":"YYYY-MM-DD","kind":"once"}],"tasks":[{"what":"send 5 proposals","result":"partly","note":"sent 3, 1 reply"}]}
-("people", "events" and "tasks" are top-level keys, not inside "add".)
+{"set":{"name":"","nickname":"","city":"","work":""},"people":[{"relation":"sister","name":"Pooja","note":"getting married"}],"add":{"likes":[],"dislikes":[],"goals":[],"health":[],"jokes":[],"facts":[]},"remove":[],"events":[{"what":"sister Pooja's wedding","date":"YYYY-MM-DD","kind":"once"}],"tasks":[{"what":"send 5 proposals","result":"partly","note":"sent 3, 1 reply"}],"style":{"tone":"flirty","enjoys":["cricket"],"bored_by":["her work"],"writes":"short Hinglish, lots of emojis"}}
+("people", "events", "tasks" and "style" are top-level keys, not inside "add".)
 Rules:
 - Facts come ONLY from what the USER says about the USER (their job, city, family and friends with names, likes, goals, plans). The CHARACTER's lines are context only: anything the character says about itself (its job, home, family, activities, stories) is NEVER a user fact. If the user is just quoting or asking about the character, add nothing.
 - "jokes": a running joke or playful nickname the two of them now share (may start from either side), written as "you two joke that …".
@@ -450,6 +499,7 @@ Rules:
 - "tasks": only for a task in the profile's "tasks" list that has no "result" yet, and only when the USER clearly reports on it: "done" (did it), "partly" (did some of it), or "skipped" (didn't do it / won't). Answering a question or chatting about the topic is NOT a report. Copy "what" exactly from the profile and put their numbers or details in "note" (under 12 words). Never invent new tasks and never change a task that already has a result.
 - "goals": what they are working towards (e.g. "first freelance client by December", "lose 5 kg", "frontend job"), kept up to date.
 - Don't store: moods of the moment, greetings, what they ate today, anything about the chat or the AI itself, flirting, or anything sexual.
+- "style": how THEY like to talk, judged from how they react — "tone" (the vibe they enjoy: flirty, caring, funny, deep, quick and short…), "enjoys" (topics they answer with energy: long replies, emojis, questions back), "bored_by" (topics the CHARACTER raised that they answered with one word, "oo", "ok", or ignored — e.g. "her work", "her design projects"), "writes" (e.g. "short Hinglish, few emojis"). Only when the exchange really shows it.
 - Keep each item short (under 12 words), in English. Leave out keys with nothing new. If nothing changed, reply {}.`;
 
   /** One update at a time per user–character pair, so quick messages don't overwrite each other. */

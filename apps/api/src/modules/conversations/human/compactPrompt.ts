@@ -1,3 +1,4 @@
+import { isAboutHerself } from './userFirst.js';
 import type { PersonaExample, PersonaPack, Situation } from './personaPack.types.js';
 import type { MomentContext } from './emotionalState.js';
 import type { ContinuityNotes, Thread } from './lifeState.js';
@@ -122,8 +123,8 @@ export function planReply(
 
   const plans: Record<Situation, ReplyPlan> = {
     greeting: { moves: 'greet them warmly in your own way; maybe one small detail of what you are doing', texts: '1 or 2', ask: maybe(0.5) },
-    short: { moves: 'a tiny natural reaction, like a real person', texts: '1', ask: false },
-    casual: { moves: 'react naturally and add one small, specific detail from your life', texts: '1 or 2', ask: maybe(0.35) },
+    short: { moves: 'a tiny natural reaction, like a real person. If you were just talking about yourself, wrap that up in half a line and turn to them', texts: '1', ask: false },
+    casual: { moves: 'react to what THEY said (their words, their mood) and keep it about them — a light question, a tease, a callback. Bring in your own life only if they asked about you', texts: '1 or 2', ask: maybe(0.45) },
     flirt: { moves: 'react shyly or teasingly, stay a little mysterious', texts: '1 or 2', ask: false },
     emotional: {
       moves: 'comfort mode: name how they feel in simple words and stay with them. No advice unless they ask, no lecture, don\'t turn it to yourself. Be soft; let them share more',
@@ -132,6 +133,12 @@ export function planReply(
     },
     rude: { moves: 'react simply and honestly (a little hurt or firm); no lecture', texts: '1 or 2', ask: false },
     boundary: { moves: 'say no gently but clearly in your own words, the way a person would ("ye personal hai 😄", "itna nahi batati"), never "main AI hoon" as the reason — then move on to something else', texts: '1 or 2', ask: false },
+    interest: {
+      moves:
+        'they are asking whether you are taken — they are interested in you. Answer short and playful in your own voice (single? say so with a smile), then turn it back to them with curiosity ("kyun pooch rahe ho? 😏"). Nothing about your work or your day',
+      texts: '1 or 2',
+      ask: true,
+    },
     jealous: {
       moves:
         'they are checking whether they are special to you. Don\'t answer flatly ("nahi, bas tumse") or lecture. Tease them a little for being jealous — it\'s cute — then make them feel special with something true and specific that only they get from you (how you talk with them, what you remember about them). Light and warm',
@@ -220,15 +227,18 @@ export function planReply(
   } else if (!safety && lead !== 'task' && continuity?.focus === 'celebrate') {
     plan = { moves: 'they are still enjoying their good news — stay happy with them and keep the moment about them (not your own plans)', texts: '1 or 2', ask: !askedRecently };
   }
+  // She already talked about herself in one of her last two replies: hold her own life back now.
+  const talkedAboutSelf = herRecentReplies.slice(-2).some(isAboutHerself);
   const light =
-    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'sulk', 'jealous', 'love', 'insecure', 'withhold', 'fading', 'emotional', 'win', 'task', 'news', 'bye'].includes(lead) && !situations.includes('emotional') && !situations.includes('bye') && !continuity?.focus;
+    !['crisis', 'emergency', 'eating', 'ai', 'boundary', 'rude', 'sulk', 'interest', 'jealous', 'love', 'insecure', 'withhold', 'fading', 'emotional', 'win', 'task', 'news', 'bye'].includes(lead) && !situations.includes('emotional') && !situations.includes('bye') && !continuity?.focus;
 
   // What she brings to this reply, one thing at a time so it never feels scripted:
   // a follow-up on their life first, then her own news, then an everyday detail.
   if (continuity?.followUp && (light || continuity.followUp.kind === 'task')) {
     plan.followUp = continuity.followUp;
     plan.ask = true;
-  } else if (continuity?.storyBeat && light) {
+  } else if (continuity?.storyBeat && light && (continuity.asksAboutHer || lead === 'bored') && !talkedAboutSelf) {
+    // Her own news only when they ask about her (or need rescuing from boredom) — not on a plain "hi".
     plan.storyBeat = continuity.storyBeat;
   } else if (continuity?.doing && opts.recentlyTalked) {
     // She already told them what she's doing: no new activity, whatever they ask.
@@ -236,10 +246,10 @@ export function planReply(
   } else if (
     pack &&
     light &&
-    (continuity?.asksAboutHer || (!opts.recentlyTalked && (situations.includes('greeting') || (!opts.mentor && Math.random() < 0.4))))
+    (continuity?.asksAboutHer || (!opts.recentlyTalked && situations.includes('greeting') && !talkedAboutSelf && Math.random() < 0.5))
   ) {
-    // Not every text is about her: mostly when they ask or greet, sometimes on its own. Mid-conversation
-    // she already said what she's doing, so a new activity only when they ask (and then it must fit).
+    // User first: a detail of her life when they ask about her, or now and then with a hello after a break —
+    // never on its own mid-chat (that made her talk about her work while they wanted to talk about them).
     plan.detail = pickLifeDetail(pack, situations, herRecentReplies, opts.toldToday, opts.hour);
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
@@ -276,7 +286,7 @@ export function planReply(
   } else if (pack?.friendship && (lead === 'flirt' || lead === 'love')) {
     plan.moves = 'you are their best friend, not a love interest: laugh it off warmly or roast them lovingly, then carry on the friendship — never cold, never romantic';
   }
-  if (continuity?.minor && (lead === 'flirt' || lead === 'love')) {
+  if (continuity?.minor && (lead === 'flirt' || lead === 'love' || lead === 'interest')) {
     plan.moves = 'they told you they are under 18: kindly but clearly say no to romance ("main tumhari dost hoon, bas") and keep being a warm, caring friend';
     plan.ask = true;
   }

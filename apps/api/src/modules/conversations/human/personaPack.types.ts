@@ -16,6 +16,8 @@ export type Situation =
   | 'sulk'
   /** "kisi aur se bhi baat karti ho?" — checking whether they're special to her. */
   | 'jealous'
+  /** "boyfriend h?", "single ho?", "crush hai?" — they're interested in her. */
+  | 'interest'
   /** "I love you" — a moment, never a brush-off. */
   | 'love'
   /** "ek din bhool jaogi na", "chhod dogi mujhe", "tumhe meri parwah nahi" — testing whether she cares. */

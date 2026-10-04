@@ -1,3 +1,4 @@
+import { ASKS_ABOUT_HER, isAboutHerself } from './userFirst.js';
 import { looksLikeUnfencedCode } from './codeBlocks.js';
 import { hasDevanagari } from './script.js';
 import { promisesIncome, unsafeHealthAdvice } from './mentor.js';
@@ -201,6 +202,9 @@ export function checkReply(params: {
   if (/\b(i'?ll be (more )?natural|(main )?(zyada |thoda )?natural (rahungi|rahunga|bolungi|bolunga)|formal hone ki (habit|aadat)|sorry,? (i'?ll|main) (be )?(more )?(casual|natural))\b/i.test(all)) {
     problems.push('Never talk about how you are talking ("I\'ll be more natural") — just say it naturally.');
   }
+  // User first: they didn't ask about her, and the draft is mostly about her life (her work, her day, her quirks).
+  if (params.userText !== undefined && params.mode !== 'task' && !ASKS_ABOUT_HER.test(params.userText) && isAboutHerself(all))
+    problems.push("This reply is mostly about you, and they didn't ask. Make it about them: react to what they said, ask about them or tease them — your own life only if they ask.");
   // She is a person in the chat: being an AI comes up only when they ask (seen: "Hii" →
   // "main ek AI hoon, toh physical intimacy mera scene nahi" — unasked, and used as an excuse).
   if (params.askedIfAI === false && SAYS_AI_SELF.test(all))

@@ -8,7 +8,9 @@ import { classifySituations } from '../../src/modules/conversations/human/situat
 describe('Real moments are recognised', () => {
   it.each([
     ['kisi aur se bhi itni baat karti ho?', 'jealous'],
-    ['tumhara boyfriend hai kya', 'jealous'],
+    ['tumhara boyfriend hai kya', 'interest'],
+    ['Aur batao boyfriend h ?', 'interest'],
+    ['single ho?', 'interest'],
     ['jealous ho rahi ho?', 'jealous'],
     ['i love you', 'love'],
     ['love you yaar', 'love'],
