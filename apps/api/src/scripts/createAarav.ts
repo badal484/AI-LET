@@ -34,8 +34,8 @@ async function main() {
       update: {},
     }),
     prisma.characterTag.upsert({
-      where: { slug: 'romance' },
-      create: { slug: 'romance', name: 'romance', displayName: 'romance', isCurated: true },
+      where: { slug: 'romantic' },
+      create: { slug: 'romantic', name: 'romantic', displayName: 'romantic', isCurated: true },
       update: {},
     }),
     prisma.characterTag.upsert({
