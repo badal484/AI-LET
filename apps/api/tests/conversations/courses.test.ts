@@ -18,6 +18,7 @@ import { devBhatia } from '../../src/modules/conversations/human/personaPacks/de
 import { emptyProfile, normalizeProfile } from '../../src/modules/memory/services/userProfile.service.js';
 
 const ALL = CURRICULA.map((c) => c.id);
+const DEV = devBhatia.mentor!.courses!;
 const day = '2026-10-02';
 const js = curriculum('javascript')!;
 
@@ -31,7 +32,7 @@ function onLesson(n: number) {
 
 describe('Course syllabi', () => {
   it('Dev teaches a full course for every language he knows', () => {
-    expect(devBhatia.mentor?.courses?.sort()).toEqual([...ALL].sort());
+    expect([...DEV].sort()).toEqual(CURRICULA.filter((c) => c.codeLang !== 'text').map((c) => c.id).sort());
   });
 
   it.each(CURRICULA.map((c) => [c.id, c] as const))('%s goes from zero to advanced, every lesson with topics and every level with a project', (_id, c) => {

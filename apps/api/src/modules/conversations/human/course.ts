@@ -127,7 +127,9 @@ export function applyCoursePatch(profile: UserProfile, patch: CoursePatch, today
   const total = lessons.length;
   const stageBefore = course.stage;
   // Their level is set once (from their answer), not rewritten by a stray tag mid-course.
-  if (patch.about && (course.stage === 'intake' || !course.about)) {
+  // "level=0" is a lesson number, not what they told you about themselves.
+  if (patch.about && /^\s*\d+\s*$/.test(patch.about)) patch.about = undefined;
+  if (patch.about && (course.stage === 'intake' || !course.about || /^\s*\d+\s*$/.test(course.about))) {
     course.about = patch.about;
     if (course.stage === 'intake') course.stage = 'teach';
   }
@@ -259,23 +261,23 @@ export function courseReminder(profile: UserProfile, userText = ''): string {
   if (course.stage === 'project') return `the Level ${cur.level} project is open — no new lesson until they send it and you've reviewed it`;
   if (course.stage === 'teach') {
     const i = cur.topics.findIndex((_t, j) => !course.covered.includes(j + 1));
-    if (i >= 0) return `course: lesson ${cur.n}, next topic ${i + 1} "${cur.topics[i]}" — teach it fully (or answer their doubt, then come back to it)`;
+    if (i >= 0)
+      return `course: lesson ${cur.n}, next topic ${i + 1} "${cur.topics[i]}" — teach it fully (or answer their doubt, then come back to it); once you've taught it, end with the hidden last line [[course: covered=${i + 1}]]`;
     return `course: every topic of lesson ${cur.n} is taught — ask the 3 check questions now ([[course: quiz]])`;
   }
   return '';
 }
 
-export const COURSE_METHOD = `- A course is a promise: the whole language, zero to advanced, in the syllabus order. Never jump ahead to a later lesson, and never give "next code" without teaching.
-- Each topic, the full way: the idea in one plain line + a real-life comparison → why it's used → a small example that uses ONLY what they've already learnt (if it needs something new, explain that in one line) → the important lines explained → how to run it → exactly what they'll see → the one common mistake → a mini practice ("ab tum: …"). One topic, at most two, per reply — never dump a whole lesson.
-- Use their name and their life in examples (their city, food, cricket, marks) — never placeholder names like Alex, John, foo.
-- "done", "ho gaya", "chal gaya": ask what it printed or to paste their code, and check it before moving on. A wrong output is a teaching moment, not a "badhiya".
-- A doubt in the middle ("return kya hai?", "ye + kyun?"): answer it fully with a tiny example, then come back to the same topic ("chalo wapas …").
+export const COURSE_METHOD = `- A course is a promise: the whole skill, zero to advanced, in the syllabus order. Never jump ahead to a later lesson, and never hand out "the next thing" without teaching it.
+- Each topic, the full way: the idea in one plain line + a real-life comparison → why it matters → a small example that uses ONLY what they've already learnt (if it needs something new, explain that in one line) → the important parts explained → the one common mistake → a mini practice ("ab tum: …"). One topic, at most two, per reply — never dump a whole lesson.
+- Practice is theirs to do: for code they run it and tell you what it printed; for a language they say or write their own sentence; for a skill they try it and tell you how it went. Then check it before moving on — what's good first, then the one or two fixes that matter, and the full corrected version. A wrong answer is a teaching moment, not a "badhiya".
+- Use their name and their life in examples (their city, food, work, family) — never placeholder names like Alex, John, foo.
+- A doubt in the middle: answer it fully with a tiny example, then come back to the same topic ("chalo wapas …").
 - "samajh nahi aaya": explain it a different way — simpler words, another comparison, a smaller example. Never repeat the same text.
-- An error: read it with them (bottom line first), show the wrong line, say why in one line, let them fix it.
 - "ye mujhe aata hai" / "skip karo": ask 2 quick questions on it; right → [[course: skip=N]] and move on; wrong → teach it quickly.
 - "syllabus dikhao", "kahan tak pahunche": show the syllabus with ✅ done and 👉 now.
-- Off-topic or career questions: answer, then bring them back to the lesson.
-- Code goes in \`\`\` blocks with the language. Inline commands in plain text (node app.js), no backticks. Links as plain addresses (code.visualstudio.com), never [text](url).`;
+- Off-topic questions: answer, then bring them back to the lesson.
+- For code: complete, runnable examples in \`\`\` blocks with the language, how to run it and what they'll see; inline commands in plain text (node app.js), no backticks; links as plain addresses, never [text](url).`;
 
 /** "Ready", "done", "next", "ho gaya", a doubt: inside a course the chat IS the lesson. */
 export function continuesCourse(course: ProfileCourse | undefined, text: string, hoursSinceLast: number | null): boolean {
