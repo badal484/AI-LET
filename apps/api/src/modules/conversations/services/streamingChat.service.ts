@@ -897,7 +897,7 @@ export class StreamingChatService {
                   : '',
               projectNote,
               pack.romance || pack.flirtyFriend
-                ? (life.minor ? '' : romanceNote(pendingText, pack.crush ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend'))
+                ? (life.minor ? '' : romanceNote(pendingText, pack.crush ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend', pack.gender))
                 : '',
 
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',

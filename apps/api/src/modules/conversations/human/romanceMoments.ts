@@ -95,9 +95,17 @@ const MOMENTS: Moment[] = [
 ];
 
 /** Guidance for a romantic question, or '' if this message isn't one. */
-export function romanceNote(text: string, kind: RomanceKind): string {
+export function romanceNote(text: string, kind: RomanceKind, gender: 'female' | 'male' = 'female'): string {
   const m = MOMENTS.find((x) => x.test.test(text.trim()));
-  return m ? m[kind] : '';
+  if (!m) return '';
+  // The example phrases are written for her; a boyfriend says them in the masculine.
+  return gender === 'male'
+    ? m[kind]
+        .replace(/tumhari hoon/g, 'tumhara hoon')
+        .replace(/ja rahi/g, 'ja raha')
+        .replace(/jaungi/g, 'jaunga')
+        .replace(/karti hoon/g, 'karta hoon')
+    : m[kind];
 }
 
 /** "i love you", "miss you", "good night" are chat, not English — they never switch the language. */
