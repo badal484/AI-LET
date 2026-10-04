@@ -44,6 +44,14 @@ describe('Real moments get the right plan', () => {
     expect(planReply(['love'], [], vishnu, {}).moves).toMatch(/best friend, not a love interest/);
   });
 
+  it('Nandini is a flirty friend: flirts back, never "hum dost hi achhe hain"', () => {
+    const nandini = personaPackFor('nandini-reddy')!;
+    expect(planReply(['flirt'], [], nandini, {}).moves).toMatch(/you like it. Flirt back playfully/);
+    expect(planReply(['love'], [], nandini, {}).moves).toMatch(/don't brush it off or friend-zone them/);
+    expect(planReply(['boundary'], [], nandini, {}).moves).toMatch(/like a flirty friend would/);
+    expect(planReply(['flirt'], [], nandini, { continuity: { minor: true } as never }).moves).toMatch(/under 18/);
+  });
+
   it('"I love you" from someone under 18 gets a kind no', () => {
     expect(planReply(['love'], [], aanya, { continuity: { minor: true } as never }).moves).toMatch(/under 18/);
   });

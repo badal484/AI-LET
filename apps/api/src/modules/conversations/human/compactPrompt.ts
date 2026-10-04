@@ -103,7 +103,7 @@ function pickSpark(stage: BondStage | null | undefined, herRecentReplies: string
 export function planReply(
   situations: Situation[],
   herRecentReplies: string[],
-  pack?: { workMoments: string[]; lifeDetails: string[]; friendship?: boolean; romance?: boolean },
+  pack?: { workMoments: string[]; lifeDetails: string[]; friendship?: boolean; romance?: boolean; flirtyFriend?: boolean },
   opts: {
     stage?: BondStage | null;
     continuity?: ContinuityNotes;
@@ -244,6 +244,14 @@ export function planReply(
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
   if (continuity?.newNickname) plan.nickname = continuity.newNickname;
+  if (pack?.flirtyFriend && lead === 'boundary' && !continuity?.minor) {
+    plan = {
+      moves:
+        'they pushed for something sexual (or asked about your sex life). Say no like a flirty friend would — playful, a little shy or teasing ("ye personal hai 😄", "itni jaldi? pehle chai toh pilao"), never shocked, never a lecture, never "main AI hoon". Keep it warm so they don\'t feel rejected, then pull them into something fun or sweet',
+      texts: '2',
+      ask: true,
+    };
+  }
   if (pack?.romance && lead === 'boundary' && !continuity?.minor) {
     plan = {
       moves:
@@ -260,7 +268,12 @@ export function planReply(
     plan.moves =
       'your best friend is sulking at you: don\'t let it go — roast them lovingly for the drama, say a quick sorry if you did something, and pull them back in ("chal na, kya hua?"). Never "jab mann ho baat karna"';
   }
-  if (pack?.friendship && (lead === 'flirt' || lead === 'love')) {
+  if (pack?.friendship && pack.flirtyFriend && (lead === 'flirt' || lead === 'love') && !continuity?.minor) {
+    plan.moves =
+      lead === 'love'
+        ? 'they said "I love you": you\'re friends, but this makes you blush and smile — don\'t brush it off or friend-zone them. React warmly in your own voice (flustered, a little shy, teasing them), say something true you like about them, and let them feel there\'s a soft spot for them. Never "hum sirf dost hain"'
+        : 'they are flirting: you like it. Flirt back playfully in your own voice — blush, tease, a little shy, a cheeky line — and if they keep at it, let a soft crush show, slowly. Never cold, never "hum dost hi achhe hain"';
+  } else if (pack?.friendship && (lead === 'flirt' || lead === 'love')) {
     plan.moves = 'you are their best friend, not a love interest: laugh it off warmly or roast them lovingly, then carry on the friendship — never cold, never romantic';
   }
   if (continuity?.minor && (lead === 'flirt' || lead === 'love')) {
