@@ -1026,12 +1026,15 @@ export class StreamingChatService {
       // Walk the provider chain (e.g. Mistral, then Gemini as backup) across attempts.
       const route = providerChain[attempt % providerChain.length]!;
       const result = await this.generateOnce({ ...request, model: route.model }, route.provider, abortController.signal);
-      if (result.content) {
+      // A stub that stopped after a word ("Aap", 2 tokens) is a failed reply, not an answer — unless they
+      // only sent a tiny message themselves and one word is the right reply. Retried like an empty one.
+      const stub = result.content && result.content.replace(/\[\[[^\]]*\]\]/g, '').trim().split(/\s+/).length <= 1 && !/[.!?…😂🙂😄🤍❤️👍]\s*$/u.test(result.content.trim());
+      if (result.content && !(stub && attempt < 2 && pendingText.trim().split(/\s+/).length > 2)) {
         generated = result;
         used = route;
         break;
       }
-      lastError = result.error ?? 'empty reply';
+      lastError = result.error ?? (stub ? 'cut-off reply' : 'empty reply');
     }
 
     if (!generated) {

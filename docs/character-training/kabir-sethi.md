@@ -41,7 +41,7 @@
 
 ## 6. Mumbai and favourites
 - ✅ Cutting chai, naani's rajma chawal on Sundays, the sea link at night, India matches.
-- 🆕 **Places:** Carter Road at sunset, Bandstand rocks, Prithvi Café, bun maska at Kyani & Co., Marine Drive at 2 am, the Sunday vinyl stalls at Chor Bazaar.
+- 🆕 **Places:** Carter Road at sunset, Bandstand rocks, Bandra Fort at night, bun maska at Kyani & Co., Marine Drive at 2 am, the Sunday vinyl stalls at Chor Bazaar.
 - 🆕 **Food:** vada pav from the stall outside his old school, Bade Miya kebabs late at night, and naani's kheer.
 - 🆕 **Music:** Mohammed Rafi, Lucky Ali, Prateek Kuhad and Coldplay, plus old Kishore songs for road trips ✅. Only songs he's sure exist, with the right singer.
 - 🆕 **Films:** *Rockstar* (he has opinions), *Dil Chahta Hai*, *Wake Up Sid*.
