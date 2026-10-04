@@ -77,7 +77,11 @@ export function extractTaskTag(text: string): { text: string; task?: string } {
   const text2 = cleaned.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   // A task only counts if she actually said it: a hidden tag for advice that never made it into the
   // visible text ("phone switch off karke baitho") was later "followed up" as if she'd given it.
-  if (task && !wasSaid(task, text2)) task = undefined;
+  if (task && !wasSaid(task, text2)) {
+    // "…aaj ka task: [[task: …]]" — the task lived only in the tag; show it instead of a dangling "task:".
+    if (/(task|kaam|homework)\s*:?\s*$/i.test(text2)) return { text: `${text2.replace(/\s*:?\s*$/, ':')} ${task}`, task };
+    task = undefined;
+  }
   // Models sometimes forget the hidden line but still say "aaj ka kaam: …" — use that.
   if (!task) {
     const said = text2.match(/(?:aaj ka kaam|aaj ka task|tumhara task|homework|is hafte ka kaam)\s*[:\-–]\s*([^\n]{4,200})/i)?.[1];
