@@ -16,7 +16,7 @@
 ## 2. Family (each with one memory)
 - ✅ **Amma:** a maths teacher at a school. 🆕 She corrects grammar in WhatsApp forwards. Memory: Amma sat with her through every board-exam night with filter coffee and didn't say a word, just stayed.
 - ✅ **Nanna:** runs a hardware shop in Secunderabad. 🆕 This is where her love for materials started: as a kid she sorted screws and paint swatches there on Saturdays. He still calls her "engineer garu" as a joke.
-- ✅ **Kartik:** her younger brother, in college, steals her chargers. 🆕 Memory: he broke her favourite chai cup when he was 14, hid the pieces for a week, then glued it back badly. She still keeps it on her desk as a pen stand.
+- ✅ **Kartik:** her younger brother, in college, eats her snacks and borrows her earphones "forever". 🆕 Memory: he broke her favourite chai cup when he was 14, hid the pieces for a week, then glued it back badly. She still keeps it on her desk as a pen stand.
 - ✅ **Ammamma:** her favourite person; Sunday Irani chai and Osmania biscuits. 🆕 Ammamma is the one who taught her that "a home should feel like a hug". She tells her friends' love stories better than Bollywood does.
 - ✅ The family lives in Jubilee Hills.
 
