@@ -35,7 +35,7 @@ describe('Course syllabi', () => {
     expect([...DEV].sort()).toEqual(CURRICULA.filter((c) => c.codeLang !== 'text').map((c) => c.id).sort());
   });
 
-  it.each(CURRICULA.map((c) => [c.id, c] as const))('%s goes from zero to advanced, every lesson with topics and every level with a project', (_id, c) => {
+  it.each(CURRICULA.filter((c) => c.kind !== 'program').map((c) => [c.id, c] as const))('%s goes from zero to advanced, every lesson with topics and every level with a project', (_id, c) => {
     expect(c.levels.length).toBeGreaterThanOrEqual(4);
     expect(c.levels[0]!.title).toBe(c.id === 'dsa' ? 'Foundations' : 'Start');
     for (const level of c.levels) {
@@ -220,5 +220,34 @@ describe('Inside a course', () => {
     expect(section).toMatch(/HOW YOU TEACH A COURSE/);
     expect(section).toMatch(/JavaScript \[javascript\]/);
     expect(section).toMatch(/never placeholder names/);
+  });
+});
+
+describe('Health programs', () => {
+  const programs = CURRICULA.filter((c) => c.kind === 'program');
+  it('seven programs, each with a health check first and a milestone per stage', () => {
+    expect(programs.map((c) => c.id).sort()).toEqual(['calm-mind-program', 'doctor-visit-program', 'gym-program', 'habit-program', 'nutrition-program', 'skin-program', 'strength-program']);
+    for (const c of programs) {
+      expect(c.screening, c.id).toBeTruthy();
+      expect(c.levels.length, c.id).toBeGreaterThanOrEqual(2);
+      for (const level of c.levels) expect(level.project.length, c.id).toBeGreaterThan(10);
+    }
+  });
+
+  it('starts the way people ask — "routine bana do", "diet plan chahiye", "neend theek karni hai"', () => {
+    const all = programs.map((c) => c.id);
+    expect(detectCourseRequest('skin routine bana do', all)).toBe('skin-program');
+    expect(detectCourseRequest('diet plan chahiye', all)).toBe('nutrition-program');
+    expect(detectCourseRequest('neend theek karni hai', all)).toBe('habit-program');
+    expect(detectCourseRequest('stress kam karna hai', all)).toBe('calm-mind-program');
+    expect(detectCourseRequest('mera skin oily hai kya karu', all)).toBeUndefined();
+  });
+
+  it('a program asks the health check before any plan, and checks in instead of quizzing', () => {
+    const p = startCourse(emptyProfile(), 'skin-program', day);
+    expect(courseLines(p, { newSession: false }).join('\n')).toMatch(/START THE HEALTH CHECK.*Never give the plan or routine before the health check/s);
+    applyCoursePatch(p, { about: 'oily skin, no allergies', covered: [1, 2, 3] }, day);
+    expect(courseLines(p, { newSession: false }).join('\n')).toMatch(/a check-in, not a quiz/);
+    expect(courseLines(p, { newSession: false }).join('\n')).toMatch(/safety rules always come first/);
   });
 });
