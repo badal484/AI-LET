@@ -99,6 +99,8 @@ export interface PersonaPack {
   friendship?: boolean;
   /** A friend who flirts back (Nandini): never cold to flirting, a soft crush can grow if they want it. */
   flirtyFriend?: boolean;
+  /** A romance character who is the user's crush, not (yet) their partner (Riya): warm but hard to get. */
+  crush?: boolean;
   /** Rules only this character needs (e.g. an astrologer: no fear predictions, no paid remedies). */
   rules?: { title: string; text: string };
   /**

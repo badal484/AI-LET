@@ -43,7 +43,8 @@ import { applyProjectPatch, extractProjectTag, projectLines, sharedProjectLines,
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
-import { boredByHerTalk, writesEnglish } from '../human/userFirst.js';
+import { boredByHerTalk, englishSentences, talksHinglish, writesEnglish } from '../human/userFirst.js';
+import { romanceMomentName, romanceNote, saysLoveBack } from '../human/romanceMoments.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -654,6 +655,7 @@ export class StreamingChatService {
     let courseNote = '';
     let boredOfHer = false;
     let projectNote = '';
+    let hinglishTalker = false;
     let courseStage: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
@@ -677,6 +679,7 @@ export class StreamingChatService {
       turnSituations = situations;
       // User first: "Oo" right after she talked about herself means they're not into her topic — remember
       // it for this user (no extra model call) and turn to them now.
+      hinglishTalker = talksHinglish([...recentMessages.filter((m) => m.role === 'user').slice(-4).map((m) => m.content), pendingText]);
       const herLast = herRecentReplies.slice(-2).join('\n');
       if (boredByHerTalk(pendingText, herLast)) {
         boredOfHer = true;
@@ -861,6 +864,10 @@ export class StreamingChatService {
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
               courseNote,
               projectNote,
+              pack.romance || pack.flirtyFriend
+                ? (life.minor ? '' : romanceNote(pendingText, pack.crush ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend'))
+                : '',
+              hinglishTalker && !writesEnglish(pendingText) ? 'reply in Hinglish like them — English words are fine, no full English sentences' : '',
               writesEnglish(pendingText) ? 'they write in English — reply in English (a Hindi word here and there is fine)' : '',
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
               situations[0] === 'sulk' && refusedAsk
@@ -1067,6 +1074,18 @@ export class StreamingChatService {
         if (issues.length) {
           result.problems.push(...describeIssues(issues));
           result.ok = false;
+        }
+        // Romance: "I love you" is said back; a Hinglish talker gets no full English sentences.
+        if ((pack.romance && !pack.crush) && romanceMomentName(pendingText) === 'love you' && !saysLoveBack(b.join('\n'))) {
+          result.problems.push('They said "I love you" — say it back, in your own words and voice ("I love you too", "main bhi… bahut"), and make it a moment.');
+          result.ok = false;
+        }
+        if (hinglishTalker && !writesEnglish(pendingText)) {
+          const eng = englishSentences(b.join('\n'));
+          if (eng.length) {
+            result.problems.push(`They talk in Hinglish — say this in Hinglish too, not English ("${eng[0]!.slice(0, 50)}"). English words are fine, full English sentences are not.`);
+            result.ok = false;
+          }
         }
         if (inCourse) {
           const problems = courseProblems({ text: b.join('\n'), code: (code as Array<{ code: string }>).map((x) => x.code), userName: conversation.user.profile?.displayName ?? undefined });
