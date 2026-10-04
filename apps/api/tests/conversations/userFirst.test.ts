@@ -121,3 +121,10 @@ describe('From the different-people test (Nandini)', () => {
     expect(r.problems.join(' ')).toMatch(/just do it/);
   });
 });
+
+describe('No guilt for coming back', () => {
+  it('"Itne din kahan gayab the tum" is sent back', () => {
+    const r = checkReply({ herRecentReplies: [], gender: 'female', mode: 'casual', address: 'tum', bubbles: ['Hii Rohit!', 'Itne din kahan gayab the tum, Momo tab se tumhara wait kar raha hai 😂'], userText: 'hi' } as never);
+    expect(r.problems.join(' ')).toMatch(/guilty for being away/);
+  });
+});
