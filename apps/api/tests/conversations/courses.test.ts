@@ -225,8 +225,8 @@ describe('Inside a course', () => {
 
 describe('Health programs', () => {
   const programs = CURRICULA.filter((c) => c.kind === 'program');
-  it('seven programs, each with a health check first and a milestone per stage', () => {
-    expect(programs.map((c) => c.id).sort()).toEqual(['calm-mind-program', 'doctor-visit-program', 'gym-program', 'habit-program', 'nutrition-program', 'skin-program', 'strength-program']);
+  it('nine programs (seven health, two coaching), each with a check first and a milestone per stage', () => {
+    expect(programs.map((c) => c.id).sort()).toEqual(['calm-mind-program', 'dating-confidence-program', 'doctor-visit-program', 'gym-program', 'habit-program', 'life-reset-program', 'nutrition-program', 'skin-program', 'strength-program']);
     for (const c of programs) {
       expect(c.screening, c.id).toBeTruthy();
       expect(c.levels.length, c.id).toBeGreaterThanOrEqual(2);
