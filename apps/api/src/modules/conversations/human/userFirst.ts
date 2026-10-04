@@ -1,3 +1,4 @@
+import { isRomanticPhrase } from './romanceMoments.js';
 /**
  * User first: the chat is about them. Seen with Nandini — "Hii" got her hotel-lobby news, "Congratulations"
  * got her layouts, "Oo" got more lobby, and "boyfriend h?" got two shades of white paint. These helpers tell
@@ -40,4 +41,16 @@ const HINDI_HINT = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|m
 
 /** "hey, what do you do?", "tell me about your family" — English, not Hinglish. */
 export const writesEnglish = (text: string): boolean =>
+  !isRomanticPhrase(text) &&
   text.trim().split(/\s+/).length >= 3 && /[a-z]{2}/i.test(text) && !HINDI_HINT.test(text) && !/[\u0900-\u097F]/.test(text);
+
+/** Full English sentences in a reply ("you just made my heart skip a beat") — for someone who writes Hinglish. */
+export function englishSentences(reply: string): string[] {
+  return reply
+    .split(/(?<=[.!?…\n—])\s*/)
+    .map((x) => x.trim())
+    .filter((x) => x.split(/\s+/).length >= 5 && /[a-z]/i.test(x) && !HINDI_HINT.test(x));
+}
+
+/** They've been writing Hinglish (any of their last few messages has Hindi words). */
+export const talksHinglish = (recentUserTexts: string[]): boolean => recentUserTexts.some((t) => HINDI_HINT.test(t));
