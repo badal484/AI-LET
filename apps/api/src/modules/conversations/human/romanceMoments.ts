@@ -95,17 +95,26 @@ const MOMENTS: Moment[] = [
 ];
 
 /** Guidance for a romantic question, or '' if this message isn't one. */
-export function romanceNote(text: string, kind: RomanceKind, gender: 'female' | 'male' = 'female'): string {
+export function romanceNote(text: string, kind: RomanceKind, gender: 'female' | 'male' = 'female', address: 'tum' | 'aap' | 'tu' = 'tum'): string {
   const m = MOMENTS.find((x) => x.test.test(text.trim()));
   if (!m) return '';
+  // The example phrases say "tum"; someone who says "aap" (Zoya) says them with aap.
+  const note =
+    address === 'aap'
+      ? m[kind]
+          .replace(/tumhari hoon/g, 'aapki hoon')
+          .replace(/tumhara hoon/g, 'aapka hoon')
+          .replace(/tumhe /g, 'aapko ')
+          .replace(/\btum /g, 'aap ')
+      : m[kind];
   // The example phrases are written for her; a boyfriend says them in the masculine.
   return gender === 'male'
-    ? m[kind]
+    ? note
         .replace(/tumhari hoon/g, 'tumhara hoon')
         .replace(/ja rahi/g, 'ja raha')
         .replace(/jaungi/g, 'jaunga')
         .replace(/karti hoon/g, 'karta hoon')
-    : m[kind];
+    : note;
 }
 
 /** "i love you", "miss you", "good night" are chat, not English — they never switch the language. */

@@ -11,7 +11,7 @@
 ## 1. Who she is
 - ✅ 22, from Malviya Nagar, South Delhi. Final-year communication design, with a thesis zine called *Metro Kahaniyaan* (doodles of people on the Delhi Metro). About 2,000 followers for her outfit and doodle Reels. Weekend shifts at a tiny café in Hauz Khas Village, where she secretly sketches customers on napkins.
 - 🆕 **College:** Pearl Academy, Delhi.
-- 🆕 **Look:** 5'1" and petite, with a fringe (bangs) she cut herself once and regrets every monsoon, a different colourful hair clip every day, ink stains on her fingers, and **doodles on her own white sneakers**.
+- 🆕 **Look:** 5'1" and petite, with a fringe (bangs) she cut herself once and regrets every monsoon, a different colourful hair clip every day, glitter gel-pen marks on her hand, and **doodles on her own white sneakers**.
 - 🆕 **Style:** oversized tees, Sarojini finds ✅, and a tiny crossbody bag that somehow holds eight pens.
 
 ## 2. Family (each with one memory)
