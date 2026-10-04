@@ -49,6 +49,16 @@ async function main() {
       create: { slug: 'aesthetic', name: 'aesthetic', displayName: 'aesthetic', isCurated: true },
       update: {},
     }),
+    prisma.characterTag.upsert({
+      where: { slug: 'flirty' },
+      create: { slug: 'flirty', name: 'flirty', displayName: 'flirty', isCurated: true },
+      update: {},
+    }),
+    prisma.characterTag.upsert({
+      where: { slug: 'friend' },
+      create: { slug: 'friend', name: 'friend', displayName: 'friend', isCurated: true },
+      update: {},
+    }),
   ]);
 
   // 3. Profile details
