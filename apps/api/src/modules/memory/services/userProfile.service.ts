@@ -209,6 +209,18 @@ export function similarTask(a: string, b: string): boolean {
   return shared / Math.min(x.size, y.size) >= 0.75 && shared >= 2;
 }
 
+/** The same entry in other words ("missed me at 3pm" ≈ "said he missed her at 3 pm"). */
+export function nearDuplicate(a: string, b: string): boolean {
+  if (same(a, b)) return true;
+  const stems = (t: string) => new Set((t.toLowerCase().match(/\p{L}{3,}/gu) ?? []).filter((w) => !['the', 'and', 'her', 'his', 'she', 'him', 'you', 'for', 'with', 'said', 'that'].includes(w)).map((w) => w.slice(0, 4)));
+  const x = stems(a);
+  const y = stems(b);
+  const small = Math.min(x.size, y.size);
+  if (!small) return false;
+  const shared = [...x].filter((w) => y.has(w)).length;
+  return shared / small >= 0.6 && shared >= (small <= 2 ? 1 : 2);
+}
+
 /** A mentor just gave this task: it becomes the open one (an older unanswered task stays unanswered). */
 export function addTask(profile: UserProfile, what: string, today: string): void {
   const task = clip(what.replace(/\s+/g, ' '));
@@ -378,7 +390,7 @@ export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: {
   if (p.project) {
     for (const item of patch.project_choices ?? []) {
       const v = clip(item);
-      if (v && !p.project.done.some((x) => same(x, v))) p.project.done = [...p.project.done, v].slice(-MAX_ITEMS);
+      if (v && !p.project.done.some((x) => nearDuplicate(x, v))) p.project.done = [...p.project.done, v].slice(-MAX_ITEMS);
     }
   }
   for (const item of patch.her_shared ?? []) {
@@ -525,7 +537,7 @@ Rules:
 - "goals": what they are working towards (e.g. "first freelance client by December", "lose 5 kg", "frontend job"), kept up to date.
 - Don't store: moods of the moment, greetings, what they ate today, anything about the chat or the AI itself, flirting, or anything sexual.
 - "her_shared": STORIES the CHARACTER told about her own life in her reply — a memory, something that happened, her past, a family story (e.g. "her ex Siddharth and the long distance", "Kartik broke her chai cup", "Kartik is failing maths"). NOT her looks, likes, opinions or small facts (height, hair, favourite food), and not small talk ("she's drinking chai"). Usually nothing — add only real stories. This is the only place the character's own words are recorded.
-- "project_choices": only if the profile has a "project" they're building together (e.g. "our dream home") and the USER made a choice for it in this exchange — a few words each ("glass house in the mountains", "wooden floors"). Otherwise leave it out.
+- "project_choices": only if the profile has a "project" they're building together and this exchange adds to it — for a dream home, the USER's choice ("glass house in the mountains"); for "the case of us", a sweet or funny moment worth recording as evidence ("said he missed her at 3 pm", "worst pickup line about coffee"). A few words each. Otherwise leave it out.
 - "style": how THEY like to talk, judged from how they react — "tone" (the vibe they enjoy: flirty, caring, funny, deep, quick and short…), "enjoys" (topics they answer with energy: long replies, emojis, questions back), "bored_by" (topics the CHARACTER raised that they answered with one word, "oo", "ok", or ignored — e.g. "her work", "her design projects"), "writes" (e.g. "short Hinglish, few emojis"). Only when the exchange really shows it.
 - Keep each item short (under 12 words), in English. Leave out keys with nothing new. If nothing changed, reply {}.`;
 

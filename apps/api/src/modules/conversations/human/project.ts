@@ -1,4 +1,4 @@
-import type { ProfileProject, UserProfile } from '../../memory/services/userProfile.service.js';
+import { nearDuplicate, type ProfileProject, type UserProfile } from '../../memory/services/userProfile.service.js';
 
 /**
  * Project memory: what a mentor and the user are building together (a debugging tool, a YouTube channel,
@@ -39,7 +39,7 @@ export function applyProjectPatch(profile: UserProfile, patch: ProjectPatch, tod
   const base: ProfileProject = newGoal || !current ? { goal: patch.goal ?? current?.goal ?? '', done: [], updated: today } : { ...current, done: [...current.done] };
   if (!base.goal) return profile;
   if (patch.stack) base.stack = patch.stack;
-  if (patch.done && !base.done.some((d) => norm(d) === norm(patch.done!))) base.done = [...base.done, patch.done].slice(-8);
+  if (patch.done && !base.done.some((d) => nearDuplicate(d, patch.done!))) base.done = [...base.done, patch.done].slice(-8);
   if (patch.next) base.next = patch.next;
   base.updated = today;
   return { ...profile, project: base };
@@ -64,14 +64,15 @@ export const PROJECT_LINE =
  * A shared project for a non-mentor (Nandini and the user design a dream home together): offered when the
  * chat is light, built one choice at a time, every choice remembered. Same [[project: …]] tag as mentors.
  */
-export function sharedProjectLines(sp: { goal: string; invite: string }, project: ProfileProject | undefined): string[] {
+export function sharedProjectLines(sp: { goal: string; invite: string; entry?: string }, project: ProfileProject | undefined): string[] {
   if (!project || project.goal.toLowerCase() !== sp.goal.toLowerCase()) {
     return [
       `Something fun you can start with them — only when the chat is light or they're bored, never when they're upset, and not every chat: ${sp.invite}. If they're in, add a hidden last line [[project: goal=${sp.goal} | next=<the first thing to decide>]].`,
     ];
   }
-  const done = project.done.length ? ` Their choices so far: ${project.done.join('; ')}.` : '';
+  const entry = sp.entry ?? 'their choice';
+  const done = project.done.length ? ` What you have so far: ${project.done.join('; ')}.` : '';
   return [
-    `You and they are slowly building "${project.goal}" together.${done}${project.next ? ` Next to decide: ${project.next}.` : ''} Bring it up now and then when the chat is light (not every chat), remember and use their choices ("tumne neeli diwaar chuni thi…"), and suggest the next small decision. When they choose something, add a hidden last line [[project: done=<their choice, a few words> | next=<the next thing to decide>]].`,
+    `You and they are slowly building "${project.goal}" together.${done}${project.next ? ` Next to decide: ${project.next}.` : ''} Bring it up now and then when the chat is light (not every chat), remember and use their choices ("tumne neeli diwaar chuni thi…"), and suggest the next small decision. When there's a new ${entry}, add a hidden last line [[project: done=<it, a few words> | next=<what comes next>]].`,
   ];
 }

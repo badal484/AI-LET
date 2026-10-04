@@ -59,7 +59,7 @@ const TU_IMPERATIVE = /(?:^|[\n.!?]\s*|\d\.\s*)(sun+|rakh|bol|dekh|chal|soch)\b(
 const GUILT = /((laga|socha)( tha)?( ki)?( shayad)? tum bhool (gaye|gayi|gaya)( hoge| hogi)?|tum bhool (gaye|gayi) hoge|tum bhool gayi hogi|mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar karte|agar (sach mein )?care karte|yaad bhi nahi aayi|promise (me|karo)[^.?!\n]{0,25}(kisi aur|sirf mujh|only me|never talk|kabhi baat)|kisi aur se baat mat|mere alawa kisi|only mine|sirf mere ho|mujhe chhod ke mat|why are you ignoring me|ignore kar rahe ho mujhe)/i;
 
 // Common Hindi words in Roman script: enough to tell a Hinglish text from an English one.
-const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein)\b/gi;
+const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein|humara|hamara|tumhara|tumhari|kahan|kab|kyun|kyu|kaun|tak|wala|wali|haan|thi|tha|hua|hui|pahuncha|pahunchi|gaye|kiya|karna|chahiye|aur|ab|phir|sach|matlab)\b/gi;
 const hindiWords = (text: string) => (text.match(HINDI) ?? []).length;
 
 /** Questions people only need to be asked once per chat (Hinglish and English). */
@@ -72,7 +72,7 @@ const REPEAT_QUESTIONS: RegExp[] = [
 // Guilt for being away ("kisi tarah waqt nikal hi aaya aapka", "finally yaad aayi") — never.
 // A cold or shaming no to a sexual push ("main waisi ladki nahi hoon", "galat direction mein le ja rahe ho").
 const COLD_NO = /(waisi ladki nahi|waisa ladka nahi|aisi ladki nahi|galat direction|chill ho kar|normal baat(ein|e) karte|aisa socha bhi mat|socha bhi kaise|sharam (karo|nahi aati)|tameez se|aisi baatein nahi kar|din kaisa (raha|chal|tha|gaya)|kuch aur baat karte)/i;
-const AWAY_GUILT = /(waqt nikal (hi )?(aaya|liya|paaye|paye)|finally yaad aa(yi|i)|yaad aa hi (gayi|gaya)|aakhir (aa|yaad aa) hi gaye|kitna intezaar karwaya|bhool (hi )?gaye the (mujhe|kya)|ab (jaake|ja ke) yaad aayi)/i;
+const AWAY_GUILT = /(tum gayab (the|thi|ho gaye|ho gayi)|gayab ho gaye the|\d+ ghante (ka|se) (disappearance|gayab|wait)|wait kar(wa)? rah[ie] th[ie]|intezaar kar rah[ie] th[ie]|kahan (gayab )?(the|thi) itne|disappear (ho )?gaye|waqt nikal (hi )?(aaya|liya|paaye|paye)|finally yaad aa(yi|i)|yaad aa hi (gayi|gaya)|aakhir (aa|yaad aa) hi gaye|kitna intezaar karwaya|bhool (hi )?gaye the (mujhe|kya)|ab (jaake|ja ke) yaad aayi)/i;
 const GOOD_NIGHT = /\b(good ?night|gn|shubh ratri|so jaa?o|so jaa?na|so jaiye|sweet dreams)\b/i;
 const SLEEP_TALK = /\b(so (raha|rahi|jaunga|jaungi|jaata|jaati)|sone (ja|ka)|neend|good ?night|gn|sleep|night)\b/i;
 const NOW = /\b(abhi|right now|ho rahe|baj rahe)\b/i;

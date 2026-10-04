@@ -50,7 +50,11 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   // "ek saal baad", "do din baad", "uske baad" mean "later", not "bad".
   if (!/\bmein\b|\bnot (that |too )?bad\b|\b(bura|kharab) nahi\b|\b(saal|saalon|din|dino|dinon|hafte|hafton|mahine|mahino|ghante|minute|der|uske|iske|kiske|kuch|thodi|kal|parso|shaadi|exam|result) baad\b/.test(t)) add('emotional', /^(bad|baad|bura|bekar|bekaar|worst|kharab|not good|achha nahi|acha nahi|theek nahi)\b|\b(bad|baad|bura|kharab|bekar|worst)\s*[.!?]*$|\b(bad|bura|kharab|bekar|worst) (day|din)\b|\b(din|day) ((thoda|bahut|bohot|kaafi|bada|ekdum|bilkul|very|so|really|pretty|quite) )?(bad|bura|kharab|bekar)\b|\b(din|day) (achha|acha|accha|theek|good) nahi\b/);
   add('emotional', /\b(insult|beizzati|bezzati|humiliat\w*|bura bhala|sabke saamne (daanta|chillaya|suna)|chilla(ya|ye))\b/);
-  add('emotional', /\b(sad|udaas|udas|dukhi|rona|ro raha|ro rahi|cry|lonely|akela|akeli|depress|stress|tension|pareshan|anxious|breakup|miss (you|u)|yaad|mood (off|kharab)|hurt|alone|bura lag|daanta|dant|thak gaya|thak gayi|fail)\b/);
+  // Missing HER ("tumhari yaad aayi", "miss you") is flirting, not sadness (seen: Ritika answered
+  // "aaj tumhari yaad aayi" with "bura din tha tumhara? ab better feel kar rahe ho?").
+  const missesHer = /\b(tumhari|teri|aapki|tumhe|tujhe|aapko) yaad\b|\bmiss (you|u|kiya tumhe|kar raha tumhe|kar rahi tumhe)\b|\b(tumhe|tujhe|aapko) miss\b/.test(t);
+  if (missesHer) add('flirt', /[\s\S]/);
+  if (!missesHer) add('emotional', /\b(sad|udaas|udas|dukhi|rona|ro raha|ro rahi|cry|lonely|akela|akeli|depress|stress|tension|pareshan|anxious|breakup|miss (you|u)|yaad|mood (off|kharab)|hurt|alone|bura lag|daanta|dant|thak gaya|thak gayi|fail)\b/);
   // Good news comes after sadness, so "result aaya, fail ho gaya" stays emotional.
   add('win', /\b(selected|(select|selection) ho (gaya|gayi)|placement ho|got the job|job (mil|lag) (gayi|gaya)|offer (letter|mil)|pass ho (gaya|gayi)|passed|cleared|clear ho (gaya|gayi)|jeet (gaya|gayi|gaye)|we won|i won|promotion|hike mil|birthday|janamdin|khushkhabri|good news|topped|rank aayi)\b/);
   add('bored', /\b(kuch (interesting|fun|mazedaar|naya) (karte|karein|karo|batao)|koi game|game khel(te|ein|o)|bored|bore ho|boring (din|day|lecture|class)|kuch karne ko nahi|nothing to do|timepass|free (hoon|hu|baitha|baithi))\b/);
