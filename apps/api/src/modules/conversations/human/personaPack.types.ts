@@ -80,6 +80,10 @@ export interface PersonaPack {
    * beat per day, based on how long the user has known her, so her life has a story, not a loop.
    */
   storyArcs: Array<{ title: string; beats: string[] }>;
+  /** Her own kind of days (tired after a site visit, excited about a client win) — some days she has one. */
+  herDays?: string[];
+  /** Something she builds WITH them over many chats (Nandini: your dream home) — remembered choice by choice. */
+  sharedProject?: { goal: string; invite: string };
   /** Love characters: the healthy-romance rules apply (docs/love-character-sheets.md). */
   romance?: boolean;
   /** Friendship characters: best-friend rules apply (docs/friendship-character-sheets.md). */

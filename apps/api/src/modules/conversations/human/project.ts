@@ -59,3 +59,19 @@ export function projectLines(project: ProfileProject | undefined, opts: { newSes
 
 export const PROJECT_LINE =
   'Keep a record of what you are building together. When the goal, the tools, a finished step or the next step changes, add a hidden last line: [[project: goal=… | stack=… | done=… | next=…]] (only the parts that changed). They never see it.';
+
+/**
+ * A shared project for a non-mentor (Nandini and the user design a dream home together): offered when the
+ * chat is light, built one choice at a time, every choice remembered. Same [[project: …]] tag as mentors.
+ */
+export function sharedProjectLines(sp: { goal: string; invite: string }, project: ProfileProject | undefined): string[] {
+  if (!project || project.goal.toLowerCase() !== sp.goal.toLowerCase()) {
+    return [
+      `Something fun you can start with them — only when the chat is light or they're bored, never when they're upset, and not every chat: ${sp.invite}. If they're in, add a hidden last line [[project: goal=${sp.goal} | next=<the first thing to decide>]].`,
+    ];
+  }
+  const done = project.done.length ? ` Their choices so far: ${project.done.join('; ')}.` : '';
+  return [
+    `You and they are slowly building "${project.goal}" together.${done}${project.next ? ` Next to decide: ${project.next}.` : ''} Bring it up now and then when the chat is light (not every chat), remember and use their choices ("tumne neeli diwaar chuni thi…"), and suggest the next small decision. When they choose something, add a hidden last line [[project: done=<their choice, a few words> | next=<the next thing to decide>]].`,
+  ];
+}

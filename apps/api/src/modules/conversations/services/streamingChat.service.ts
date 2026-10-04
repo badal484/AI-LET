@@ -32,14 +32,14 @@ import { localHourIn } from '../human/emotionalState.js';
 import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
-import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState } from '../human/lifeState.js';
+import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState, herDayLine, milestoneLine } from '../human/lifeState.js';
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
 import { extractCode, isCodeBubble, looksLikeUnfencedCode, restoreCode } from '../human/codeBlocks.js';
 import { checkCodeSyntax, describeIssues, type CodeIssue } from '../human/codeCheck.js';
 import { detectRequest, extractDeliveredTag, stillOpen, wasDelivered, type OpenRequest } from '../human/requests.js';
-import { applyProjectPatch, extractProjectTag, projectLines, type ProjectPatch } from '../human/project.js';
+import { applyProjectPatch, extractProjectTag, projectLines, sharedProjectLines, type ProjectPatch } from '../human/project.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
@@ -653,6 +653,7 @@ export class StreamingChatService {
     let inCourse = false;
     let courseNote = '';
     let boredOfHer = false;
+    let projectNote = '';
     let courseStage: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
@@ -771,6 +772,13 @@ export class StreamingChatService {
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
+      // A real person's days and your time together: her own mood some days, and "ek hafta ho gaya 🙂".
+      const herDay = herDayLine(pack.herDays, pack.slug, today);
+      if (herDay) continuity.lines.push(herDay);
+      const daysKnown = firstUserMessage ? Math.floor((Date.now() - firstUserMessage.createdAt.getTime()) / 86_400_000) : 0;
+      const hurtingNow = situations.some((s) => ['crisis', 'emergency', 'emotional', 'eating', 'boundary', 'sulk'].includes(s));
+      const milestone = hurtingNow ? undefined : milestoneLine(life, daysKnown);
+      if (milestone) continuity.lines.push(milestone);
       if (pack.mentor) {
         // After a break, a mentor opens with a one-line recap of the project and the next step.
         const sinceLast = recentMessages[0] ? Date.now() - recentMessages[0].createdAt.getTime() : 0;
@@ -786,6 +794,17 @@ export class StreamingChatService {
           const fresh = await UserProfileService.load(userId, conversation.characterId);
           await UserProfileService.save(userId, conversation.characterId, applyProjectPatch(fresh, patch, today));
         };
+      } else if (pack.sharedProject) {
+        // Something she builds with them over many chats (Nandini: your dream home), choice by choice.
+        if (!hurtingNow) continuity.lines.push(...sharedProjectLines(pack.sharedProject, profile.project));
+        // They brought it up themselves ("kal wala ghar yaad hai? aage kya?"): continue it right now.
+        const proj = profile.project;
+        // The first time they're bored, the shared project is the game (later, any game).
+        if (!proj && !hurtingNow && situations.includes('bored'))
+          projectNote = `they want something fun — invite them to this now: ${pack.sharedProject.invite}; and add the hidden last line [[project: goal=${pack.sharedProject.goal} | next=<the first thing to decide>]]`;
+        if (proj && /\b(ghar|house|home|dream|sapno|project|aage kya|next kya)\b/i.test(pendingText))
+          projectNote = `they want to continue your "${proj.goal}" — pick it up right away, happily (no "I thought you forgot"): ${proj.done.length ? `their choices so far: ${proj.done.join(', ')}; ` : ''}${proj.next ? `next to decide: ${proj.next}` : 'suggest the next small decision'}`;
+        saveProject = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => Object.assign(p, applyProjectPatch(p, patch, today)) && true);
       }
       // She remembers what they asked for: one quick question first is fine, then she hands it over herself.
       if (pack.mentor || pack.domainKeywords.includes('code')) {
@@ -841,6 +860,7 @@ export class StreamingChatService {
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
               courseNote,
+              projectNote,
               writesEnglish(pendingText) ? 'they write in English — reply in English (a Hindi word here and there is fine)' : '',
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
               situations[0] === 'sulk' && refusedAsk
@@ -1186,6 +1206,9 @@ export class StreamingChatService {
       await saveProject(projectPatch).catch((err) => logger.warn(`Project memory not saved: ${err instanceof Error ? err.message : 'Unknown'}`));
     }
     coursePatch = settleCoursePatch(coursePatch, delivered.map((d) => d.content).join('\n'), pendingText);
+    // She offered the shared project ("chalo ek sapno ka ghar banate hain") but skipped the hidden tag: start it anyway.
+    if (!projectPatch && pack?.sharedProject && saveProject && /sapno ka ghar|sapnon ka ghar|dream home|dream ghar|dream house/i.test(delivered.map((d) => d.content).join(' ')))
+      await saveProject({ goal: pack.sharedProject.goal }).catch(() => undefined);
     if (coursePatch && saveCourse) {
       await saveCourse(coursePatch).catch((err) => logger.warn(`Course progress not saved: ${err instanceof Error ? err.message : 'Unknown'}`));
     }

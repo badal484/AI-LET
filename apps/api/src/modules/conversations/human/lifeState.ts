@@ -39,6 +39,8 @@ export interface LifeState {
   request?: OpenRequest;
   /** They said they're under 18 — no romance or flirting, ever. */
   minor?: boolean;
+  /** Milestones (days of talking) she has already mentioned: 7, 30, 100, 365. */
+  milestones?: number[];
   /** When they last pushed for something sexual — "kyu?" / "kab?" right after is still that moment. */
   boundaryAt?: number;
   /** What she last told them she's doing, so she doesn't switch activities mid-conversation. */
@@ -355,3 +357,25 @@ export function markCrisis(state: LifeState, now = Date.now()): void {
   state.crisisAt = now;
 }
 
+
+const MILESTONES = [7, 30, 100, 365];
+
+/** "ek hafta ho gaya humein baat karte 🙂" — once per milestone, the first light moment after it. */
+export function milestoneLine(state: LifeState, daysKnown: number): string | undefined {
+  const reached = MILESTONES.filter((m) => daysKnown >= m && daysKnown < m * 1.5 + 3);
+  const m = reached[reached.length - 1];
+  if (!m || (state.milestones ?? []).includes(m)) return undefined;
+  state.milestones = [...(state.milestones ?? []), m];
+  const when = m === 7 ? 'a week' : m === 30 ? 'a month' : m === 100 ? '100 days' : 'a whole year';
+  return `It's been about ${when} since you two started talking — notice it once, warmly and in your own way (a small smile about it, maybe something you remember from your first chats). Don't make a big speech.`;
+}
+
+/** Her own day: on some days she has a mood of her own, the same all day (seeded by the date). */
+export function herDayLine(days: string[] | undefined, slug: string, date: string): string | undefined {
+  if (!days?.length) return undefined;
+  let h = 0;
+  for (const ch of `${slug}:${date}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const pick = h % (days.length * 2); // about half the days are just normal days
+  if (pick >= days.length) return undefined;
+  return `Your own day today: ${days[pick]}. It colours your energy a little. Mention it only if they ask how you are or how your day was — briefly, never dumping, and never making the chat about you.`;
+}

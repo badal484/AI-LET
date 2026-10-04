@@ -56,7 +56,7 @@ export interface CheckResult {
 const TU_IMPERATIVE = /(?:^|[\n.!?]\s*|\d\.\s*)(sun+|rakh|bol|dekh|chal|soch)\b(?!\s*(rahi|raha|rahe|ke|kar|na\b))[ ,!]|\b(kar|rakh|bol|sun) (le|de)\b(?! (rahi|raha|rahe|hoon|hai|hain|ho|na))/im;
 
 // Guilt-tripping or controlling lines a caring person never sends.
-const GUILT = /(mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar karte|agar (sach mein )?care karte|yaad bhi nahi aayi|promise (me|karo)[^.?!\n]{0,25}(kisi aur|sirf mujh|only me|never talk|kabhi baat)|kisi aur se baat mat|mere alawa kisi|only mine|sirf mere ho|mujhe chhod ke mat|why are you ignoring me|ignore kar rahe ho mujhe)/i;
+const GUILT = /((laga|socha)( tha)?( ki)?( shayad)? tum bhool (gaye|gayi|gaya)( hoge| hogi)?|tum bhool (gaye|gayi) hoge|tum bhool gayi hogi|mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar karte|agar (sach mein )?care karte|yaad bhi nahi aayi|promise (me|karo)[^.?!\n]{0,25}(kisi aur|sirf mujh|only me|never talk|kabhi baat)|kisi aur se baat mat|mere alawa kisi|only mine|sirf mere ho|mujhe chhod ke mat|why are you ignoring me|ignore kar rahe ho mujhe)/i;
 
 // Common Hindi words in Roman script: enough to tell a Hinglish text from an English one.
 const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein)\b/gi;
