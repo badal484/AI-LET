@@ -27,7 +27,7 @@ export function isAboutHerself(text: string): boolean {
 
 /** They asked about her ("tum kya kar rahi ho?", "apne baare mein batao", "what do you do?"). */
 export const ASKS_ABOUT_HER =
-  /\b(tum|aap|you|u)\b[^?]*\?|\b(apne|apni|tumhare|tumhari|aapke|aapki|your)\b.{0,25}\b(baare|bare|family|kaam|work|din|day|life|job)\b|\b(kya kar rahi|kya kar rahe|kya chal raha|kaisi ho|kaise ho|wbu|hbu|aur tum|aur aap|tell me about you)\b/i;
+  /\b(tum|aap|you|u)\b[^?]*\?|\b(apne|apni|tumhare|tumhari|aapke|aapki|your)\b.{0,25}\b(baare|bare|family|kaam|work|din|day|life|job)\b|\b(kya kar rahi|kya kar rahe|kya chal raha|kaisi ho|kaise ho|wbu|hbu|aur tum|aur aap|tell me about you)\b|\b(purana chapter|old chapter|ex\b|pehle wala|pehli wali|breakup|kahani|story|phir kya hua|uske baad kya|kya hua tha|batao na|aur batao na|aage batao|then what|what happened)/i;
 
 /** A one-word answer right after she talked about herself: they're not into that topic. */
 export function boredByHerTalk(userText: string, herLastReply: string | undefined): boolean {

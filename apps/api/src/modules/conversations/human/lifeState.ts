@@ -57,7 +57,8 @@ export function saysUnder18(text: string): boolean {
 }
 
 /** "They asked about her": the natural moment to share her news. */
-export const ASKS_ABOUT_HER = /(tum batao|aur batao|kya chal raha|kya kar rahi|kya karti|kya haal|what'?s up|how('?s| was) your|tumhara din|life mein|apne baare|kya click|what are you)/i;
+// Also her past and her stories ("purana chapter kya tha?", "phir kya hua?") — so "user first" never cuts her off mid-story.
+export const ASKS_ABOUT_HER = /(tum batao|aur batao|kya chal raha|kya kar rahi|kya karti|kya haal|what'?s up|how('?s| was) your|tumhara din|life mein|apne baare|kya click|what are you|purana chapter|old chapter|\bex\b|pehle wala|pehli wali|tumhari kahani|tumhari story|phir kya hua|uske baad kya|kya hua tha|batao na|aage batao|then what|what happened)/i;
 
 export function readUserGender(text: string): 'male' | 'female' | undefined {
   const t = text.toLowerCase();
