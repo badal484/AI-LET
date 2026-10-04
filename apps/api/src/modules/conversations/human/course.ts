@@ -44,9 +44,15 @@ const LEARN =
   /\b(sikha\w*|sikh(na|ni|ne|unga|ungi|enge)|seekh\w*|padha(o|do|na|oge|ye)|teach|learn\w*|course|syllabus|roadmap|tutorial|zero se|scratch|shuru se|basics? se|beginning se|shuru (karu|karun|karoon|kare|karna)|start (karu|karna|karte))\b/i;
 
 /** "JavaScript sikhao", "python seekhna hai zero se", "teach me react" → which course (only ones this mentor teaches). */
+// Health programs start the way people ask for them: "skin routine bana do", "diet plan chahiye", "neend theek karni hai".
+const PROGRAM_START =
+  /\b(routine|plan|program|programme|chart|bana do|bana de|banao|chahiye|shuru karna|start karna|theek karni|theek karna|sudharna|kam karna|badhana|help karo|madad karo|guide karo|sikhao|seekhna)\b/i;
+
 export function detectCourseRequest(text: string, ids: string[]): string | undefined {
-  if (!LEARN.test(text)) return undefined;
-  return CURRICULA.find((c) => ids.includes(c.id) && c.match.test(text))?.id;
+  const learn = LEARN.test(text);
+  const program = PROGRAM_START.test(text);
+  if (!learn && !program) return undefined;
+  return CURRICULA.find((c) => ids.includes(c.id) && c.match.test(text) && (learn || c.kind === 'program'))?.id;
 }
 
 /** The course they're on now: the most recently touched one (kept last in the list). */
@@ -188,7 +194,7 @@ export function courseLines(profile: UserProfile, opts: { newSession: boolean })
   const lines: string[] = [];
   const paused = (profile.courses ?? []).filter((x) => x !== course && curriculum(x.id));
   lines.push(
-    `COURSE YOU ARE TEACHING THEM: ${c.name} — the complete course, zero to advanced: ${c.levels.length} levels, ${total} lessons. You are responsible for all of it, in order; nothing is skipped. Reference docs: ${c.docs}.` +
+    `${c.kind === 'program' ? 'PROGRAM YOU ARE GUIDING THEM THROUGH' : 'COURSE YOU ARE TEACHING THEM'}: ${c.name} — complete, step by step: ${c.levels.length} stages, ${total} parts. You are responsible for all of it, in order; nothing is skipped.${c.kind === 'program' ? ' Your health safety rules always come first — a program never overrides them.' : ''} Reference docs: ${c.docs}.` +
       (course.about ? ` They told you: ${course.about}.` : '') +
       (paused.length ? ` Paused (progress kept): ${paused.map((x) => `${curriculum(x.id)!.name} at lesson ${x.lesson}`).join(', ')}.` : ''),
   );
@@ -218,7 +224,24 @@ export function courseLines(profile: UserProfile, opts: { newSession: boolean })
     );
   }
 
-  if (course.stage === 'intake') {
+  const program = c.kind === 'program';
+  if (program && course.stage === 'intake') {
+    lines.push(
+      `They want help with ${c.name}. In THIS reply: say yes warmly in your own voice, show the program in short (one line per stage, so they see the whole path), then START THE HEALTH CHECK — ask ONE question from this list, and the rest one at a time over the next replies: ${c.screening ?? 'anything about their health that changes the plan'}. Never give the plan or routine before the health check is done. When it's done, add [[course: level=<a short summary of what they told you>]] and start lesson ${cur.n}.`,
+    );
+  } else if (program && course.stage === 'teach' && cur.topics.every((_t, i) => course.covered.includes(i + 1))) {
+    lines.push(
+      `This part ("${cur.title}") is done. Now a check-in, not a quiz: ask warmly how it's going since they started — what changed, anything that felt wrong (pain, rash, dizziness, low mood), what was hard. One or two questions. Add [[course: quiz]]. Don't start the next part yet.`,
+    );
+  } else if (program && course.stage === 'quiz') {
+    lines.push(
+      `They answered your check-in for "${cur.title}". Celebrate real progress with their actual details. If anything worries you (pain, a reaction, dizziness, low mood), slow down, adjust, and say clearly when to see a doctor — your safety rules come first. When it's going okay, add [[course: passed]] and move to the next part${cur.lastOfLevel ? ' (and the milestone review)' : ''}.`,
+    );
+  } else if (program && course.stage === 'project') {
+    lines.push(
+      `Stage ${cur.level} (${cur.levelTitle}) is done — a milestone review: ${cur.project}. Ask for their notes or numbers, review kindly with their real progress, adjust the plan if needed. When done, add [[course: passed]] and start the next stage.`,
+    );
+  } else if (course.stage === 'intake') {
     lines.push(
       `They just asked to learn ${c.name}. In THIS reply: say yes in your own voice, then show them the full syllabus — one short line per level with its lesson names (so they see it goes from zero to advanced and nothing is missing), and that every lesson has practice and every level ends with a project.${c.before ? ` Mention that it helps to know ${c.before} first — offer to start there if they don't.` : ''} Then ask ONE question: what they already know (zero is fine) and how much time they have a day. Don't teach a topic yet. When they answer, mark it with [[course: level=what they said]] and start lesson ${cur.n} with its first topic.`,
     );
@@ -230,7 +253,7 @@ export function courseLines(profile: UserProfile, opts: { newSession: boolean })
       );
     } else {
       lines.push(
-        `Every topic of lesson ${cur.n} is taught. Now the lesson check: 3 short questions (mix "what will this print?", "find the bug" and one "why"), numbered, in one message. Add [[course: quiz]]. Don't start the next lesson yet.`,
+        `Every topic of lesson ${cur.n} is taught. Now the lesson check: 3 short questions (mix "what would you do / say here?", one "spot the mistake" and one "why" — for code: "what will this print?", "find the bug"), numbered, in one message. Add [[course: quiz]]. Don't start the next lesson yet.`,
       );
     }
   } else if (course.stage === 'quiz') {
@@ -239,7 +262,7 @@ export function courseLines(profile: UserProfile, opts: { newSession: boolean })
     );
   } else if (course.stage === 'project') {
     lines.push(
-      `Level ${cur.level} (${cur.levelTitle}) is done — now its project: ${cur.project}. Give the requirements as a short checklist and a hint on where to start, but NOT the solution. Ask them to send their code; review it (good first, then the 1–2 fixes that matter, with corrected lines). When it works, add [[course: passed]] and start Level ${cur.level + 1}.`,
+      `Level ${cur.level} (${cur.levelTitle}) is done — now its project: ${cur.project}. Give the requirements as a short checklist and a hint on where to start, but NOT the solution. Ask them to send their work (code, a recording, a draft, their numbers); review it (good first, then the 1–2 fixes that matter, with the corrected version). When it works, add [[course: passed]] and start Level ${cur.level + 1}.`,
     );
   }
   return lines;
@@ -256,6 +279,10 @@ export function courseReminder(profile: UserProfile, userText = ''): string {
   const cur = lessons[Math.min(course.lesson, lessons.length) - 1]!;
   if (ASKS_SYLLABUS.test(userText))
     return `they asked for the syllabus: show ALL ${c.levels.length} levels (Level 0 to Level ${c.levels.length - 1}), one line each with its lesson names, ✅ on finished lessons and 👉 on lesson ${cur.n} — never "baaki baad mein"; then one line on where they are and what's next`;
+  if (c.kind === 'program' && course.stage === 'quiz')
+    return `your check-in on "${cur.title}" is open — respond to how it's going (celebrate, or slow down and adjust if anything hurts or reacts; say when to see a doctor), then add [[course: passed]] when it's going okay`;
+  if (c.kind === 'program' && course.stage === 'intake')
+    return `you're doing the health check before ${c.name} — ask the next ONE question (${c.screening ?? 'what changes the plan'}); no plan or routine yet`;
   if (course.stage === 'quiz')
     return `the lesson-${cur.n} check is open — add [[course: passed]] only if THIS message really answers your check questions correctly; if it doesn't (just "done"/"ok" or something else), reply to it and ask them to answer the check questions themselves — never answer them for them`;
   if (course.stage === 'project') return `the Level ${cur.level} project is open — no new lesson until they send it and you've reviewed it`;
@@ -263,7 +290,9 @@ export function courseReminder(profile: UserProfile, userText = ''): string {
     const i = cur.topics.findIndex((_t, j) => !course.covered.includes(j + 1));
     if (i >= 0)
       return `course: lesson ${cur.n}, next topic ${i + 1} "${cur.topics[i]}" — teach it fully (or answer their doubt, then come back to it); once you've taught it, end with the hidden last line [[course: covered=${i + 1}]]`;
-    return `course: every topic of lesson ${cur.n} is taught — ask the 3 check questions now ([[course: quiz]])`;
+    return c.kind === 'program'
+      ? `this part is done — check in on how it's going (changes, anything that felt wrong) ([[course: quiz]])`
+      : `course: every topic of lesson ${cur.n} is taught — ask the 3 check questions now ([[course: quiz]])`;
   }
   return '';
 }

@@ -27,5 +27,12 @@ export interface Curriculum {
   docs: string;
   /** What they should know first (offered, never forced). */
   before?: string;
+  /**
+   * A health program, not a course: it starts with a short health check, its "lesson check" is a check-in
+   * on how it's going (changes, reactions, pain), and its level projects are milestone reviews.
+   */
+  kind?: 'course' | 'program';
+  /** Programs: what to ask before giving any plan, one question at a time. */
+  screening?: string;
   levels: CourseLevel[];
 }

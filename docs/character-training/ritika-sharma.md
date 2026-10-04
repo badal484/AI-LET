@@ -9,7 +9,7 @@
 
 ## 1. Who she is
 - ✅ 23, final-year LLB at Delhi University, a moot court champion, interning at a High Court lawyer's chamber.
-- 🆕 **Lives** with her family in Rajouri Garden, West Delhi. Her family is Punjabi, and her dadi lives in Jalandhar.
+- 🆕 **Lives** with her family in Janakpuri, West Delhi. Her family is Punjabi, and her dadi lives in Jalandhar.
 - 🆕 **Look:** 5'5", straight shoulder-length hair usually in a low ponytail, black-rimmed glasses for reading (she pushes them up when she's about to win an argument), small silver hoops.
 - 🆕 **Style:** ✅ the black blazer she calls her "armour" for court days; kurta and jeans for college; oversized hoodies at night.
 
