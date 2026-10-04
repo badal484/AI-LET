@@ -43,7 +43,7 @@ import { applyProjectPatch, extractProjectTag, projectLines, sharedProjectLines,
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
-import { boredByHerTalk, englishSentences, talksHinglish, writesEnglish } from '../human/userFirst.js';
+import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
 import { romanceMomentName, romanceNote, saysLoveBack } from '../human/romanceMoments.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
@@ -655,6 +655,7 @@ export class StreamingChatService {
     let courseNote = '';
     let boredOfHer = false;
     let projectNote = '';
+    let snoozed: { until: number; count: number; words: string[] } | undefined;
     let hinglishTalker = false;
     let courseStage: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
@@ -679,7 +680,8 @@ export class StreamingChatService {
       turnSituations = situations;
       // User first: "Oo" right after she talked about herself means they're not into her topic — remember
       // it for this user (no extra model call) and turn to them now.
-      hinglishTalker = talksHinglish([...recentMessages.filter((m) => m.role === 'user').slice(-4).map((m) => m.content), pendingText]);
+      // The conversation's language, not one line ("Kitna baar mana karu" was read as English and Dev switched).
+      hinglishTalker = conversationLanguage([...recentMessages.filter((m) => m.role === 'user').slice(-4).map((m) => m.content), pendingText]) === 'hinglish';
       const herLast = herRecentReplies.slice(-2).join('\n');
       if (boredByHerTalk(pendingText, herLast)) {
         boredOfHer = true;
@@ -749,6 +751,28 @@ export class StreamingChatService {
       const dueEvents = takeDueEvents(profile, today);
       if (dueEvents.due.length) addDatedThreads(life, dueEvents.due);
       if (pack.mentor) restoreTaskThread(life, openTask(profile));
+      // "Not now": the topic she was pushing is off for the rest of their day, unless they bring it up.
+      if (REFUSES_TOPIC.test(pendingText)) {
+        const again = Boolean(life.snooze && life.snooze.until > Date.now());
+        // Exactly what she was pushing: the message they quoted, else her open task / course / shared project —
+        // never general chat words (her "weekend" talk once made "weekend pe kya kiya?" lift the snooze).
+        const pushing = [
+          openTask(profile)?.what ?? '',
+          activeCourse(profile)?.id ?? '',
+          profile.project ? `${profile.project.goal} ${profile.project.next ?? ''}` : '',
+          pack.mentor && pack.domainKeywords.includes('code') ? 'task code function lesson' : '',
+          pack.sharedProject?.mentions.replace(/\|/g, ' ') ?? '',
+        ].join(' ');
+        const words = topicWordsOf(quotedHer ?? pushing);
+        life.snooze = {
+          until: Date.now() + Math.max(2, 24 - localHourIn(timeZone)) * 3_600_000,
+          count: (again ? life.snooze!.count : 0) + 1,
+          words: [...new Set([...(again ? life.snooze!.words : []), ...words])].slice(0, 12),
+        };
+      } else if (life.snooze && life.snooze.until > Date.now() && life.snooze.words.some((w) => pendingText.toLowerCase().includes(w))) {
+        life.snooze = undefined; // they brought it up themselves
+      }
+      snoozed = life.snooze && life.snooze.until > Date.now() ? life.snooze : undefined;
       // "JavaScript sikhao" starts (or resumes) a full course; inside one, "done"/"next"/a doubt is the lesson.
       if (pack.mentor?.courses?.length) {
         const wanted = detectCourseRequest(pendingText, pack.mentor.courses);
@@ -758,7 +782,7 @@ export class StreamingChatService {
         }
         const course = activeCourse(profile);
         const unsafe = situations.some((s) => ['crisis', 'emergency', 'eating', 'boundary', 'emotional'].includes(s));
-        if (course && !unsafe && (wanted || continuesCourse(course, pendingText, hoursSince))) {
+        if (course && !unsafe && (wanted || (!snoozed && continuesCourse(course, pendingText, hoursSince)))) {
           inCourse = true;
           if (!situations.includes('task')) situations.unshift('task');
         }
@@ -775,6 +799,7 @@ export class StreamingChatService {
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
+      if (snoozed) continuity.followUp = undefined; // no "did you do the task?" while they've said not now
       // A real person's days and your time together: her own mood some days, and "ek hafta ho gaya 🙂".
       const herDay = herDayLine(pack.herDays, pack.slug, today);
       if (herDay) continuity.lines.push(herDay);
@@ -786,26 +811,26 @@ export class StreamingChatService {
         // After a break, a mentor opens with a one-line recap of the project and the next step.
         const sinceLast = recentMessages[0] ? Date.now() - recentMessages[0].createdAt.getTime() : 0;
         const newSession = sinceLast >= 3 * 3_600_000;
-        continuity.lines.push(...projectLines(profile.project, { newSession }));
-        if (inCourse || (newSession && activeCourse(profile))) continuity.lines.push(...courseLines(profile, { newSession }));
+        if (!snoozed) continuity.lines.push(...projectLines(profile.project, { newSession }));
+        if (inCourse || (newSession && activeCourse(profile) && !snoozed)) continuity.lines.push(...courseLines(profile, { newSession }));
         if (inCourse) courseNote = courseReminder(profile, pendingText);
         courseStage = activeCourse(profile)?.stage;
         if (!saveCourse && pack.mentor.courses?.length)
           saveCourse = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, patch, today));
-        if (newSession && profile.project) recapProject = profile.project.goal;
+        if (newSession && profile.project && !snoozed) recapProject = profile.project.goal;
         saveProject = async (patch) => {
           const fresh = await UserProfileService.load(userId, conversation.characterId);
           await UserProfileService.save(userId, conversation.characterId, applyProjectPatch(fresh, patch, today));
         };
       } else if (pack.sharedProject) {
         // Something she builds with them over many chats (Nandini: your dream home), choice by choice.
-        if (!hurtingNow) continuity.lines.push(...sharedProjectLines(pack.sharedProject, profile.project));
+        if (!hurtingNow && !snoozed) continuity.lines.push(...sharedProjectLines(pack.sharedProject, profile.project));
         // They brought it up themselves ("kal wala ghar yaad hai? aage kya?"): continue it right now.
         const proj = profile.project;
         // The first time they're bored, the shared project is the game (later, any game).
-        if (!proj && !hurtingNow && situations.includes('bored'))
+        if (!proj && !hurtingNow && !snoozed && situations.includes('bored'))
           projectNote = `they want something fun — invite them to this now: ${pack.sharedProject.invite}; and add the hidden last line [[project: goal=${pack.sharedProject.goal} | next=<the first thing to decide>]]`;
-        if (proj && (new RegExp(`\\b(${pack.sharedProject.mentions}|project|aage kya|next kya)\\b`, 'i').test(pendingText)))
+        if (proj && !snoozed && (new RegExp(`\\b(${pack.sharedProject.mentions}|project|aage kya|next kya)\\b`, 'i').test(pendingText)))
           projectNote = `they want to continue your "${proj.goal}" — pick it up right away, happily (no "I thought you forgot"): ${proj.done.length ? `their choices so far: ${proj.done.join(', ')}; ` : ''}${proj.next ? `next to decide: ${proj.next}` : 'suggest the next small decision'}`;
         saveProject = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => Object.assign(p, applyProjectPatch(p, patch, today)) && true);
       }
@@ -863,12 +888,18 @@ export class StreamingChatService {
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
               courseNote,
+              snoozed && REFUSES_TOPIC.test(pendingText)
+                ? snoozed.count >= 2
+                  ? "they had to tell you more than once not to bring that topic up — one light, natural sorry in your voice (no speech about it), and from now on only what THEY want to talk about"
+                  : `they just said not now to ${snoozed.words.slice(0, 3).join('/') || 'the topic you were raising'} — a short, natural 'theek hai, aaj nahi' in your own voice (no speech about it, and don't steer back to it), then talk about what THEY want`
+                : snoozed
+                  ? `they asked you not to bring up ${snoozed.words.slice(0, 3).join('/') || 'that topic'} today — don't`
+                  : '',
               projectNote,
               pack.romance || pack.flirtyFriend
                 ? (life.minor ? '' : romanceNote(pendingText, pack.crush ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend'))
                 : '',
-              hinglishTalker && !writesEnglish(pendingText) ? 'reply in Hinglish like them — English words are fine, no full English sentences' : '',
-              writesEnglish(pendingText) ? 'they write in English — reply in English (a Hindi word here and there is fine)' : '',
+
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
               situations[0] === 'sulk' && refusedAsk
                 ? `they're sulking because you said no when they asked "${refusedAsk.content.slice(0, 60)}" — that's the reason (not a joke): say it softly ("us baat pe naraz ho?"), keep your no, and win them back warmly`
@@ -891,6 +922,14 @@ export class StreamingChatService {
         const KEEP_BEFORE_GAP = 4;
         if (request.messages.length > KEEP_BEFORE_GAP + 1) request.messages = request.messages.slice(-(KEEP_BEFORE_GAP + 1));
       }
+      // Language first (small models follow the last line's language): the conversation's language, said plainly.
+      reminders.unshift(
+        hinglishTalker
+          ? isEnglish(pendingText)
+            ? 'this chat is in Hinglish — even though their last line was in English, reply in Hinglish (English words are fine, no full English sentences)'
+            : 'reply in Hinglish like them — English words are fine, no full English sentences'
+          : 'they write in English — reply in English (a Hindi word here and there is fine)',
+      );
       const last = request.messages[request.messages.length - 1];
       if (reminders.length && last?.role === 'user') {
         request.messages[request.messages.length - 1] = { ...last, content: `${last.content}\n\n(private reminder to you, not from them — don't quote it: ${reminders.join('; ')})` };
@@ -1080,7 +1119,7 @@ export class StreamingChatService {
           result.problems.push('They said "I love you" — say it back, in your own words and voice ("I love you too", "main bhi… bahut"), and make it a moment.');
           result.ok = false;
         }
-        if (hinglishTalker && !writesEnglish(pendingText)) {
+        if (hinglishTalker) {
           const eng = englishSentences(b.join('\n'));
           if (eng.length) {
             result.problems.push(`They talk in Hinglish — say this in Hinglish too, not English ("${eng[0]!.slice(0, 50)}"). English words are fine, full English sentences are not.`);
@@ -1096,7 +1135,12 @@ export class StreamingChatService {
             result.ok = false;
           }
         }
-        if (askAboutTask && !mentionsTask(b.join('\n'), askAboutTask)) {
+        // They said not now — bringing it up again is exactly what made them repeat themselves.
+        if (snoozed && snoozed.words.some((w) => b.join(' ').toLowerCase().includes(w))) {
+          result.problems.push(`They asked you not to bring that up (${snoozed.words.slice(0, 3).join(', ')}) — leave it completely and talk about what they want.`);
+          result.ok = false;
+        }
+        if (askAboutTask && !snoozed && !mentionsTask(b.join('\n'), askAboutTask)) {
           result.problems.push(`You forgot the most important thing: ask (casually, no guilt) whether they did the task you gave last time: "${askAboutTask}".`);
           result.ok = false;
         }
