@@ -57,7 +57,7 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   if (!missesHer) add('emotional', /\b(sad|udaas|udas|dukhi|rona|ro raha|ro rahi|cry|lonely|akela|akeli|depress|stress|tension|pareshan|anxious|breakup|miss (you|u)|yaad|mood (off|kharab)|hurt|alone|bura lag|daanta|dant|thak gaya|thak gayi|fail)\b/);
   // Good news comes after sadness, so "result aaya, fail ho gaya" stays emotional.
   add('win', /\b(selected|(select|selection) ho (gaya|gayi)|placement ho|got the job|job (mil|lag) (gayi|gaya)|offer (letter|mil)|pass ho (gaya|gayi)|passed|cleared|clear ho (gaya|gayi)|jeet (gaya|gayi|gaye)|we won|i won|promotion|hike mil|birthday|janamdin|khushkhabri|good news|topped|rank aayi)\b/);
-  add('bored', /^\s*kuch karte? (hain|h|hai)\b|\b(kuch (interesting|fun|mazedaar|naya) (karte|karein|karo|batao)|koi game|game khel(te|ein|o)|bored|bore ho|boring (din|day|lecture|class)|kuch karne ko nahi|nothing to do|timepass|free (hoon|hu|baitha|baithi))\b/);
+  add('bored', /^\s*kuch (baat |baatein )?karte? (hain|h|hai)\b|\b(kuch (interesting|fun|mazedaar|naya) (karte|karein|karo|batao)|koi game|game khel(te|ein|o)|bored|bore ho|boring (din|day|lecture|class)|kuch karne ko nahi|nothing to do|timepass|free (hoon|hu|baitha|baithi))\b/);
   add('news', /^(guess what|pata hai\??|suno( na)?|ek baat (batau|bataun|bolun)|you know what|tumhe pata hai)\b|\b(guess what|good news hai|kuch batana hai)\b/);
   add('flirt', /\b(cute|pyari|pyaari|beautiful|sundar|shaadi|date|love you|i love|luv|kiss|girlfriend|gf|bf|hug|dil|jaan|crush)\b/);
   add('bye', /\b(good ?night|gn|bye|so (raha|rahi|jaata|jaati|jaunga|jaungi)|baad mein baat|chalta hoon|nikalta hoon|take care|tc)\b/);
