@@ -92,3 +92,32 @@ describe('She learns how each user likes to talk', () => {
     expect(normalizeProfile(JSON.parse(JSON.stringify(p))).style).toEqual(p.style);
   });
 });
+
+describe('From the different-people test (Nandini)', () => {
+  const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const, address: 'tum' as const, askedIfAI: false };
+
+  it('"bot ho tum" is asking whether she is an AI — she must not deny it', async () => {
+    const { asksIfAI } = await import('../../src/modules/conversations/human/situation.js');
+    expect(asksIfAI('bot ho tum')).toBe(true);
+    expect(asksIfAI('AI hai tu')).toBe(true);
+    expect(asksIfAI('bot jaisa reply mat karo')).toBe(false);
+  });
+
+  it('"{{next}}" splits bubbles instead of showing up as one', async () => {
+    const { StreamingChatService } = await import('../../src/modules/conversations/services/streamingChat.service.js');
+    const split = (StreamingChatService as unknown as { splitBubbles: (t: string) => string[] }).splitBubbles.bind(StreamingChatService);
+    expect(split('main yahin hoon {{next}} batao kya hua')).toEqual(['main yahin hoon', 'batao kya hua']);
+  });
+
+  it('English in, English out', () => {
+    const r = checkReply({ ...base, bubbles: ['main interior architect hoon, Hyderabad mein', 'ghar aur chhote cafés design karti hoon 🙂'], userText: 'hey, what do you do?' } as never);
+    expect(r.problems.join(' ')).toMatch(/reply in English/);
+    const ok = checkReply({ ...base, bubbles: ["I'm an interior architect in Hyderabad — homes and little cafés 🙂 what about you?"], userText: 'hey, what do you do?' } as never);
+    expect(ok.problems.join(' ')).not.toMatch(/reply in English/);
+  });
+
+  it('"ek joke sunao" never gets "mujhe jokes nahi aate"', () => {
+    const r = checkReply({ ...base, bubbles: ['mujhe jokes nahi aate', 'par ek random fact chalega?'], userText: 'achha chalo ek joke sunao' } as never);
+    expect(r.problems.join(' ')).toMatch(/just do it/);
+  });
+});

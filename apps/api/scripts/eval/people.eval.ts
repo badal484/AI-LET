@@ -20,6 +20,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type Step = string | { later: number };
 
 const PEOPLE: Record<string, { name: string; steps: Step[] }> = {
+  replay: { name: 'Rohit', steps: ['Hii', 'Congratulations', 'Oo', 'Aur batao boyfriend h ?'] },
   shy: { name: 'Aman', steps: ['hi', 'kuch nahi', 'hmm'] },
   flirty: { name: 'Karan', steps: ['hey cutie', 'tumhari smile kaisi hai?', 'date pe chalogi?'] },
   sad: { name: 'Sneha', steps: ['hi', 'aaj bahut akela lag raha hai', 'koi samajhta hi nahi'] },
@@ -45,7 +46,9 @@ async function run(slug: string) {
   if (!character) throw new Error(`no character ${slug}`);
   const first = character.name.split(' ')[0];
   const lines: string[] = [];
-  for (const [kind, person] of Object.entries(PEOPLE)) {
+  // ONLY=troll,english reruns just those people (saves quota).
+  const only = process.env['ONLY']?.split(',');
+  for (const [kind, person] of Object.entries(PEOPLE).filter(([k]) => !only || only.includes(k))) {
     const email = `eval_people_${Date.now()}_${kind}@test.local`;
     const user = await p.user.create({
       data: { email, normalizedEmail: email, emailVerifiedAt: new Date(), profile: { create: { displayName: person.name, onboardingCompleted: true, timezone: 'Asia/Kolkata' } as never } },
