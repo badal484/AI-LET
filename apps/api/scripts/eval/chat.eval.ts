@@ -4,6 +4,7 @@
  * Small on purpose — it spends the same Gemini quota the app uses.
  *
  *   npx tsx scripts/eval/chat.eval.ts ritika-sharma "hi" "tumhara type kya hai?" +22 "kaisi ho aaj?"
+ *   EVAL_STAGE=CONFIDANT … starts them already close.
  */
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
@@ -24,6 +25,11 @@ const user = await p.user.create({
 });
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${signAccessToken({ userId: user.id, email, roles: ['user'] })}` });
 const conv = await (await fetch(`${API}/conversations`, { method: 'POST', headers: headers(), body: JSON.stringify({ characterId: character.id }) })).json();
+// EVAL_STAGE=CONFIDANT starts them already close (to test what changes when they are).
+if (process.env['EVAL_STAGE']) {
+  const close = { stage: process.env['EVAL_STAGE'] as never, familiarity: 80, trust: 85, comfort: 85, affection: 85, engagement: 85, totalInteractions: 300, consecutiveDaysActive: 30 };
+  await p.relationship.upsert({ where: { userId_characterId: { userId: user.id, characterId: character.id } }, create: { userId: user.id, characterId: character.id, ...close }, update: close });
+}
 
 for (const step of steps) {
   const later = /^\+(\d+)$/.exec(step);

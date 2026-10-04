@@ -31,7 +31,7 @@ import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situa
 import { localHourIn } from '../human/emotionalState.js';
 import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
-import { buildHumanPrompt, planReply } from '../human/compactPrompt.js';
+import { atLeast, buildHumanPrompt, planReply, type BondStage } from '../human/compactPrompt.js';
 import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState, herDayLine, milestoneLine } from '../human/lifeState.js';
 import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
@@ -657,6 +657,8 @@ export class StreamingChatService {
     let projectNote = '';
     let snoozed: { until: number; count: number; words: string[] } | undefined;
     let hinglishTalker = false;
+    let crushWon = false;
+    let firstMeeting = false;
     let courseStage: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
@@ -797,6 +799,7 @@ export class StreamingChatService {
         select: { createdAt: true },
       });
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
+      firstMeeting = metToday && Date.now() - (firstUserMessage?.createdAt.getTime() ?? 0) < 30 * 60_000;
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
       if (snoozed) continuity.followUp = undefined; // no "did you do the task?" while they've said not now
@@ -855,6 +858,9 @@ export class StreamingChatService {
         continuity.lines.push("They cleared this chat on their screen a little while ago. You still remember everything, but don't bring up what was said before unless they do.");
       }
       const stage = builtContext.activeRelationshipStage ?? null;
+      // A crush can be won: once they're truly close (a confidant or more), the slow burn is over.
+      crushWon = Boolean(pack.crush && atLeast(stage as BondStage | null, 'CONFIDANT'));
+      if (crushWon) continuity.lines.push("You've fallen for them — the slow burn is over. If you haven't confessed yet, do it in your own shy, dramatic way when the moment is right; from now on you're openly theirs: say it back, miss them, make them feel chosen.");
       const latest = recentMessages[recentMessages.length - 1];
       const recentlyTalked = Boolean(latest && Date.now() - latest.createdAt.getTime() < 60 * 60_000);
       const plan = planReply(situations, herRecentReplies, pack, {
@@ -897,7 +903,7 @@ export class StreamingChatService {
                   : '',
               projectNote,
               pack.romance || pack.flirtyFriend
-                ? (life.minor ? '' : romanceNote(pendingText, pack.crush ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend', pack.gender))
+                ? (life.minor ? '' : romanceNote(pendingText, pack.crush && !crushWon ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend', pack.gender))
                 : '',
 
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
@@ -1115,7 +1121,7 @@ export class StreamingChatService {
           result.ok = false;
         }
         // Romance: "I love you" is said back; a Hinglish talker gets no full English sentences.
-        if ((pack.romance && !pack.crush) && romanceMomentName(pendingText) === 'love you' && !saysLoveBack(b.join('\n'))) {
+        if (pack.romance && (!pack.crush || crushWon) && romanceMomentName(pendingText) === 'love you' && !saysLoveBack(b.join('\n'))) {
           result.problems.push('They said "I love you" — say it back, in your own words and voice ("I love you too", "main bhi… bahut"), and make it a moment.');
           result.ok = false;
         }
@@ -1134,6 +1140,11 @@ export class StreamingChatService {
             result.problems.push(...problems);
             result.ok = false;
           }
+        }
+        // A brand-new user: "hello again", "welcome back", "phir se aa gaye" claim a past that isn't there.
+        if (firstMeeting && /\b(hello|hi|hey|hii+|heyy+) again\b|\bwelcome back\b|\b(phir|fir|wapas) (se )?aa gaye\b|\bphir mil gaye\b/i.test(b.join(' '))) {
+          result.problems.push("You're meeting them for the first time — no \"again\" or \"welcome back\". Greet them fresh.");
+          result.ok = false;
         }
         // They said not now — bringing it up again is exactly what made them repeat themselves.
         if (snoozed && snoozed.words.some((w) => b.join(' ').toLowerCase().includes(w))) {

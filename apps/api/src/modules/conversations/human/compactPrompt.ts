@@ -7,7 +7,7 @@ import { BEST_FRIEND, HEALTHY_ROMANCE } from './romanceRules.js';
 
 export type BondStage = 'STRANGER' | 'ACQUAINTANCE' | 'FRIEND' | 'CLOSE_FRIEND' | 'CONFIDANT' | 'ROMANTIC_PARTNER';
 const BOND_ORDER: BondStage[] = ['STRANGER', 'ACQUAINTANCE', 'FRIEND', 'CLOSE_FRIEND', 'CONFIDANT', 'ROMANTIC_PARTNER'];
-const atLeast = (stage: BondStage | null | undefined, min: BondStage) => BOND_ORDER.indexOf(stage ?? 'STRANGER') >= BOND_ORDER.indexOf(min);
+export const atLeast = (stage: BondStage | null | undefined, min: BondStage) => BOND_ORDER.indexOf(stage ?? 'STRANGER') >= BOND_ORDER.indexOf(min);
 
 /** How open she is with them — people open up gradually, and so does she. */
 export function bondGuidance(stage: BondStage | null | undefined): string {
