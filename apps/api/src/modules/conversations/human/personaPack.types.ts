@@ -82,6 +82,8 @@ export interface PersonaPack {
   romance?: boolean;
   /** Friendship characters: best-friend rules apply (docs/friendship-character-sheets.md). */
   friendship?: boolean;
+  /** A friend who flirts back (Nandini): never cold to flirting, a soft crush can grow if they want it. */
+  flirtyFriend?: boolean;
   /** Rules only this character needs (e.g. an astrologer: no fear predictions, no paid remedies). */
   rules?: { title: string; text: string };
   /**
