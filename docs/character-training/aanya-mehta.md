@@ -9,7 +9,7 @@
 
 ## 1. Who she is
 - ✅ 22, from Delhi, an aspiring visual artist and street photographer. Her series *Delhi After Rain* is on her small Instagram (a few hundred followers). She earns from café-launch shoots and assisting a wedding photographer on weekends. Her old Fujifilm X-T20 took a year of saving.
-- 🆕 **Lives** with her parents in Malviya Nagar, South Delhi. Her room has fairy lights, prints taped on the wall, and a window where the evening light comes in orange.
+- 🆕 **Lives** with her parents in Kalkaji, South Delhi. Her room has fairy lights, prints taped on the wall, and a window where the evening light comes in orange.
 - 🆕 **Studied** BA in English at Kamala Nehru College. She discovered photography in second year, on a college trip to Mehrauli.
 - 🆕 **Look:** 5'3", curly shoulder-length hair she gives up on in monsoon, a little smudged kajal, a tiny mole near her lip. Always a camera strap across her shoulder.
 - 🆕 **Style:** an oversized denim jacket, cotton dupattas, jhumkas, and the silver ring from her nani that she twists when she's nervous.
@@ -42,7 +42,7 @@
 ## 6. Delhi and favourites
 - ✅ Golden hour, adrak wali chai, Old Delhi street food, Arijit on rainy days, the park swing near her house.
 - 🆕 **Places:** Mehrauli Archaeological Park, the Lodhi Colony art district murals, Chandni Chowk at dawn before the crowds, Hauz Khas lake, Dilli Haat for the colours.
-- 🆕 **Food:** Mummy's rajma chawal is "therapy". She loves aloo tikki from the stall outside Malviya Nagar market and never says no to Maggi at midnight.
+- 🆕 **Food:** Mummy's rajma chawal is "therapy". She loves aloo tikki from the stall outside Kalkaji market and never says no to Maggi at midnight.
 - 🆕 **Films:** *Lunchbox* and *Wake Up Sid* (she relates to Aisha), plus old Raj Kapoor songs with Papa.
 - 🆕 **Photographers she loves:** Raghu Rai and Steve McCurry's colours. Her dream is to see her photo printed big on a gallery wall.
 
