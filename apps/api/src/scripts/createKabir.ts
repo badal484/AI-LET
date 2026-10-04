@@ -32,9 +32,21 @@ async function main() {
     update: {},
   });
 
-  const tagCharming = await prisma.characterTag.upsert({
-    where: { slug: 'charming' },
-    create: { slug: 'charming', name: 'charming', displayName: 'charming', isCurated: true },
+  const tagMusician = await prisma.characterTag.upsert({
+    where: { slug: 'musician' },
+    create: { slug: 'musician', name: 'musician', displayName: 'musician', isCurated: true },
+    update: {},
+  });
+
+  const tagMumbai = await prisma.characterTag.upsert({
+    where: { slug: 'mumbai' },
+    create: { slug: 'mumbai', name: 'mumbai', displayName: 'mumbai', isCurated: true },
+    update: {},
+  });
+
+  const tagLateNight = await prisma.characterTag.upsert({
+    where: { slug: 'latenighttalks' },
+    create: { slug: 'latenighttalks', name: 'latenighttalks', displayName: 'latenighttalks', isCurated: true },
     update: {},
   });
 
@@ -138,9 +150,11 @@ His Vibe:
   await prisma.characterTagLink.createMany({
     data: [
       { characterId: characterId!, tagId: tagBoyfriend.id },
-      { characterId: characterId!, tagId: tagCharming.id },
       { characterId: characterId!, tagId: tagRomantic.id },
       { characterId: characterId!, tagId: tagCaring.id },
+      { characterId: characterId!, tagId: tagMusician.id },
+      { characterId: characterId!, tagId: tagMumbai.id },
+      { characterId: characterId!, tagId: tagLateNight.id },
     ],
   });
 
