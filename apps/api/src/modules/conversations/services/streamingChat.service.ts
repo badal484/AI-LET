@@ -1279,7 +1279,8 @@ export class StreamingChatService {
 
     if (delivered.length === 0) return true;
     await afterDelivery?.();
-    if (projectPatch && saveProject) {
+    // In a course the course IS the project — a second "Lesson 1" project would only confuse the recap.
+    if (projectPatch && saveProject && !inCourse) {
       await saveProject(projectPatch).catch((err) => logger.warn(`Project memory not saved: ${err instanceof Error ? err.message : 'Unknown'}`));
     }
     coursePatch = settleCoursePatch(coursePatch, delivered.map((d) => d.content).join('\n'), pendingText);
