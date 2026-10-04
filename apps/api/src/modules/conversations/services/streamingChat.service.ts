@@ -802,7 +802,7 @@ export class StreamingChatService {
         // The first time they're bored, the shared project is the game (later, any game).
         if (!proj && !hurtingNow && situations.includes('bored'))
           projectNote = `they want something fun — invite them to this now: ${pack.sharedProject.invite}; and add the hidden last line [[project: goal=${pack.sharedProject.goal} | next=<the first thing to decide>]]`;
-        if (proj && /\b(ghar|house|home|dream|sapno|project|aage kya|next kya)\b/i.test(pendingText))
+        if (proj && (new RegExp(`\\b(${pack.sharedProject.mentions}|project|aage kya|next kya)\\b`, 'i').test(pendingText)))
           projectNote = `they want to continue your "${proj.goal}" — pick it up right away, happily (no "I thought you forgot"): ${proj.done.length ? `their choices so far: ${proj.done.join(', ')}; ` : ''}${proj.next ? `next to decide: ${proj.next}` : 'suggest the next small decision'}`;
         saveProject = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => Object.assign(p, applyProjectPatch(p, patch, today)) && true);
       }
@@ -1207,7 +1207,7 @@ export class StreamingChatService {
     }
     coursePatch = settleCoursePatch(coursePatch, delivered.map((d) => d.content).join('\n'), pendingText);
     // She offered the shared project ("chalo ek sapno ka ghar banate hain") but skipped the hidden tag: start it anyway.
-    if (!projectPatch && pack?.sharedProject && saveProject && /sapno ka ghar|sapnon ka ghar|dream home|dream ghar|dream house/i.test(delivered.map((d) => d.content).join(' ')))
+    if (!projectPatch && pack?.sharedProject && saveProject && new RegExp(pack.sharedProject.starts, 'i').test(delivered.map((d) => d.content).join(' ')))
       await saveProject({ goal: pack.sharedProject.goal }).catch(() => undefined);
     if (coursePatch && saveCourse) {
       await saveCourse(coursePatch).catch((err) => logger.warn(`Course progress not saved: ${err instanceof Error ? err.message : 'Unknown'}`));

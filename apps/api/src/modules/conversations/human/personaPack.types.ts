@@ -83,7 +83,16 @@ export interface PersonaPack {
   /** Her own kind of days (tired after a site visit, excited about a client win) — some days she has one. */
   herDays?: string[];
   /** Something she builds WITH them over many chats (Nandini: your dream home) — remembered choice by choice. */
-  sharedProject?: { goal: string; invite: string };
+  sharedProject?: {
+    goal: string;
+    invite: string;
+    /** Words in THEIR message that mean they're talking about it ("ghar|dream home", "case|evidence"). */
+    mentions: string;
+    /** Words in HER reply that mean she just offered it ("sapno ka ghar", "case of us") — starts it if she forgot the tag. */
+    starts: string;
+    /** How each new entry is described in the prompt ("a choice for the house", "a piece of evidence"). */
+    entry?: string;
+  };
   /** Love characters: the healthy-romance rules apply (docs/love-character-sheets.md). */
   romance?: boolean;
   /** Friendship characters: best-friend rules apply (docs/friendship-character-sheets.md). */

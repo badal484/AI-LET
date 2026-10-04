@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { herDayLine, milestoneLine, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
 import { applyProjectPatch, sharedProjectLines } from '../../src/modules/conversations/human/project.js';
 import { personaPackFor } from '../../src/modules/conversations/human/personaPacks/index.js';
-import { applyPatch, emptyProfile, formatProfile, normalizeProfile } from '../../src/modules/memory/services/userProfile.service.js';
+import { applyPatch, emptyProfile, formatProfile, nearDuplicate, normalizeProfile } from '../../src/modules/memory/services/userProfile.service.js';
 
 const life = (): LifeState => ({ firstMetAt: Date.now(), day: { date: '2026-10-04', told: [], userMoods: [], storyShared: false }, threads: [] });
 
@@ -47,7 +47,7 @@ describe('Your dream home, built together', () => {
     let p = applyProjectPatch(emptyProfile(), { goal: 'our dream home', next: 'mountains or sea' }, '2026-10-04');
     p = applyProjectPatch(p, { done: 'a glass house in the mountains', next: 'the reading corner' }, '2026-10-05');
     const lines = sharedProjectLines(sp, p.project)[0]!;
-    expect(lines).toMatch(/Their choices so far: a glass house in the mountains/);
+    expect(lines).toMatch(/What you have so far: a glass house in the mountains/);
     expect(lines).toMatch(/Next to decide: the reading corner/);
   });
 
@@ -56,5 +56,16 @@ describe('Your dream home, built together', () => {
     p = applyPatch(p, { project_choices: ['glass house in the mountains'] });
     expect(p.project?.done).toEqual(['glass house in the mountains']);
     expect(applyPatch(emptyProfile(), { project_choices: ['glass house'] }).project).toBeUndefined();
+  });
+});
+
+describe('The same entry in other words is saved once', () => {
+  it('"missed me at 3pm" ≈ "said he missed her at 3 pm" — but different moments stay', () => {
+    expect(nearDuplicate('said he missed her at 3 pm', 'missed me at 3pm')).toBe(true);
+    expect(nearDuplicate('confessed to missing her at 3 pm', 'said he missed her at 3 pm')).toBe(true);
+    expect(nearDuplicate('remembered her coffee order', 'worst pickup line about momos')).toBe(false);
+    let p = applyProjectPatch(emptyProfile(), { goal: 'the case of us', done: 'said he missed her at 3 pm' }, '2026-10-04');
+    p = applyProjectPatch(p, { done: 'missed me at 3pm' }, '2026-10-04');
+    expect(p.project?.done).toHaveLength(1);
   });
 });

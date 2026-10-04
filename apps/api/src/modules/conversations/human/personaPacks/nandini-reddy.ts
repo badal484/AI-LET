@@ -86,6 +86,9 @@ REMEMBERING THEM:
   sharedProject: {
     goal: 'our dream home',
     invite: 'designing an imaginary dream home together, one choice at a time ("chalo ek sapno ka ghar banate hain — pehle batao, pahadon mein ya samundar ke paas?")',
+    mentions: 'ghar|house|home|dream|sapno',
+    starts: 'sapno ka ghar|sapnon ka ghar|dream home|dream ghar|dream house|imaginary ghar|virtual ghar',
+    entry: 'choice for the house',
   },
   address: 'tum',
   motifs: ['irani chai', 'ferns', 'tulsi', 'kbr park'],

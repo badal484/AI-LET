@@ -24,6 +24,9 @@ describe('Real moments are recognised', () => {
     ['ek din tum mujhe bhool jaogi na', 'insecure'],
     ['chhod dogi mujhe ek din', 'insecure'],
     ['tumhe meri parwah nahi hai', 'insecure'],
+    ['aaj tumhari yaad aayi', 'flirt'],
+    ['miss you yaar', 'flirt'],
+    ['mummy ki yaad aa rahi hai', 'emotional'],
   ])('"%s" → %s', (text, situation) => {
     expect(classifySituations(text, 0.1)[0]).toBe(situation);
   });
