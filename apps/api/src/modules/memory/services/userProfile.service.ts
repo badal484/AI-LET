@@ -57,6 +57,9 @@ export interface UserProfile {
   tasks: ProfileTask[];
   /** Mentors only: what they're building together (a tool, a channel, a business) — so every session can pick up where it left off. */
   project?: ProfileProject;
+  /** Stories and memories SHE has already told this user ("Kartik broke her chai cup") — so she never
+   * retells them and can refer back ("yaad hai maine bataya tha…"). */
+  herShared?: string[];
   /** How they like to talk — learned from the chat, so she talks their way, not hers. */
   style?: ProfileStyle;
   /** Mentors only: full courses they're taking (one per language), the newest-updated one is active. */
@@ -156,6 +159,10 @@ export function normalizeProfile(raw: unknown): UserProfile {
       next: clip(proj?.['next']),
       updated: DATE.test(String(proj?.['updated'] ?? '')) ? String(proj!['updated']) : '',
     };
+  }
+  if (Array.isArray(r['herShared'])) {
+    const told = (r['herShared'] as unknown[]).map(clip).filter((x): x is string => Boolean(x)).slice(-16);
+    if (told.length) p.herShared = told;
   }
   const st = r['style'] as Record<string, unknown> | undefined;
   if (st && typeof st === 'object') {
@@ -289,6 +296,9 @@ export interface ProfilePatch {
   /** How an open task went, from what they said ("haan 5 proposals bhej diye"). */
   tasks?: Array<{ what?: string; result?: string; note?: string }>;
   style?: { tone?: string; enjoys?: string[]; bored_by?: string[]; boredBy?: string[]; writes?: string };
+  her_shared?: string[];
+  /** Choices the user made in a project they're building with her (Nandini's dream home): "a glass house in the mountains". */
+  project_choices?: string[];
 }
 
 /** Models don't always use the exact shape: people/events nested in "add", lists at the top level. */
@@ -314,6 +324,8 @@ export function normalizePatch(raw: unknown): ProfilePatch {
     remove: remove as string[],
     tasks: tasks as ProfilePatch['tasks'],
     style: r['style'] && typeof r['style'] === 'object' ? (r['style'] as ProfilePatch['style']) : undefined,
+    her_shared: Array.isArray(r['her_shared']) ? (r['her_shared'] as string[]) : undefined,
+    project_choices: Array.isArray(r['project_choices']) ? (r['project_choices'] as string[]) : undefined,
   };
 }
 
@@ -362,6 +374,17 @@ export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: {
   }
   p.events = p.events.slice(-12);
   for (const t of patch.tasks ?? []) if (t && typeof t === 'object') recordTaskResult(p, t, opts.today ?? localToday().date, opts.justGivenTask);
+  // Only into a project that exists (started by her invite); a new goal is never made up here.
+  if (p.project) {
+    for (const item of patch.project_choices ?? []) {
+      const v = clip(item);
+      if (v && !p.project.done.some((x) => same(x, v))) p.project.done = [...p.project.done, v].slice(-MAX_ITEMS);
+    }
+  }
+  for (const item of patch.her_shared ?? []) {
+    const v = clip(item);
+    if (v && !(p.herShared ?? []).some((x) => same(x, v))) p.herShared = [...(p.herShared ?? []), v].slice(-16);
+  }
   if (patch.style) {
     const st: ProfileStyle = p.style ?? { enjoys: [], boredBy: [] };
     st.tone = clip(patch.style.tone) ?? st.tone;
@@ -432,6 +455,8 @@ export function formatProfile(profile: UserProfile, today: string): string {
     .sort((a, b) => a.d - b.d)
     .map(({ e, d }) => `${e.what} — ${d === 0 ? 'TODAY' : d === 1 ? 'tomorrow' : d < 0 ? `${-d} day(s) ago` : `on ${pretty(e.kind === 'yearly' ? `${today.slice(0, 4)}${e.date.slice(4)}` : e.date)} (in ${d} days)`}`);
   if (upcoming.length) lines.push(`- Dates coming up / just passed: ${upcoming.join('; ')}`);
+  if (p.herShared?.length)
+    lines.push(`- Stories you've already told them: ${p.herShared.join('; ')} — don't retell these (you may refer back to them or tell what happened next). Anything else about you is NEW to them: never say "maine bataya tha" about it`);
   if (p.style) {
     const s = p.style;
     const parts = [
@@ -488,8 +513,8 @@ export class UserProfileService {
 
   private static readonly PROMPT = `You keep a short profile of what a USER has told a chat CHARACTER about the USER's own life.
 You get the current profile (JSON), today's date, and the latest exchange. Reply with ONLY a JSON patch of what changed:
-{"set":{"name":"","nickname":"","city":"","work":""},"people":[{"relation":"sister","name":"Pooja","note":"getting married"}],"add":{"likes":[],"dislikes":[],"goals":[],"health":[],"jokes":[],"facts":[]},"remove":[],"events":[{"what":"sister Pooja's wedding","date":"YYYY-MM-DD","kind":"once"}],"tasks":[{"what":"send 5 proposals","result":"partly","note":"sent 3, 1 reply"}],"style":{"tone":"flirty","enjoys":["cricket"],"bored_by":["her work"],"writes":"short Hinglish, lots of emojis"}}
-("people", "events", "tasks" and "style" are top-level keys, not inside "add".)
+{"set":{"name":"","nickname":"","city":"","work":""},"people":[{"relation":"sister","name":"Pooja","note":"getting married"}],"add":{"likes":[],"dislikes":[],"goals":[],"health":[],"jokes":[],"facts":[]},"remove":[],"events":[{"what":"sister Pooja's wedding","date":"YYYY-MM-DD","kind":"once"}],"tasks":[{"what":"send 5 proposals","result":"partly","note":"sent 3, 1 reply"}],"her_shared":["her brother Kartik broke her chai cup"],"style":{"tone":"flirty","enjoys":["cricket"],"bored_by":["her work"],"writes":"short Hinglish, lots of emojis"}}
+("people", "events", "tasks", "her_shared", "project_choices" and "style" are top-level keys, not inside "add".)
 Rules:
 - Facts come ONLY from what the USER says about the USER (their job, city, family and friends with names, likes, goals, plans). The CHARACTER's lines are context only: anything the character says about itself (its job, home, family, activities, stories) is NEVER a user fact. If the user is just quoting or asking about the character, add nothing.
 - "jokes": a running joke or playful nickname the two of them now share (may start from either side), written as "you two joke that …".
@@ -499,6 +524,8 @@ Rules:
 - "tasks": only for a task in the profile's "tasks" list that has no "result" yet, and only when the USER clearly reports on it: "done" (did it), "partly" (did some of it), or "skipped" (didn't do it / won't). Answering a question or chatting about the topic is NOT a report. Copy "what" exactly from the profile and put their numbers or details in "note" (under 12 words). Never invent new tasks and never change a task that already has a result.
 - "goals": what they are working towards (e.g. "first freelance client by December", "lose 5 kg", "frontend job"), kept up to date.
 - Don't store: moods of the moment, greetings, what they ate today, anything about the chat or the AI itself, flirting, or anything sexual.
+- "her_shared": STORIES the CHARACTER told about her own life in her reply — a memory, something that happened, her past, a family story (e.g. "her ex Siddharth and the long distance", "Kartik broke her chai cup", "Kartik is failing maths"). NOT her looks, likes, opinions or small facts (height, hair, favourite food), and not small talk ("she's drinking chai"). Usually nothing — add only real stories. This is the only place the character's own words are recorded.
+- "project_choices": only if the profile has a "project" they're building together (e.g. "our dream home") and the USER made a choice for it in this exchange — a few words each ("glass house in the mountains", "wooden floors"). Otherwise leave it out.
 - "style": how THEY like to talk, judged from how they react — "tone" (the vibe they enjoy: flirty, caring, funny, deep, quick and short…), "enjoys" (topics they answer with energy: long replies, emojis, questions back), "bored_by" (topics the CHARACTER raised that they answered with one word, "oo", "ok", or ignored — e.g. "her work", "her design projects"), "writes" (e.g. "short Hinglish, few emojis"). Only when the exchange really shows it.
 - Keep each item short (under 12 words), in English. Leave out keys with nothing new. If nothing changed, reply {}.`;
 
@@ -582,8 +609,10 @@ Rules:
     }
   }
 
+  /** A short reply still matters if it answers an open task ("done ✅") or is a choice in a shared project ("glass house"). */
   private static async hasOpenTask(userId: string, characterId: string): Promise<boolean> {
-    return Boolean(openTask(await this.load(userId, characterId)));
+    const profile = await this.load(userId, characterId);
+    return Boolean(openTask(profile) || profile.project?.next);
   }
 
   /**
