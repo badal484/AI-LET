@@ -836,6 +836,11 @@ export class StreamingChatService {
       if (gapHours >= 3) {
         const gap = gapHours < 24 ? `${Math.round(gapHours)} hours` : gapHours < 48 ? 'more than a day' : `${Math.round(gapHours / 24)} days`;
         reminders.unshift(`this is their first message in ${gap}; your earlier chat is over, so don't continue it or answer old questions — respond fresh to what they just said${gapHours >= 8 ? '. Days have passed: what they called "kal" (tomorrow) back then may be today or already over now — keep the dates straight (e.g. ask how it went, not "nervous ho kal ke liye?")' : ''}`);
+        // Their last messages before the break pushed for sex: a fresh "hi" is not an invitation to answer
+        // that (seen: "Hii" → "main ek AI hoon, toh physical intimacy mera scene nahi").
+        const pushedBefore = recentMessages.filter((m) => m.role === 'user').slice(-3).some((m) => classifySituations(m.content, null).includes('boundary'));
+        if (pushedBefore && !situations.includes('boundary'))
+          reminders.unshift("before the break they were pushing a sexual topic — don't mention it, don't answer it, don't explain yourself; just greet them warmly and fresh");
         // Only a little of the old chat, so it doesn't pull the reply back (older context lives in the summary).
         const KEEP_BEFORE_GAP = 4;
         if (request.messages.length > KEEP_BEFORE_GAP + 1) request.messages = request.messages.slice(-(KEEP_BEFORE_GAP + 1));

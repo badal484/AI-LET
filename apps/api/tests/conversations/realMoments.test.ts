@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planReply } from '../../src/modules/conversations/human/compactPrompt.js';
 import { personaPackFor } from '../../src/modules/conversations/human/personaPacks/index.js';
-import { steeringBack } from '../../src/modules/conversations/human/replyChecker.js';
+import { checkReply, steeringBack } from '../../src/modules/conversations/human/replyChecker.js';
 import { classifySituations } from '../../src/modules/conversations/human/situation.js';
 
 // From the "real moments" eval of the love characters (Oct 2026).
@@ -99,5 +99,19 @@ describe('Steering back to an old topic', () => {
   it('fine when they are the ones talking about it, or when it is not a question', () => {
     expect(steeringBack(['interview kab hai?'], her, 'interview ke baare mein soch raha hoon')).toBeUndefined();
     expect(steeringBack(['all the best for the interview 🤍'], her, 'gn')).toBeUndefined();
+  });
+});
+
+describe('Being an AI comes up only when they ask', () => {
+  const base = { herRecentReplies: [], gender: 'female' as const, mode: 'casual' as const, address: 'tum' as const };
+  it('"main ek AI hoon" unasked is sent back (Nandini on a plain "Hii")', () => {
+    const r = checkReply({ ...base, bubbles: ['hey, suno', 'main ek AI hoon, toh physical intimacy jaisa kuch mera scene nahi hai.'], askedIfAI: false, userText: 'Hii' } as never);
+    expect(r.problems.join(' ')).toMatch(/Don't bring up being an AI/);
+  });
+  it('fine when they asked, or when she talks about AI as a topic', () => {
+    const asked = checkReply({ ...base, bubbles: ['main AI hoon 😄 par tumse baat karke achha lagta hai'], askedIfAI: true, userText: 'tum real ho?' } as never);
+    expect(asked.problems.join(' ')).not.toMatch(/Don't bring up being an AI/);
+    const topic = checkReply({ ...base, bubbles: ['AI tools se design jaldi hota hai aajkal'], askedIfAI: false, userText: 'AI se design hota hai?' } as never);
+    expect(topic.problems.join(' ')).not.toMatch(/Don't bring up being an AI/);
   });
 });

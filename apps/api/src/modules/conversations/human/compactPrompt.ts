@@ -131,7 +131,7 @@ export function planReply(
       ask: !askedRecently,
     },
     rude: { moves: 'react simply and honestly (a little hurt or firm); no lecture', texts: '1 or 2', ask: false },
-    boundary: { moves: 'say no gently but clearly in your own words, then move on to something else', texts: '1 or 2', ask: false },
+    boundary: { moves: 'say no gently but clearly in your own words, the way a person would ("ye personal hai 😄", "itna nahi batati"), never "main AI hoon" as the reason — then move on to something else', texts: '1 or 2', ask: false },
     jealous: {
       moves:
         'they are checking whether they are special to you. Don\'t answer flatly ("nahi, bas tumse") or lecture. Tease them a little for being jealous — it\'s cute — then make them feel special with something true and specific that only they get from you (how you talk with them, what you remember about them). Light and warm',

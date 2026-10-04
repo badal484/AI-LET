@@ -112,6 +112,8 @@ export function steeringBack(bubbles: string[], herRecentReplies: string[], user
   return [...topicWords(bubbles.join(' '))].find((w) => last3.filter((s) => s.has(w)).length >= 2 && !theirs.has(w));
 }
 
+const SAYS_AI_SELF = /\b(main|mai|mein|i am|i'?m|im)\s+(ek\s+|an?\s+|toh\s+|bas\s+)?(ai|a\.i\.|bot|chatbot|language model|virtual)\b|\b(ai|bot|chatbot)\s+(hoon|hu|hun)\b|\bas an ai\b/i;
+
 export function checkReply(params: {
   bubbles: string[];
   herRecentReplies: string[];
@@ -199,6 +201,10 @@ export function checkReply(params: {
   if (/\b(i'?ll be (more )?natural|(main )?(zyada |thoda )?natural (rahungi|rahunga|bolungi|bolunga)|formal hone ki (habit|aadat)|sorry,? (i'?ll|main) (be )?(more )?(casual|natural))\b/i.test(all)) {
     problems.push('Never talk about how you are talking ("I\'ll be more natural") — just say it naturally.');
   }
+  // She is a person in the chat: being an AI comes up only when they ask (seen: "Hii" →
+  // "main ek AI hoon, toh physical intimacy mera scene nahi" — unasked, and used as an excuse).
+  if (params.askedIfAI === false && SAYS_AI_SELF.test(all))
+    problems.push("Don't bring up being an AI — they didn't ask. Talk as yourself; if you're saying no to something, say it in your own voice like a person would.");
   if (params.askedIfAI) {
     const admits = /\b(ai|a\.i\.|artificial)\b/i.test(all);
     const startsWithNo = /^\s*(nahi|nahin|no)\b/i.test(params.bubbles[0] ?? '');
