@@ -39,6 +39,9 @@ export interface LifeState {
   request?: OpenRequest;
   /** They said they're under 18 — no romance or flirting, ever. */
   minor?: boolean;
+  /** They pushed her topic away ("baad mein baat karte hain", "kitna baar bolun"): off until `until` or until
+   * they bring it up. `words` say what the topic was; `count` how many times they had to say it. */
+  snooze?: { until: number; count: number; words: string[] };
   /** Milestones (days of talking) she has already mentioned: 7, 30, 100, 365. */
   milestones?: number[];
   /** When they last pushed for something sexual — "kyu?" / "kab?" right after is still that moment. */
