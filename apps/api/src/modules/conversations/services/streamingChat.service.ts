@@ -43,6 +43,7 @@ import { applyProjectPatch, extractProjectTag, projectLines, type ProjectPatch }
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
+import { boredByHerTalk } from '../human/userFirst.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -651,6 +652,7 @@ export class StreamingChatService {
     let saveCourse: ((patch: CoursePatch) => Promise<void>) | null = null;
     let inCourse = false;
     let courseNote = '';
+    let boredOfHer = false;
     let courseStage: string | undefined;
     // A task a mentor gives in this reply (hidden [[task: …]] line), remembered for follow-up.
     let newTask: string | undefined;
@@ -672,6 +674,20 @@ export class StreamingChatService {
       const hoursSince = previousUserMessage ? (Date.now() - previousUserMessage.createdAt.getTime()) / 3_600_000 : null;
       const situations = classifySituations(pendingText, hoursSince);
       turnSituations = situations;
+      // User first: "Oo" right after she talked about herself means they're not into her topic — remember
+      // it for this user (no extra model call) and turn to them now.
+      const herLast = herRecentReplies.slice(-2).join('\n');
+      if (boredByHerTalk(pendingText, herLast)) {
+        boredOfHer = true;
+        void UserProfileService.mutate(userId, conversation.characterId, (p) => {
+          const st = p.style ?? { enjoys: [], boredBy: [] };
+          const topic = 'you talking about your own work or day';
+          if (st.boredBy.includes(topic)) return false;
+          st.boredBy = [...st.boredBy, topic].slice(-6);
+          p.style = st;
+          return true;
+        });
+      }
       // "hmm", "ok", "k" in a row: the chat is fading — she changes the energy instead of fading with them
       // (seen: "👍", "thak gaye ho lagta hai", "ab sona chahiye tumhe").
       const shortOnly = (t: string) => classifySituations(t, null).every((x) => x === 'short');
@@ -824,6 +840,7 @@ export class StreamingChatService {
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
               courseNote,
+              boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
               situations[0] === 'sulk' && refusedAsk
                 ? `they're sulking because you said no when they asked "${refusedAsk.content.slice(0, 60)}" — that's the reason (not a joke): say it softly ("us baat pe naraz ho?"), keep your no, and win them back warmly`
                 : '',
