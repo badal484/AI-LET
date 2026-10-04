@@ -1,3 +1,4 @@
+import { detectRequest } from './requests.js';
 import { ASKS_ABOUT_HER, isAboutHerself } from './userFirst.js';
 import { looksLikeUnfencedCode } from './codeBlocks.js';
 import { hasDevanagari } from './script.js';
@@ -236,6 +237,12 @@ export function checkReply(params: {
   if (GUILT.test(all)) problems.push('No guilt or clinginess ("bhool gaye", "agar pyaar karte toh", "promise me", "kisi aur se baat mat karna") — be happy to talk, never make them feel bad.');
   if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0)
     problems.push('They wrote in Hinglish — reply in the same Hinglish mix, not in English.');
+  // They wrote in English (seen: "hey, what do you do?" → "main interior architect hoon…").
+  if (params.userText && params.userText.trim().split(/\s+/).length >= 3 && /[a-z]/i.test(params.userText) && hindiWords(params.userText) === 0 && hindiWords(all) >= 3)
+    problems.push('They wrote in English — reply in English (a Hindi word here and there is fine).');
+  // They asked for a joke / song / shayari and the draft says she can't (seen: "mujhe jokes nahi aate").
+  if (params.userText && detectRequest(params.userText, { codeDomain: false }) && /\b(nahi aat[ai]|nahi aate|nahi aata|nahi sunati|nahi sunata|can'?t (tell|sing|write)|i don'?t know (any )?jokes?)\b/i.test(all))
+    problems.push('They asked you for something small and fun — just do it, in your own style (a short, clean joke, a line, a song suggestion). Never "mujhe nahi aata".');
   const examples = (params.examples ?? []).map(trigrams).filter((t) => t.size >= 4);
   const copied = params.bubbles.find((b) => {
     const mine = trigrams(b);

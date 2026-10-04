@@ -35,3 +35,9 @@ export function boredByHerTalk(userText: string, herLastReply: string | undefine
   const tiny = /^(o+|oo+|ohh*|acha+|achha+|accha+|ok+|okay|k|hmm+|hm+|nice|cool|achha ji|accha ji|ohk|okk|👍|🙂|😐)[\s.!?]*$/.test(t);
   return tiny && Boolean(herLastReply) && isAboutHerself(herLastReply!);
 }
+
+const HINDI_HINT = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein|ho|haan|na|bhai|kaun|kahan)\b/i;
+
+/** "hey, what do you do?", "tell me about your family" — English, not Hinglish. */
+export const writesEnglish = (text: string): boolean =>
+  text.trim().split(/\s+/).length >= 3 && /[a-z]{2}/i.test(text) && !HINDI_HINT.test(text) && !/[\u0900-\u097F]/.test(text);

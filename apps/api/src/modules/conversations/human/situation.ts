@@ -76,5 +76,7 @@ export function asksIfAI(text: string): boolean {
   const t = text.toLowerCase();
   const WHAT = '(ai|a\\.i\\.|bot|robot|real|asli|insaan|insan|human|machine|chatgpt|computer|program)';
   const aboutHer = new RegExp(`\\b(tum|tu|aap|you|u|r u|ho tum)\\b[^.?!\\n]{0,25}\\b${WHAT}\\b|\\b${WHAT}\\b[^.?!\\n]{0,12}\\b(ho|ho kya|hai kya tu|hain aap)\\b\\s*\\??\\s*$`);
-  return aboutHer.test(t) || /\b(is this|are you|am i talking to)\b[^.?!\n]{0,15}\b(an? )?(ai|bot|robot|human|real person)\b/.test(t) || /(tum kaun ho|who are you|kya tum insaan|sach batao tum kaun)/.test(t);
+  // "bot ho tum", "AI hai tu", "robot ho aap" (seen: "bot ho tum" → "bot nahi hoon yaar" — a lie).
+  const statesIt = new RegExp(`\\b${WHAT}\\s+(ho|hai|hain|h)\\s+(tum|tu|aap)\\b`);
+  return aboutHer.test(t) || statesIt.test(t) || /\b(is this|are you|am i talking to)\b[^.?!\n]{0,15}\b(an? )?(ai|bot|robot|human|real person)\b/.test(t) || /(tum kaun ho|who are you|kya tum insaan|sach batao tum kaun)/.test(t);
 }

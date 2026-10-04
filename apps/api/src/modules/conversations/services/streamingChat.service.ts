@@ -43,7 +43,7 @@ import { applyProjectPatch, extractProjectTag, projectLines, type ProjectPatch }
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
-import { boredByHerTalk } from '../human/userFirst.js';
+import { boredByHerTalk, writesEnglish } from '../human/userFirst.js';
 import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -89,7 +89,7 @@ export class StreamingChatService {
   private static readonly MAX_BUBBLES = 8;
   private static readonly MAX_TURNS_PER_REQUEST = 6;
   // Also "[next]": models sometimes drop a bracket, and the literal marker showed up as a bubble.
-  private static readonly BUBBLE_DELIMITER = /\s*\[\[?\s*next\s*\]\]?\s*/gi;
+  private static readonly BUBBLE_DELIMITER = /\s*(?:\[\[?\s*next\s*\]\]?|\{\{\s*next\s*\}\})\s*/gi;
   private static readonly SAFE_FALLBACK =
     'Main abhi iss baare mein baat nahi kar sakti, par batao tumhara din kaisa chal raha hai?';
 
@@ -690,7 +690,8 @@ export class StreamingChatService {
       }
       // "hmm", "ok", "k" in a row: the chat is fading — she changes the energy instead of fading with them
       // (seen: "👍", "thak gaye ho lagta hai", "ab sona chahiye tumhe").
-      const shortOnly = (t: string) => classifySituations(t, null).every((x) => x === 'short');
+      // "hmm", "ok", "kuch nahi", "bas" — two words or fewer, nothing else going on.
+      const shortOnly = (t: string) => t.trim().split(/\s+/).length <= 2 && classifySituations(t, null).every((x) => x === 'short' || x === 'casual');
       const lastOne = recentMessages.filter((m) => m.role === 'user' && Date.now() - m.createdAt.getTime() < 3_600_000).slice(-1);
       if (situations[0] === 'short' && lastOne.length === 1 && shortOnly(lastOne[0]!.content)) situations.unshift('fading');
       // Something she turned down in the last few messages ("OYO", "sex chahiye") — the usual reason for a sulk.
@@ -840,6 +841,7 @@ export class StreamingChatService {
               mustDeliver && openRequest ? `they asked you for "${openRequest.what}" and have answered your question — hand it over now, yourself, in this reply` : '',
               recapProject ? `new session: open with a one-line recap of your project together (${recapProject}) — where it stands and what's next` : '',
               courseNote,
+              writesEnglish(pendingText) ? 'they write in English — reply in English (a Hindi word here and there is fine)' : '',
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
               situations[0] === 'sulk' && refusedAsk
                 ? `they're sulking because you said no when they asked "${refusedAsk.content.slice(0, 60)}" — that's the reason (not a joke): say it softly ("us baat pe naraz ho?"), keep your no, and win them back warmly`
