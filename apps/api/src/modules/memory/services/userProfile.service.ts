@@ -403,11 +403,17 @@ export function applyPatch(profile: UserProfile, rawPatch: ProfilePatch, opts: {
     st.writes = clip(patch.style.writes) ?? st.writes;
     const list = (x: unknown) => (Array.isArray(x) ? x.map(clip).filter((v): v is string => Boolean(v)) : []);
     // A topic they now enjoy is no longer boring, and the other way round.
-    for (const t of list(patch.style.enjoys)) {
+    const enjoysNow = list(patch.style.enjoys);
+    for (const t of enjoysNow) {
       st.boredBy = st.boredBy.filter((x) => !same(x, t));
       if (!st.enjoys.some((x) => same(x, t))) st.enjoys.push(t);
     }
+    // Seen live: enjoys "career advice" and bored_by "her advice" in one update — a contradiction,
+    // and the bored side would make a mentor hold back the help they came for. Keep the enjoy.
+    const key = (t: string) => new Set(t.toLowerCase().match(/\p{L}{4,}/gu) ?? []);
+    const clashes = (t: string) => enjoysNow.some((e) => [...key(t)].some((w) => key(e).has(w)));
     for (const t of list(patch.style.bored_by ?? patch.style.boredBy)) {
+      if (clashes(t)) continue;
       st.enjoys = st.enjoys.filter((x) => !same(x, t));
       if (!st.boredBy.some((x) => same(x, t))) st.boredBy.push(t);
     }
@@ -538,7 +544,7 @@ Rules:
 - Don't store: moods of the moment, greetings, what they ate today, anything about the chat or the AI itself, flirting, or anything sexual.
 - "her_shared": STORIES the CHARACTER told about her own life in her reply — a memory, something that happened, her past, a family story (e.g. "her ex Siddharth and the long distance", "Kartik broke her chai cup", "Kartik is failing maths"). NOT her looks, likes, opinions or small facts (height, hair, favourite food), and not small talk ("she's drinking chai"). Usually nothing — add only real stories. This is the only place the character's own words are recorded.
 - "project_choices": only if the profile has a "project" they're building together and this exchange adds to it — for a dream home, the USER's choice ("glass house in the mountains"); for "the case of us", a sweet or funny moment worth recording as evidence ("said he missed her at 3 pm"); for a bucket list, an album, an app or a song, the actual item, frame, feature or line ("golgappe challenge at three stalls", "hug button") — not something said in the chat like "I love you". ONE item per entry, a few words each, never two joined together, and never feelings, plans to decide something, or what's coming next. Otherwise leave it out.
-- "style": how THEY like to talk, judged from how they react — "tone" (the vibe they enjoy: flirty, caring, funny, deep, quick and short…), "enjoys" (topics they answer with energy: long replies, emojis, questions back), "bored_by" (topics the CHARACTER raised that they answered with one word, "oo", "ok", or ignored — e.g. "her work", "her design projects"), "writes" (e.g. "short Hinglish, few emojis"). Only when the exchange really shows it.
+- "style": how THEY like to talk, judged from how they react — "tone" (the vibe they enjoy: flirty, caring, funny, deep, quick and short…), "enjoys" (topics they answer with energy: long replies, emojis, questions back), "bored_by" (topics the CHARACTER raised that they answered with one word, "oo", "ok", or ignored — e.g. "her work", "her design projects"), "writes" (e.g. "short Hinglish, few emojis" — judged from all their messages, not one). Only when the exchange really shows it. A short "ok", "next", "haan" during a lesson or advice they asked for means "go on", not boredom — never put the help they came for (the course, the advice, the routine) in bored_by.
 - Keep each item short (under 12 words), in English. Leave out keys with nothing new. If nothing changed, reply {}.`;
 
   /** One update at a time per user–character pair, so quick messages don't overwrite each other. */

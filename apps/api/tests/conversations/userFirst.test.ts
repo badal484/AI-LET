@@ -91,6 +91,12 @@ describe('She learns how each user likes to talk', () => {
     expect(text).toMatch(/match their length and style/);
     expect(normalizeProfile(JSON.parse(JSON.stringify(p))).style).toEqual(p.style);
   });
+
+  it('never saves the same thing as enjoyed and boring in one update', () => {
+    const p = applyPatch(emptyProfile(), { style: { enjoys: ['career advice'], bored_by: ['her advice', 'her daily routine'] } });
+    expect(p.style?.enjoys).toEqual(['career advice']);
+    expect(p.style?.boredBy).toEqual(['her daily routine']);
+  });
 });
 
 describe('From the different-people test (Nandini)', () => {

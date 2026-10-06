@@ -74,6 +74,13 @@ describe('Starting a course', () => {
     expect(detectCourseRequest('java sikhao', ALL)).toBeUndefined();
   });
 
+  it('"teach me from the start" takes the subject from what they said just before', () => {
+    const before = ["I'm a graphic designer, want to start freelancing but no clients at all"];
+    expect(detectCourseRequest('yes teach me properly from the start', ['freelancing'], before)).toBe('freelancing');
+    expect(detectCourseRequest('yes teach me properly from the start', ['freelancing'], ['hey'])).toBeUndefined();
+    expect(detectCourseRequest('haan course start karo', ['job-search'])).toBe('job-search');
+  });
+
   it('opens with the syllabus and a question about their level — no teaching yet', () => {
     const lines = courseLines(startCourse(emptyProfile(), 'javascript', day), { newSession: false }).join('\n');
     expect(lines).toMatch(/zero to advanced/);

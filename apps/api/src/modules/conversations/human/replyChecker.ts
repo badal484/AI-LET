@@ -59,7 +59,7 @@ const TU_IMPERATIVE = /(?:^|[\n.!?]\s*|\d\.\s*)(sun+|rakh|bol|dekh|chal|soch)\b(
 const GUILT = /((laga|socha)( tha)?( ki)?( shayad)? tum bhool (gaye|gayi|gaya)( hoge| hogi)?|tum bhool (gaye|gayi) hoge|tum bhool gayi hogi|mujhe bhool (gaye|gayi|gaya)|bhool hi gaye|agar (mujhse )?pyaar karte|agar (sach mein )?care karte|yaad bhi nahi aayi|promise (me|karo)[^.?!\n]{0,25}(kisi aur|sirf mujh|only me|never talk|kabhi baat)|kisi aur se baat mat|mere alawa kisi|only mine|sirf mere ho|mujhe chhod ke mat|why are you ignoring me|ignore kar rahe ho mujhe)/i;
 
 // Common Hindi words in Roman script: enough to tell a Hinglish text from an English one.
-const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein|humara|hamara|tumhara|tumhari|kahan|kab|kyun|kyu|kaun|tak|wala|wali|haan|thi|tha|hua|hui|pahuncha|pahunchi|gaye|kiya|karna|chahiye|aur|ab|phir|sach|matlab)\b/gi;
+const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein|humara|hamara|tumhara|tumhari|kahan|kab|kyun|kyu|kaun|tak|wala|wali|haan|thi|tha|hua|hui|pahuncha|pahunchi|gaye|kiya|karna|chahiye|aur|ab|phir|sach|matlab|chalo|arre|badhiya|dikhao|zara|bhejo|wahan|yahan|jo|pe|aate|dekho|suno|thoda|bas)\b/gi;
 const hindiWords = (text: string) => (text.match(HINDI) ?? []).length;
 
 /** Questions people only need to be asked once per chat (Hinglish and English). */
@@ -114,6 +114,8 @@ export function steeringBack(bubbles: string[], herRecentReplies: string[], user
   return [...topicWords(bubbles.join(' '))].find((w) => last3.filter((s) => s.has(w)).length >= 2 && !theirs.has(w));
 }
 
+const TASK_SAID = /\b(aaj ka (pehla )?(kaam|task)|is hafte ka kaam|tumhara task|homework|today'?s task|your task( for today)?)\s*[:\-–]/i;
+const MOVED_ON = /\b(next|aage|agla|agle|ho gaya|ho gayi|kar liya|kar li|bana liya|bana li|done|did it|finished|made my|completed)\b/i;
 const SAYS_AI_SELF = /\b(main|mai|mein|i am|i'?m|im)\s+(ek\s+|an?\s+|toh\s+|bas\s+)?(ai|a\.i\.|bot|chatbot|language model|virtual)\b|\b(ai|bot|chatbot)\s+(hoon|hu|hun)\b|\bas an ai\b/i;
 
 export function checkReply(params: {
@@ -182,8 +184,15 @@ export function checkReply(params: {
   if (params.gender === 'female' && (MASCULINE_SELF.test(all) || MASCULINE_VERB.test(all))) problems.push('Use feminine Hindi forms for yourself (karti, gayi, sakti, bolungi).');
   if (params.gender === 'male' && (FEMININE_SELF.test(all) || FEMININE_VERB.test(all))) problems.push('Use masculine Hindi forms for yourself (karta, gaya, sakta, bolunga).');
   if (params.address && OTHER_ADDRESS[params.address].test(all)) problems.push(`Always call them "${params.address}" — don't switch between tum, aap and tu.`);
-  if (params.lesson && !params.lesson.hasTask && !/\?\s*\p{Extended_Pictographic}?\s*$/u.test(params.bubbles[params.bubbles.length - 1] ?? '')) {
+  // One task at a time: "aaj ka kaam: …" on every reply (after a scam warning, after "Betnovate mat
+  // lagana") reads like a template. A new one only once they've moved on ("next", "ho gaya").
+  const taskGiven = params.herRecentReplies.slice(-8).some((r) => TASK_SAID.test(r));
+  const movedOn = MOVED_ON.test(params.userText ?? '');
+  if (params.lesson && !params.lesson.hasTask && !taskGiven && !/\?\s*\p{Extended_Pictographic}?\s*$/u.test(params.bubbles[params.bubbles.length - 1] ?? '')) {
     problems.push('End with ONE small, concrete task for today (on its own last line as [[task: ...]]) — even after a warning or a "no", say what to do instead.');
+  }
+  if (params.mentor && taskGiven && !movedOn && (params.lesson?.hasTask || TASK_SAID.test(all))) {
+    problems.push("You gave them a task a moment ago — don't add another one. Answer what they said; let them do that one first.");
   }
   // Two questions in one casual reply feels like an interview, not a chat (a lesson may need more context).
   if (params.mode !== 'task' && (all.match(/\?/g) ?? []).length >= 2) {
