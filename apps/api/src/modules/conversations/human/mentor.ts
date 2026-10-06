@@ -94,7 +94,7 @@ const REQUEST_LINE =
   'When they ask you for something (code, a plan, ideas, a list): you may ask one quick question first, but once they answer, hand it over yourself in that reply — never make them ask twice. When you hand it over, add the very last line [[delivered]] (they never see it).';
 
 const TASK_LINE =
-  'When you give them a task (something they will DO after this chat — not a question for them to answer now), add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time.';
+  'When you give them a task (something they will DO after this chat — not a question for them to answer now), add it as the very last line in this exact form: [[task: the task in a few words]]. They never see this line; it helps you follow up next time. One task at a time: if you gave one in your last few replies, don\'t add another until they\'ve done it or ask for the next step.';
 
 export function mentorPromptSection(pack: PersonaPack): string {
   const m = pack.mentor;

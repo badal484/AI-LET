@@ -93,6 +93,20 @@ describe('Mentor mode', () => {
     expect(checkReply({ ...base, bubbles: ['badhiya!', 'kis topic pe banana hai?'], lesson: { hasTask: false } }).ok).toBe(true);
   });
 
+  it('one task at a time — no "aaj ka kaam" on every reply until they move on', () => {
+    const base = { gender: 'male' as const, mode: 'task' as const, mentor: true, herRecentReplies: ['Aaj ka kaam: ek tracker banao — Company, Role, Date, Status'] };
+    const scam = 'ek company 15000 registration fee maang rahi hai, de du?';
+    // Seen: scam warning, then "Aaj ka kaam: fake calls block karo" stacked on top of yesterday's task.
+    expect(checkReply({ ...base, userText: scam, bubbles: ['Mat dena, ye scam hai.', 'Aaj ka kaam: aisi calls block karo'], lesson: { hasTask: true } }).ok).toBe(false);
+    expect(checkReply({ ...base, userText: scam, bubbles: ['Mat dena, ye scam hai.', 'Koi genuine company paise nahi leti.'], lesson: { hasTask: false } }).ok).toBe(true);
+    expect(checkReply({ ...base, userText: 'ok next', bubbles: ['Ab resume.', 'Aaj ka kaam: resume ka ek project rewrite karo'], lesson: { hasTask: true } }).ok).toBe(true);
+  });
+
+  it('an English user gets English, even from a Hinglish mentor', () => {
+    const r = checkReply({ bubbles: ['Arre badhiya! Portfolio ready bhi ho gaya.', 'Dikhao zara, link bhejo.'], herRecentReplies: [], gender: 'male', mode: 'chat', userText: 'made my portfolio page yesterday' });
+    expect(r.problems.some((p) => p.includes('reply in English'))).toBe(true);
+  });
+
   it('an answer to the mentor\'s question continues the lesson', () => {
     const text = 'cooking ka, hafte mein 5 ghante, sirf phone hai';
     const situations = classifySituations(text, 0.1);

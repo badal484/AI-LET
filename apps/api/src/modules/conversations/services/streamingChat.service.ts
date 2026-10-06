@@ -777,7 +777,7 @@ export class StreamingChatService {
       snoozed = life.snooze && life.snooze.until > Date.now() ? life.snooze : undefined;
       // "JavaScript sikhao" starts (or resumes) a full course; inside one, "done"/"next"/a doubt is the lesson.
       if (pack.mentor?.courses?.length) {
-        const wanted = detectCourseRequest(pendingText, pack.mentor.courses);
+        const wanted = detectCourseRequest(pendingText, pack.mentor.courses, recentMessages.filter((m) => m.role === 'user').map((m) => m.content));
         if (wanted && activeCourse(profile)?.id !== wanted) {
           applyCoursePatch(profile, { start: wanted }, today);
           await UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, { start: wanted }, today));

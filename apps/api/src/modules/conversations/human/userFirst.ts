@@ -40,7 +40,7 @@ export function boredByHerTalk(userText: string, herLastReply: string | undefine
 const HINDI_HINT = /\b(hai|hain|hoon|hu|h|kya|nahi|nahin|nhi|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|karu|karun|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|yesab|abhi|achha|accha|kaise|kaisa|batao|mein|ho|haan|na|bhai|kaun|kahan|kitna|kitni|baar|mana|mat|baat|bolun|bollun|bolu|kyu|kyun|wala|wali|kiye|kiya|gaye|tha|thi|ke|ki|ka|ko|se|pe|par|aur|ab|phir|jab|tab|lekin|matlab|sach)\b/i;
 
 // English grammar words: an English sentence is full of these; Hinglish ("Kitna baar mana karu") has none.
-const EN_GRAMMAR = new Set('the a an is are was were am be been do does did i you he she it we they my your me him her us them what how why when where who which this that these those then than to of in on at for with from and but or not no can could will would should have has had just so very there here'.split(' '));
+const EN_GRAMMAR = new Set('the a an is are was were am be been do does did i you he she it we they my your me him her us them what how why when where who which this that these those then than to of in on at for with from and but or not no can could will would should have has had just so very there here yesterday today tomorrow made got make want need know think please'.split(' '));
 
 /** One message, judged on its own: clearly English (grammar words, no Hindi). */
 export function isEnglish(text: string): boolean {
