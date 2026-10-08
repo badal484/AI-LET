@@ -48,7 +48,8 @@ export function isEnglish(text: string): boolean {
   const words = text.toLowerCase().match(/[a-z']+/g) ?? [];
   if (words.length < 3) return false;
   const grammar = words.filter((w) => EN_GRAMMAR.has(w)).length;
-  return grammar >= 2 || grammar / words.length >= 0.3;
+  // No Hindi at all (checked above) and an English grammar word: "yes start the program" is English.
+  return grammar >= 2 || grammar / words.length >= 0.3 || grammar >= 1;
 }
 
 /** The language of the conversation: English only when they clearly write English (the last two, or most of

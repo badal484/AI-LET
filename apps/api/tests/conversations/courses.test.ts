@@ -79,6 +79,7 @@ describe('Starting a course', () => {
     expect(detectCourseRequest('yes teach me properly from the start', ['freelancing'], before)).toBe('freelancing');
     expect(detectCourseRequest('yes teach me properly from the start', ['freelancing'], ['hey'])).toBeUndefined();
     expect(detectCourseRequest('haan course start karo', ['job-search'])).toBe('job-search');
+    expect(detectCourseRequest('yes start the program', ['strength-program'], ['I want to get stronger, never lifted weights before'])).toBe('strength-program');
   });
 
   it('opens with the syllabus and a question about their level — no teaching yet', () => {

@@ -53,16 +53,16 @@ export function detectCourseRequest(text: string, ids: string[], earlier: string
   const program = PROGRAM_START.test(text);
   if (!learn && !program) return undefined;
   const found = CURRICULA.find((c) => ids.includes(c.id) && c.match.test(text) && (learn || c.kind === 'program'))?.id;
-  if (found || !learn) return found;
-  // "yes teach me properly from the start" — the subject was in what they said just before
-  // ("want to start freelancing…"); seen live: the course never started and "next" got nothing.
+  if (found || !(learn || /\b(program|programme|plan|routine)\b/i.test(text))) return found;
+  // "yes teach me properly from the start", "yes start the program" — the subject was in what they
+  // said just before; seen live: the course never started ("next" got nothing, a plan came before the health check).
   const before = earlier.slice(-3).reverse();
   for (const t of before) {
     const c = CURRICULA.find((x) => ids.includes(x.id) && x.match.test(t));
     if (c) return c.id;
   }
-  // "course start karo" to a mentor who teaches one course.
-  return ids.length === 1 && /\b(course|syllabus)\b/i.test(text) ? ids[0] : undefined;
+  // "course start karo" / "start the program" to a mentor who teaches one course.
+  return ids.length === 1 && /\b(course|syllabus|program|programme)\b/i.test(text) ? ids[0] : undefined;
 }
 
 /** The course they're on now: the most recently touched one (kept last in the list). */

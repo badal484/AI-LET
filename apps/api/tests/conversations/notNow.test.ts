@@ -22,6 +22,8 @@ describe('Language follows the conversation', () => {
     expect(isEnglish('Kitna baar mana karu')).toBe(false);
     expect(isEnglish('Yesab baad mein baat karte h')).toBe(false);
     expect(isEnglish('hey, what do you do?')).toBe(true);
+    expect(isEnglish('yes start the program')).toBe(true);
+    expect(isEnglish('diet plan chahiye')).toBe(false);
     expect(isEnglish('i love you')).toBe(false);
   });
 
