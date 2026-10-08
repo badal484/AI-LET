@@ -64,10 +64,18 @@ export const PROJECT_LINE =
  * A shared project for a non-mentor (Nandini and the user design a dream home together): offered when the
  * chat is light, built one choice at a time, every choice remembered. Same [[project: …]] tag as mentors.
  */
+/**
+ * The invite without its sample line: packs show the idea with a quoted example ("suno… ek gaana likh
+ * raha hoon…"), and the model pasted it word for word (seen live with Kabir). She says it her own way.
+ */
+export function inviteIdea(invite: string): string {
+  return invite.replace(/\s*\("[^]*"\)\s*$/, '').trim();
+}
+
 export function sharedProjectLines(sp: { goal: string; invite: string; entry?: string }, project: ProfileProject | undefined): string[] {
   if (!project || project.goal.toLowerCase() !== sp.goal.toLowerCase()) {
     return [
-      `Something fun you can start with them — only when the chat is light or they're bored, never when they're upset, and not every chat: ${sp.invite}. If they're in, add a hidden last line [[project: goal=${sp.goal} | next=<the first thing to decide>]].`,
+      `Something fun you can start with them — only when the chat is light or they're bored, never when they're upset, never instead of something they just asked you for (give them that first), and not every chat: ${inviteIdea(sp.invite)} — in your own fresh words. If they're in, add a hidden last line [[project: goal=${sp.goal} | next=<the first thing to decide>]].`,
     ];
   }
   const entry = sp.entry ?? 'their choice';

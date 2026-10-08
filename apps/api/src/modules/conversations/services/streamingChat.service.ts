@@ -39,7 +39,7 @@ import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/scr
 import { extractCode, isCodeBubble, looksLikeUnfencedCode, restoreCode } from '../human/codeBlocks.js';
 import { checkCodeSyntax, describeIssues, type CodeIssue } from '../human/codeCheck.js';
 import { detectRequest, extractDeliveredTag, stillOpen, wasDelivered, type OpenRequest } from '../human/requests.js';
-import { applyProjectPatch, extractProjectTag, projectLines, sharedProjectLines, type ProjectPatch } from '../human/project.js';
+import { applyProjectPatch, extractProjectTag, inviteIdea, projectLines, sharedProjectLines, type ProjectPatch } from '../human/project.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
@@ -832,7 +832,7 @@ export class StreamingChatService {
         const proj = profile.project;
         // The first time they're bored, the shared project is the game (later, any game).
         if (!proj && !hurtingNow && !snoozed && situations.includes('bored'))
-          projectNote = `they want something fun — invite them to this now: ${pack.sharedProject.invite}; and add the hidden last line [[project: goal=${pack.sharedProject.goal} | next=<the first thing to decide>]]`;
+          projectNote = `they want something fun — invite them to this now, in your own words: ${inviteIdea(pack.sharedProject.invite)}; and add the hidden last line [[project: goal=${pack.sharedProject.goal} | next=<the first thing to decide>]]`;
         if (proj && !snoozed && (new RegExp(`\\b(${pack.sharedProject.mentions}|project|aage kya|next kya)\\b`, 'i').test(pendingText)))
           projectNote = `they want to continue your "${proj.goal}" — pick it up right away, happily (no "I thought you forgot"): ${proj.done.length ? `their choices so far: ${proj.done.join(', ')}; ` : ''}${proj.next ? `next to decide: ${proj.next}` : 'suggest the next small decision'}`;
         saveProject = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => Object.assign(p, applyProjectPatch(p, patch, today)) && true);
