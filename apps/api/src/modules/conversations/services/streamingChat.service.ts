@@ -41,7 +41,7 @@ import { checkCodeSyntax, describeIssues, type CodeIssue } from '../human/codeCh
 import { detectRequest, extractDeliveredTag, stillOpen, wasDelivered, type OpenRequest } from '../human/requests.js';
 import { applyProjectPatch, extractProjectTag, inviteIdea, projectLines, sharedProjectLines, type ProjectPatch } from '../human/project.js';
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
-import { activeCourse, applyCoursePatch, continuesCourse, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
+import { activeCourse, applyCoursePatch, claimsPlanFollowed, continuesCourse, NO_PLAN_YET, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
 import { romanceMomentName, romanceNote, saysLoveBack } from '../human/romanceMoments.js';
@@ -818,6 +818,7 @@ export class StreamingChatService {
         if (inCourse || (newSession && activeCourse(profile) && !snoozed)) continuity.lines.push(...courseLines(profile, { newSession }));
         if (inCourse) courseNote = courseReminder(profile, pendingText);
         courseStage = activeCourse(profile)?.stage;
+        if (courseStage === 'intake' && claimsPlanFollowed(pendingText)) courseNote = NO_PLAN_YET;
         if (!saveCourse && pack.mentor.courses?.length)
           saveCourse = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, patch, today));
         if (newSession && profile.project && !snoozed) recapProject = profile.project.goal;
@@ -960,6 +961,7 @@ export class StreamingChatService {
       };
       request.systemPrompt = buildHumanPrompt({
         pack,
+        englishChat: !hinglishTalker,
         userName: conversation.user.profile?.displayName || 'them',
         memoriesText: builtContext.memoriesText ?? '',
         relationshipText: builtContext.relationshipText ?? '',
