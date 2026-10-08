@@ -1223,6 +1223,9 @@ export class StreamingChatService {
     if (pack) bubbles = ensureSafetyLines(bubbles, turnSituations, pendingText, pack.gender);
     // They text Hindi in Roman letters: a Devanagari slip ("chupचाप") is spelled out the way they write.
     if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
+    // Inline `python` shows up as raw backticks in a chat bubble — commands go in plain text (code blocks are
+    // still placeholders here, so they are untouched).
+    bubbles = bubbles.map((b) => b.replace(/`([^`\n]{1,80})`/g, '$1'));
     // Code goes back exactly as written, each block as its own message (shown as a code box in the app).
     bubbles = restoreCode(bubbles, codeBlocks);
     // Still not parsing after the rewrite: say so honestly rather than hand over a script that won't run.
@@ -1389,6 +1392,8 @@ export class StreamingChatService {
       previousAssistantMessage: herRecentReplies[herRecentReplies.length - 1],
       timeZone: conversation.user.profile?.timezone,
       justGivenTask: pack?.mentor ? newTask : undefined,
+      characterGender: pack?.gender,
+      userLanguage: pack ? (hinglishTalker ? 'hinglish' : 'english') : undefined,
     });
 
     MemoryExtractionService.processConversationMessage({
