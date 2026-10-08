@@ -45,6 +45,8 @@ describe('Every romantic moment gets its own guidance', () => {
 describe('Checks on her reply', () => {
   it('"I love you" said back — or not', () => {
     expect(romanceMomentName('i love you')).toBe('love you');
+    expect(romanceMomentName('tum hi ho jo samajhti ho')).toBe('only you understand me');
+    expect(romanceMomentName('tum hi samajhte ho yaar')).toBe('only you understand me');
     expect(saysLoveBack('ruko... ek second. you just made my heart skip a beat')).toBe(false);
     expect(saysLoveBack('I love you too, bahut 🤍')).toBe(true);
     expect(saysLoveBack('main bhi… bahut zyada')).toBe(true);

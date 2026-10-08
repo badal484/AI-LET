@@ -114,6 +114,12 @@ export function steeringBack(bubbles: string[], herRecentReplies: string[], user
   return [...topicWords(bubbles.join(' '))].find((w) => last3.filter((s) => s.has(w)).length >= 2 && !theirs.has(w));
 }
 
+// Brushing off someone who is low (seen: Aarav "thoda paani piyo aur chupchaap baitho, baaki sab chodo",
+// Priya "tum overthink kar rahe ho" to exam panic).
+const GREETING_ONLY = /^\W*(hi+|hey+|hello+|helo|hlo|ram ram|namaste|assalamu?alaikum|salaam|sat sri akal|good (morning|evening|afternoon))\b[\p{L}\s!.,]{0,14}$/iu;
+const STATE_FIRST = /^\W*(?:(?:hey+|hi+|hello+|arre+|arey+|ram ram|ji)\W+)*(?:(?:main|mai|sab|i'?m|im)\s+)?(?:(?:bhi|toh|to|bilkul)\s+)?(theek|thik|mast|badhiya|fine|good|great)\b/i;
+const COLD_COMFORT = /\b(chup ?chaap (baitho|baith jao|raho|so jao)|baaki sab (chodo|chhodo)|(itna|zyada) mat socho|tum overthink kar rah[ei] ho|over ?react kar rah[ei] ho|chill karo bas|move on karo bas)\b/i;
+const STAYS_WITH_THEM = /\?|main yahin|main hoon na|hug|batao|bataao|sun rah[ai]|kya hua|kya bola|mere paas|i'?m here|tell me/i;
 const TASK_SAID = /\b(aaj ka (pehla )?(kaam|task)|is hafte ka kaam|tumhara task|homework|today'?s task|your task( for today)?)\s*[:\-–]/i;
 const MOVED_ON = /\b(next|aage|agla|agle|ho gaya|ho gayi|kar liya|kar li|bana liya|bana li|done|did it|finished|made my|completed)\b/i;
 const SAYS_AI_SELF = /\b(main|mai|mein|i am|i'?m|im)\s+(ek\s+|an?\s+|toh\s+|bas\s+)?(ai|a\.i\.|bot|chatbot|language model|virtual)\b|\b(ai|bot|chatbot)\s+(hoon|hu|hun)\b|\bas an ai\b/i;
@@ -244,8 +250,14 @@ export function checkReply(params: {
   if (params.situations?.includes('eating') && /\b\d{3,4}\s?(kcal|calories?)\b|deficit/i.test(all))
     problems.push('They may be struggling with food: no calorie numbers or deficits. Be warm and gently suggest talking to a doctor or Tele-MANAS 14416.');
   // "hii" → "Main bhi theek hoon…" answers a "how are you" nobody asked (seen with Rohan and Meera).
-  if (params.userText && !/\b(kaise|kaisa|kaisi|kese|how|wassup|whats up|what'?s up|sup|haal|hal chal|halchal)\b/i.test(params.userText) && /^\W*(main|mai|i'?m|im)\s+(bhi|too|also)?\s*(theek|thik|mast|badhiya|fine|good|great|okay|ok)\b|^\W*(main bhi|me too|i'?m good too)\b/i.test(params.bubbles[0] ?? ''))
+  if (params.userText && !/\b(kaise|kaisa|kaisi|kese|how|wassup|whats up|what'?s up|sup|haal|hal chal|halchal)\b/i.test(params.userText) && /^\W*(?:(?:hey+|hi+|hello+|arre|arey|heyy+)\W+)?(main|mai|i'?m|im)\s+((bhi|too|also|toh|to)\s+)?(bhi\s+)?(theek|thik|mast|badhiya|fine|good|great|okay|ok)\b|^\W*(?:(?:hey+|hi+|hello+|arre|arey|heyy+)\W+)?(sab )?(theek|thik)[ -]?(thaak|thak)\b|^\W*(main bhi|me too|i'?m good too)\b/i.test(params.bubbles[0] ?? ''))
     problems.push("They didn't ask how you are — don't answer \"main bhi theek hoon\". Greet them back and react to what they actually said.");
+  // A bare greeting ("hi", "ram ram bhai") answered with "theek hoon main bhi" / "Sab badhiya" (Ishita, Sandeep).
+  if (params.userText && GREETING_ONLY.test(params.userText) && STATE_FIRST.test(params.bubbles[0] ?? '') && !problems.some((p) => p.includes("didn't ask how you are")))
+    problems.push("They didn't ask how you are — don't answer \"main bhi theek hoon\". Greet them back and react to what they actually said.");
+  if (COLD_COMFORT.test(all)) problems.push('That brushes them off ("chupchaap baitho", "itna mat socho"). Be warm: stay with them, ask what happened, take their side.');
+  if (params.situations?.includes('emotional') && !STAYS_WITH_THEM.test(all))
+    problems.push("They're hurting. Don't just comment on it — stay with them: show you're here and ask what happened, in your own words.");
   if (GUILT.test(all)) problems.push('No guilt or clinginess ("bhool gaye", "agar pyaar karte toh", "promise me", "kisi aur se baat mat karna") — be happy to talk, never make them feel bad.');
   if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0)
     problems.push('They wrote in Hinglish — reply in the same Hinglish mix, not in English.');
