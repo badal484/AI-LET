@@ -570,6 +570,10 @@ Rules:
     timeZone?: string | null;
     /** A task the character gave in this reply — the user hasn't had a chance to do it yet. */
     justGivenTask?: string;
+    /** A male character's stories are "his", not "her" (seen: Vishnu → "her match was tough"). */
+    characterGender?: 'female' | 'male';
+    /** The language they really write in, so "writes" isn't guessed from one line (seen: Hinglish → "short English"). */
+    userLanguage?: 'english' | 'hinglish';
   }): Promise<void> {
     try {
       const text = params.userMessage.trim();
@@ -604,7 +608,7 @@ Rules:
             content: `Today is ${today.weekday}, ${today.date}.\nCurrent profile: ${JSON.stringify({
               ...profile,
               tasks: profile.tasks.filter((t) => (!t.replaced || t.replaced === today.date) && !(params.justGivenTask && same(t.what, params.justGivenTask))),
-            })}\nLatest exchange:\n${exchange}`,
+            })}\n${params.characterGender === 'male' ? 'The CHARACTER is a man: write "his"/"he" (not "her"/"she") in her_shared and style.\n' : ''}${params.userLanguage ? `The user writes in ${params.userLanguage === 'hinglish' ? 'Hinglish' : 'English'} — "writes" must say so.\n` : ''}Latest exchange:\n${exchange}`,
           },
         ],
         { temperature: 0.1, maxTokens: 500 },
