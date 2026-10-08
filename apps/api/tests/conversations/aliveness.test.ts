@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { herDayLine, milestoneLine, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
-import { applyProjectPatch, sharedProjectLines } from '../../src/modules/conversations/human/project.js';
+import { applyProjectPatch, inviteIdea, sharedProjectLines } from '../../src/modules/conversations/human/project.js';
 import { personaPackFor } from '../../src/modules/conversations/human/personaPacks/index.js';
 import { applyPatch, emptyProfile, formatProfile, nearDuplicate, normalizeProfile } from '../../src/modules/memory/services/userProfile.service.js';
 
@@ -67,5 +67,11 @@ describe('The same entry in other words is saved once', () => {
     let p = applyProjectPatch(emptyProfile(), { goal: 'the case of us', done: 'said he missed her at 3 pm' }, '2026-10-04');
     p = applyProjectPatch(p, { done: 'missed me at 3pm' }, '2026-10-04');
     expect(p.project?.done).toHaveLength(1);
+  });
+
+  it('a shared-project invite is the idea, never a line to recite (seen: Kabir pasted his sample word for word)', () => {
+    const invite = 'telling them you\'ve started writing a song for them ("suno… ek gaana likh raha hoon, tumhare liye")';
+    expect(inviteIdea(invite)).toBe("telling them you've started writing a song for them");
+    expect(sharedProjectLines({ goal: 'humara gaana', invite }, undefined)[0]).not.toContain('suno');
   });
 });
