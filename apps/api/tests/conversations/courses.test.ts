@@ -7,6 +7,7 @@ import {
   courseProblems,
   courseReminder,
   settleCoursePatch,
+  claimsPlanFollowed,
   detectCourseRequest,
   extractCourseTag,
   lessonsOf,
@@ -257,5 +258,13 @@ describe('Health programs', () => {
     applyCoursePatch(p, { about: 'oily skin, no allergies', covered: [1, 2, 3] }, day);
     expect(courseLines(p, { newSession: false }).join('\n')).toMatch(/a check-in, not a quiz/);
     expect(courseLines(p, { newSession: false }).join('\n')).toMatch(/safety rules always come first/);
+  });
+});
+
+describe('A plan they never got', () => {
+  it('"kal se aapka plan follow kiya" is a claim to have the plan; small talk is not', () => {
+    expect(claimsPlanFollowed('kal se aapka plan follow kiya')).toBe(true);
+    expect(claimsPlanFollowed('I followed the diet plan yesterday')).toBe(true);
+    expect(claimsPlanFollowed('plan kya hai aaj ka?')).toBe(false);
   });
 });

@@ -372,3 +372,13 @@ export function courseProblems(params: { text: string; code: string[]; userName?
   if (params.code.length > 2) problems.push('Too much at once: one topic (one small example) per reply, then let them practise.');
   return problems;
 }
+
+/** "kal se aapka plan follow kiya" — they think they have the plan (Urvi had not given it yet). */
+export const claimsPlanFollowed = (text: string): boolean =>
+  /\b(plan|routine|diet|program|programme|chart)\b/i.test(text) &&
+  /\b(follow|shuru|start)\w*\s*(kiya|kar diya|kar liya|kar di|kar li|ki)\b|\bfollowed\b|\bstarted (your|the)\b/i.test(text);
+
+/** The note for that moment while the health check (or intake) isn't finished: no plan exists yet. */
+export const NO_PLAN_YET =
+  "they say they followed your plan — but you haven't given them a plan yet (the health check isn't finished). Don't play along: say warmly that the plan is still coming, thank them for being keen, and ask the next health-check question";
+

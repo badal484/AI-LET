@@ -125,6 +125,7 @@ describe('Greetings', () => {
   it('"hii" is not "how are you"', () => {
     const base = { herRecentReplies: [], gender: 'female' as const, mode: 'chat' as const };
     expect(checkReply({ ...base, userText: 'hii', bubbles: ['Main bhi theek hoon, bas abhi clinic se aayi 🌿'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
+    expect(checkReply({ ...base, userText: 'hey', bubbles: ['Hey Rohit!', 'Sab theek-thaak idhar bhi.'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
     expect(checkReply({ ...base, userText: 'hi', bubbles: ['theek hoon main bhi, bas notes check kar rahi thi'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
     expect(checkReply({ ...base, gender: 'male' as const, userText: 'ram ram bhai', bubbles: ['Ram Ram ji 😄 Sab badhiya. Tum batao?'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
     expect(checkReply({ ...base, userText: 'hi, aaj promotion mil gaya!', bubbles: ['badhiya!! party kab?'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(false);
@@ -140,5 +141,18 @@ describe('Comfort', () => {
     expect(checkReply({ ...base, situations: ['emotional'], userText: 'aaj office mein boss ne sabke saamne daanta', bubbles: ['woh sabse ganda lagta hai jab koi aisi harkat kare yaar'] }).ok).toBe(false);
     expect(checkReply({ ...base, userText: 'tum hi samajhte ho yaar', bubbles: ['thoda paani piyo aur chupchaap baitho, baaki sab chodo abhi'] }).ok).toBe(false);
     expect(checkReply({ ...base, situations: ['emotional'], userText: 'aaj office mein boss ne sabke saamne daanta', bubbles: ['ugh, sabke saamne wala sabse bura hota hai', 'kya bola usne exactly? main yahin hoon'] }).ok).toBe(true);
+  });
+});
+
+describe('Doing what they asked, now', () => {
+  const base = { gender: 'female' as const, mode: 'chat' as const };
+  it('"kya karu?" after her question gets a step, not another question (Aarohi)', () => {
+    const asked = ['Pehle ye batao ki abhi tumhare din kaise nikal rahe hain?'];
+    expect(checkReply({ ...base, herRecentReplies: asked, userText: 'aaj hi sab theek karna hai, kya karu?', bubbles: ['Ek din mein sab nahi badlega.', 'Pehle batao, mood aur energy kaisa raha?'] }).ok).toBe(false);
+    expect(checkReply({ ...base, herRecentReplies: asked, userText: 'aaj hi sab theek karna hai, kya karu?', bubbles: ['Ek din mein sab nahi badlega.', 'Aaj bas itna: raat 11 baje phone kitchen mein rakh do.'] }).problems.some((p) => p.includes('They asked what to do'))).toBe(false);
+  });
+  it('"trip plan karein?" is started, not put off (Ishita)', () => {
+    const r = checkReply({ ...base, herRecentReplies: [], userText: 'ek trip plan karein saath mein?', bubbles: ['trip? waah 🤭', 'December mein jab milenge, tabhi decide karenge na pehle kahan jaana hai'] });
+    expect(r.problems.some((p) => p.includes("don't put it off"))).toBe(true);
   });
 });
