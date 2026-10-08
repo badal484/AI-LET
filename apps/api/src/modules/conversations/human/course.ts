@@ -237,7 +237,7 @@ export function courseLines(profile: UserProfile, opts: { newSession: boolean })
   const program = c.kind === 'program';
   if (program && course.stage === 'intake') {
     lines.push(
-      `They want help with ${c.name}. In THIS reply: say yes warmly in your own voice, show the program in short (one line per stage, so they see the whole path), then START THE HEALTH CHECK — ask ONE question from this list, and the rest one at a time over the next replies: ${c.screening ?? 'anything about their health that changes the plan'}. Never give the plan or routine before the health check is done. When it's done, add [[course: level=<a short summary of what they told you>]] and start lesson ${cur.n}.`,
+      `They want help with ${c.name}. In THIS reply: say yes warmly in your own voice, show the program in short (one line per stage, so they see the whole path), then START THE HEALTH CHECK — ask ONE question from this list (skip what they already told you), and the rest one at a time over the next replies — 3 questions at most in all, then start: ${c.screening ?? 'anything about their health that changes the plan'}. Never give the plan or routine before the health check is done. When it's done, add [[course: level=<a short summary of what they told you>]] and start lesson ${cur.n}.`,
     );
   } else if (program && course.stage === 'teach' && cur.topics.every((_t, i) => course.covered.includes(i + 1))) {
     lines.push(
@@ -292,7 +292,7 @@ export function courseReminder(profile: UserProfile, userText = ''): string {
   if (c.kind === 'program' && course.stage === 'quiz')
     return `your check-in on "${cur.title}" is open — respond to how it's going (celebrate, or slow down and adjust if anything hurts or reacts; say when to see a doctor), then add [[course: passed]] when it's going okay`;
   if (c.kind === 'program' && course.stage === 'intake')
-    return `you're doing the health check before ${c.name} — ask the next ONE question (${c.screening ?? 'what changes the plan'}); no plan or routine yet`;
+    return `you're doing the health check before ${c.name} — ask the next ONE question you still need (${c.screening ?? 'what changes the plan'}), skipping anything they already told you; no plan or routine yet. Don't drag it out: once the safety essentials are known (3 questions at most in all), add [[course: level=<what they told you>]] and start lesson ${cur.n} in this same reply`;
   if (course.stage === 'quiz')
     return `the lesson-${cur.n} check is open — add [[course: passed]] only if THIS message really answers your check questions correctly; if it doesn't (just "done"/"ok" or something else), reply to it and ask them to answer the check questions themselves — never answer them for them`;
   if (course.stage === 'project') return `the Level ${cur.level} project is open — no new lesson until they send it and you've reviewed it`;
@@ -309,6 +309,7 @@ export function courseReminder(profile: UserProfile, userText = ''): string {
 
 export const COURSE_METHOD = `- A course is a promise: the whole skill, zero to advanced, in the syllabus order. Never jump ahead to a later lesson, and never hand out "the next thing" without teaching it.
 - Each topic, the full way: the idea in one plain line + a real-life comparison → why it matters → a small example that uses ONLY what they've already learnt (if it needs something new, explain that in one line) → the important parts explained → the one common mistake → a mini practice ("ab tum: …"). One topic, at most two, per reply — never dump a whole lesson.
+- Name things the way the syllabus does: a lesson is "lesson N" with its own title; the parts inside it are topics — never call a topic "Lesson 3" (seen: "Lesson 1 continues… Lesson 3: it's a numbers game"). Keep each text short; split a long explanation into a few texts.
 - Practice is theirs to do: for code they run it and tell you what it printed; for a language they say or write their own sentence; for a skill they try it and tell you how it went. Then check it before moving on — what's good first, then the one or two fixes that matter, and the full corrected version. A wrong answer is a teaching moment, not a "badhiya".
 - Use their name and their life in examples (their city, food, work, family) — never placeholder names like Alex, John, foo.
 - A doubt in the middle: answer it fully with a tiny example, then come back to the same topic ("chalo wapas …").

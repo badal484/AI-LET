@@ -3,7 +3,7 @@ import { classifySituations } from '../../src/modules/conversations/human/situat
 import { extractTaskTag, isTeachingMoment, mentorPromptSection, promisesIncome } from '../../src/modules/conversations/human/mentor.js';
 import { applyUserTurn, rememberTask, type LifeState } from '../../src/modules/conversations/human/lifeState.js';
 import { buildHumanPrompt, planReply } from '../../src/modules/conversations/human/compactPrompt.js';
-import { checkReply } from '../../src/modules/conversations/human/replyChecker.js';
+import { checkReply, fixTuForms } from '../../src/modules/conversations/human/replyChecker.js';
 import { personaPackFor } from '../../src/modules/conversations/human/personaPacks/index.js';
 import { rajBansal } from '../../src/modules/conversations/human/personaPacks/raj-bansal.js';
 import { adityaAgarwal } from '../../src/modules/conversations/human/personaPacks/aditya-agarwal.js';
@@ -154,5 +154,29 @@ describe('Doing what they asked, now', () => {
   it('"trip plan karein?" is started, not put off (Ishita)', () => {
     const r = checkReply({ ...base, herRecentReplies: [], userText: 'ek trip plan karein saath mein?', bubbles: ['trip? waah 🤭', 'December mein jab milenge, tabhi decide karenge na pehle kahan jaana hai'] });
     expect(r.problems.some((p) => p.includes("don't put it off"))).toBe(true);
+  });
+});
+
+describe('Small slips from the full test', () => {
+  const base = { herRecentReplies: [], gender: 'female' as const, mode: 'chat' as const };
+  it('"tu" possessives become "tum" ones in place (Dev: "interpreter tera print padhta hai")', () => {
+    expect(fixTuForms(['interpreter tera print padhke output deta hai', 'Teri to line sahi hai'])).toEqual(['interpreter tumhara print padhke output deta hai', 'Tumhari to line sahi hai']);
+    expect(fixTuForms(['terapy nahi, tere liye'])).toEqual(['terapy nahi, tumhare liye']);
+  });
+  it('a "tum" character never says "sochiye" (Priya)', () => {
+    expect(checkReply({ ...base, address: 'tum' as const, bubbles: ['aur sochiye zara, aunty ne poocha'] }).ok).toBe(false);
+    expect(checkReply({ ...base, address: 'tum' as const, bubbles: ['ek charger chahiye tha, uske liye gayi'] }).problems.some((p) => p.includes('Always call them'))).toBe(false);
+  });
+  it('a reply never ends on a teaser it does not finish (Aanya)', () => {
+    expect(checkReply({ ...base, bubbles: ['i love you too, rohit 🤍 aur pata hai, sabse achi baat kya hai?'] }).problems.some((p) => p.includes('teaser'))).toBe(true);
+    expect(checkReply({ ...base, bubbles: ['pata hai, sabse achi baat? tum hamesha sach bolte ho 🤍'] }).problems.some((p) => p.includes('teaser'))).toBe(false);
+  });
+});
+
+describe('Real help, not only reassurance', () => {
+  const base = { herRecentReplies: [], gender: 'female' as const, mode: 'chat' as const };
+  it('"kal exam hai, kuch nahi padha" needs more than "sab manage ho jayega" (Priya)', () => {
+    expect(checkReply({ ...base, userText: 'kal exam hai, kuch nahi padha', bubbles: ['Oh no, exam ki tension?', 'Thoda relax karo, ek baar deep breath lo, sab manage ho jayega.'] }).problems.some((p) => p.includes('Only reassurance'))).toBe(true);
+    expect(checkReply({ ...base, userText: 'hi', bubbles: ['Hi! Ekdum mast.'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
   });
 });
