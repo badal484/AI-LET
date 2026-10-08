@@ -29,7 +29,7 @@ const FEMININE_VERB = /\b\w{2,}(ti|gi)\s+(hoon|hu|hun)\b|\b(rahi|gayi|thi)\s+(ho
 const WRONG_ADDRESS = /\b(bhai+|bh?ai+y+a+|bro+|beta|dude)\b/i;
 const OTHER_ADDRESS: Record<'tum' | 'aap' | 'tu', RegExp> = {
   // "apne aap" means "by itself", not the formal "aap".
-  tum: /(?<!apne[ -])\b(aap|aapko|aapka|aapki|aapke|aapse)\b|\b(tu|tujhe|tujhse|tujhko|tera|teri|tere)\b/i,
+  tum: /(?<!apne[ -])\b(aap|aapko|aapka|aapki|aapke|aapse)\b|\b(tu|tujhe|tujhse|tujhko|tera|teri|tere)\b|\b(kijiye|sochiye|bataiye|dekhiye|suniye|rakhiye|chaliye|baithiye|aaiye|jaiye|boliye|kariye|lijiye|dijiye)\b/i,
   aap: /\b(tum|tumhe|tumko|tumhara|tumhari|tumhare|tu|tujhe|tera|teri|tere)\b/i,
   tu: /(?<!apne[ -])\b(aap|aapko|aapka|aapki)\b|\b(tum|tumhe|tumko|tumhara|tumhari)\b/i,
 };
@@ -60,7 +60,7 @@ const GUILT = /((laga|socha)( tha)?( ki)?( shayad)? tum bhool (gaye|gayi|gaya)( 
 
 // Common Hindi words in Roman script: enough to tell a Hinglish text from an English one.
 const HINDI = /\b(hai|hain|hoon|hu|kya|nahi|nahin|tum|tumhe|aap|mera|meri|mujhe|aaj|kal|kar|karo|raha|rahi|gaya|gayi|bhi|toh|yaar|kuch|bahut|sab|abhi|achha|accha|kaise|kaisa|batao|mein|humara|hamara|tumhara|tumhari|kahan|kab|kyun|kyu|kaun|tak|wala|wali|haan|thi|tha|hua|hui|pahuncha|pahunchi|gaye|kiya|karna|chahiye|aur|ab|phir|sach|matlab|chalo|arre|badhiya|dikhao|zara|bhejo|wahan|yahan|jo|pe|aate|dekho|suno|thoda|bas)\b/gi;
-const hindiWords = (text: string) => (text.match(HINDI) ?? []).length;
+export const hindiWords = (text: string) => (text.match(HINDI) ?? []).length;
 
 /** Questions people only need to be asked once per chat (Hinglish and English). */
 const REPEAT_QUESTIONS: RegExp[] = [
@@ -117,13 +117,19 @@ export function steeringBack(bubbles: string[], herRecentReplies: string[], user
 // Brushing off someone who is low (seen: Aarav "thoda paani piyo aur chupchaap baitho, baaki sab chodo",
 // Priya "tum overthink kar rahe ho" to exam panic).
 const GREETING_ONLY = /^\W*(hi+|hey+|hello+|helo|hlo|ram ram|namaste|assalamu?alaikum|salaam|sat sri akal|good (morning|evening|afternoon))\b[\p{L}\s!.,]{0,14}$/iu;
-const STATE_FIRST = /^\W*(?:(?:hey+|hi+|hello+|arre+|arey+|ram ram|ji)\W+)*(?:(?:main|mai|sab|i'?m|im)\s+)?(?:(?:bhi|toh|to|bilkul)\s+)?(theek|thik|mast|badhiya|fine|good|great)\b/i;
+const STATE_FIRST = /^\W*(?:(?:hey+|hi+|hello+|arre+|arey+|ram ram|ji)\W+)*(?:(?:main|mai|sab|i'?m|im)\s+)?(?:(?:bhi|toh|to|bilkul|ekdum|ek dum)\s+)?(theek|thik|mast|badhiya|fine|good|great)\b/i;
 // "aaj hi sab theek karna hai, kya karu?" → yet another question (Aarohi). Asked what to do, after she
 // already asked something: give one small step now.
 const WHAT_TO_DO = /\b(kya karu|kya karun|kya karoon|kya karna chahiye|ab kya|what should i do|what do i do|kaise theek karu)\b/i;
 // "trip plan karein?" → "December mein jab milenge, tabhi decide karenge" (Ishita): fun they want now, put off.
 const LETS_DO = /\b(plan (karein|karte|karo|banaye|banate)|(banate|karte) hain (saath|together)?|karein saath|saath mein (plan|banaye|karein)|let'?s (plan|make|do|start)|can we (make|plan|do|start))\b/i;
 const PUTS_OFF = /\b(baad mein|tabhi|phir kabhi|kabhi aur|later|some ?day)\b[^.?!\n]{0,30}\b(decide|dekhenge|sochenge|karenge|plan karenge|banayenge|figure)\b/i;
+// "i love you too, rohit 🤍 aur pata hai, sabse achi baat kya hai?" — and then nothing (Aanya). A teaser
+// as the last text leaves them hanging; say the thing.
+const TEASER_END = /\b(pata hai|guess what|ek baat bataun|jaante ho|you know what)\b[^.!\n]{0,40}\?\s*\p{Extended_Pictographic}?\s*$/iu;
+// "kal exam hai, kuch nahi padha" → "relax karo, sab manage ho jayega" and nothing else (Priya).
+const PLATITUDE = /\b(sab (manage|theek|thik|set) ho jayega|tension mat lo|relax karo|chill karo|don'?t worry|it'?ll be (fine|okay))\b/i;
+const WORRY = /\b(exam|test|paper|interview|deadline|presentation|kuch nahi padha|tension|dar lag|ghabra\w*|stress\w*|nervous|worried|anxious)\b/i;
 const COLD_COMFORT = /\b(chup ?chaa?p (baitho|baith jao|raho|so jao)|baaki sab (chodo|chhodo)|(itna|zyada) mat socho|tum overthink kar rah[ei] ho|over ?react kar rah[ei] ho|chill karo bas|move on karo bas)\b/i;
 const STAYS_WITH_THEM = /\?|main yahin|main hoon na|hug|batao|bataao|sun rah[ai]|kya hua|kya bola|mere paas|i'?m here|tell me/i;
 const TASK_SAID = /\b(aaj ka (pehla )?(kaam|task)|is hafte ka kaam|tumhara task|homework|today'?s task|your task( for today)?)\s*[:\-–]/i;
@@ -266,6 +272,10 @@ export function checkReply(params: {
     problems.push('They asked what to do, and you already asked them something. Give one small, concrete step they can do today — then a question only if you really need one.');
   if (params.userText && LETS_DO.test(params.userText) && PUTS_OFF.test(all))
     problems.push("They want to do this with you now — don't put it off (\"baad mein decide karenge\"). Start it happily, right here, with the first small choice.");
+  if (TEASER_END.test(params.bubbles[params.bubbles.length - 1] ?? ''))
+    problems.push('You ended on a teaser ("pata hai…?") without saying it. Say the thing itself in this reply.');
+  if (params.userText && WORRY.test(params.userText) && PLATITUDE.test(all) && all.split(/\s+/).length < 28)
+    problems.push('Only reassurance ("sab manage ho jayega") — help with one concrete thing too (a quick plan, the first step), in your own voice.');
   if (COLD_COMFORT.test(all)) problems.push('That brushes them off ("chupchaap baitho", "itna mat socho"). Be warm: stay with them, ask what happened, take their side.');
   if (params.situations?.includes('emotional') && !STAYS_WITH_THEM.test(all))
     problems.push("They're hurting. Don't just comment on it — stay with them: show you're here and ask what happened, in your own words.");
@@ -298,6 +308,17 @@ export function checkReply(params: {
 }
 
 /** Last resort after the rewrite: drop "bhai/bro/beta" rather than send it. */
+// A "tum" character slipping into "tu" possessives ("interpreter tera print padhta hai" — Dev): the
+// tum form always fits, so it is fixed in place rather than left to a rewrite.
+const TU_TO_TUM: Array<[RegExp, string]> = [
+  [/\btera\b/g, 'tumhara'], [/\bteri\b/g, 'tumhari'], [/\btere\b/g, 'tumhare'],
+  [/\btujhe\b/g, 'tumhe'], [/\btujhko\b/g, 'tumko'], [/\btujhse\b/g, 'tumse'],
+  [/\bTera\b/g, 'Tumhara'], [/\bTeri\b/g, 'Tumhari'], [/\bTere\b/g, 'Tumhare'], [/\bTujhe\b/g, 'Tumhe'],
+];
+export function fixTuForms(bubbles: string[]): string[] {
+  return bubbles.map((b) => TU_TO_TUM.reduce((t, [re, to]) => t.replace(re, to), b));
+}
+
 export function stripWrongAddress(bubbles: string[]): string[] {
   return bubbles
     .map((b) => b.replace(/\s*\b(bhai+|bh?ai+y+a+|bro+|beta|dude)\b[\s,!.]*/gi, ' ').replace(/\s{2,}/g, ' ').trim())

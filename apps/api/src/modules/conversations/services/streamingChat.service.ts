@@ -45,7 +45,7 @@ import { activeCourse, applyCoursePatch, claimsPlanFollowed, continuesCourse, NO
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
 import { romanceMomentName, romanceNote, saysLoveBack } from '../human/romanceMoments.js';
-import { checkReply, stripWrongAddress } from '../human/replyChecker.js';
+import { checkReply, fixTuForms, hindiWords, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
   StreamMessageCompletedPayload,
@@ -819,6 +819,10 @@ export class StreamingChatService {
         if (inCourse) courseNote = courseReminder(profile, pendingText);
         courseStage = activeCourse(profile)?.stage;
         if (courseStage === 'intake' && claimsPlanFollowed(pendingText)) courseNote = NO_PLAN_YET;
+        // Seen: Joel asked safety, then gear, then experience — and on "ok" gave tips but never the plan.
+        // Two questions asked during the health check is enough: start now, sensible defaults for the rest.
+        else if (inCourse && courseStage === 'intake' && herRecentReplies.slice(-8).filter((r) => /\?\s*\p{Extended_Pictographic}?\s*$/u.test(r)).length >= 2)
+          courseNote = 'you have asked enough health-check questions — finish it now: add [[course: level=<what they told you>]] and START lesson 1 in this reply, with sensible, safe defaults for anything they did not say';
         if (!saveCourse && pack.mentor.courses?.length)
           saveCourse = (patch) => UserProfileService.mutate(userId, conversation.characterId, (p) => void applyCoursePatch(p, patch, today));
         if (newSession && profile.project && !snoozed) recapProject = profile.project.goal;
@@ -1195,7 +1199,23 @@ export class StreamingChatService {
           }
         }
       }
-      const cleaned = stripWrongAddress(bubbles);
+      // An English chat that still came back in Hinglish after the rewrite (Kabir, again and again — his
+      // Hinglish voice wins over every instruction): one small call puts these same texts into English.
+      if (!hinglishTalker && hindiWords(bubbles.join('\n')) >= 3 && !codeBlocks.length && !abortController.signal.aborted) {
+        const english = await this.generateOnce(
+          {
+            ...request,
+            model: used.model,
+            systemPrompt: 'Rewrite these chat texts in natural, casual English. Keep the meaning, the warmth, names, emojis and any song or film titles exactly; a single Hindi word like "yaar" may stay. Keep the [[next]] lines between texts. Reply with the texts only.',
+            messages: [{ role: 'user', content: bubbles.join('\n[[next]]\n') }],
+          },
+          used.provider,
+          abortController.signal,
+        );
+        const translated = english.content ? this.polishBubbles(this.splitBubbles(this.cleanModelText(english.content)), style) : [];
+        if (translated.length && hindiWords(translated.join('\n')) < 3) bubbles = translated;
+      }
+      const cleaned = pack.address === 'tum' ? fixTuForms(stripWrongAddress(bubbles)) : stripWrongAddress(bubbles);
       if (cleaned.length) bubbles = cleaned;
     }
     if (asksIfAI) bubbles = this.ensureAIDisclosure(bubbles);
