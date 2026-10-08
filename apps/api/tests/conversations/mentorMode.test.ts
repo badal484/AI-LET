@@ -125,6 +125,20 @@ describe('Greetings', () => {
   it('"hii" is not "how are you"', () => {
     const base = { herRecentReplies: [], gender: 'female' as const, mode: 'chat' as const };
     expect(checkReply({ ...base, userText: 'hii', bubbles: ['Main bhi theek hoon, bas abhi clinic se aayi 🌿'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
+    expect(checkReply({ ...base, userText: 'hi', bubbles: ['theek hoon main bhi, bas notes check kar rahi thi'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
+    expect(checkReply({ ...base, gender: 'male' as const, userText: 'ram ram bhai', bubbles: ['Ram Ram ji 😄 Sab badhiya. Tum batao?'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
+    expect(checkReply({ ...base, userText: 'hi, aaj promotion mil gaya!', bubbles: ['badhiya!! party kab?'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(false);
+    expect(checkReply({ ...base, userText: 'hii riya', bubbles: ['hey! sab theek-thaak'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
+    expect(checkReply({ ...base, userText: 'hi', bubbles: ['main toh theek hoon, bas aaj ka din achha gaya'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
     expect(checkReply({ ...base, userText: 'hii kaise ho?', bubbles: ['main bhi theek hoon, tum batao'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(false);
+  });
+});
+
+describe('Comfort', () => {
+  const base = { herRecentReplies: [], gender: 'male' as const, mode: 'chat' as const };
+  it('a hurting user gets someone who stays, not a one-line comment or a brush-off', () => {
+    expect(checkReply({ ...base, situations: ['emotional'], userText: 'aaj office mein boss ne sabke saamne daanta', bubbles: ['woh sabse ganda lagta hai jab koi aisi harkat kare yaar'] }).ok).toBe(false);
+    expect(checkReply({ ...base, userText: 'tum hi samajhte ho yaar', bubbles: ['thoda paani piyo aur chupchaap baitho, baaki sab chodo abhi'] }).ok).toBe(false);
+    expect(checkReply({ ...base, situations: ['emotional'], userText: 'aaj office mein boss ne sabke saamne daanta', bubbles: ['ugh, sabke saamne wala sabse bura hota hai', 'kya bola usne exactly? main yahin hoon'] }).ok).toBe(true);
   });
 });

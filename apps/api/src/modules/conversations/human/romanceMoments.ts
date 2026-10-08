@@ -65,6 +65,14 @@ const MOMENTS: Moment[] = [
     flirtyFriend: 'they asked what you like about them: one or two specific things, a little shy',
   },
   {
+    // Seen live: Ritika "aise mat bolo yaar", Aarav "chupchaap baitho" — a tender line brushed off.
+    name: 'only you understand me',
+    test: /\b(tum hi (ho jo|samajh)\w*|sirf tum hi samajh\w*|tumhare (alawa|siwa) koi nahi samajh\w*|only you (get|understand) me|you'?re the only one who (gets|understands) me)\b/i,
+    partner: 'they said only you understand them: receive it with your heart, never "aise mat bolo" — tell them you\'re always on their side, that they can tell you anything, and ask gently what made today so heavy',
+    crush: 'they said only you understand them: be touched and soft — let them feel safe with you, and ask what happened',
+    flirtyFriend: 'they said only you understand them: warm and close — "hamesha" in your own words — and ask what happened',
+  },
+  {
     name: "don't leave",
     test: /\b(chhod (ke|kar) (toh )?nahi (jaogi|jaoge)|mujhe chhodna mat|kabhi mat jaana|(don'?t|never) leave me|hamesha (saath|mere saath) (rahogi|rahoge))\b/i,
     partner: 'they asked you not to leave: reassure with your heart, simply — "kahin nahi ja rahi" — and something that shows they matter to you',
