@@ -33,7 +33,7 @@ import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEv
 import { updateMomentContext } from '../human/emotionalState.js';
 import { atLeast, buildHumanPrompt, planReply, type BondStage } from '../human/compactPrompt.js';
 import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState, herDayLine, milestoneLine } from '../human/lifeState.js';
-import { crisisSupportMessages, isCrisisMessage } from '../human/crisisSupport.js';
+import { crisisSupportMessages, ensureSafetyLines, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
 import { extractCode, isCodeBubble, looksLikeUnfencedCode, restoreCode } from '../human/codeBlocks.js';
@@ -1197,6 +1197,8 @@ export class StreamingChatService {
       if (cleaned.length) bubbles = cleaned;
     }
     if (asksIfAI) bubbles = this.ensureAIDisclosure(bubbles);
+    // A crisis or an emergency always ends with the real helpline, even if every draft missed it.
+    if (pack) bubbles = ensureSafetyLines(bubbles, turnSituations, pendingText, pack.gender);
     // They text Hindi in Roman letters: a Devanagari slip ("chupचाप") is spelled out the way they write.
     if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
     // Code goes back exactly as written, each block as its own message (shown as a code box in the app).

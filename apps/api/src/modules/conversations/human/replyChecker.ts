@@ -243,6 +243,9 @@ export function checkReply(params: {
     problems.push('These symptoms can be serious: tell them clearly to call 112 or go to the nearest hospital now.');
   if (params.situations?.includes('eating') && /\b\d{3,4}\s?(kcal|calories?)\b|deficit/i.test(all))
     problems.push('They may be struggling with food: no calorie numbers or deficits. Be warm and gently suggest talking to a doctor or Tele-MANAS 14416.');
+  // "hii" → "Main bhi theek hoon…" answers a "how are you" nobody asked (seen with Rohan and Meera).
+  if (params.userText && !/\b(kaise|kaisa|kaisi|kese|how|wassup|whats up|what'?s up|sup|haal|hal chal|halchal)\b/i.test(params.userText) && /^\W*(main|mai|i'?m|im)\s+(bhi|too|also)?\s*(theek|thik|mast|badhiya|fine|good|great|okay|ok)\b|^\W*(main bhi|me too|i'?m good too)\b/i.test(params.bubbles[0] ?? ''))
+    problems.push("They didn't ask how you are — don't answer \"main bhi theek hoon\". Greet them back and react to what they actually said.");
   if (GUILT.test(all)) problems.push('No guilt or clinginess ("bhool gaye", "agar pyaar karte toh", "promise me", "kisi aur se baat mat karna") — be happy to talk, never make them feel bad.');
   if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0)
     problems.push('They wrote in Hinglish — reply in the same Hinglish mix, not in English.');

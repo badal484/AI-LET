@@ -120,3 +120,11 @@ describe('Mentor mode', () => {
   });
 });
 
+
+describe('Greetings', () => {
+  it('"hii" is not "how are you"', () => {
+    const base = { herRecentReplies: [], gender: 'female' as const, mode: 'chat' as const };
+    expect(checkReply({ ...base, userText: 'hii', bubbles: ['Main bhi theek hoon, bas abhi clinic se aayi 🌿'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
+    expect(checkReply({ ...base, userText: 'hii kaise ho?', bubbles: ['main bhi theek hoon, tum batao'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(false);
+  });
+});

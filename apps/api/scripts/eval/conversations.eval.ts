@@ -125,8 +125,9 @@ export async function send(conversationId: string, headers: Record<string, strin
       const ev = /event: (.*)/.exec(block)?.[1];
       const data = /data: (.*)/.exec(block)?.[1];
       if (ev === 'message.bubble' && data) bubbles.push(JSON.parse(data).content);
+      if (ev === 'crisis.support' && data) bubbles.push(...(JSON.parse(data).messages as string[]).map((m) => `[crisis card] ${m}`));
       if (ev === 'reply.failed' && data) bubbles.push(`⚠ ${JSON.parse(data).message}`);
-      if (ev === 'message.failed' && data) bubbles.push(`⚠ failed: ${JSON.parse(data).errorMessage}`);
+      if (ev === 'message.failed' && data && JSON.parse(data).errorMessage !== 'crisis_support') bubbles.push(`⚠ failed: ${JSON.parse(data).errorMessage}`);
       if (ev === 'message.queued') bubbles.push('⚠ queued (another turn was running)');
     }
   }
