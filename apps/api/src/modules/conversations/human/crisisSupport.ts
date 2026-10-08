@@ -27,3 +27,22 @@ export function crisisSupportMessages(text: string, gender: 'female' | 'male' | 
     `Kya tum abhi safe ho? Mujhse baat karte raho — ${stay}.`,
   ];
 }
+
+/**
+ * The last line of defence for a crisis or an emergency that reached the model: the helpline must be in
+ * what they see, whatever the draft said. (Seen live: "jeene ka mann nahi" → only "main yahin hoon,
+ * tumhare saath 🤍" — the rewrite wasn't better, so the first draft went out with no 14416.)
+ */
+export function ensureSafetyLines(bubbles: string[], situations: string[], userText: string, gender: 'female' | 'male' | null): string[] {
+  const all = bubbles.join('\n');
+  const out = [...bubbles];
+  if (situations.includes('crisis') && !/14416|tele.?manas/i.test(all)) {
+    const [, helpline, safe] = crisisSupportMessages(userText, gender);
+    out.push(helpline!);
+    if (!/\bsafe\b/i.test(all)) out.push(safe!);
+  }
+  if (situations.includes('emergency') && !/\b112\b|hospital|emergency/i.test(all)) {
+    out.push(HINDI.test(userText) ? 'Ye emergency ho sakti hai — abhi 112 call karo ya turant paas ke hospital jao.' : 'This could be an emergency — call 112 now or go to the nearest hospital right away.');
+  }
+  return out;
+}
