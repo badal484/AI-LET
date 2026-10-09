@@ -3,7 +3,7 @@ import { ADMIN_PERMISSIONS } from '@ai-companion/config';
 import { authenticateAdmin, requirePermission } from '../../shared/middleware/adminAuth.middleware.js';
 import { getOverview } from './overview.service.js';
 import { addMessages, getUser, grantPremium, listUsers, setBlocked } from './users.service.js';
-import { getAiCost, getMoney, listCharacters, setCharacterImage, transactionsCsv, updateCharacter } from './insights.service.js';
+import { addGalleryImage, getAiCost, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
 import express from 'express';
 import { allSettings, setSetting } from './appSettings.js';
 import {
@@ -57,6 +57,13 @@ consoleRouter.post(
   express.raw({ type: 'image/*', limit: '10mb' }),
   handle((req) => setCharacterImage(adminId(req), idOf(req), req.query['kind'] === 'cover' ? 'cover' : 'avatar', req.body as Buffer)),
 );
+consoleRouter.post(
+  '/characters/:id/gallery',
+  requirePermission(P.CHARACTERS_UPDATE),
+  express.raw({ type: 'image/*', limit: '10mb' }),
+  handle((req) => addGalleryImage(adminId(req), idOf(req), req.body as Buffer)),
+);
+consoleRouter.put('/characters/:id/gallery', requirePermission(P.CHARACTERS_UPDATE), handle((req) => setGallery(adminId(req), idOf(req), req.body?.images)));
 
 // Money
 consoleRouter.get('/money', requirePermission(P.BILLING_READ), handle(() => getMoney()));

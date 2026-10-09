@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { count, rupees } from '@/lib/format';
 
 interface CharacterRow {
-  id: string; slug: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; category: string; status: string; featured: boolean;
+  id: string; slug: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; gallery: string[]; category: string; status: string; featured: boolean;
   users7d: number; messages7d: number; usersTotal: number; payingUsers: number; aiCost7d: number; aiCostPerMessage: number | null;
 }
 
