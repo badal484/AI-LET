@@ -6,17 +6,21 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Live, LIVE_MS } from '@/components/ui/live';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { CharacterEditor, type EditableCharacter } from '@/components/CharacterEditor';
+import { Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { count, rupees } from '@/lib/format';
 
 interface CharacterRow {
-  id: string; slug: string; name: string; tagline: string; avatarUrl: string; category: string; status: string; featured: boolean;
+  id: string; slug: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; category: string; status: string; featured: boolean;
   users7d: number; messages7d: number; usersTotal: number; payingUsers: number; aiCost7d: number; aiCostPerMessage: number | null;
 }
 
 export default function CharactersPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
+  const [editing, setEditing] = useState<EditableCharacter | null>(null);
   const { data, dataUpdatedAt, isFetching } = useQuery({ queryKey: ['characters'], queryFn: () => api<CharacterRow[]>('/console/characters'), refetchInterval: LIVE_MS });
   const update = useMutation({
     mutationFn: (v: { id: string; live?: boolean; featured?: boolean }) =>
@@ -41,11 +45,16 @@ export default function CharactersPage() {
           return (
             <Card key={c.id} className={`p-4 ${live ? '' : 'opacity-60'}`}>
               <div className="flex items-start gap-3">
-                <img src={c.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                <button onClick={() => setEditing(c)} className="group relative shrink-0" aria-label={`Edit ${c.name}`}>
+                  <img src={c.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                  <span className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/50 group-hover:flex"><Pencil size={14} className="text-white" /></span>
+                </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate font-semibold">{c.name}</p>
                     {c.featured && <Badge tone="accent">Featured</Badge>}
+                    <span className="flex-1" />
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditing(c)}><Pencil size={14} /> Edit</Button>
                   </div>
                   <p className="truncate text-xs text-muted">{c.tagline}</p>
                   <p className="mt-0.5 text-xs capitalize text-muted">{c.category.replace(/_/g, ' ')}</p>
@@ -74,6 +83,7 @@ export default function CharactersPage() {
           );
         })}
       </div>
+      <CharacterEditor character={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

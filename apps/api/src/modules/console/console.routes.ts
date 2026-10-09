@@ -3,7 +3,8 @@ import { ADMIN_PERMISSIONS } from '@ai-companion/config';
 import { authenticateAdmin, requirePermission } from '../../shared/middleware/adminAuth.middleware.js';
 import { getOverview } from './overview.service.js';
 import { addMessages, getUser, grantPremium, listUsers, setBlocked } from './users.service.js';
-import { getAiCost, getMoney, listCharacters, transactionsCsv, updateCharacter } from './insights.service.js';
+import { getAiCost, getMoney, listCharacters, setCharacterImage, transactionsCsv, updateCharacter } from './insights.service.js';
+import express from 'express';
 import { allSettings, setSetting } from './appSettings.js';
 import {
   changeOwnPassword, createPromo, getSafety, getSystem, inviteAdmin, listAudit, listPromos, listSupport, listTeam,
@@ -46,8 +47,16 @@ consoleRouter.post('/users/:id/block', requirePermission(P.USERS_SUSPEND), handl
 // Characters
 consoleRouter.get('/characters', requirePermission(P.CHARACTERS_READ), handle(() => listCharacters()));
 consoleRouter.patch('/characters/:id', requirePermission(P.CHARACTERS_PUBLISH), handle((req) =>
-  updateCharacter(adminId(req), idOf(req), { live: req.body?.live, featured: req.body?.featured }),
+  updateCharacter(adminId(req), idOf(req), { live: req.body?.live, featured: req.body?.featured, name: req.body?.name, tagline: req.body?.tagline }),
 ));
+
+// A photo is sent as the raw request body (image/*), up to 10 MB.
+consoleRouter.post(
+  '/characters/:id/image',
+  requirePermission(P.CHARACTERS_UPDATE),
+  express.raw({ type: 'image/*', limit: '10mb' }),
+  handle((req) => setCharacterImage(adminId(req), idOf(req), req.query['kind'] === 'cover' ? 'cover' : 'avatar', req.body as Buffer)),
+);
 
 // Money
 consoleRouter.get('/money', requirePermission(P.BILLING_READ), handle(() => getMoney()));
