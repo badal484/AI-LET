@@ -9,6 +9,7 @@ const monorepoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..
 
 const nextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   outputFileTracingRoot: monorepoRoot,
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
