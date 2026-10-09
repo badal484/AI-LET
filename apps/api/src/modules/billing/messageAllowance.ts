@@ -1,3 +1,4 @@
+import { getSetting } from '../console/appSettings.js';
 import { prisma } from '../../infrastructure/database/prisma.js';
 import { redis } from '../../infrastructure/redis/redis.js';
 import { logger } from '../../config/logger.js';
@@ -23,12 +24,10 @@ export interface AllowanceResult {
   resetsAt: string;
 }
 
-const limits = () => ({
-  free: Number(process.env['FREE_DAILY_MESSAGES'] ?? 5),
-  premium: Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150),
-});
+// From the admin console's settings (env values are the defaults).
+const limits = async () => ({ free: await getSetting('limits.freeDaily'), premium: await getSetting('limits.premiumDaily') });
 
-export const limitsEnforced = () => process.env['BILLING_ENFORCE_LIMITS'] === 'true';
+export const limitsEnforced = () => getSetting('limits.enforce');
 
 /** The user's day in India (resets at midnight IST). */
 function istDay(now = new Date()): { key: string; resetsAt: Date } {
@@ -58,9 +57,10 @@ export async function useMessage(userId: string, text: string): Promise<Allowanc
   const base = { resetsAt: resetsAt.toISOString() };
   try {
     const premium = await hasPremium(userId);
-    const limit = premium ? limits().premium : limits().free;
+    const lim = await limits();
+    const limit = premium ? lim.premium : lim.free;
     const situations = classifySituations(text, null);
-    if (!limitsEnforced() || isCrisisMessage(text) || situations.includes('emergency')) {
+    if (!(await limitsEnforced()) || isCrisisMessage(text) || situations.includes('emergency')) {
       return { allowed: true, premium, used: 0, limit, ...base };
     }
     const counterKey = `msgs:${userId}:${key}`;
@@ -85,7 +85,7 @@ export async function useMessage(userId: string, text: string): Promise<Allowanc
     return { allowed: false, premium, used: limit, limit, credits: 0, reason: premium ? 'fair_use' : 'free_limit', ...base };
   } catch (err) {
     logger.warn(`Message allowance check failed (allowing): ${err instanceof Error ? err.message : 'Unknown'}`);
-    return { allowed: true, premium: false, used: 0, limit: limits().free, ...base };
+    return { allowed: true, premium: false, used: 0, limit: (await limits().catch(() => ({ free: 5 }))).free, ...base };
   }
 }
 
@@ -98,9 +98,9 @@ export async function allowanceStatus(userId: string): Promise<Omit<AllowanceRes
   return {
     premium,
     used,
-    limit: premium ? limits().premium : limits().free,
+    limit: premium ? (await limits()).premium : (await limits()).free,
     credits: wallet?.availableBalance ?? 0,
     resetsAt: resetsAt.toISOString(),
-    enforced: limitsEnforced(),
+    enforced: await limitsEnforced(),
   };
 }

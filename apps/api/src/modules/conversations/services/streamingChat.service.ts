@@ -1,3 +1,4 @@
+import { recordSafetyMoments } from '../../console/safetyMoments.js';
 import { useMessage } from '../../billing/messageAllowance.js';
 import { setAICostContext, withAICostTask } from '../../ai/telemetry/aiCostLedger.js';
 import { Response, Request } from 'express';
@@ -34,7 +35,7 @@ import { localHourIn } from '../human/emotionalState.js';
 import { addTask, formatProfile, formatProgress, localToday, openTask, takeDueEvents, UserProfileService } from '../../memory/services/userProfile.service.js';
 import { updateMomentContext } from '../human/emotionalState.js';
 import { atLeast, buildHumanPrompt, planReply, type BondStage } from '../human/compactPrompt.js';
-import { addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState, herDayLine, milestoneLine } from '../human/lifeState.js';
+import { saysUnder18, addDatedThreads, applyUserTurn, loadLifeState, localDate, markCrisis, readUserMood, rememberDoing, rememberTask, rememberTold, restoreTaskThread, saveLifeState, herDayLine, milestoneLine } from '../human/lifeState.js';
 import { crisisSupportMessages, ensureSafetyLines, isCrisisMessage } from '../human/crisisSupport.js';
 import { dropUnsaidTasks } from '../human/taskGuard.js';
 import { hasDevanagari, romanizeDevanagari, unbracketAsides } from '../human/script.js';
@@ -707,6 +708,8 @@ export class StreamingChatService {
       if (!situations.includes('boundary') && quotedMessages.some((q) => q.role === 'user' && classifySituations(q.content, null).includes('boundary')))
         situations.unshift('boundary');
       turnSituations = situations;
+      // Admin Safety screen: who, which character, what kind — never the words.
+      recordSafetyMoments({ userId, characterId: conversation.characterId, conversationId, messageId: pending[pending.length - 1]?.id, kinds: saysUnder18(pendingText) ? [...situations, 'minor'] : situations });
       // User first: "Oo" right after she talked about herself means they're not into her topic — remember
       // it for this user (no extra model call) and turn to them now.
       // The conversation's language, not one line ("Kitna baar mana karu" was read as English and Dev switched).
@@ -1624,6 +1627,7 @@ export class StreamingChatService {
     userId: string,
     content?: string,
   ): Promise<void> {
+    recordSafetyMoments({ userId, characterId: conversation.characterId, conversationId: conversation.id, kinds: ['crisis'], helplineShown: true });
     const g = String(conversation.character.gender ?? '').toLowerCase();
     const gender = /^(female|woman|f)$/.test(g) ? 'female' : /^(male|man|m)$/.test(g) ? 'male' : null;
     this.initSseResponse(res);
