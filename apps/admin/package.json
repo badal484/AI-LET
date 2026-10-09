@@ -3,31 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3010",
     "build": "next build",
-    "start": "next start --port 3000",
-    "typecheck": "tsc --noEmit",
-    "lint": "next lint"
+    "start": "next start --port 3010",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-companion/api-client": "workspace:*",
-    "@ai-companion/config": "workspace:*",
-    "@ai-companion/types": "workspace:*",
-    "@ai-companion/ui-tokens": "workspace:*",
-    "@ai-companion/utils": "workspace:*",
-    "@ai-companion/validation": "workspace:*",
     "@tanstack/react-query": "^5.66.9",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^3.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "eslint-config-next": "^15.1.7",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.1.0",
     "typescript": "^5.7.3"
   }
 }
