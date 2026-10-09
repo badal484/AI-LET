@@ -18,7 +18,7 @@ import {
   StatusBar,
   Alert,
   Animated,
-  ViewToken,
+  ListViewToken,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -372,9 +372,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     return () => clearInterval(timer);
   }, []);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ListViewToken[] }) => {
     // Inverted list: the highest index on screen is the one at the top.
-    const top = viewableItems.reduce<ViewToken | null>((a, b) => (a && (a.index ?? 0) > (b.index ?? 0) ? a : b), null);
+    const top = viewableItems.reduce<ListViewToken | null>((a, b) => (a && (a.index ?? 0) > (b.index ?? 0) ? a : b), null);
     const item = top?.item as ChatMessageItem | DateDivider | undefined;
     if (!item) return;
     if (isDateDivider(item)) setFloatingDate(item.label);
@@ -920,7 +920,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       style={styles.backgroundImage}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" />
       <View style={styles.backgroundScrim} />
 
       <View
@@ -1043,7 +1043,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   ) : null}
                 </>
               }
-              ListHeaderComponent={null}
             />
             {floatingDate && allMessages.length > 0 ? (
               <Animated.View pointerEvents="none" style={[styles.floatingDateContainer, { opacity: floatingOpacity }]}>
@@ -1559,7 +1558,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#07050E',
   },
   backgroundScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(7, 5, 14, 0.72)',
   },
   container: {

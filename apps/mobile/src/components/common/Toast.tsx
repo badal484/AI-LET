@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Animated, Text, StyleSheet } from 'react-native';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import { Icon, IconName } from './Icon.js';
 
@@ -137,7 +137,7 @@ export const Toast: React.FC = () => {
           borderColor: getBorderColor(),
           transform: [{ translateY }],
           opacity,
-        } as ViewStyle,
+        },
       ]}
       accessibilityRole="alert"
     >
