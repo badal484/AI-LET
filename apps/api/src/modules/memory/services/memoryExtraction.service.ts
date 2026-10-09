@@ -1,3 +1,4 @@
+import { nothingToRemember } from './nothingToRemember.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { AIOrchestrator } from '../../../infrastructure/ai/AIOrchestrator.js';
 import { memoryExtractionPayloadSchema } from '@ai-companion/validation';
@@ -86,7 +87,8 @@ Respond with ONLY valid JSON matching this schema:
       }
     }
 
-    // 2. Pre-filter trivial messages before invoking AI Gateway
+    // 2. Pre-filter trivial messages before invoking AI Gateway (Hinglish chatter too — it was all sent to the AI).
+    if (nothingToRemember(userMessage)) return { candidates: [], filteredCount: 1, totalExtracted: 0 };
     const safetyCheck = MemorySafetyService.evaluateCandidate(userMessage, 'PERSONAL_FACT');
     if (!safetyCheck.isSafeToStore && safetyCheck.rejectionReason?.includes('ephemeral noise')) {
       return { candidates: [], filteredCount: 1, totalExtracted: 0 };
