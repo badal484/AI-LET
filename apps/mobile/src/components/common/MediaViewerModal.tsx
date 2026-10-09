@@ -6,9 +6,10 @@ import {
   Text,
   StyleSheet,
   Share,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+// React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import { IconButton } from './IconButton.js';
 
