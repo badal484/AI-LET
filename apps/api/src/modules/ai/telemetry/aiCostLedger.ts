@@ -85,3 +85,23 @@ export function recordGeminiCall(params: {
     })
     .catch((err: unknown) => logger.warn(`AI cost ledger write failed: ${err instanceof Error ? err.message : 'Unknown'}`));
 }
+
+/** A call that failed on every model (the user saw "can't reply right now"). Cost 0; shown in System. */
+export function recordGeminiFailure(model: string, cause: string): void {
+  const ctx = store.getStore();
+  void prisma.aIUsageEvent
+    .create({
+      data: {
+        requestId: `gemini_fail_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        provider: 'google',
+        model,
+        task: ctx?.task ?? 'other',
+        userId: ctx?.userId ?? null,
+        characterId: ctx?.characterId ?? null,
+        conversationId: ctx?.conversationId ?? null,
+        status: 'FAILED',
+        breakdown: { cause: cause.slice(0, 300) },
+      },
+    })
+    .catch(() => undefined);
+}

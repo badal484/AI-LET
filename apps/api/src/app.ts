@@ -16,6 +16,8 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { consoleRouter } from './modules/console/console.routes.js';
+import { supportRouter } from './modules/console/support.routes.js';
+import { getSetting } from './modules/console/appSettings.js';
 import { characterRouter } from './modules/characters/routes/character.routes.js';
 import { adminCharacterRouter } from './modules/characters/routes/adminCharacter.routes.js';
 import { conversationRouter } from './modules/conversations/routes/conversation.routes.js';
@@ -106,6 +108,14 @@ export const createApp = (): Express => {
   app.use('/health', healthRoutes);
   app.use(`${env.API_PREFIX}/health`, healthRoutes);
 
+  // Maintenance mode (admin console → Settings): the app gets a friendly 503; admin, health and
+  // payment notifications keep working.
+  app.use(env.API_PREFIX, async (req, res, next) => {
+    if (req.path.startsWith('/admin') || req.path.startsWith('/health') || req.path.startsWith('/billing/webhooks')) return next();
+    if (!(await getSetting('maintenance.enabled').catch(() => false))) return next();
+    res.status(503).json({ success: false, error: { code: 'MAINTENANCE', message: await getSetting('maintenance.message') } });
+  });
+
   // Phase 2 Identity, Auth & Admin Routes
   app.use(`${env.API_PREFIX}/auth`, authRouter);
   app.use(`${env.API_PREFIX}/users`, usersRouter);
@@ -114,6 +124,7 @@ export const createApp = (): Express => {
   // Phase 3 AI Character Engine Routes
   app.use(`${env.API_PREFIX}/characters`, characterRouter);
   app.use(`${env.API_PREFIX}/admin/console`, consoleRouter);
+  app.use(`${env.API_PREFIX}/support`, supportRouter);
   app.use(`${env.API_PREFIX}/admin/characters`, adminCharacterRouter);
 
   // Phase 4 Conversation & Real-Time Streaming Chat Routes

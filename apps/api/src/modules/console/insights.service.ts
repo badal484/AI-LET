@@ -3,6 +3,7 @@ import { NotFoundError } from '../../shared/errors/AppError.js';
 import { AuditService } from '../audit/audit.service.js';
 import { limitsEnforced } from '../billing/messageAllowance.js';
 import { REAL_USERS } from './overview.service.js';
+import { getSetting } from './appSettings.js';
 
 /** Characters, Money and AI cost screens. Test/eval accounts are always left out. */
 
@@ -121,9 +122,9 @@ export async function getMoney() {
     packsSold30d: packs.sold ?? 0,
     recent: recent.map((r) => ({ ...r, amount: r.paise / 100 })),
     limits: {
-      enforced: limitsEnforced(),
-      freeDaily: Number(process.env['FREE_DAILY_MESSAGES'] ?? 5),
-      premiumDaily: Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150),
+      enforced: await limitsEnforced(),
+      freeDaily: await getSetting('limits.freeDaily'),
+      premiumDaily: await getSetting('limits.premiumDaily'),
     },
   };
 }

@@ -5010,3 +5010,50 @@ model DeveloperEmbedConfig {
   @@index([projectId, characterId])
   @@map("developer_embed_configs")
 }
+
+/// A safety-relevant moment in a chat (crisis, emergency, eating, sexual boundary, under-18).
+/// Never stores what was said — only who, where, what kind, and whether the helpline was shown.
+model SafetyMoment {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  characterId    String?   @map("character_id") @db.Uuid
+  conversationId String?   @map("conversation_id") @db.Uuid
+  messageId      String?   @map("message_id") @db.Uuid
+  kind           String    @db.VarChar(30) // crisis | emergency | eating | boundary | minor
+  helplineShown  Boolean   @default(false) @map("helpline_shown")
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy     String?   @map("resolved_by") @db.Uuid
+  note           String?   @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([kind, createdAt(sort: Desc)])
+  @@map("safety_moments")
+}
+
+/// A message from a user to the team (Help → Contact us in the app).
+model SupportRequest {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  topic      String    @db.VarChar(40) // payment | account | bug | delete_data | feedback | other
+  message    String    @db.Text
+  status     String    @default("open") @db.VarChar(20) // open | answered | closed
+  reply      String?   @db.Text
+  repliedBy  String?   @map("replied_by") @db.Uuid
+  repliedAt  DateTime? @map("replied_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("support_requests")
+}
+
+/// Settings the team changes from the admin console without a release (limits, maintenance, …).
+model AppSetting {
+  key       String   @id @db.VarChar(80)
+  value     Json     @db.JsonB
+  updatedBy String?  @map("updated_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("app_settings")
+}

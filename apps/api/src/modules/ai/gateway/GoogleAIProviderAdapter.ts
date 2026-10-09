@@ -1,4 +1,4 @@
-import { recordGeminiCall } from '../telemetry/aiCostLedger.js';
+import { recordGeminiCall, recordGeminiFailure } from '../telemetry/aiCostLedger.js';
 import {
   AIGenerateRequest,
   AIGenerateResponse,
@@ -265,6 +265,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     }
 
     // Never substitute canned text for a real answer: callers must see the failure.
+    recordGeminiFailure(primaryModel, lastError);
     throw new Error(`Google AI generation failed on all models (${lastError})`);
   }
 
@@ -404,6 +405,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
     }
 
     const rateLimited = sawRateLimit;
+    recordGeminiFailure(this.resolveModelName(request.model), lastError);
     yield {
       type: 'failed',
       id: generationId,
