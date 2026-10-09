@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* Lovira admin — dark by default, light available. Every colour is a token, defined once. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f2f2f4;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --muted: #71717a;
+  --accent: #db2777;
+  --accent-2: #7c3aed;
+  --accent-soft: rgba(219, 39, 119, 0.1);
+  --good: #059669;
+  --warn: #d97706;
+  --bad: #dc2626;
+}
+.dark {
+  --bg: #09090b;
+  --surface: #111114;
+  --surface-2: #18181c;
+  --border: #26262b;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --accent: #ec4899;
+  --accent-2: #a78bfa;
+  --accent-soft: rgba(236, 72, 153, 0.14);
+  --good: #34d399;
+  --warn: #fbbf24;
+  --bad: #f87171;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+* { border-color: var(--border); }

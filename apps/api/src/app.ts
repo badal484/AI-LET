@@ -15,6 +15,7 @@ import { healthRoutes } from './modules/health/health.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { usersRouter } from './modules/users/users.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
+import { consoleRouter } from './modules/console/console.routes.js';
 import { characterRouter } from './modules/characters/routes/character.routes.js';
 import { adminCharacterRouter } from './modules/characters/routes/adminCharacter.routes.js';
 import { conversationRouter } from './modules/conversations/routes/conversation.routes.js';
@@ -112,6 +113,7 @@ export const createApp = (): Express => {
 
   // Phase 3 AI Character Engine Routes
   app.use(`${env.API_PREFIX}/characters`, characterRouter);
+  app.use(`${env.API_PREFIX}/admin/console`, consoleRouter);
   app.use(`${env.API_PREFIX}/admin/characters`, adminCharacterRouter);
 
   // Phase 4 Conversation & Real-Time Streaming Chat Routes
