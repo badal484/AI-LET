@@ -1,5 +1,7 @@
 import { prisma } from '../../infrastructure/database/prisma.js';
-import { NotFoundError } from '../../shared/errors/AppError.js';
+import { BadRequestError, NotFoundError } from '../../shared/errors/AppError.js';
+import { processImage, storageMode, storeImage, type ImageKind } from './media.js';
+import { CharacterService } from '../characters/services/character.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { limitsEnforced } from '../billing/messageAllowance.js';
 import { REAL_USERS } from './overview.service.js';
@@ -14,9 +16,9 @@ const SUB_ACTIVE = `s.current_period_end > now() AND s.status IN ('TRIALING','AC
 
 export async function listCharacters() {
   const rows = await prisma.$queryRawUnsafe<
-    Array<{ id: string; slug: string; name: string; tagline: string; avatarUrl: string; category: string; status: string; featured: boolean; users7d: number; messages7d: number; usersTotal: number; payingUsers: number; usd7d: number }>
+    Array<{ id: string; slug: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; category: string; status: string; featured: boolean; users7d: number; messages7d: number; usersTotal: number; payingUsers: number; usd7d: number }>
   >(
-    `SELECT ch.id, ch.slug, ch.name, ch.tagline, ch.avatar_url "avatarUrl", ch.category, ch.status::text, ch.is_featured featured,
+    `SELECT ch.id, ch.slug, ch.name, ch.tagline, ch.avatar_url "avatarUrl", ch.cover_image_url "coverImageUrl", ch.category, ch.status::text, ch.is_featured featured,
             coalesce(a.users7d, 0) "users7d", coalesce(a.messages7d, 0) "messages7d", coalesce(t.users, 0) "usersTotal",
             coalesce(p.paying, 0) "payingUsers", coalesce(cst.usd, 0)::float "usd7d"
        FROM characters ch
@@ -44,17 +46,24 @@ export async function listCharacters() {
   return rows.map(({ usd7d, ...r }) => ({ ...r, aiCost7d: usd7d * INR(), aiCostPerMessage: r.messages7d ? (usd7d * INR()) / r.messages7d : null }));
 }
 
-export async function updateCharacter(adminId: string, id: string, patch: { live?: boolean; featured?: boolean }) {
-  const before = await prisma.character.findUnique({ where: { id }, select: { status: true, isFeatured: true, name: true } });
+export async function updateCharacter(adminId: string, id: string, patch: { live?: boolean; featured?: boolean; name?: string; tagline?: string }) {
+  const before = await prisma.character.findUnique({ where: { id }, select: { status: true, isFeatured: true, name: true, tagline: true } });
   if (!before) throw new NotFoundError('Character not found');
+  const name = patch.name?.trim();
+  const tagline = patch.tagline?.trim();
+  if (name !== undefined && (name.length < 2 || name.length > 100)) throw new BadRequestError('Name must be 2–100 characters.');
+  if (tagline !== undefined && (tagline.length < 2 || tagline.length > 255)) throw new BadRequestError('Tagline must be 2–255 characters.');
   const ch = await prisma.character.update({
     where: { id },
     data: {
       ...(patch.live !== undefined && { status: patch.live ? 'PUBLISHED' : 'UNPUBLISHED' }),
       ...(patch.featured !== undefined && { isFeatured: patch.featured }),
+      ...(name !== undefined && { name }),
+      ...(tagline !== undefined && { tagline }),
     },
-    select: { id: true, status: true, isFeatured: true },
+    select: { id: true, slug: true, status: true, isFeatured: true, name: true, tagline: true },
   });
+  await CharacterService.invalidateCharacterCache(id, ch.slug).catch(() => undefined);
   await AuditService.log({
     actorType: 'ADMIN',
     actorId: adminId,
@@ -190,4 +199,22 @@ export async function getAiCost(days = 30) {
     byCharacter: toInr(byCharacter),
     series: series.map((r) => ({ day: r.day, cost: r.usd * INR(), messages: r.messages, perMessage: r.messages ? (r.usd * INR()) / r.messages : null })),
   };
+}
+
+/** A new profile or cover photo, uploaded from the admin console (processed and stored by media.ts). */
+export async function setCharacterImage(adminId: string, id: string, kind: ImageKind, body: Buffer) {
+  const ch = await prisma.character.findUnique({ where: { id }, select: { slug: true, avatarUrl: true, coverImageUrl: true } });
+  if (!ch) throw new NotFoundError('Character not found');
+  const url = await storeImage(await processImage(body, kind), `characters/${ch.slug}`, kind);
+  await prisma.character.update({ where: { id }, data: kind === 'avatar' ? { avatarUrl: url } : { coverImageUrl: url } });
+  await CharacterService.invalidateCharacterCache(id, ch.slug).catch(() => undefined);
+  await AuditService.log({
+    actorType: 'ADMIN',
+    actorId: adminId,
+    action: 'console.character.image',
+    resourceType: 'CHARACTER',
+    resourceId: id,
+    metadata: { kind, before: kind === 'avatar' ? ch.avatarUrl : ch.coverImageUrl, after: url, storage: storageMode() },
+  });
+  return { url, storage: storageMode() };
 }

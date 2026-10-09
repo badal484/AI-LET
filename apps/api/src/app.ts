@@ -18,6 +18,7 @@ import { adminRouter } from './modules/admin/admin.routes.js';
 import { consoleRouter } from './modules/console/console.routes.js';
 import { supportRouter } from './modules/console/support.routes.js';
 import { getSetting } from './modules/console/appSettings.js';
+import { UPLOAD_DIR } from './modules/console/media.js';
 import { characterRouter } from './modules/characters/routes/character.routes.js';
 import { adminCharacterRouter } from './modules/characters/routes/adminCharacter.routes.js';
 import { conversationRouter } from './modules/conversations/routes/conversation.routes.js';
@@ -105,6 +106,17 @@ export const createApp = (): Express => {
       },
     });
   });
+  // Uploaded media when no object storage is configured (see console/media.ts).
+  app.use(
+    '/media',
+    express.static(UPLOAD_DIR, {
+      maxAge: '365d',
+      immutable: true,
+      fallthrough: false,
+      // Images are shown by the app and the admin console (other origins); helmet's default would block them.
+      setHeaders: (res) => res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'),
+    }),
+  );
   app.use('/health', healthRoutes);
   app.use(`${env.API_PREFIX}/health`, healthRoutes);
 
