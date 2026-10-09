@@ -1,6 +1,7 @@
 import { redis } from '../../../infrastructure/redis/redis.js';
 import type { PersonaPack, Situation } from './personaPack.types.js';
 import type { OpenRequest } from './requests.js';
+import { romanceMomentName } from './romanceMoments.js';
 
 /**
  * Everything she "carries" between messages with one person, so talking to her feels continuous:
@@ -33,6 +34,8 @@ export interface LifeState {
   nickname?: string;
   /** Read from how they talk about themselves ("ja raha hoon" / "ja rahi hoon"). */
   userGender?: 'male' | 'female';
+  /** Same-gender chat with a love character: they flirted first, so romance is what they want (they lead). */
+  userLedRomance?: boolean;
   /** When they last said they felt like ending their life (the words themselves are never kept). */
   crisisAt?: number;
   /** Something they asked her for that she hasn't handed over yet ("Next code", "diet plan bana do"). */
@@ -253,6 +256,16 @@ export function applyUserTurn(params: {
   if (state.minor) lines.push('They told you they are under 18: absolutely no romance, flirting or "jaan/baby" — be a warm, caring friend (didi/bhaiya-type). If they flirt, kindly and clearly say no and stay friendly.');
   if (state.userGender) {
     lines.push(state.userGender === 'male' ? 'They are a guy: talk to them with male forms (rahe ho, gaye, karoge).' : 'They are a girl: talk to them with female forms (rahi ho, gayi, karogi).');
+    // Same gender: a love character doesn't start the romance — the user leads (if they flirt, it's
+    // full romance like with anyone, no awkwardness). Friends are buddies / close girlfriends.
+    if (state.userGender === pack.gender) {
+      const flirts = situations.some((x) => x === 'flirt' || x === 'love') || Boolean(romanceMomentName(userText));
+      if (flirts) state.userLedRomance = true;
+      if ((pack.romance || pack.flirtyFriend) && !state.userLedRomance && !state.minor)
+        lines.push(`They're a ${pack.gender === 'male' ? 'guy' : 'girl'} like you. Start as a warm, close friend — don't flirt first or call them jaan/baby. If THEY flirt or say something romantic, respond fully and warmly, like you would with anyone — no awkwardness, no lecture, never make it about gender.`);
+      else if (!pack.romance && !pack.flirtyFriend)
+        lines.push(pack.gender === 'male' ? 'You are two guys: talk like buddies — "bhai" or "bro" now and then is fine.' : 'You are two girls: talk like close girlfriends — "yaar", "babe" now and then.');
+    }
   } else {
     // Seen: Aarav guessed a man was a girl ("pooch sakti ho") from nothing. Unknown → no guessing.
     lines.push("You don't know if they're a guy or a girl — never guess (not from their name either). Use forms that fit anyone: \"din kaisa raha?\", \"thakaan ho rahi hai?\", \"tumne kya socha?\" — not \"thak gaye/gayi ho\", \"pooch sakte/sakti ho\".");

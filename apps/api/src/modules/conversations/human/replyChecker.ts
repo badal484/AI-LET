@@ -27,6 +27,8 @@ const BOT_PHRASES: RegExp[] = [
 const MASCULINE_VERB = /\b\w{2,}(ta|ga)\s+(hoon|hu|hun)\b|\b(raha|gaya|tha)\s+(hoon|hu|hun)\b|\b\w{1,}unga\b/i;
 const FEMININE_VERB = /\b\w{2,}(ti|gi)\s+(hoon|hu|hun)\b|\b(rahi|gayi|thi)\s+(hoon|hu|hun)\b|\b\w{1,}ungi\b/i;
 const WRONG_ADDRESS = /\b(bhai+|bh?ai+y+a+|bro+|beta|dude)\b/i;
+// Between two guys who are buddies, bhai/bro is natural; bhaiya (elder) and beta (child) never are.
+const ELDER_ADDRESS = /\b(bh?ai+y+a+|beta)\b/i;
 const OTHER_ADDRESS: Record<'tum' | 'aap' | 'tu', RegExp> = {
   // "apne aap" means "by itself", not the formal "aap".
   tum: /(?<!apne[ -])\b(aap|aapko|aapka|aapki|aapke|aapse)\b|\b(tu|tujhe|tujhse|tujhko|tera|teri|tere)\b|\b(kijiye|sochiye|bataiye|dekhiye|suniye|rakhiye|chaliye|baithiye|aaiye|jaiye|boliye|kariye|lijiye|dijiye)\b/i,
@@ -171,6 +173,8 @@ export function checkReply(params: {
   noQuestions?: boolean;
   /** Mentors are also checked for income promises. */
   mentor?: boolean;
+  /** Male friend character and male user, no romance: bhai/bro allowed. */
+  allowBro?: boolean;
   /** A mentor's lesson must end with a task (or, if they still need context, a question). */
   lesson?: { hasTask: boolean };
   /** Health experts are also checked for medicines, banned substances and crash diets. */
@@ -315,7 +319,7 @@ export function checkReply(params: {
   if (copied && !params.situations?.some((s) => s === 'crisis' || s === 'emergency'))
     problems.push(`You copied an example almost word for word ("${copied.slice(0, 50)}…"). Say it freshly in your own words, fitted to them.`);
   if (params.address === 'tum' && TU_IMPERATIVE.test(all)) problems.push('You call them "tum": use tum verb forms (karo, rakho, lo, suno, bolo), not tu forms (kar, rakh, le, sun, bol).');
-  if (WRONG_ADDRESS.test(all)) problems.push('Don\'t call them bhai/bhaiya/bro/beta.');
+  if ((params.allowBro ? ELDER_ADDRESS : WRONG_ADDRESS).test(all)) problems.push(params.allowBro ? "Don't call them bhaiya or beta." : 'Don\'t call them bhai/bhaiya/bro/beta.');
   const lower = all.toLowerCase();
   for (const m of params.mustMention ?? []) if (!lower.includes(m.word.toLowerCase())) problems.push(m.why);
   const lastFew = params.herRecentReplies.slice(-5).join(' ').toLowerCase();
@@ -338,8 +342,9 @@ export function fixTuForms(bubbles: string[]): string[] {
   return bubbles.map((b) => TU_TO_TUM.reduce((t, [re, to]) => t.replace(re, to), b));
 }
 
-export function stripWrongAddress(bubbles: string[]): string[] {
+export function stripWrongAddress(bubbles: string[], allowBro = false): string[] {
+  const wrong = allowBro ? /\s*\b(bh?ai+y+a+|beta)\b[\s,!.]*/gi : /\s*\b(bhai+|bh?ai+y+a+|bro+|beta|dude)\b[\s,!.]*/gi;
   return bubbles
-    .map((b) => b.replace(/\s*\b(bhai+|bh?ai+y+a+|bro+|beta|dude)\b[\s,!.]*/gi, ' ').replace(/\s{2,}/g, ' ').trim())
+    .map((b) => b.replace(wrong, ' ').replace(/\s{2,}/g, ' ').trim())
     .filter((b) => b.replace(/[\p{P}\p{Extended_Pictographic}\s]/gu, '').length > 0);
 }
