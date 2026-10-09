@@ -1,3 +1,4 @@
+import { setAICostContext, withAICostTask } from '../../ai/telemetry/aiCostLedger.js';
 import { Response, Request } from 'express';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
@@ -25,7 +26,7 @@ import { EnforcementService } from '../../safety/services/EnforcementService.js'
 import { AIEconomicsService } from '../../analytics/services/AIEconomicsService.js';
 import { UserGoalService } from '../../characters/engine/UserGoalService.js';
 import { CharacterRuntimeSnapshotService } from '../../characters/engine/CharacterRuntimeSnapshotService.js';
-import { chatAIRoutes } from '../../ai/routing/aiRoutes.js';
+import { chatAIRoutes, needsStrongModel } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../human/personaPacks/index.js';
 import { asksIfAI as asksIfAIQuestion, classifySituations } from '../human/situation.js';
 import { localHourIn } from '../human/emotionalState.js';
@@ -66,8 +67,6 @@ const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|impl
 /** "tum bahut sawaal poochti ho" — they want her to stop asking. */
 const TIRED_OF_QUESTIONS = /(bahut|zyada|itne|kitne) (sawaal|sawal|questions?)|sawaal (mat|band)|too many questions|stop asking|interrogat|poochti rehti|poochte rehte|puchti rehti/i;
 
-/** Moments worth the better (quota-limited) model when Gemini is on its free tier. */
-const IMPORTANT_MOMENTS: string[] = ['emotional', 'crisis', 'emergency', 'eating', 'flirt', 'win', 'task', 'return', 'ai', 'rude', 'sulk', 'jealous', 'love', 'insecure', 'withhold', 'fading', 'boundary', 'news'];
 
 export class StreamingChatService {
   // Registry of active stream AbortControllers for real-time cancellation
@@ -551,6 +550,8 @@ export class StreamingChatService {
   }): Promise<boolean> {
     const { conversation, characterRuntime, pending, userId, send, abortController } = params;
     const conversationId = conversation.id;
+    // Every AI call from here on (reply, rewrites, background updates) is billed to this user and chat.
+    setAICostContext({ userId, characterId: conversation.characterId, conversationId, task: 'chat' });
     const startTime = Date.now();
     const pendingText = pending.map((m) => m.content).join('\n');
     const firstSeq = pending[0]!.sequenceNumber;
@@ -1025,8 +1026,8 @@ export class StreamingChatService {
         }
       }
       if (!codeTurn && process.env['GEMINI_IMPORTANT_ONLY'] === 'true' && providerChain[0]?.provider === 'google') {
-        const important = situations.some((s) => IMPORTANT_MOMENTS.includes(s));
-        if (!important) {
+        // Cost: Flash only where quality really matters (see needsStrongModel); everything else on Flash-Lite.
+        if (!needsStrongModel(situations)) {
           // Small talk: Gemini Flash-Lite — its own free daily quota, and far better Hinglish than the
           // small Mistral model (which wrote "Sheri." and "Tumhara phone kahan hai?" for Aarohi).
           providerChain.unshift({ provider: 'google', model: process.env['GEMINI_SMALLTALK_MODEL'] || 'gemini-3.5-flash-lite' });
@@ -1386,7 +1387,8 @@ export class StreamingChatService {
     });
 
     // Background: ledger, explainability snapshot, memory, summary, relationship, audit.
-    AIEconomicsService.recordUsage({
+    // Gemini calls are already in the ledger, each one with its real tokens (aiCostLedger) — only other providers here.
+    if (provider.providerName !== 'google') AIEconomicsService.recordUsage({
       requestId: params.requestId || firstReplyId,
       provider: provider.providerName,
       model: modelName,
@@ -1439,16 +1441,18 @@ export class StreamingChatService {
       userLanguage: pack ? (hinglishTalker ? 'hinglish' : 'english') : undefined,
     });
 
-    MemoryExtractionService.processConversationMessage({
-      userId,
-      characterId: conversation.characterId,
-      conversationId,
-      userMessage: pendingText,
-      assistantMessage: deliveredText,
-      sourceMessageId: pending[pending.length - 1]!.id,
-    }).catch((err) => logger.warn(`Background memory extraction failed: ${err instanceof Error ? err.message : 'Unknown'}`));
+    withAICostTask('memory', {}, () =>
+      MemoryExtractionService.processConversationMessage({
+        userId,
+        characterId: conversation.characterId,
+        conversationId,
+        userMessage: pendingText,
+        assistantMessage: deliveredText,
+        sourceMessageId: pending[pending.length - 1]!.id,
+      }),
+    ).catch((err) => logger.warn(`Background memory extraction failed: ${err instanceof Error ? err.message : 'Unknown'}`));
 
-    ConversationSummaryService.checkAndSummarizeConversation(conversationId).catch((err) =>
+    withAICostTask('memory', {}, () => ConversationSummaryService.checkAndSummarizeConversation(conversationId)).catch((err) =>
       logger.warn(`Background conversation summarization failed: ${err instanceof Error ? err.message : 'Unknown'}`),
     );
 

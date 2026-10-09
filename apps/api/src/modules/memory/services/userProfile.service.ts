@@ -1,3 +1,4 @@
+import { withAICostTask } from '../../ai/telemetry/aiCostLedger.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { AIOrchestrator } from '../../../infrastructure/ai/AIOrchestrator.js';
 import { logger } from '../../../config/logger.js';
@@ -553,7 +554,9 @@ Rules:
   /** Background: update the card from the latest exchange. Never throws. */
   public static updateFromExchange(params: Parameters<typeof UserProfileService.runUpdate>[0]): Promise<void> {
     const key = `${params.userId}:${params.characterId}`;
-    const next = (this.queues.get(key) ?? Promise.resolve()).then(() => this.runUpdate(params));
+    const next = (this.queues.get(key) ?? Promise.resolve()).then(() =>
+      withAICostTask('profile', { userId: params.userId, characterId: params.characterId }, () => this.runUpdate(params)),
+    );
     this.queues.set(key, next);
     void next.finally(() => {
       if (this.queues.get(key) === next) this.queues.delete(key);

@@ -180,3 +180,28 @@ describe('Real help, not only reassurance', () => {
     expect(checkReply({ ...base, userText: 'hi', bubbles: ['Hi! Ekdum mast.'] }).problems.some((p) => p.includes("didn't ask how you are"))).toBe(true);
   });
 });
+
+describe('Which moments get the stronger model (cost)', () => {
+  it('safety, lessons and emotional support use Flash; flirting and small talk use Flash-Lite', async () => {
+    const { needsStrongModel, backgroundAIRoute } = await import('../../src/modules/ai/routing/aiRoutes.js');
+    expect(needsStrongModel(['crisis'])).toBe(true);
+    expect(needsStrongModel(['task'])).toBe(true);
+    expect(needsStrongModel(['emotional'])).toBe(true);
+    expect(needsStrongModel(['flirt'])).toBe(false);
+    expect(needsStrongModel(['casual'])).toBe(false);
+    process.env['GEMINI_FLASH_MOMENTS'] = 'flirt,crisis';
+    expect(needsStrongModel(['flirt'])).toBe(true);
+    delete process.env['GEMINI_FLASH_MOMENTS'];
+    process.env['GOOGLE_AI_API_KEY'] ||= 'test';
+    expect(backgroundAIRoute().model).toMatch(/lite/);
+  });
+
+  it('prices a call from its real tokens (thinking billed as output, cached cheaper)', async () => {
+    const { geminiCostUsd } = await import('../../src/modules/ai/telemetry/aiCostLedger.js');
+    const flash = geminiCostUsd('gemini-3.6-flash', { input: 4000, cached: 0, output: 100 });
+    const lite = geminiCostUsd('gemini-3.1-flash-lite', { input: 4000, cached: 0, output: 100 });
+    const cached = geminiCostUsd('gemini-3.1-flash-lite', { input: 4000, cached: 3000, output: 100 });
+    expect(flash).toBeGreaterThan(lite);
+    expect(cached).toBeLessThan(lite);
+  });
+});
