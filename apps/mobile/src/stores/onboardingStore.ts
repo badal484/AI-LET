@@ -11,6 +11,8 @@ interface OnboardingState {
   currentStep: OnboardingStepKey;
   progress: OnboardingProgress | null;
   selectedLanguage: string;
+  /** How characters address them: 'male' | 'female' | 'unspecified' (null = not answered). */
+  selectedGender: 'male' | 'female' | 'unspecified' | null;
   selectedCategories: string[];
   selectedStyle: ConversationStyle;
   selectedCharacterId: string | null;
@@ -21,6 +23,7 @@ interface OnboardingState {
 
   init: () => Promise<void>;
   setLanguage: (lang: string) => void;
+  setGender: (gender: 'male' | 'female' | 'unspecified') => void;
   toggleCategory: (categoryId: string) => void;
   setStyle: (style: ConversationStyle) => void;
   selectCharacter: (charId: string) => void;
@@ -32,7 +35,8 @@ interface OnboardingState {
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   currentStep: 'WELCOME',
   progress: null,
-  selectedLanguage: 'en',
+  selectedLanguage: 'hinglish',
+  selectedGender: null,
   selectedCategories: [],
   selectedStyle: 'CASUAL',
   selectedCharacterId: null,
@@ -59,6 +63,10 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
   setLanguage: (selectedLanguage: string) => {
     set({ selectedLanguage });
+  },
+
+  setGender: (selectedGender) => {
+    set({ selectedGender });
   },
 
   toggleCategory: (categoryId: string) => {
@@ -89,6 +97,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
 
       if (stepKey === 'LANGUAGE') {
         payload.language = state.selectedLanguage;
+        if (state.selectedGender) payload.userGender = state.selectedGender;
       } else if (stepKey === 'INTERESTS') {
         payload.categoryIds = state.selectedCategories;
       } else if (stepKey === 'STYLE') {

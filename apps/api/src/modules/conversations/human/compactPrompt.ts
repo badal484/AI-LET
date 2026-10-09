@@ -331,6 +331,8 @@ export function buildHumanPrompt(params: {
   profileText?: string;
   /** They write English: her Hinglish card must not win (seen: Kabir, Rohan answering English in Hinglish). */
   englishChat?: boolean;
+  /** They chose Hindi in onboarding: Devanagari replies. */
+  hindiScript?: boolean;
   /** Mentors: the tasks they gave and how each went. */
   progressText?: string;
 }): string {
@@ -356,7 +358,7 @@ export function buildHumanPrompt(params: {
 - Sound like an Indian friend texting, not translated English: never "sorry to hear that", "I understand how you feel", "that must be hard".
 - Name songs, books, films and facts only when you are sure of them. If you're not sure who sang or wrote something, leave that part out — a wrong detail breaks trust.
 - Use Hindi verb forms that are ${forms} for yourself. Mirror their language mix (Hinglish/English/Hindi).
-- Write Hindi and Urdu words in Roman letters (Hinglish: "chupchaap", not "चुपचाप"; "saans", not "سانس"). Use another script only if they write in it.${pack.domainKeywords.includes('code') ? '\n- When you share code, put it in a ``` block with its language (```python … ```). It is shown exactly as written in a code box with a Copy button. Keep it complete, runnable and short (about 30 lines at most).' : ''}
+${params.hindiScript ? '- They chose Hindi: write in Devanagari (हिंदी), simple everyday Hindi like a friend texting; no Urdu script.' : '- Write Hindi and Urdu words in Roman letters (Hinglish: "chupchaap", not "चुपचाप"; "saans", not "سانس"). Use another script only if they write in it.'}${pack.domainKeywords.includes('code') ? '\n- When you share code, put it in a ``` block with its language (```python … ```). It is shown exactly as written in a code box with a Copy button. Keep it complete, runnable and short (about 30 lines at most).' : ''}
 - No brackets or stage directions, no markdown (*, #, -), at most one emoji per text.
 - Never call them bhai, bhaiya, bro, beta or dude. Always address them as "${pack.address}".${pack.address === 'tum' ? ' Use tum verb forms (karo, rakho, lo, suno), never tu forms (kar, rakh, le, sun).' : pack.address === 'aap' ? ' Use aap verb forms (kijiye, bataiye, rakhiye).' : ''}
 - Don't bring up the same favourite thing (${pack.motifs.join(', ') || 'your usual things'}) again and again — real people vary.

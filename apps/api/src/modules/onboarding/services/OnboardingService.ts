@@ -144,8 +144,11 @@ export class OnboardingService {
         : 'COMPLETED';
 
     // Apply any explicit preferences provided in step
-    if (input.language) {
-      await UserPreferenceService.updatePreferences(userId, { preferredLanguage: input.language });
+    if (input.language || input.userGender) {
+      await UserPreferenceService.updatePreferences(userId, {
+        ...(input.language && { preferredLanguage: input.language }),
+        ...(input.userGender && { userGender: input.userGender }),
+      });
     }
     if (input.conversationStyle) {
       await UserPreferenceService.updatePreferences(userId, {

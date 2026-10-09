@@ -295,7 +295,7 @@ export function checkReply(params: {
   if (params.situations?.includes('emotional') && !STAYS_WITH_THEM.test(all))
     problems.push("They're hurting. Don't just comment on it — stay with them: show you're here and ask what happened, in your own words.");
   if (GUILT.test(all)) problems.push('No guilt or clinginess ("bhool gaye", "agar pyaar karte toh", "promise me", "kisi aur se baat mat karna") — be happy to talk, never make them feel bad.');
-  if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0)
+  if (params.userText && hindiWords(params.userText) >= 2 && all.split(/\s+/).length >= 8 && hindiWords(all) === 0 && !hasDevanagari(all))
     problems.push('They wrote in Hinglish — reply in the same Hinglish mix, not in English.');
   // They wrote in English (seen: "hey, what do you do?" → "main interior architect hoon…").
   if (params.userText && isEnglish(params.userText) && hindiWords(all) >= 3)

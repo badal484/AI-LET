@@ -279,3 +279,25 @@ describe('Asking if she is an AI', () => {
     }
   });
 });
+
+describe('Talking to a guy or a girl', () => {
+  it('their own choice wins, their own words count, and unknown means neutral — never a guess', async () => {
+    const { languageChoice } = await import('../../src/modules/conversations/human/userFirst.js');
+    expect(readUserGender('main ladki hoon yaar')).toBe('female');
+    expect(readUserGender("I'm a guy btw")).toBe('male');
+    expect(readUserGender('Boor dekhoge ??')).toBeUndefined();
+
+    const unknown = applyUserTurn({ state: freshState(), pack: aanyaMehta, userText: 'Hii', situations: ['greeting'], userMood: 'neutral' });
+    expect(unknown.lines.join(' ')).toMatch(/never guess/);
+    const chosen = applyUserTurn({ state: freshState(), pack: aanyaMehta, userText: 'main thak gayi hoon', situations: ['casual'], userMood: 'neutral', profileGender: 'male' });
+    expect(chosen.lines.join(' ')).toMatch(/They are a guy/);
+    const neutral = applyUserTurn({ state: freshState(), pack: aanyaMehta, userText: 'main thak gaya hoon', situations: ['casual'], userMood: 'neutral', profileGender: 'unspecified' });
+    expect(neutral.lines.join(' ')).toMatch(/never guess/);
+
+    // An old default "en" is not a choice; a completed LANGUAGE step or a real pick is.
+    expect(languageChoice({ preferredLanguage: 'en', onboardingCompletedSteps: [] })).toBeUndefined();
+    expect(languageChoice({ preferredLanguage: 'en', onboardingCompletedSteps: ['WELCOME', 'LANGUAGE'] })).toBe('en');
+    expect(languageChoice({ preferredLanguage: 'hi', onboardingCompletedSteps: [] })).toBe('hi');
+    expect(languageChoice({ preferredLanguage: 'es', onboardingCompletedSteps: ['LANGUAGE'] })).toBeUndefined();
+  });
+});

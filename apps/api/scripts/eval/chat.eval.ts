@@ -21,7 +21,17 @@ if (!character) throw new Error(`no character ${slug}`);
 const first = character.name.split(' ')[0];
 const email = `eval_chat_${Date.now()}_${slug}@test.local`;
 const user = await p.user.create({
-  data: { email, normalizedEmail: email, emailVerifiedAt: new Date(), profile: { create: { displayName: process.env['EVAL_NAME'] || 'Rohit', onboardingCompleted: true, timezone: 'Asia/Kolkata' } as never } },
+  data: { email, normalizedEmail: email, emailVerifiedAt: new Date(), profile: {
+      create: {
+        displayName: process.env['EVAL_NAME'] || 'Rohit',
+        onboardingCompleted: true,
+        timezone: 'Asia/Kolkata',
+        // EVAL_GENDER=male|female|unspecified and EVAL_LANG=en|hinglish|hi act like the onboarding choices.
+        ...(process.env['EVAL_GENDER'] && { userGender: process.env['EVAL_GENDER'] }),
+        ...(process.env['EVAL_LANG'] && { preferredLanguage: process.env['EVAL_LANG'], onboardingCompletedSteps: ['WELCOME', 'LANGUAGE'] }),
+      } as never,
+    },
+  },
 });
 const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${signAccessToken({ userId: user.id, email, roles: ['user'] })}` });
 const conv = await (await fetch(`${API}/conversations`, { method: 'POST', headers: headers(), body: JSON.stringify({ characterId: character.id }) })).json();

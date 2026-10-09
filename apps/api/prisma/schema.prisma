@@ -392,6 +392,8 @@ model UserProfile {
   locale                   String    @default("en-US") @db.VarChar(10)
   timezone                 String    @default("UTC") @db.VarChar(50)
   preferredLanguage        String    @default("en") @map("preferred_language") @db.VarChar(10)
+  /// How characters address them in Hindi grammar: "male", "female", or null/"unspecified" (neutral forms).
+  userGender               String?   @map("user_gender") @db.VarChar(20)
   onboardingCompleted      Boolean   @default(false) @map("onboarding_completed")
   onboardingStatus         String    @default("NOT_STARTED") @map("onboarding_status") @db.VarChar(30) // 'NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED', 'NEEDS_RECOVERY'
   onboardingVersion        Int       @default(1) @map("onboarding_version")

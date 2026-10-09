@@ -3235,6 +3235,8 @@ export interface UserPreferenceProfile {
   locale: string;
   timezone: string;
   preferredLanguage: string;
+  /** How characters address them: 'male' | 'female' | 'unspecified' (null until they choose). */
+  userGender?: string | null;
   conversationStyle: ConversationStyle;
   preferredCategoryIds: string[];
   preferredTagIds: string[];
