@@ -301,3 +301,27 @@ describe('Talking to a guy or a girl', () => {
     expect(languageChoice({ preferredLanguage: 'es', onboardingCompletedSteps: ['LANGUAGE'] })).toBeUndefined();
   });
 });
+
+describe('Same gender: the user leads', () => {
+  it('a love character starts as a close friend with a same-gender user, and follows if they flirt', async () => {
+    const { aaravMalhotra } = await import('../../src/modules/conversations/human/personaPacks/aarav-malhotra.js');
+    const state = freshState();
+    const first = applyUserTurn({ state, pack: aaravMalhotra, userText: 'Hii', situations: ['greeting'], userMood: 'neutral', profileGender: 'male' });
+    expect(first.lines.join(' ')).toMatch(/Start as a warm, close friend/);
+    applyUserTurn({ state, pack: aaravMalhotra, userText: 'love you', situations: ['love'], userMood: 'neutral', profileGender: 'male' });
+    expect(state.userLedRomance).toBe(true);
+    const after = applyUserTurn({ state, pack: aaravMalhotra, userText: 'kya kar rahe ho', situations: ['casual'], userMood: 'neutral', profileGender: 'male' });
+    expect(after.lines.join(' ')).not.toMatch(/Start as a warm, close friend/);
+    // A woman with Aarav: nothing changes.
+    const her = applyUserTurn({ state: freshState(), pack: aaravMalhotra, userText: 'Hii', situations: ['greeting'], userMood: 'neutral', profileGender: 'female' });
+    expect(her.lines.join(' ')).not.toMatch(/like you/);
+  });
+
+  it('two guys may say bhai/bro; bhaiya and beta stay out', () => {
+    const base = { herRecentReplies: [], gender: 'male' as const, mode: 'chat' as const };
+    expect(checkReply({ ...base, bubbles: ['arre bhai, kya scene hai?'] }).ok).toBe(false);
+    expect(checkReply({ ...base, allowBro: true, bubbles: ['arre bhai, kya scene hai?'] }).ok).toBe(true);
+    expect(checkReply({ ...base, allowBro: true, bubbles: ['haan bhaiya, bolo'] }).ok).toBe(false);
+    expect(stripWrongAddress(['arre bhai, scene kya hai'], true)).toEqual(['arre bhai, scene kya hai']);
+  });
+});

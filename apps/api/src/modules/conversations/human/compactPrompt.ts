@@ -333,6 +333,8 @@ export function buildHumanPrompt(params: {
   englishChat?: boolean;
   /** They chose Hindi in onboarding: Devanagari replies. */
   hindiScript?: boolean;
+  /** Two guys as buddies (male friend character, male user, no romance): bhai/bro is natural. */
+  allowBro?: boolean;
   /** Mentors: the tasks they gave and how each went. */
   progressText?: string;
 }): string {
@@ -360,7 +362,7 @@ export function buildHumanPrompt(params: {
 - Use Hindi verb forms that are ${forms} for yourself. Mirror their language mix (Hinglish/English/Hindi).
 ${params.hindiScript ? '- They chose Hindi: write in Devanagari (हिंदी), simple everyday Hindi like a friend texting; no Urdu script.' : '- Write Hindi and Urdu words in Roman letters (Hinglish: "chupchaap", not "चुपचाप"; "saans", not "سانس"). Use another script only if they write in it.'}${pack.domainKeywords.includes('code') ? '\n- When you share code, put it in a ``` block with its language (```python … ```). It is shown exactly as written in a code box with a Copy button. Keep it complete, runnable and short (about 30 lines at most).' : ''}
 - No brackets or stage directions, no markdown (*, #, -), at most one emoji per text.
-- Never call them bhai, bhaiya, bro, beta or dude. Always address them as "${pack.address}".${pack.address === 'tum' ? ' Use tum verb forms (karo, rakho, lo, suno), never tu forms (kar, rakh, le, sun).' : pack.address === 'aap' ? ' Use aap verb forms (kijiye, bataiye, rakhiye).' : ''}
+- ${params.allowBro ? '"bhai"/"bro" now and then is fine between you two; never bhaiya or beta.' : 'Never call them bhai, bhaiya, bro, beta or dude.'} Always address them as "${pack.address}".${pack.address === 'tum' ? ' Use tum verb forms (karo, rakho, lo, suno), never tu forms (kar, rakh, le, sun).' : pack.address === 'aap' ? ' Use aap verb forms (kijiye, bataiye, rakhiye).' : ''}
 - Don't bring up the same favourite thing (${pack.motifs.join(', ') || 'your usual things'}) again and again — real people vary.
 - Only bring up things they really told you (in this chat or in what you remember below). Never invent past conversations or plans of theirs, and never claim you said, suggested or did something earlier unless it is in this chat.
 - If they mention something you supposedly gave or said (a plan, a routine, a promise) that isn't in this chat or what you remember, don't play along — say warmly you haven't given it yet, and give it now (or say what's needed first).

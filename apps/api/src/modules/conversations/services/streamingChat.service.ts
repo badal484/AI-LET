@@ -658,6 +658,7 @@ export class StreamingChatService {
     let snoozed: { until: number; count: number; words: string[] } | undefined;
     let hinglishTalker = false;
     let hindiScript = false;
+    let allowBro = false;
     let crushWon = false;
     let firstMeeting = false;
     let courseStage: string | undefined;
@@ -814,6 +815,7 @@ export class StreamingChatService {
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
       const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday, profileGender: conversation.user.profile?.userGender });
       // Worked out from their words ("main ladki hoon", "kar raha hoon") and not chosen yet: every character knows it now.
+      allowBro = pack.gender === 'male' && life.userGender === 'male' && !pack.romance && !pack.flirtyFriend;
       if (life.userGender && !conversation.user.profile?.userGender)
         void prisma.userProfile.update({ where: { userId }, data: { userGender: life.userGender } }).catch(() => undefined);
       if (snoozed) continuity.followUp = undefined; // no "did you do the task?" while they've said not now
@@ -983,6 +985,7 @@ export class StreamingChatService {
         pack,
         englishChat: !hinglishTalker,
         hindiScript,
+        allowBro,
         userName: conversation.user.profile?.displayName || 'them',
         memoriesText: builtContext.memoriesText ?? '',
         relationshipText: builtContext.relationshipText ?? '',
@@ -1127,6 +1130,7 @@ export class StreamingChatService {
           plannedText,
           address: pack.address,
           mentor: Boolean(pack.mentor),
+          allowBro,
           lesson: isLesson && !tiredOfQuestions ? { hasTask: Boolean(task) } : undefined,
           mustDeliver:
             mustDeliver && openRequest
@@ -1254,7 +1258,7 @@ export class StreamingChatService {
         const fixed = roman.content ? this.polishBubbles(this.splitBubbles(this.cleanModelText(roman.content)), style) : [];
         bubbles = fixed.length && !hasUrduScript(fixed.join('\n')) ? fixed : bubbles.map((b) => b.replace(/\s*[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+\s*/g, ' ').replace(/\s{2,}/g, ' ').trim());
       }
-      const cleaned = pack.address === 'tum' ? fixTuForms(stripWrongAddress(bubbles)) : stripWrongAddress(bubbles);
+      const cleaned = pack.address === 'tum' ? fixTuForms(stripWrongAddress(bubbles, allowBro)) : stripWrongAddress(bubbles, allowBro);
       if (cleaned.length) bubbles = cleaned;
     }
     if (asksIfAI) bubbles = this.ensureAIDisclosure(bubbles);
