@@ -44,7 +44,7 @@ export default function OverviewPage() {
 
   const { today, week, subscribers, trialToPaid, series } = data;
   const margin = week.revenue - week.aiCost;
-  const chart = series.map((s) => ({ ...s, label: shortDay(s.day) }));
+  const chart = series.map((s) => ({ ...s, date: shortDay(s.day) }));
 
   return (
     <div className="space-y-6">
@@ -86,7 +86,7 @@ export default function OverviewPage() {
           </CardHeader>
           <CardBody className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chart} margin={{ left: -16, right: 8, top: 8 }}>
+              <AreaChart data={chart} margin={{ left: -16, right: -16, top: 8 }}>
                 <defs>
                   <linearGradient id="msg" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.35} />
@@ -94,12 +94,13 @@ export default function OverviewPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="label" {...axis} />
-                <YAxis {...axis} allowDecimals={false} />
+                <XAxis dataKey="date" type="category" interval="preserveStartEnd" minTickGap={12} {...axis} />
+                <YAxis yAxisId="msgs" {...axis} allowDecimals={false} />
+                <YAxis yAxisId="users" orientation="right" {...axis} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend wrapperStyle={{ fontSize: 12, color: 'var(--muted)' }} />
-                <Area type="monotone" dataKey="messages" name="Messages" stroke="var(--accent)" fill="url(#msg)" strokeWidth={2} />
-                <Area type="monotone" dataKey="activeUsers" name="Active users" stroke="var(--accent-2)" fill="transparent" strokeWidth={2} />
+                <Area isAnimationActive={false} yAxisId="msgs" type="monotone" dataKey="messages" name="Messages" stroke="var(--accent)" fill="url(#msg)" strokeWidth={2} />
+                <Area isAnimationActive={false} yAxisId="users" type="monotone" dataKey="activeUsers" name="Active users" stroke="var(--accent-2)" fill="transparent" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </CardBody>
@@ -114,12 +115,12 @@ export default function OverviewPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chart} margin={{ left: -8, right: 8, top: 8 }}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="label" {...axis} />
+                <XAxis dataKey="date" type="category" interval="preserveStartEnd" minTickGap={12} {...axis} />
                 <YAxis {...axis} tickFormatter={(v) => `₹${v}`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => rupees(v, 2)} />
                 <Legend wrapperStyle={{ fontSize: 12, color: 'var(--muted)' }} />
-                <Bar dataKey="revenue" name="Revenue" fill="var(--good)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="aiCost" name="AI cost" fill="var(--warn)" radius={[4, 4, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="revenue" name="Revenue" fill="var(--good)" radius={[4, 4, 0, 0]} />
+                <Bar isAnimationActive={false} dataKey="aiCost" name="AI cost" fill="var(--warn)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardBody>
