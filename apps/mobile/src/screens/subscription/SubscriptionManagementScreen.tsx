@@ -40,6 +40,12 @@ export const SubscriptionManagementScreen: React.FC = () => {
   const activePlan = plans.find(p => p.id === subscription?.planId) || plans.find(p => p.code === 'FREE');
 
   const handleCancel = () => {
+    // Google Play subscriptions are cancelled in the Play Store (Google's rule); you keep Premium
+    // until the end of the period you paid for.
+    if (StoreBilling.isAvailable) {
+      StoreBilling.openManageSubscription();
+      return;
+    }
     Alert.alert(
       'Cancel Subscription',
       'Are you sure you want to cancel? You will keep your benefits until the end of the current billing cycle.',

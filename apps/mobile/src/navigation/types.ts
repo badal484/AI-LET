@@ -41,6 +41,9 @@ export type RootStackParamList = {
   } | undefined;
   Paywall: {
     feature?: string;
+    /** Opened because today's messages ran out: 'free_limit' → trial, 'fair_use' → message pack. */
+    reason?: 'free_limit' | 'fair_use';
+    resetsAt?: string;
   } | undefined;
   SubscriptionManagement: undefined;
   CreditWallet: undefined;

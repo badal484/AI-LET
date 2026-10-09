@@ -1,3 +1,4 @@
+import { LimitReached } from '../limitReached.js';
 import { ApiClient } from './client.js';
 import { SecureAuthStorage } from '../auth/SecureAuthStorage.js';
 import type {
@@ -175,6 +176,18 @@ export class ChatStreamClient {
               break;
             case 'crisis.support':
               callbacks.onCrisisSupport?.(parsed);
+              break;
+            case 'limit.reached':
+              // Not sent: today's messages are used up. The message shows as not sent (retry after
+              // upgrading), and the paywall opens.
+              isCompleted = true;
+              LimitReached.emit(parsed);
+              callbacks.onFailed?.({
+                conversationId: parsed.conversationId,
+                errorCode: 'LIMIT_REACHED',
+                errorMessage: parsed.reason === 'fair_use' ? "You've reached today's 150 messages." : "You've used today's free messages.",
+                retryable: true,
+              });
               break;
           }
         } catch (jsonErr) {

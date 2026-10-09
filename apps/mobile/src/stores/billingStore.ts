@@ -143,9 +143,10 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       return 0;
     }
     set({ purchaseState: 'restoring', errorMessage: null });
+    const restored = await StoreBilling.restore().catch(() => 0);
     await get().loadBillingState();
     set({ purchaseState: 'idle' });
-    return 0;
+    return restored;
   },
 
   cancelSubscription: async (cancelImmediately = false, reason?: string) => {
