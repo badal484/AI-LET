@@ -16,9 +16,10 @@ const SUB_ACTIVE = `s.current_period_end > now() AND s.status IN ('TRIALING','AC
 
 export async function listCharacters() {
   const rows = await prisma.$queryRawUnsafe<
-    Array<{ id: string; slug: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; category: string; status: string; featured: boolean; users7d: number; messages7d: number; usersTotal: number; payingUsers: number; usd7d: number }>
+    Array<{ id: string; slug: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; gallery: string[]; category: string; status: string; featured: boolean; users7d: number; messages7d: number; usersTotal: number; payingUsers: number; usd7d: number }>
   >(
-    `SELECT ch.id, ch.slug, ch.name, ch.tagline, ch.avatar_url "avatarUrl", ch.cover_image_url "coverImageUrl", ch.category, ch.status::text, ch.is_featured featured,
+    `SELECT ch.id, ch.slug, ch.name, ch.tagline, ch.avatar_url "avatarUrl", ch.cover_image_url "coverImageUrl",
+            coalesce((SELECT d.localized_profiles->'galleryImages' FROM character_discovery_configs d WHERE d.character_id = ch.id), '[]'::jsonb) gallery, ch.category, ch.status::text, ch.is_featured featured,
             coalesce(a.users7d, 0) "users7d", coalesce(a.messages7d, 0) "messages7d", coalesce(t.users, 0) "usersTotal",
             coalesce(p.paying, 0) "payingUsers", coalesce(cst.usd, 0)::float "usd7d"
        FROM characters ch
@@ -217,4 +218,48 @@ export async function setCharacterImage(adminId: string, id: string, kind: Image
     metadata: { kind, before: kind === 'avatar' ? ch.avatarUrl : ch.coverImageUrl, after: url, storage: storageMode() },
   });
   return { url, storage: storageMode() };
+}
+
+// ── Character gallery (the photo grid on the character's profile in the app) ────
+
+const MAX_GALLERY = 12;
+
+async function readGallery(characterId: string): Promise<{ images: string[]; profiles: Record<string, unknown> }> {
+  const cfg = await prisma.characterDiscoveryConfig.findUnique({ where: { characterId }, select: { localizedProfiles: true } });
+  const profiles = (cfg?.localizedProfiles ?? {}) as Record<string, unknown>;
+  const images = Array.isArray(profiles['galleryImages']) ? (profiles['galleryImages'] as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+  return { images, profiles };
+}
+
+async function writeGallery(characterId: string, profiles: Record<string, unknown>, images: string[]) {
+  const localizedProfiles = { ...profiles, galleryImages: images } as never;
+  await prisma.characterDiscoveryConfig.upsert({ where: { characterId }, create: { characterId, localizedProfiles }, update: { localizedProfiles } });
+}
+
+/** Adds one photo to the end of the gallery. */
+export async function addGalleryImage(adminId: string, id: string, body: Buffer) {
+  const ch = await prisma.character.findUnique({ where: { id }, select: { slug: true } });
+  if (!ch) throw new NotFoundError('Character not found');
+  const { images, profiles } = await readGallery(id);
+  if (images.length >= MAX_GALLERY) throw new BadRequestError(`A gallery can have up to ${MAX_GALLERY} photos — remove one first.`);
+  const url = await storeImage(await processImage(body, 'gallery'), `characters/${ch.slug}`, 'gallery');
+  const next = [...images, url];
+  await writeGallery(id, profiles, next);
+  await CharacterService.invalidateCharacterCache(id, ch.slug).catch(() => undefined);
+  await AuditService.log({ actorType: 'ADMIN', actorId: adminId, action: 'console.character.gallery_added', resourceType: 'CHARACTER', resourceId: id, metadata: { url, count: next.length } });
+  return { gallery: next, storage: storageMode() };
+}
+
+/** Reorders or removes photos: the new list must only contain photos already in the gallery. */
+export async function setGallery(adminId: string, id: string, list: unknown) {
+  const ch = await prisma.character.findUnique({ where: { id }, select: { slug: true } });
+  if (!ch) throw new NotFoundError('Character not found');
+  if (!Array.isArray(list) || list.some((x) => typeof x !== 'string')) throw new BadRequestError('Send the photo list.');
+  const { images, profiles } = await readGallery(id);
+  const next = [...new Set(list as string[])];
+  if (next.some((u) => !images.includes(u))) throw new BadRequestError('Only photos already in the gallery can be kept or reordered.');
+  await writeGallery(id, profiles, next);
+  await CharacterService.invalidateCharacterCache(id, ch.slug).catch(() => undefined);
+  await AuditService.log({ actorType: 'ADMIN', actorId: adminId, action: 'console.character.gallery_changed', resourceType: 'CHARACTER', resourceId: id, metadata: { before: images.length, after: next.length, removed: images.filter((u) => !next.includes(u)) } });
+  return { gallery: next };
 }

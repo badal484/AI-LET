@@ -14,11 +14,13 @@ import { BadRequestError } from '../../shared/errors/AppError.js';
  *    on every deploy of a cloud host, so set up R2 before launch.
  */
 
-export type ImageKind = 'avatar' | 'cover';
+export type ImageKind = 'avatar' | 'cover' | 'gallery';
 
 const SIZES: Record<ImageKind, { width: number; height?: number }> = {
   avatar: { width: 600, height: 600 },
   cover: { width: 1200 },
+  // Portrait, like the gallery cards on the character's profile in the app.
+  gallery: { width: 800, height: 1000 },
 };
 
 export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');

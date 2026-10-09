@@ -1,13 +1,13 @@
 'use client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ImagePlus, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { ApiError, api } from '@/lib/api';
 
-export interface EditableCharacter { id: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string }
+export interface EditableCharacter { id: string; name: string; tagline: string; avatarUrl: string; coverImageUrl: string; gallery: string[] }
 
 /** Uploads one photo as the raw body; the server crops, compresses and stores it. */
 async function uploadImage(id: string, kind: 'avatar' | 'cover', file: File): Promise<{ url: string; storage: string }> {
@@ -50,10 +50,99 @@ function PhotoPicker({ label, hint, url, round, busy, onPick }: { label: string;
   );
 }
 
+
+const MAX_GALLERY = 12;
+
+/** The photo grid on the character's profile in the app: add several at once, reorder, remove. */
+function Gallery({ characterId, images, onChange }: { characterId: string; images: string[]; onChange: (g: string[]) => void }) {
+  const qc = useQueryClient();
+  const input = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [drag, setDrag] = useState(false);
+
+  const addFiles = async (files: File[]) => {
+    const room = MAX_GALLERY - images.length;
+    const list = files.filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)).slice(0, Math.max(0, room));
+    if (!list.length) return setError(room <= 0 ? `The gallery is full (${MAX_GALLERY} photos) — remove one first.` : 'Pick photos (JPG, PNG, WebP or HEIC).');
+    setError(files.length > list.length && room < files.length ? `Only ${room} more photo(s) fit — added the first ${list.length}.` : null);
+    setProgress({ done: 0, total: list.length });
+    let latest = images;
+    for (const [i, file] of list.entries()) {
+      try {
+        if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name} is over 10 MB`);
+        const res = await fetch(`/api/v1/admin/console/characters/${characterId}/gallery`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || body.success === false) throw new Error(body?.error?.message ?? `Upload failed (${file.name})`);
+        latest = body.data.gallery;
+        onChange(latest);
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      setProgress({ done: i + 1, total: list.length });
+    }
+    setProgress(null);
+    void qc.invalidateQueries({ queryKey: ['characters'] });
+  };
+
+  const save = useMutation({
+    mutationFn: (next: string[]) => api<{ gallery: string[] }>(`/console/characters/${characterId}/gallery`, { method: 'PUT', body: JSON.stringify({ images: next }) }),
+    onSuccess: (d) => { onChange(d.gallery); void qc.invalidateQueries({ queryKey: ['characters'] }); },
+    onError: (e) => setError((e as Error).message),
+  });
+  const move = (i: number, by: number) => {
+    const next = [...images];
+    const [x] = next.splice(i, 1);
+    next.splice(i + by, 0, x!);
+    save.mutate(next);
+  };
+  const remove = (i: number) => {
+    if (!window.confirm('Remove this photo from the gallery?')) return;
+    save.mutate(images.filter((_, j) => j !== i));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted">Gallery <span className="text-xs">({images.length}/{MAX_GALLERY}) · shown on the profile, first 6 in order</span></p>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {images.map((url, i) => (
+          <div key={url} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-2">
+            <img src={url} alt="" className="h-full w-full object-cover" />
+            {i < 6 && <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white">{i + 1}</span>}
+            <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <button type="button" disabled={i === 0 || save.isPending} onClick={() => move(i, -1)} className="rounded p-0.5 text-white disabled:opacity-30" aria-label="Move left"><ChevronLeft size={14} /></button>
+              <button type="button" disabled={save.isPending} onClick={() => remove(i)} className="rounded p-0.5 text-white" aria-label="Remove photo"><X size={14} /></button>
+              <button type="button" disabled={i === images.length - 1 || save.isPending} onClick={() => move(i, 1)} className="rounded p-0.5 text-white disabled:opacity-30" aria-label="Move right"><ChevronRight size={14} /></button>
+            </div>
+          </div>
+        ))}
+        {images.length < MAX_GALLERY && (
+          <button
+            type="button"
+            disabled={progress !== null}
+            onClick={() => input.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); void addFiles([...e.dataTransfer.files]); }}
+            className={`flex aspect-[4/5] flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-xs text-muted hover:text-text ${drag ? 'border-accent' : 'border-border'}`}
+          >
+            {progress ? <><Loader2 size={18} className="animate-spin" />{progress.done}/{progress.total}</> : <><ImagePlus size={18} />Add photos</>}
+          </button>
+        )}
+      </div>
+      <input ref={input} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic" className="hidden" onChange={(e) => { void addFiles([...(e.target.files ?? [])]); e.target.value = ''; }} />
+      {error && <p className="text-xs text-bad">{error}</p>}
+    </div>
+  );
+}
+
 export function CharacterEditor({ character, onClose }: { character: EditableCharacter | null; onClose: () => void }) {
   const qc = useQueryClient();
   const [avatar, setAvatar] = useState('');
   const [cover, setCover] = useState('');
+  const [gallery, setGallery] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [tagline, setTagline] = useState('');
   const [note, setNote] = useState<string | null>(null);
@@ -63,6 +152,7 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
     setOpened(character.id);
     setAvatar(character.avatarUrl);
     setCover(character.coverImageUrl);
+    setGallery(character.gallery ?? []);
     setName(character.name);
     setTagline(character.tagline);
     setNote(null);
@@ -96,6 +186,7 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
             <PhotoPicker label="Cover photo" hint="Wide (shown on the profile)" url={cover} busy={upload.isPending && upload.variables?.kind === 'cover'} onPick={pick('cover')} />
           </div>
         </div>
+        {character && <Gallery characterId={character.id} images={gallery} onChange={setGallery} />}
         <p className="-mt-2 text-xs text-muted">Drag a photo onto a box or click it. JPG, PNG, WebP or HEIC up to 10 MB — it's cropped and compressed automatically. Photos change in the app right away.</p>
         <label className="block space-y-1.5"><span className="text-sm text-muted">Name</span><Input required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label className="block space-y-1.5"><span className="text-sm text-muted">Tagline (shown under the name)</span><Input required minLength={2} maxLength={255} value={tagline} onChange={(e) => setTagline(e.target.value)} /></label>
