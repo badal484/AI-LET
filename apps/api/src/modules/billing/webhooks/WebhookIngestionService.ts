@@ -118,6 +118,12 @@ export class WebhookIngestionService {
       await SubscriptionService.handlePaymentFailure(parsed.providerSubscriptionId);
     } else if (parsed.eventType.includes('EXPIRE') || parsed.eventType.includes('subscription.deleted')) {
       await SubscriptionService.handleSubscriptionExpiration(parsed.providerSubscriptionId);
+    } else if (parsed.eventType === 'CANCEL_AT_PERIOD_END') {
+      // Cancelled in the Play Store: keeps access until the end of what was paid, then expires.
+      await prisma.billingSubscription.updateMany({
+        where: { providerSubscriptionId: parsed.providerSubscriptionId },
+        data: { cancelAtPeriodEnd: true, cancelledAt: new Date(), ...(parsed.currentPeriodEnd && { currentPeriodEnd: parsed.currentPeriodEnd }) },
+      });
     }
 
     if (parsed.userId) {
