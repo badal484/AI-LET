@@ -22,6 +22,33 @@ async function uploadImage(id: string, kind: 'avatar' | 'cover', file: File): Pr
   return body.data;
 }
 
+
+/** Recommended sizes (what looks sharp in the app), and the minimum before a photo looks blurry. */
+const SIZE_GUIDE = {
+  avatar: { text: 'Square 1:1 · best 1080×1080 px (min 600×600) · face in the centre', minW: 600, minH: 600 },
+  cover: { text: 'Wide 16:9 · best 1920×1080 px (min 1200×675) · subject in the middle', minW: 1200, minH: 675 },
+  gallery: { text: 'Portrait 4:5 · best 1080×1350 px (min 800×1000) · same person in every photo', minW: 800, minH: 1000 },
+} as const;
+
+/** Reads a photo's pixel size in the browser (HEIC may not decode — then we just skip the check). */
+async function photoSize(file: File): Promise<{ w: number; h: number } | null> {
+  try {
+    const bmp = await createImageBitmap(file);
+    const size = { w: bmp.width, h: bmp.height };
+    bmp.close();
+    return size;
+  } catch {
+    return null;
+  }
+}
+
+async function sizeWarning(file: File, kind: keyof typeof SIZE_GUIDE): Promise<string | null> {
+  const s = await photoSize(file);
+  const g = SIZE_GUIDE[kind];
+  if (!s || (s.w >= g.minW && s.h >= g.minH)) return null;
+  return `${file.name} is small (${s.w}×${s.h}) — it may look blurry. Recommended at least ${g.minW}×${g.minH}.`;
+}
+
 function PhotoPicker({ label, hint, url, round, busy, onPick }: { label: string; hint: string; url: string; round?: boolean; busy: boolean; onPick: (f: File) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [drag, setDrag] = useState(false);
@@ -44,7 +71,7 @@ function PhotoPicker({ label, hint, url, round, busy, onPick }: { label: string;
         </span>
         {busy && <span className="absolute inset-0 flex items-center justify-center bg-black/55"><Loader2 className="animate-spin text-white" size={22} /></span>}
       </button>
-      <p className="text-xs text-muted">{hint}</p>
+      <p className="text-[11px] leading-snug text-muted">{hint}</p>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/heic" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
     </div>
   );
@@ -66,6 +93,8 @@ function Gallery({ characterId, images, onChange }: { characterId: string; image
     const list = files.filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name)).slice(0, Math.max(0, room));
     if (!list.length) return setError(room <= 0 ? `The gallery is full (${MAX_GALLERY} photos) — remove one first.` : 'Pick photos (JPG, PNG, WebP or HEIC).');
     setError(files.length > list.length && room < files.length ? `Only ${room} more photo(s) fit — added the first ${list.length}.` : null);
+    const small = (await Promise.all(list.map((f) => sizeWarning(f, 'gallery')))).filter(Boolean);
+    if (small.length && !window.confirm(`${small.length} photo(s) are smaller than recommended and may look blurry:\n${small.slice(0, 4).join('\n')}\n\nUpload anyway?`)) return;
     setProgress({ done: 0, total: list.length });
     let latest = images;
     for (const [i, file] of list.entries()) {
@@ -106,6 +135,7 @@ function Gallery({ characterId, images, onChange }: { characterId: string; image
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted">Gallery <span className="text-xs">({images.length}/{MAX_GALLERY}) · shown on the profile, first 6 in order</span></p>
       </div>
+      <p className="-mt-1 text-[11px] leading-snug text-muted">{SIZE_GUIDE.gallery.text}</p>
       <div className="grid grid-cols-4 gap-2">
         {images.map((url, i) => (
           <div key={url} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-2">
@@ -172,8 +202,10 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['characters'] }); onClose(); },
   });
 
-  const pick = (kind: 'avatar' | 'cover') => (file: File) => {
+  const pick = (kind: 'avatar' | 'cover') => async (file: File) => {
     if (file.size > 10 * 1024 * 1024) return setNote('That photo is over 10 MB — pick a smaller one.');
+    const warn = await sizeWarning(file, kind);
+    if (warn && !window.confirm(`${warn}\n\nUpload anyway?`)) return;
     upload.mutate({ kind, file });
   };
 
@@ -181,13 +213,13 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
     <Modal open={character !== null} onClose={onClose} title={`Edit ${character?.name ?? ''}`}>
       <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
         <div className="flex gap-5">
-          <PhotoPicker label="Profile photo" hint="Square, face centred" url={avatar} round busy={upload.isPending && upload.variables?.kind === 'avatar'} onPick={pick('avatar')} />
+          <PhotoPicker label="Profile photo" hint={SIZE_GUIDE.avatar.text} url={avatar} round busy={upload.isPending && upload.variables?.kind === 'avatar'} onPick={pick('avatar')} />
           <div className="min-w-0 flex-1">
-            <PhotoPicker label="Cover photo" hint="Wide (shown on the profile)" url={cover} busy={upload.isPending && upload.variables?.kind === 'cover'} onPick={pick('cover')} />
+            <PhotoPicker label="Cover photo" hint={SIZE_GUIDE.cover.text} url={cover} busy={upload.isPending && upload.variables?.kind === 'cover'} onPick={pick('cover')} />
           </div>
         </div>
         {character && <Gallery characterId={character.id} images={gallery} onChange={setGallery} />}
-        <p className="-mt-2 text-xs text-muted">Drag a photo onto a box or click it. JPG, PNG, WebP or HEIC up to 10 MB — it's cropped and compressed automatically. Photos change in the app right away.</p>
+        <p className="-mt-2 text-[11px] leading-snug text-muted">Drag a photo onto a box or click it. JPG, PNG, WebP or HEIC, up to 10 MB each. Bigger is fine — every photo is cropped and compressed automatically. Photos change in the app right away.</p>
         <label className="block space-y-1.5"><span className="text-sm text-muted">Name</span><Input required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label className="block space-y-1.5"><span className="text-sm text-muted">Tagline (shown under the name)</span><Input required minLength={2} maxLength={255} value={tagline} onChange={(e) => setTagline(e.target.value)} /></label>
         {(upload.error || save.error) && <p className="text-sm text-bad">{((upload.error ?? save.error) as Error).message}</p>}
