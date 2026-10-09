@@ -1,3 +1,4 @@
+import { LimitReached } from '../services/limitReached.js';
 import React, { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -73,6 +74,15 @@ export const AppContent: React.FC = () => {
   const { status, user, bootstrap, logout } = useAuthStore();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const currentRoute = useRef<string | undefined>(undefined);
+
+  // Out of messages for today: open the paywall (trial offer, or a message pack for Premium users).
+  useEffect(
+    () =>
+      LimitReached.on((payload) => {
+        if (navigationRef.isReady()) navigationRef.navigate('Paywall', { reason: payload.reason, resetsAt: payload.resetsAt });
+      }),
+    [navigationRef],
+  );
 
   // Analytics identity follows the verified session (the server still attributes by token).
   const userId = user?.id;

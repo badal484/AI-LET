@@ -8,6 +8,9 @@ overrides:
   '@types/react': ^18.3.18
   '@types/react-dom': ^18.3.5
 
+patchedDependencies:
+  react-native-nitro-modules@0.36.5: 86ac60f269a5336b7d349f51b467d9eea64c4ed2c0941d8628b568a02e3b70c2
+
 importers:
 
   .:
@@ -240,9 +243,15 @@ importers:
       react-native-gesture-handler:
         specifier: 2.20.2
         version: 2.20.2(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+      react-native-iap:
+        specifier: 16.7.3
+        version: 16.7.3(react-native-nitro-modules@0.36.5(patch_hash=86ac60f269a5336b7d349f51b467d9eea64c4ed2c0941d8628b568a02e3b70c2)(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1))(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       react-native-keychain:
         specifier: ^10.0.0
         version: 10.0.0
+      react-native-nitro-modules:
+        specifier: 0.36.5
+        version: 0.36.5(patch_hash=86ac60f269a5336b7d349f51b467d9eea64c4ed2c0941d8628b568a02e3b70c2)(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       react-native-safe-area-context:
         specifier: ^5.2.0
         version: 5.10.0(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
@@ -4639,9 +4648,29 @@ packages:
       react: '*'
       react-native: '*'
 
+  react-native-iap@16.7.3:
+    resolution: {integrity: sha512-1pBE36hrye/slYW45qj1bD03KUSbMTwIVWktK9EJGaPAh/EHwuvXKPpYZ2tLQ1tAl8ihjmE/8t7xTxID9L5TGQ==}
+    peerDependencies:
+      '@amazon-devices/keplerscript-appstore-iap-lib': ~2.13.0
+      '@amazon-devices/package-manager-lib': ~1.0.1767254401
+      react: '*'
+      react-native: '*'
+      react-native-nitro-modules: '>=0.36.5'
+    peerDependenciesMeta:
+      '@amazon-devices/keplerscript-appstore-iap-lib':
+        optional: true
+      '@amazon-devices/package-manager-lib':
+        optional: true
+
   react-native-keychain@10.0.0:
     resolution: {integrity: sha512-YzPKSAnSzGEJ12IK6CctNLU79T1W15WDrElRQ+1/FsOazGX9ucFPTQwgYe8Dy8jiSEDJKM4wkVa3g4lD2Z+Pnw==}
     engines: {node: '>=16'}
+
+  react-native-nitro-modules@0.36.5:
+    resolution: {integrity: sha512-SJby84+hovD70JmQ1fq+56tw3oapJeChehUqXA4Gqjm+ktJhMAcj8LGwoAjStSOUwRaK7czbzBPB0Widj+EDoQ==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   react-native-safe-area-context@5.10.0:
     resolution: {integrity: sha512-U655+G0KItefqpTKZenr0aBNulY/49TUKSZkWGVtESlFK5qmML7BejQjPDCRU+GzC24g2KeWFJguWP5LR52dqA==}
@@ -10520,7 +10549,18 @@ snapshots:
       react: 18.3.1
       react-native: 0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@20.2.0)(@types/react@18.3.31)(react@18.3.1)
 
+  react-native-iap@16.7.3(react-native-nitro-modules@0.36.5(patch_hash=86ac60f269a5336b7d349f51b467d9eea64c4ed2c0941d8628b568a02e3b70c2)(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1))(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-native: 0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1)
+      react-native-nitro-modules: 0.36.5(patch_hash=86ac60f269a5336b7d349f51b467d9eea64c4ed2c0941d8628b568a02e3b70c2)(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+
   react-native-keychain@10.0.0: {}
+
+  react-native-nitro-modules@0.36.5(patch_hash=86ac60f269a5336b7d349f51b467d9eea64c4ed2c0941d8628b568a02e3b70c2)(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-native: 0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1)
 
   react-native-safe-area-context@5.10.0(react-native@0.76.7(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli-server-api@15.0.1)(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
     dependencies:
