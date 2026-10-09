@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Live, LIVE_MS } from '@/components/ui/live';
 import { api } from '@/lib/api';
 import { count, percent, rupees, shortDay } from '@/lib/format';
 
@@ -29,7 +30,7 @@ const axis = { stroke: 'var(--muted)', fontSize: 12, tickLine: false, axisLine: 
 const tooltipStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 12 };
 
 export default function OverviewPage() {
-  const { data, isLoading, error } = useQuery({ queryKey: ['overview'], queryFn: () => api<Overview>('/console/overview'), refetchInterval: 60_000 });
+  const { data, isLoading, error, dataUpdatedAt, isFetching } = useQuery({ queryKey: ['overview'], queryFn: () => api<Overview>('/console/overview'), refetchInterval: LIVE_MS });
 
   if (error) return <Card className="p-6 text-sm text-bad">Could not load the overview: {(error as Error).message}</Card>;
   if (isLoading || !data) {
@@ -48,6 +49,9 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Live updatedAt={dataUpdatedAt} fetching={isFetching} />
+      </div>
       <section>
         <h2 className="mb-3 text-sm font-medium text-muted">Today</h2>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
