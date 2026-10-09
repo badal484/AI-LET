@@ -16,16 +16,21 @@ interface LanguageOption {
 }
 
 const LANGUAGES: LanguageOption[] = [
-  { code: 'en', name: 'English', nativeName: 'English', subtitle: 'Global, articulate & fluent' },
-  { code: 'hinglish', name: 'Hinglish', nativeName: 'Hinglish', subtitle: 'Casual mix of Hindi & English' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', subtitle: 'स्वाभाविक एवं आत्मीय संवाद' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', subtitle: 'Conversación cálida y fluida' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語', subtitle: '自然な日本語の対話' },
+  { code: 'hinglish', name: 'Hinglish', nativeName: 'Hinglish', subtitle: 'kya scene hai? — Hindi & English, the way we text' },
+  { code: 'en', name: 'English', nativeName: 'English', subtitle: 'Simple, friendly English' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', subtitle: 'आसान, अपनी सी हिंदी' },
 ];
+
+// So characters say "thak gaye ho?" or "thak gayi ho?" the right way — never guessed from a name.
+const GENDERS = [
+  { code: 'male', label: 'Man' },
+  { code: 'female', label: 'Woman' },
+  { code: 'unspecified', label: 'Prefer not to say' },
+] as const;
 
 export const LanguageSelectScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<OnboardingStackParamList>>();
-  const { selectedLanguage, setLanguage, completeCurrentStep, isSubmitting } = useOnboardingStore();
+  const { selectedLanguage, setLanguage, selectedGender, setGender, completeCurrentStep, isSubmitting } = useOnboardingStore();
 
   const handleContinue = async () => {
     try {
@@ -40,9 +45,9 @@ export const LanguageSelectScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.stepIndicator}>STEP 1 OF 4</Text>
-        <Text style={styles.title}>Choose your primary language</Text>
+        <Text style={styles.title}>How should we talk?</Text>
         <Text style={styles.subtitle}>
-          Your companions will converse naturally in your preferred language. You can change this anytime in settings.
+          Pick the language your characters text you in. You can change this anytime in settings.
         </Text>
       </View>
 
@@ -72,6 +77,23 @@ export const LanguageSelectScreen: React.FC = () => {
             </TouchableOpacity>
           );
         })}
+
+        <Text style={styles.sectionLabel}>Talk to me as (optional)</Text>
+        <View style={styles.genderRow}>
+          {GENDERS.map(g => {
+            const isSelected = selectedGender === g.code;
+            return (
+              <TouchableOpacity
+                key={g.code}
+                style={[styles.genderChip, isSelected && styles.languageCardSelected]}
+                activeOpacity={0.8}
+                onPress={() => setGender(g.code)}
+              >
+                <Text style={[styles.genderText, isSelected && styles.textSelected]}>{g.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -116,6 +138,31 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: darkThemeColors.textSecondary,
     lineHeight: 20,
+  },
+  sectionLabel: {
+    ...typography.labelSmall,
+    color: darkThemeColors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  genderChip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: darkThemeColors.border,
+    backgroundColor: darkThemeColors.surface,
+  },
+  genderText: {
+    ...typography.bodyMedium,
+    color: darkThemeColors.textPrimary,
   },
   listContainer: {
     gap: spacing.md,

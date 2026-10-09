@@ -152,14 +152,12 @@ export const PreferencesSettingsScreen: React.FC = () => {
           </Text>
 
           <View style={styles.languageRow}>
-            {['en', 'hinglish', 'hi', 'es', 'ja'].map(lang => {
+            {['hinglish', 'en', 'hi'].map(lang => {
               const isSelected = profile?.preferredLanguage === lang;
               const labels: Record<string, string> = {
-                en: 'English',
                 hinglish: 'Hinglish',
-                hi: 'Hindi',
-                es: 'Spanish',
-                ja: 'Japanese',
+                en: 'English',
+                hi: 'हिंदी',
               };
               return (
                 <TouchableOpacity
@@ -170,6 +168,30 @@ export const PreferencesSettingsScreen: React.FC = () => {
                   <Text style={[styles.langText, isSelected && styles.langTextSelected]}>
                     {labels[lang]}
                   </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Section 2b: How characters address them (Hindi verb forms) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Talk to me as</Text>
+          <Text style={styles.sectionDescription}>
+            So characters say "kaise ho, thak gaye?" or "thak gayi?" the right way. Only used for how they talk to you.
+          </Text>
+
+          <View style={styles.languageRow}>
+            {(['male', 'female', 'unspecified'] as const).map(g => {
+              const isSelected = profile?.userGender === g;
+              const labels = { male: 'Man', female: 'Woman', unspecified: 'Prefer not to say' };
+              return (
+                <TouchableOpacity
+                  key={g}
+                  style={[styles.langChip, isSelected && styles.langChipSelected]}
+                  onPress={() => updateField({ userGender: g })}
+                >
+                  <Text style={[styles.langText, isSelected && styles.langTextSelected]}>{labels[g]}</Text>
                 </TouchableOpacity>
               );
             })}

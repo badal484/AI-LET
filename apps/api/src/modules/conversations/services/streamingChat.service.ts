@@ -43,7 +43,7 @@ import { applyProjectPatch, extractProjectTag, inviteIdea, projectLines, sharedP
 import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, claimsPlanFollowed, continuesCourse, NO_PLAN_YET, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
-import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
+import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, languageChoice, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
 import { romanceMomentName, romanceNote, romanceWorkTalk, saysLoveBack } from '../human/romanceMoments.js';
 import { checkReply, fixTuForms, hasUrduScript, hindiWords, stripWrongAddress } from '../human/replyChecker.js';
 import type {
@@ -657,6 +657,7 @@ export class StreamingChatService {
     let projectNote = '';
     let snoozed: { until: number; count: number; words: string[] } | undefined;
     let hinglishTalker = false;
+    let hindiScript = false;
     let crushWon = false;
     let firstMeeting = false;
     let courseStage: string | undefined;
@@ -686,7 +687,14 @@ export class StreamingChatService {
       // User first: "Oo" right after she talked about herself means they're not into her topic — remember
       // it for this user (no extra model call) and turn to them now.
       // The conversation's language, not one line ("Kitna baar mana karu" was read as English and Dev switched).
-      hinglishTalker = conversationLanguage([...recentMessages.filter((m) => m.role === 'user').slice(-4).map((m) => m.content), pendingText]) === 'hinglish';
+      // Their language: what they chose in onboarding until they've written enough to show it, then what they write.
+      // (An old default "en" isn't a choice — only a completed LANGUAGE step is.)
+      const userTexts = [...recentMessages.filter((m) => m.role === 'user').slice(-4).map((m) => m.content), pendingText];
+      const chosenLanguage = languageChoice(conversation.user.profile);
+      const writtenEnough = userTexts.some((t) => t.trim().split(/\s+/).length >= 2);
+      hinglishTalker = writtenEnough || !chosenLanguage ? conversationLanguage(userTexts) === 'hinglish' : chosenLanguage !== 'en';
+      // Hindi chosen: Devanagari replies (unless they write to her in English).
+      hindiScript = chosenLanguage === 'hi' && hinglishTalker;
       const herLast = herRecentReplies.slice(-2).join('\n');
       if (boredByHerTalk(pendingText, herLast)) {
         boredOfHer = true;
@@ -804,7 +812,10 @@ export class StreamingChatService {
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
       firstMeeting = metToday && Date.now() - (firstUserMessage?.createdAt.getTime() ?? 0) < 30 * 60_000;
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
-      const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday });
+      const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday, profileGender: conversation.user.profile?.userGender });
+      // Worked out from their words ("main ladki hoon", "kar raha hoon") and not chosen yet: every character knows it now.
+      if (life.userGender && !conversation.user.profile?.userGender)
+        void prisma.userProfile.update({ where: { userId }, data: { userGender: life.userGender } }).catch(() => undefined);
       if (snoozed) continuity.followUp = undefined; // no "did you do the task?" while they've said not now
       // A real person's days and your time together: her own mood some days, and "ek hafta ho gaya 🙂".
       const herDay = herDayLine(pack.herDays, pack.slug, today);
@@ -938,7 +949,9 @@ export class StreamingChatService {
       }
       // Language first (small models follow the last line's language): the conversation's language, said plainly.
       reminders.unshift(
-        hinglishTalker
+        hindiScript
+          ? 'they chose Hindi — reply in simple, everyday Hindi written in Devanagari (हिंदी), like a friend texting; English words for modern things are fine'
+          : hinglishTalker
           ? isEnglish(pendingText)
             ? 'this chat is in Hinglish — even though their last line was in English, reply in Hinglish (English words are fine, no full English sentences)'
             : 'reply in Hinglish like them — English words are fine, no full English sentences'
@@ -969,6 +982,7 @@ export class StreamingChatService {
       request.systemPrompt = buildHumanPrompt({
         pack,
         englishChat: !hinglishTalker,
+        hindiScript,
         userName: conversation.user.profile?.displayName || 'them',
         memoriesText: builtContext.memoriesText ?? '',
         relationshipText: builtContext.relationshipText ?? '',
@@ -1120,7 +1134,7 @@ export class StreamingChatService {
               : undefined,
           noQuestions: tiredOfQuestions,
           askedIfAI: asksIfAI,
-          romanOnly: !hasDevanagari(pendingText),
+          romanOnly: !hindiScript && !hasDevanagari(pendingText),
           health: pack.mentor?.field === 'health',
           situations: turnSituations,
           userText: pendingText,
@@ -1247,7 +1261,7 @@ export class StreamingChatService {
     // A crisis or an emergency always ends with the real helpline, even if every draft missed it.
     if (pack) bubbles = ensureSafetyLines(bubbles, turnSituations, pendingText, pack.gender);
     // They text Hindi in Roman letters: a Devanagari slip ("chupचाप") is spelled out the way they write.
-    if (!hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
+    if (!hindiScript && !hasDevanagari(pendingText)) bubbles = bubbles.map((b) => (hasDevanagari(b) ? romanizeDevanagari(b) : b));
     // Inline `python` shows up as raw backticks in a chat bubble — commands go in plain text (code blocks are
     // still placeholders here, so they are untouched).
     bubbles = bubbles.map((b) => b.replace(/`([^`\n]{1,80})`/g, '$1'));

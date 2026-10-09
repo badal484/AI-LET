@@ -97,3 +97,15 @@ export function topicWordsOf(text: string): string[] {
     .filter((w) => !TOPIC_STOP.has(w));
   return [...new Set(keep)].slice(0, 8);
 }
+
+/**
+ * The language they picked in onboarding or settings — only if they really picked it (a completed
+ * LANGUAGE step, or a non-default value): every older account carries the default "en" without choosing.
+ */
+export function languageChoice(profile: { preferredLanguage?: string | null; onboardingCompletedSteps?: unknown } | null | undefined): 'en' | 'hinglish' | 'hi' | undefined {
+  const lang = profile?.preferredLanguage;
+  if (lang !== 'en' && lang !== 'hinglish' && lang !== 'hi') return undefined;
+  const steps = Array.isArray(profile?.onboardingCompletedSteps) ? (profile!.onboardingCompletedSteps as unknown[]) : [];
+  return lang !== 'en' || steps.includes('LANGUAGE') ? lang : undefined;
+}
+

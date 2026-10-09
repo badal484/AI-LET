@@ -67,6 +67,9 @@ export const ASKS_ABOUT_HER = /(tum batao|aur batao|kya chal raha|kya kar rahi|k
 
 export function readUserGender(text: string): 'male' | 'female' | undefined {
   const t = text.toLowerCase();
+  // What they say about themselves: "main ladka hoon", "I'm a girl", "as a guy…".
+  if (/\b(main|mai|mein)\s+(ek\s+)?(ladka|launda|aadmi|mard)\s+(hoon|hu|hun)\b|\bi'?m\s+(a\s+)?(guy|boy|man|male)\b|\bas a (guy|man|boy)\b/.test(t)) return 'male';
+  if (/\b(main|mai|mein)\s+(ek\s+)?(ladki|aurat)\s+(hoon|hu|hun)\b|\bi'?m\s+(a\s+)?(girl|woman|female|lady)\b|\bas a (girl|woman)\b/.test(t)) return 'female';
   if (/\b\w*(raha|gaya|ta|chuka)\s+(hoon|hu|hun)\b|\b\w+unga\b/.test(t)) return 'male';
   if (/\b\w*(rahi|gayi|ti|chuki)\s+(hoon|hu|hun)\b|\b\w+ungi\b/.test(t)) return 'female';
   return undefined;
@@ -202,6 +205,8 @@ export function applyUserTurn(params: {
   now?: number;
   /** This chat is their first ever with her and it started today (so "we talked before" is never true). */
   metToday?: boolean;
+  /** What they chose in onboarding/settings — wins over any guess; 'unspecified' means always neutral. */
+  profileGender?: string | null;
 }): ContinuityNotes {
   const { state, pack, userText, situations, userMood } = params;
   const now = params.now ?? Date.now();
@@ -239,11 +244,18 @@ export function applyUserTurn(params: {
   const nickname = extractNickname(userText);
   const newNickname = nickname && nickname !== state.nickname ? nickname : undefined;
   if (nickname) state.nickname = nickname;
-  state.userGender = readUserGender(userText) ?? state.userGender;
+  // Their own choice wins; otherwise their own words ("kar raha hoon", "main ladki hoon"). Never the name.
+  const chosen = params.profileGender === 'male' || params.profileGender === 'female' ? params.profileGender : undefined;
+  if (chosen) state.userGender = chosen;
+  else if (params.profileGender === 'unspecified') state.userGender = undefined;
+  else state.userGender = readUserGender(userText) ?? state.userGender;
   if (saysUnder18(userText)) state.minor = true;
   if (state.minor) lines.push('They told you they are under 18: absolutely no romance, flirting or "jaan/baby" — be a warm, caring friend (didi/bhaiya-type). If they flirt, kindly and clearly say no and stay friendly.');
   if (state.userGender) {
     lines.push(state.userGender === 'male' ? 'They are a guy: talk to them with male forms (rahe ho, gaye, karoge).' : 'They are a girl: talk to them with female forms (rahi ho, gayi, karogi).');
+  } else {
+    // Seen: Aarav guessed a man was a girl ("pooch sakti ho") from nothing. Unknown → no guessing.
+    lines.push("You don't know if they're a guy or a girl — never guess (not from their name either). Use forms that fit anyone: \"din kaisa raha?\", \"thakaan ho rahi hai?\", \"tumne kya socha?\" — not \"thak gaye/gayi ho\", \"pooch sakte/sakti ho\".");
   }
   if (state.nickname) lines.push(`They like being called "${state.nickname}". Use it now and then, not every text.`);
 

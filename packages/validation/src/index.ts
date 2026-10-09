@@ -1646,6 +1646,8 @@ export const onboardingStepCompleteSchema = z.object({
   categoryIds: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
   conversationStyle: conversationStyleSchema.optional(),
+  /** How characters address them (grammar): 'male' | 'female' | 'unspecified'. */
+  userGender: z.enum(['male', 'female', 'unspecified']).optional(),
   selectedCharacterId: z.string().uuid().optional(),
   skipped: z.boolean().default(false),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -1665,6 +1667,7 @@ export type OnboardingCompleteInput = z.infer<typeof onboardingCompleteSchema>;
 
 export const userPreferenceUpdateSchema = z.object({
   preferredLanguage: z.string().min(2).max(10).optional(),
+  userGender: z.enum(['male', 'female', 'unspecified']).optional(),
   conversationStyle: conversationStyleSchema.optional(),
   preferredCategoryIds: z.array(z.string()).optional(),
   preferredTagIds: z.array(z.string()).optional(),
