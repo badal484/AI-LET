@@ -44,7 +44,7 @@ import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, claimsPlanFollowed, continuesCourse, NO_PLAN_YET, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
-import { romanceMomentName, romanceNote, saysLoveBack } from '../human/romanceMoments.js';
+import { romanceMomentName, romanceNote, romanceWorkTalk, saysLoveBack } from '../human/romanceMoments.js';
 import { checkReply, fixTuForms, hindiWords, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -1132,6 +1132,12 @@ export class StreamingChatService {
         // Romance: "I love you" is said back; a Hinglish talker gets no full English sentences.
         if (pack.romance && (!pack.crush || crushWon) && romanceMomentName(pendingText) === 'love you' && !saysLoveBack(b.join('\n'))) {
           result.problems.push('They said "I love you" — say it back, in your own words and voice ("I love you too", "main bhi… bahut"), and make it a moment.');
+          result.ok = false;
+        }
+        // A romantic moment is about them, not her job (seen: Aarav, "dil ne code se zyada fast reaction diya"
+        // — copied from his Figma example, and he isn't even a coder).
+        if (pack.romance && romanceMomentName(pendingText) && romanceWorkTalk(b.join('\n'), pack)) {
+          result.problems.push('This is a romantic moment — keep your work out of it (no jokes about your job, tools or code). Speak from the heart, about them.');
           result.ok = false;
         }
         if (hinglishTalker) {

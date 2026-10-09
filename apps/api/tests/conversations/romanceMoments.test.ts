@@ -59,3 +59,15 @@ describe('Checks on her reply', () => {
     expect(talksHinglish(['hey, what do you do?', 'tell me about your family'])).toBe(false);
   });
 });
+
+describe('Love is about them, not her job', () => {
+  it('flags work talk in a romantic reply and catches a one-word-swapped copy (Aarav)', async () => {
+    const { romanceWorkTalk } = await import('../../src/modules/conversations/human/romanceMoments.js');
+    const { checkReply } = await import('../../src/modules/conversations/human/replyChecker.js');
+    const pack = { domainKeywords: ['design', 'figma'], motifs: ['4 pixels'] };
+    expect(romanceWorkTalk('ruko… ek second, dil ne code se zyada fast reaction diya ye sunke', pack)).toBe(true);
+    expect(romanceWorkTalk('ruko… ek second 🥺 I love you too, bahut zyada', pack)).toBe(false);
+    const r = checkReply({ bubbles: ['ruko… ek second, dil ne code se zyada fast render kiya ye 🥺'], herRecentReplies: [], gender: 'male', mode: 'chat', examples: ['ruko… ek second, dil ne Figma se zyada fast render kiya ye 🥺'] });
+    expect(r.problems.some((p) => p.includes('copied an example'))).toBe(true);
+  });
+});

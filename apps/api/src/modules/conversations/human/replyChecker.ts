@@ -132,6 +132,17 @@ const PLATITUDE = /\b(sab (manage|theek|thik|set) ho jayega|tension mat lo|relax
 const WORRY = /\b(exam|test|paper|interview|deadline|presentation|kuch nahi padha|tension|dar lag|ghabra\w*|stress\w*|nervous|worried|anxious)\b/i;
 const COLD_COMFORT = /\b(chup ?chaa?p (baitho|baith jao|raho|so jao)|baaki sab (chodo|chhodo)|(itna|zyada) mat socho|tum overthink kar rah[ei] ho|over ?react kar rah[ei] ho|chill karo bas|move on karo bas)\b/i;
 const STAYS_WITH_THEM = /\?|main yahin|main hoon na|hug|batao|bataao|sun rah[ai]|kya hua|kya bola|mere paas|i'?m here|tell me/i;
+const wordsOf = (t: string) => t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+/** Some `len` words in a row match, allowing one word to differ. */
+function sharesRun(a: string[], b: string[], len: number): boolean {
+  for (let i = 0; i + len <= a.length; i++)
+    for (let j = 0; j + len <= b.length; j++) {
+      let diff = 0;
+      for (let k = 0; k < len && diff <= 1; k++) if (a[i + k] !== b[j + k]) diff++;
+      if (diff <= 1) return true;
+    }
+  return false;
+}
 const TASK_SAID = /\b(aaj ka (pehla )?(kaam|task)|is hafte ka kaam|tumhara task|homework|today'?s task|your task( for today)?)\s*[:\-–]/i;
 const MOVED_ON = /\b(next|aage|agla|agle|ho gaya|ho gayi|kar liya|kar li|bana liya|bana li|done|did it|finished|made my|completed)\b/i;
 const SAYS_AI_SELF = /\b(main|mai|mein|i am|i'?m|im)\s+(ek\s+|an?\s+|toh\s+|bas\s+)?(ai|a\.i\.|bot|chatbot|language model|virtual)\b|\b(ai|bot|chatbot)\s+(hoon|hu|hun)\b|\bas an ai\b/i;
@@ -289,9 +300,13 @@ export function checkReply(params: {
   if (params.userText && detectRequest(params.userText, { codeDomain: false }) && /\b(nahi aat[ai]|nahi aate|nahi aata|nahi sunati|nahi sunata|can'?t (tell|sing|write)|i don'?t know (any )?jokes?)\b/i.test(all))
     problems.push('They asked you for something small and fun — just do it, in your own style (a short, clean joke, a line, a song suggestion). Never "mujhe nahi aata".');
   const examples = (params.examples ?? []).map(trigrams).filter((t) => t.size >= 4);
+  const exampleWords = (params.examples ?? []).map(wordsOf).filter((w) => w.length >= 7);
   const copied = params.bubbles.find((b) => {
     const mine = trigrams(b);
-    return mine.size >= 4 && examples.some((ex) => [...mine].filter((t) => ex.has(t)).length / mine.size >= 0.6);
+    if (mine.size >= 4 && examples.some((ex) => [...mine].filter((t) => ex.has(t)).length / mine.size >= 0.6)) return true;
+    // One word swapped is still a copy ("dil ne Figma se zyada fast…" → "dil ne code se zyada fast…").
+    const w = wordsOf(b);
+    return exampleWords.some((ex) => sharesRun(w, ex, 7));
   });
   if (copied && !params.situations?.some((s) => s === 'crisis' || s === 'emergency'))
     problems.push(`You copied an example almost word for word ("${copied.slice(0, 50)}…"). Say it freshly in your own words, fitted to them.`);

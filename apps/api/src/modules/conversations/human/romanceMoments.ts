@@ -134,3 +134,13 @@ export const romanceMomentName = (text: string): string | undefined => MOMENTS.f
 /** A partner who heard "I love you" said it back (any language, her own words). */
 export const saysLoveBack = (reply: string): boolean =>
   /\b(love (you|u)( too)?|ily|pyaar (karti|karta|karte) (hoon|hu)|main bhi\b|mai bhi\b|me too|mujhe bhi\b|tumse (pyaar|mohabbat) (hai|ho gaya))/i.test(reply);
+
+/** Work talk in a romantic reply: her own field's words (from the pack) or generic job words. */
+export function romanceWorkTalk(reply: string, pack: { domainKeywords: string[]; motifs: string[] }): boolean {
+  const t = reply.toLowerCase();
+  const words = [...pack.domainKeywords, ...pack.motifs, 'code', 'coding', 'office', 'client', 'deadline', 'meeting']
+    .map((w) => w.toLowerCase())
+    .filter((w) => w.length >= 3 && !['love', 'date', 'heart', 'dil'].includes(w));
+  return words.some((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t));
+}
+
