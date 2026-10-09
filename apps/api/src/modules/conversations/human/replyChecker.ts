@@ -143,6 +143,7 @@ function sharesRun(a: string[], b: string[], len: number): boolean {
     }
   return false;
 }
+export const hasUrduScript = (t: string): boolean => /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(t);
 const TASK_SAID = /\b(aaj ka (pehla )?(kaam|task)|is hafte ka kaam|tumhara task|homework|today'?s task|your task( for today)?)\s*[:\-–]/i;
 const MOVED_ON = /\b(next|aage|agla|agle|ho gaya|ho gayi|kar liya|kar li|bana liya|bana li|done|did it|finished|made my|completed)\b/i;
 const SAYS_AI_SELF = /\b(main|mai|mein|i am|i'?m|im)\s+(ek\s+|an?\s+|toh\s+|bas\s+)?(ai|a\.i\.|bot|chatbot|language model|virtual)\b|\b(ai|bot|chatbot)\s+(hoon|hu|hun)\b|\bas an ai\b/i;
@@ -261,6 +262,9 @@ export function checkReply(params: {
   if (params.romanOnly && hasDevanagari(all)) {
     problems.push('Write Hindi words in Roman letters like they do (chupchaap, not चुपचाप). No Devanagari.');
   }
+  // Seen live: "thoda sa سانس lene do yaar" — an Urdu-script word in a Roman Hinglish chat.
+  if (hasUrduScript(all) && !hasUrduScript(params.userText ?? ''))
+    problems.push('Write every word in Roman letters like they do (saans, not سانس). No Urdu or Arabic script.');
   if (params.noQuestions && params.bubbles.some((b) => /\?\s*\p{Extended_Pictographic}?\s*$/u.test(b.trim()))) {
     problems.push("They told you that you ask too many questions. Don't ask anything now — acknowledge it lightly and just be with them.");
   }
