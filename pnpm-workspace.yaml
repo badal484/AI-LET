@@ -11,10 +11,3 @@ allowBuilds:
   'unrs-resolver': true
   'argon2': true
   'msgpackr-extract': false
-
-overrides:
-  '@types/react': '^18.3.18'
-  '@types/react-dom': '^18.3.5'
-
-patchedDependencies:
-  react-native-nitro-modules@0.36.5: patches/react-native-nitro-modules@0.36.5.patch

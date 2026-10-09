@@ -181,7 +181,7 @@ export const CreateCharacterScreen: React.FC<CreateCharacterScreenProps> = ({ na
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 12), paddingBottom: Math.max(insets.bottom, 12) }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>

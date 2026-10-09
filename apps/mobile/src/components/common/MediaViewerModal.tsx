@@ -47,7 +47,7 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       statusBarTranslucent
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <StatusBar barStyle="light-content" />
 
         {/* Top Controls Bar */}
         <View style={styles.headerBar}>

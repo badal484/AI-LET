@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(11, 13, 19, 0.75)',
     justifyContent: 'space-between',
     padding: spacing.lg,

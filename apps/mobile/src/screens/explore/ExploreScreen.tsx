@@ -130,7 +130,7 @@ export const ExploreScreen: React.FC = () => {
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
-              onRefresh={refetch}
+              onRefresh={() => void refetch()}
               tintColor={darkThemeColors.accent}
             />
           }
