@@ -1,3 +1,4 @@
+import { PLAY_CATALOG, playAccountId } from '../providers/GooglePlayBillingProvider.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import {
   PurchaseVerificationRequest,
@@ -88,6 +89,41 @@ export class PurchaseService {
       );
     }
 
+    // Google Play: the purchase must belong to this account (the app sends playAccountId(userId) to Play).
+    const claimedBy = (verified.rawPayload as { obfuscatedAccountId?: string }).obfuscatedAccountId;
+    if (request.provider === 'google' && claimedBy && claimedBy !== playAccountId(userId)) {
+      throw new BadRequestError('This purchase belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
+    }
+
+    // A message pack: extra messages, no subscription.
+    if ((verified.rawPayload as { kind?: string }).kind === 'pack') {
+      const transaction = await prisma.purchaseTransaction.create({
+        data: {
+          userId,
+          provider: request.provider.toUpperCase() as any,
+          providerTransactionId: verified.providerTransactionId,
+          idempotencyKey: request.idempotencyKey,
+          productId: verified.productId,
+          currency: verified.currency as any,
+          amountMinorUnits: verified.amountMinorUnits,
+          status: 'SUCCEEDED',
+          rawReceiptData: request.receiptData,
+          metadata: verified.rawPayload as any,
+        },
+      });
+      await CreditWalletService.grantCredits({
+        userId,
+        amount: PLAY_CATALOG.packMessages,
+        type: 'PURCHASE',
+        idempotencyKey: `message_pack_${verified.providerTransactionId}`,
+        description: `${PLAY_CATALOG.packMessages} extra messages`,
+        referenceType: 'PURCHASE',
+        referenceId: transaction.id,
+      });
+      const effective = await EntitlementService.getEffectiveEntitlements(userId);
+      return { success: true, status: 'VERIFIED', subscription: null, entitlements: effective.activeEntitlementsList, creditsGranted: PLAY_CATALOG.packMessages };
+    }
+
     // 3. Find matching product / plan
     const targetPlanCode = verified.planCode || request.planCode || 'PRO';
     const plan = await prisma.billingPlan.findUnique({
@@ -105,6 +141,8 @@ export class PurchaseService {
     const price = plan.prices.find(p => p.active) || null;
 
     // 4. Transactionally persist purchase, subscription, and ledger entries
+    // A trial is saved as TRIALING; a cancelled-but-paid Play subscription stays usable until its end.
+    const dbStatus = (verified.subscriptionStatus === 'trialing' ? 'TRIALING' : 'ACTIVE') as 'TRIALING' | 'ACTIVE';
     const result = await prisma.$transaction(async (tx) => {
       // Upsert Subscription
       const currentPeriodStart = verified.currentPeriodStart || new Date();
@@ -118,7 +156,7 @@ export class PurchaseService {
           userId,
           planId: plan.id,
           priceId: price?.id,
-          status: 'ACTIVE',
+          status: dbStatus,
           provider: request.provider.toUpperCase() as any,
           providerSubscriptionId: verified.providerSubscriptionId || `sub_${verified.providerTransactionId}`,
           currentPeriodStart,
@@ -130,10 +168,10 @@ export class PurchaseService {
         update: {
           planId: plan.id,
           priceId: price?.id,
-          status: 'ACTIVE',
+          status: dbStatus,
           currentPeriodStart,
           currentPeriodEnd,
-          cancelAtPeriodEnd: false,
+          cancelAtPeriodEnd: verified.subscriptionStatus === 'cancelled',
           endedAt: null,
           cancelledAt: null,
         },

@@ -1,3 +1,4 @@
+import { useMessage } from '../../billing/messageAllowance.js';
 import { setAICostContext, withAICostTask } from '../../ai/telemetry/aiCostLedger.js';
 import { Response, Request } from 'express';
 import { prisma } from '../../../infrastructure/database/prisma.js';
@@ -51,6 +52,7 @@ import type {
   StreamEventType,
   StreamMessageCompletedPayload,
   StreamCrisisSupportPayload,
+  StreamLimitReachedPayload,
   StreamMessageFailedPayload,
   StreamHeartbeatPayload,
   StreamMessageSavedPayload,
@@ -169,6 +171,25 @@ export class StreamingChatService {
               select: { id: true, sequenceNumber: true, createdAt: true, clientRequestId: true },
             })
           : null;
+
+        // Today's allowance (free 5 / premium 150 + message packs). A new message only — a resend is free.
+        // Crisis and emergency messages always go through. Off until BILLING_ENFORCE_LIMITS=true.
+        if (!existing) {
+          const allowance = await useMessage(userId, content);
+          if (!allowance.allowed) {
+            this.initSseResponse(res);
+            this.emitSseEvent<StreamLimitReachedPayload>(res, 'limit.reached', {
+              conversationId,
+              reason: allowance.reason ?? 'free_limit',
+              used: allowance.used,
+              limit: allowance.limit,
+              premium: allowance.premium,
+              resetsAt: allowance.resetsAt,
+            });
+            res.end();
+            return;
+          }
+        }
 
         // A WhatsApp-style reply: only to a message from this same chat.
         const replyTo = input.replyToMessageId

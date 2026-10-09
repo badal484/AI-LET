@@ -1,3 +1,5 @@
+import { allowanceStatus } from '../messageAllowance.js';
+import { PLAY_CATALOG, playAccountId } from '../providers/GooglePlayBillingProvider.js';
 import { Request, Response, NextFunction } from 'express';
 import { PlanService } from '../services/PlanService.js';
 import { EntitlementService } from '../entitlements/EntitlementService.js';
@@ -33,6 +35,24 @@ export class BillingController {
       const userId = req.user!.userId;
       const effective = await EntitlementService.getEffectiveEntitlements(userId);
       res.json({ success: true, data: effective });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** Today's messages: used / limit / pack credits, whether they're premium, and when it resets. */
+  public static async getAllowance(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.json({ success: true, data: await allowanceStatus(req.user!.userId) });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** What the app passes to Google Play as obfuscatedAccountId (ties a purchase to this account). */
+  public static async getPlayAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.json({ success: true, data: { obfuscatedAccountId: playAccountId(req.user!.userId), catalog: PLAY_CATALOG } });
     } catch (err) {
       next(err);
     }

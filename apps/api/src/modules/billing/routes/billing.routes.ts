@@ -25,6 +25,8 @@ billingRouter.use(authenticateUser);
 billingRouter.get('/me', BillingController.getSubscription);
 billingRouter.get('/entitlements', BillingController.getEntitlements);
 billingRouter.get('/usage', BillingController.getUsage);
+billingRouter.get('/allowance', BillingController.getAllowance);
+billingRouter.get('/play-account', BillingController.getPlayAccount);
 billingRouter.get('/credits', BillingController.getCredits);
 billingRouter.get('/credits/transactions', BillingController.getCreditTransactions);
 

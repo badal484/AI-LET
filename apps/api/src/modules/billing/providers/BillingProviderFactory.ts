@@ -1,3 +1,5 @@
+import { GooglePlayBillingProvider } from './GooglePlayBillingProvider.js';
+import { googlePlayConfigured } from './googlePlayApi.js';
 import { BillingProviderType } from '@ai-companion/types';
 import { env } from '../../../config/env.js';
 import { logger } from '../../../config/logger.js';
@@ -61,7 +63,11 @@ export class BillingProviderFactory {
    * Apple/Google/Stripe adapters do not yet perform real verification (they accept any receipt), so
    * outside development/test every provider — including `mock` — is replaced by a fail-closed guard.
    */
+  private static googlePlay: GooglePlayBillingProvider | null = null;
+
   public static getProvider(type: BillingProviderType = 'mock'): IBillingProvider {
+    // Real Google Play verification (service account configured) — always, in every environment.
+    if (type === 'google' && googlePlayConfigured()) return (this.googlePlay ??= new GooglePlayBillingProvider());
     if (!billingSimulationAllowed()) return new UnverifiedProviderGuard(type);
     return this.simulated[type] ?? this.simulated.mock;
   }

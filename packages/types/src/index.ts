@@ -666,7 +666,19 @@ export type StreamEventType =
   | 'turn.completed'
   // A message about wanting to end their life is never sent to the AI; instead the person gets a fixed,
   // caring reply with real helplines right away (then the usual message.failed for the blocked text).
-  | 'crisis.support';
+  | 'crisis.support'
+  // Today's message allowance is used up (free limit or fair use): the message was not sent.
+  | 'limit.reached';
+
+/** The message wasn't sent: today's allowance is used up. 'free_limit' → offer the trial; 'fair_use' → a pack. */
+export interface StreamLimitReachedPayload {
+  conversationId: string;
+  reason: 'free_limit' | 'fair_use';
+  used: number;
+  limit: number;
+  premium: boolean;
+  resetsAt: string;
+}
 
 /** Fixed, caring words and helplines for someone who said they feel like ending their life. */
 export interface StreamCrisisSupportPayload {
@@ -2223,7 +2235,7 @@ export type ProductType = 'subscription' | 'one_time' | 'credit_pack' | 'add_on'
 export type ProductStatus = 'active' | 'archived' | 'draft';
 export type BillingProviderType = 'apple' | 'google' | 'stripe' | 'mock';
 export type PriceCurrency = 'INR' | 'USD' | 'EUR' | 'GBP';
-export type PlanInterval = 'month' | 'year' | 'one_time';
+export type PlanInterval = 'week' | 'month' | 'year' | 'one_time';
 
 export type SubscriptionStatus =
   | 'trialing'
