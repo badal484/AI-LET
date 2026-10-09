@@ -31,6 +31,8 @@ export interface StoreOffer {
 }
 
 export interface StoreCatalog {
+  /** Google Play answered (false = no connection to the Play Store). */
+  connected: boolean;
   offers: Partial<Record<BasePlan, StoreOffer>>;
   pack?: { price: string };
 }
@@ -105,8 +107,8 @@ export const StoreBilling = {
 
   /** Real, localized prices from Google Play (never hard-coded in the UI). */
   async loadCatalog(): Promise<StoreCatalog> {
-    if (!(await StoreBilling.connect())) return { offers: {} };
-    const catalog: StoreCatalog = { offers: {} };
+    if (!(await StoreBilling.connect())) return { connected: false, offers: {} };
+    const catalog: StoreCatalog = { connected: true, offers: {} };
     const subs = ((await fetchProducts({ skus: [catalogIds.subscription], type: 'subs' })) ?? []) as Array<{
       subscriptionOffers?: Array<{ id: string; basePlanIdAndroid?: string | null; displayPrice: string; offerTokenAndroid?: string | null; price: number }>;
     }>;

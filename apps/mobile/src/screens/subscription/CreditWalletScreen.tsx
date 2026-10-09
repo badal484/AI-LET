@@ -8,8 +8,9 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  SafeAreaView,
 } from 'react-native';
+// React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
