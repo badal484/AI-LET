@@ -933,7 +933,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   ? keyboardHeight
                   : Math.max(insets.bottom, 8)
                 : keyboardHeight > 0
-                  ? 4
+                  ? // Edge-to-edge (Android 15+): the window no longer shrinks for the keyboard, so lift by its height.
+                    keyboardHeight + 4
                   : Math.max(insets.bottom, 8),
           },
         ]}
