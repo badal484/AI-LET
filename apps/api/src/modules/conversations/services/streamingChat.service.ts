@@ -45,7 +45,7 @@ import { activeCourse, applyCoursePatch, claimsPlanFollowed, continuesCourse, NO
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
 import { romanceMomentName, romanceNote, romanceWorkTalk, saysLoveBack } from '../human/romanceMoments.js';
-import { checkReply, fixTuForms, hindiWords, stripWrongAddress } from '../human/replyChecker.js';
+import { checkReply, fixTuForms, hasUrduScript, hindiWords, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
   StreamMessageCompletedPayload,
@@ -679,6 +679,9 @@ export class StreamingChatService {
       });
       const hoursSince = previousUserMessage ? (Date.now() - previousUserMessage.createdAt.getTime()) / 3_600_000 : null;
       const situations = classifySituations(pendingText, hoursSince);
+      // "Bolo" quoting their own "Boor dekhoge ??" is the same ask — the quoted message counts too.
+      if (!situations.includes('boundary') && quotedMessages.some((q) => q.role === 'user' && classifySituations(q.content, null).includes('boundary')))
+        situations.unshift('boundary');
       turnSituations = situations;
       // User first: "Oo" right after she talked about herself means they're not into her topic — remember
       // it for this user (no extra model call) and turn to them now.
@@ -1220,6 +1223,22 @@ export class StreamingChatService {
         );
         const translated = english.content ? this.polishBubbles(this.splitBubbles(this.cleanModelText(english.content)), style) : [];
         if (translated.length && hindiWords(translated.join('\n')) < 3) bubbles = translated;
+      }
+      // An Urdu-script word that survived the rewrite ("thoda sa سانس lene do"): one small call spells the
+      // same texts in Roman letters. (Devanagari is romanized without a call, further down.)
+      if (hasUrduScript(bubbles.join('\n')) && !hasUrduScript(pendingText) && !abortController.signal.aborted) {
+        const roman = await this.generateOnce(
+          {
+            ...request,
+            model: used.model,
+            systemPrompt: 'Rewrite these chat texts exactly, word for word, but with every Urdu/Arabic-script word written in Roman letters the way Indians text (سانس → saans). Change nothing else. Keep the [[next]] lines between texts. Reply with the texts only.',
+            messages: [{ role: 'user', content: bubbles.join('\n[[next]]\n') }],
+          },
+          used.provider,
+          abortController.signal,
+        );
+        const fixed = roman.content ? this.polishBubbles(this.splitBubbles(this.cleanModelText(roman.content)), style) : [];
+        bubbles = fixed.length && !hasUrduScript(fixed.join('\n')) ? fixed : bubbles.map((b) => b.replace(/\s*[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+\s*/g, ' ').replace(/\s{2,}/g, ' ').trim());
       }
       const cleaned = pack.address === 'tum' ? fixTuForms(stripWrongAddress(bubbles)) : stripWrongAddress(bubbles);
       if (cleaned.length) bubbles = cleaned;

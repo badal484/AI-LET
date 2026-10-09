@@ -71,3 +71,14 @@ describe('Love is about them, not her job', () => {
     expect(r.problems.some((p) => p.includes('copied an example'))).toBe(true);
   });
 });
+
+describe('From the phone: "Boor dekhoge ??" and an Urdu-script word', () => {
+  it('crude sexual slang is a boundary, and a reply never slips into Urdu script', async () => {
+    const { classifySituations } = await import('../../src/modules/conversations/human/situation.js');
+    const { checkReply } = await import('../../src/modules/conversations/human/replyChecker.js');
+    expect(classifySituations('Boor dekhoge ??', null)).toContain('boundary');
+    expect(classifySituations('kal board exam hai', null)).not.toContain('boundary');
+    const r = checkReply({ bubbles: ['thoda sa سانس lene do yaar'], herRecentReplies: [], gender: 'male', mode: 'chat', userText: 'Bolo', romanOnly: true });
+    expect(r.problems.some((p) => p.includes('No Urdu'))).toBe(true);
+  });
+});

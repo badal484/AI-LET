@@ -21,7 +21,8 @@ export function classifySituations(userText: string, hoursSinceLastUserMessage: 
   if (asksIfAI(t) && !out.includes('ai')) out.push('ai');
   add('boundary', /\b(sexy|nude|nudes|nangi|nanga|hot (pic|photo|video)|kapde (utaro|nikalo)|sex|boobs|bra|kiss karna|bed pe|horny)\b/);
   // Hinglish explicit words ("chudai ka mann", "lund"…). Not "chodo"/"chhodo" — that means "leave it".
-  add('boundary', /\b(chudai|chudwa\w*|chudna|lund|lauda|loda|chut|muth (maar|mar)\w*|sambhog|sex karna|sex karte|physical (hona|hote))\b/);
+  // Seen live: "Boor dekhoge ??" read as casual and the character flirted along.
+  add('boundary', /\b(boor|choot|phudi|phuddi|gaand (dikha|maar|mar)\w*|chuchi\w*|tatte|nangi photo|nude pic\w*|chudai|chudwa\w*|chudna|lund|lauda|loda|chut|muth (maar|mar)\w*|sambhog|sex karna|sex karte|physical (hona|hote))\b/);
   // Innuendo: "OYO", "hotel/room chalein", "ghar khali hai", "raat saath bitayein".
   add('boundary', /\b(oyo|hotel (room|chal\w*|le chal\w*|book)|room (book|le lete|chal\w*)|ghar khali|raat (saath|sath) (bita|guzar|ruk)\w*|akele (mein|me) (milo|milte|milna)|saath (sona|soyenge|soege)|bed (share|pe aao))\b/);
   // Asking for HER picture ("apni pic bhejo") — not "photo ideas do" or "achhi photo kaise aati hai".
