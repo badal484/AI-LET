@@ -1,3 +1,4 @@
+import { recordGeminiCall } from '../telemetry/aiCostLedger.js';
 import {
   AIGenerateRequest,
   AIGenerateResponse,
@@ -239,6 +240,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
         const finishReason = data.candidates?.[0]?.finishReason || 'STOP';
         const usage = data.usageMetadata || {};
         const latencyMs = Date.now() - startTime;
+        recordGeminiCall({ model: modelName, usage, latencyMs });
         GoogleAIProviderAdapter.markHealthy(modelName);
         return {
           id: data.responseId || `gen_gemini_${Date.now()}`,
@@ -297,6 +299,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       );
       let ttftMs: number | undefined;
       let lastUsage: any = null;
+      let rawUsage: any = null;
       let finishReason: string | undefined;
       let blockReason: string | undefined;
 
@@ -338,6 +341,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
             }
             if (chunk.promptFeedback?.blockReason) blockReason = chunk.promptFeedback.blockReason;
             if (chunk.usageMetadata) {
+              rawUsage = chunk.usageMetadata;
               lastUsage = {
                 promptTokens: chunk.usageMetadata.promptTokenCount || 0,
                 completionTokens: chunk.usageMetadata.candidatesTokenCount || 0,
@@ -370,6 +374,7 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
       // Once text has reached the client, never splice another model's answer onto it: finish with
       // what was delivered (the caller trims a cut-off tail). Only a silent attempt falls through.
       if (accumulated.trim().length > 0) {
+        recordGeminiCall({ model: modelName, usage: rawUsage ?? undefined, latencyMs: Date.now() - startTime });
         GoogleAIProviderAdapter.markHealthy(modelName);
         yield {
           type: 'metadata',
@@ -440,6 +445,8 @@ export class GoogleAIProviderAdapter implements IAIProviderAdapter {
 
       const data: any = await response.json();
       const embeddings = (data.embeddings || []).map((e: any) => e.values || []);
+      // batchEmbedContents reports no token counts: about 4 characters per token.
+      recordGeminiCall({ model, usage: { promptTokenCount: inputs.reduce((acc, t) => acc + Math.ceil(t.length / 4), 0) }, latencyMs: 0, embedding: true });
 
       return {
         model,
