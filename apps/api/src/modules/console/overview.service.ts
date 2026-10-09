@@ -2,11 +2,12 @@ import { prisma } from '../../infrastructure/database/prisma.js';
 
 /**
  * The admin console's Overview: today / last 7 days at a glance, and 14-day trends.
- * Test and eval accounts (eval_*, *@test.local) are always left out.
+ * Test and eval accounts (eval_*, *@test.local, *@example.com) are always left out.
  * Money is in rupees; AI cost is converted from USD at INR_PER_USD (default 88).
  */
 
-export const REAL_USERS = `(u.email NOT LIKE 'eval_%' AND u.email NOT LIKE '%@test.local')`;
+export const TEST_USERS = `(u.email LIKE 'eval\\_%' OR u.email LIKE '%@test.local' OR u.email LIKE '%@example.com')`;
+export const REAL_USERS = `(NOT ${TEST_USERS})`;
 const INR = () => Number(process.env['INR_PER_USD'] ?? 88);
 
 const one = async <T>(sql: string, ...args: unknown[]) => ((await prisma.$queryRawUnsafe<T[]>(sql, ...args))[0] ?? {}) as T;

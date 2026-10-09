@@ -2,10 +2,14 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { ADMIN_PERMISSIONS } from '@ai-companion/config';
 import { authenticateAdmin, requirePermission } from '../../shared/middleware/adminAuth.middleware.js';
 import { getOverview } from './overview.service.js';
-import { addMessages, getUser, grantPremium, listUsers, setBlocked } from './users.service.js';
+import {
+  addMessages, cancelDeletion, deleteMemory, getMemories, getUser, grantPremium, listUsers, removePremium, requestDeletion, resetToday,
+  setBlocked, signOutEverywhere, usersCsv, type ListParams,
+} from './users.service.js';
 import { addGalleryImage, getAiCost, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
 import express from 'express';
 import { allSettings, setSetting } from './appSettings.js';
+import { AuditService } from '../audit/audit.service.js';
 import {
   changeOwnPassword, createPromo, getSafety, getSystem, inviteAdmin, listAudit, listPromos, listSupport, listTeam,
   replySupport, resolveMoment, reviewChat, setAdminActive, setPromoActive, setReportStatus,
@@ -36,13 +40,40 @@ const idOf = (req: Request) => String(req.params['id']);
 const reasonOf = (req: Request) => String(req.body?.reason ?? '').slice(0, 300) || 'no reason given';
 
 // Users
-consoleRouter.get('/users', requirePermission(P.USERS_READ), handle((req) =>
-  listUsers({ search: req.query['search'] as string | undefined, page: Number(req.query['page'] ?? 1), filter: req.query['filter'] as string | undefined }),
-));
+const listParams = (req: Request): ListParams => ({
+  search: req.query['search'] as string | undefined,
+  page: Number(req.query['page'] ?? 1),
+  filter: req.query['filter'] as string | undefined,
+  sort: req.query['sort'] as string | undefined,
+  dir: req.query['dir'] as string | undefined,
+  showTest: req.query['test'] === '1',
+});
+consoleRouter.get('/users', requirePermission(P.USERS_READ), handle((req) => listUsers(listParams(req))));
+consoleRouter.get('/users.csv', requirePermission(P.USERS_READ), async (req, res, next) => {
+  try {
+    const csv = await usersCsv(listParams(req));
+    await AuditService.log({ actorType: 'ADMIN', actorId: adminId(req), action: 'console.users.exported', resourceType: 'USER', resourceId: null, metadata: { filter: req.query['filter'] ?? null } });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="users-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    next(err);
+  }
+});
 consoleRouter.get('/users/:id', requirePermission(P.USERS_READ), handle((req) => getUser(idOf(req))));
 consoleRouter.post('/users/:id/premium', requirePermission(P.BILLING_WRITE), handle((req) => grantPremium(adminId(req), idOf(req), Number(req.body?.days), reasonOf(req))));
+consoleRouter.post('/users/:id/premium/remove', requirePermission(P.BILLING_WRITE), handle((req) => removePremium(adminId(req), idOf(req), reasonOf(req))));
 consoleRouter.post('/users/:id/messages', requirePermission(P.BILLING_CREDITS_GRANT), handle((req) => addMessages(adminId(req), idOf(req), Number(req.body?.amount), reasonOf(req))));
+consoleRouter.post('/users/:id/reset-today', requirePermission(P.BILLING_CREDITS_GRANT), handle((req) => resetToday(adminId(req), idOf(req), reasonOf(req))));
 consoleRouter.post('/users/:id/block', requirePermission(P.USERS_SUSPEND), handle((req) => setBlocked(adminId(req), idOf(req), Boolean(req.body?.blocked), reasonOf(req))));
+consoleRouter.post('/users/:id/sign-out', requirePermission(P.USERS_SUSPEND), handle((req) => signOutEverywhere(adminId(req), idOf(req), reasonOf(req))));
+consoleRouter.post('/users/:id/delete', requirePermission(P.USERS_DELETE), handle((req) => requestDeletion(adminId(req), idOf(req), reasonOf(req))));
+consoleRouter.post('/users/:id/delete/cancel', requirePermission(P.USERS_DELETE), handle((req) => cancelDeletion(adminId(req), idOf(req))));
+// Memories are private: opening them needs a reason and is written to the audit log.
+consoleRouter.post('/users/:id/memories', requirePermission(P.MEMORIES_READ), handle((req) => getMemories(adminId(req), idOf(req), reasonOf(req))));
+consoleRouter.delete('/users/:id/memories/:memoryId', requirePermission(P.MEMORIES_DELETE), handle((req) =>
+  deleteMemory(adminId(req), idOf(req), String(req.params['memoryId']), String(req.query['reason'] ?? '').slice(0, 300) || 'no reason given'),
+));
 
 // Characters
 consoleRouter.get('/characters', requirePermission(P.CHARACTERS_READ), handle(() => listCharacters()));
