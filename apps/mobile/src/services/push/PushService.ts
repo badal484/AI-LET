@@ -19,8 +19,8 @@ import { APP_VERSION } from '../../config/appInfo.js';
  * Push notifications (Firebase Cloud Messaging + Notifee).
  *
  * - The server sends "notification" messages: when the app is closed Android draws them itself
- *   (works even on phones that kill background apps); while the app is open we draw them here,
- *   unless the user is already looking at that chat.
+ *   (works even on phones that kill background apps). While the app is open, characters' messages
+ *   only refresh the chat and the Chats list (unread badge); campaigns and account notices are drawn here.
  * - Permission is never asked on first launch: PushPrimer asks after a good chat (askPermission).
  * - Tapping a notification opens the chat / screen in its data (see open()).
  */
@@ -83,7 +83,9 @@ async function showInApp(message: RemoteMessage) {
   const characterId = str(data.characterId);
   anyPushListeners.forEach((l) => l(data));
   if (characterId) chatPushListeners.forEach((l) => l(characterId));
-  if (characterId && navigator?.isViewingChat(characterId)) return; // the open chat shows it instead
+  // A character's message while the app is open: no notification (like WhatsApp). The open chat shows it,
+  // and the Chats list refreshes with the new message and its unread badge (listeners above).
+  if (characterId && (str(data.type) === 'character_message' || navigator?.isViewingChat(characterId))) return;
   const title = message.notification?.title ?? str(data.title);
   const body = message.notification?.body ?? str(data.body);
   if (!title && !body) return;
