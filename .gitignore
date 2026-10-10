@@ -12,6 +12,7 @@ coverage/
 dist/
 build/
 .next/
+.next-build/
 .turbo/
 *.tsbuildinfo
 

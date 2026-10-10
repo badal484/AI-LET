@@ -9,6 +9,8 @@ const monorepoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..
 
 const nextConfig = {
   reactStrictMode: true,
+  // A separate folder lets a production build run next to `next dev` (which uses .next).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   devIndicators: false,
   outputFileTracingRoot: monorepoRoot,
   async rewrites() {

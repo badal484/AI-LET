@@ -110,7 +110,6 @@ export function CampaignComposer({ initial, id }: { initial: CampaignDraft; id?:
         .catch(() => setSize(null));
     }, 400);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audienceKey]);
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
