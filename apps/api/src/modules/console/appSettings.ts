@@ -16,6 +16,11 @@ export const SETTINGS = {
   'announcement.text': { label: 'Announcement', type: 'string', default: () => '' },
   'app.minVersion': { label: 'Minimum app version (older apps must update)', type: 'string', default: () => '' },
   'ai.dailyBudget': { label: 'AI budget per day (₹, 0 = no alert)', type: 'number', default: () => 0 },
+  // Characters texting first (notifications/services/proactiveRound.service.ts). Off until the admin turns it on.
+  'proactive.enabled': { label: 'Characters text first', type: 'boolean', default: () => false },
+  'proactive.dailyBudget': { label: 'Most messages a person gets per day (all characters)', type: 'number', default: () => 2 },
+  'proactive.startHour': { label: 'Earliest hour (their time, 0–23)', type: 'number', default: () => 9 },
+  'proactive.endHour': { label: 'Latest hour (their time, 0–23)', type: 'number', default: () => 21 },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS;

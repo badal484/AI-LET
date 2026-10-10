@@ -1,6 +1,8 @@
 import { QueueManager } from './infrastructure/queues/QueueManager.js';
 import { AccountDeletionService } from './modules/privacy/services/AccountDeletionService.js';
 import { processDueCampaigns } from './modules/console/campaigns.service.js';
+import { runProactiveRound } from './modules/notifications/services/proactiveRound.service.js';
+import { ProactiveSchedulerService } from './modules/notifications/services/proactiveScheduler.service.js';
 import { recordJobRun } from './modules/console/health.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
@@ -87,6 +89,10 @@ every('account-deletion', 60_000, () => AccountDeletionService.processDue(10));
 every('account-deletion-reconcile', 15 * 60_000, () => AccountDeletionService.reconcile());
 // Admin notification campaigns: scheduled ones, each person's local hour, people waiting out quiet hours.
 every('notification-campaigns', 60_000, () => processDueCampaigns());
+// Characters texting first: one decision per person (admin switch in Settings), and reminders people asked for.
+every('text-first', 15 * 60_000, () => runProactiveRound());
+every('reminders', 60_000, () => ProactiveSchedulerService.processDueReminders());
+every('proactive-expire', 60 * 60_000, () => ProactiveSchedulerService.expireStaleActions());
 
 logger.info('✅ All background queue workers initialized and listening for jobs.');
 
