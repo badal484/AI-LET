@@ -394,8 +394,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const openTurnsRef = useRef(new Set<{ abort: AbortController; saved: boolean; leaving: boolean }>());
   // Asking for notifications: when they leave a chat that went well (her messages arrived, no crisis),
   // never in the middle of a conversation.
-  const bubblesThisVisitRef = useRef(0);
+  const visitStartRef = useRef(Date.now());
   const crisisThisVisitRef = useRef(false);
+  const messagesRef = useRef<typeof allMessages>([]);
+  messagesRef.current = allMessages;
+  const repliesThisVisit = () =>
+    messagesRef.current.filter(m => m.role === 'assistant' && new Date(m.createdAt).getTime() >= visitStartRef.current - 5_000).length;
   const whoRef = useRef({ name: '', avatarUrl: undefined as string | null | undefined });
   whoRef.current = { name: characterName, avatarUrl: characterAvatarUrl };
   useEffect(() => {
@@ -414,10 +418,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       leave();
       // The Chats list should show this chat's latest message right away.
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      if (!crisisThisVisitRef.current && bubblesThisVisitRef.current > 0) {
-        PushPrimer.noteGoodMoment({ ...whoRef.current, replies: bubblesThisVisitRef.current });
-      }
-      bubblesThisVisitRef.current = 0;
+      // However they arrived (live stream, background turn, refetch): her messages during this visit.
+      const replies = repliesThisVisit();
+      if (!crisisThisVisitRef.current && replies > 0) PushPrimer.noteGoodMoment({ ...whoRef.current, replies });
     };
   }, [effectiveConvId, queryClient]);
 
@@ -553,7 +556,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           onQueued: () => followBackgroundTurn(),
           onTyping: () => setIsTyping(true),
           onBubble: payload => {
-            bubblesThisVisitRef.current += 1;
             setReplyNotice(null);
             setIsTyping(false);
             upsertServerMessage({
