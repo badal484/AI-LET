@@ -7,6 +7,7 @@ import { api } from '../services/api/client.js';
 import { APP_VERSION } from '../config/appInfo.js';
 import { darkThemeColors, spacing } from '../theme/index.js';
 import { compareVersions } from '../utils/versions.js';
+import { Realtime } from '../services/realtime/RealtimeClient.js';
 
 /**
  * What the team sets in the admin console → Settings, shown over the whole app:
@@ -35,8 +36,8 @@ export const AppNotices: React.FC = () => {
   const [dismissed, setDismissed] = useState<string | null>(null);
   const lastFetch = useRef(0);
 
-  const load = useCallback(async () => {
-    if (Date.now() - lastFetch.current < REFRESH_MS) return;
+  const load = useCallback(async (force = false) => {
+    if (!force && Date.now() - lastFetch.current < REFRESH_MS) return;
     lastFetch.current = Date.now();
     try {
       const res = await api.get('/app/config');
@@ -50,7 +51,12 @@ export const AppNotices: React.FC = () => {
     AsyncStorage.getItem(DISMISSED_KEY).then(setDismissed).catch(() => undefined);
     void load();
     const sub = AppState.addEventListener('change', (s) => s === 'active' && void load());
-    return () => sub.remove();
+    // The team changed the announcement or the minimum version: show it now.
+    const off = Realtime.on((e) => e.type === 'settings.updated' && void load(true));
+    return () => {
+      sub.remove();
+      off();
+    };
   }, [load]);
 
   const mustUpdate = Boolean(config?.minVersion && compareVersions(APP_VERSION, config.minVersion) < 0);

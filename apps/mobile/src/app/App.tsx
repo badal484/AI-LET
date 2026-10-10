@@ -28,6 +28,8 @@ import { PushService } from '../services/push/PushService.js';
 import { openAppLink } from '../navigation/openAppLink.js';
 import { Realtime } from '../services/realtime/RealtimeClient.js';
 import { useTypingStore } from '../stores/typingStore.js';
+import { useBillingStore } from '../stores/billingStore.js';
+import { useNotificationStore } from '../stores/notificationStore.js';
 import { CampaignMessages } from '../components/CampaignMessages.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
@@ -160,6 +162,16 @@ export const AppContent: React.FC = () => {
         useTypingStore.getState().set(event.conversationId, false);
         void queryClient.invalidateQueries({ queryKey: ['conversations'] });
         void queryClient.invalidateQueries({ queryKey: ['messages', event.conversationId] });
+      } else if (event.type === 'billing.updated') {
+        // Premium switched on / off, messages added, limit reset: show it now.
+        void useBillingStore.getState().loadBillingState();
+        void queryClient.invalidateQueries({ queryKey: ['billing'] });
+      } else if (event.type === 'notification.new') {
+        void useNotificationStore.getState().fetchUnreadCount();
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      } else if (event.type === 'session.revoked') {
+        // Blocked or signed out by the team: leave now, not at the next tap.
+        void useAuthStore.getState().logout();
       } else if (event.type === 'hello') {
         // (Re)connected: catch up on anything missed while offline.
         void queryClient.invalidateQueries({ queryKey: ['conversations'] });
