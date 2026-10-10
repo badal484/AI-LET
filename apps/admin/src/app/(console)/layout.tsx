@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { ThemeToggle } from '@/components/shell/ThemeToggle';
+import { LiveAdmin } from '@/components/shell/LiveAdmin';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { NAV, type AdminMe } from '@/lib/nav';
@@ -46,7 +47,8 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold">{page?.label ?? 'Admin'}</h1>
           </div>
-          <span className="hidden text-sm text-muted sm:inline">{me.email}</span>
+          <LiveAdmin />
+          <span className="hidden text-sm text-muted md:inline">{me.email}</span>
           <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={logout} aria-label="Sign out">
             <LogOut size={18} />
