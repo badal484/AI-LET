@@ -35,7 +35,6 @@ export function ChatReview({ target, onClose }: { target: ReviewTarget | null; o
     setChat(null);
     setReason('');
     open.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
   return (
