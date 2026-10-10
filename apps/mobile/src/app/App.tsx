@@ -1,6 +1,6 @@
 import { LimitReached } from '../services/limitReached.js';
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, StatusBar, Linking } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
@@ -25,6 +25,8 @@ import { api } from '../services/api/client.js';
 import { AppNotices } from '../components/AppNotices.js';
 import { PushPrimerHost } from '../components/PushPrimer.js';
 import { PushService } from '../services/push/PushService.js';
+import { openAppLink } from '../navigation/openAppLink.js';
+import { CampaignMessages } from '../components/CampaignMessages.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
 installStorageEngines();
@@ -122,8 +124,9 @@ export const AppContent: React.FC = () => {
     PushService.setNavigator({
       open: ({ characterId, conversationId, deepLink }) => {
         if (!navigationRef.isReady()) return;
-        if (characterId) navigationRef.navigate('Chat', { characterId, conversationId });
-        else if (deepLink) Linking.openURL(deepLink).catch(() => undefined);
+        // A chat reply opens that exact conversation; anything else follows its link.
+        if (characterId && (!deepLink || deepLink.startsWith('companion://chat/'))) navigationRef.navigate('Chat', { characterId, conversationId });
+        else openAppLink(navigationRef, deepLink);
       },
       isViewingChat: (characterId) => {
         const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
@@ -181,9 +184,12 @@ export const AppContent: React.FC = () => {
       user.profile?.onboardingStatus === 'SKIPPED';
 
     return (
-      <NavigationContainer linking={linking} ref={navigationRef} onReady={trackScreen} onStateChange={trackScreen}>
-        {isOnboardingComplete ? <RootNavigator /> : <OnboardingNavigator />}
-      </NavigationContainer>
+      <>
+        <NavigationContainer linking={linking} ref={navigationRef} onReady={trackScreen} onStateChange={trackScreen}>
+          {isOnboardingComplete ? <RootNavigator /> : <OnboardingNavigator />}
+        </NavigationContainer>
+        {isOnboardingComplete && <CampaignMessages navigationRef={navigationRef} />}
+      </>
     );
   }
 

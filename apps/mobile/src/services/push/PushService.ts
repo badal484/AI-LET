@@ -26,7 +26,7 @@ import { APP_VERSION } from '../../config/appInfo.js';
  */
 
 type PushData = Record<string, string | object | undefined>;
-export type PushOpenTarget = { characterId?: string; conversationId?: string; deepLink?: string };
+export type PushOpenTarget = { characterId?: string; conversationId?: string; deepLink?: string; campaignId?: string };
 
 const DEVICE_ID_KEY = 'push.deviceId';
 const ASKED_KEY = 'push.askedAt';
@@ -42,6 +42,7 @@ let navigator: { open: (t: PushOpenTarget) => void; isViewingChat: (characterId:
 let pendingOpen: PushOpenTarget | null = null;
 let started = false;
 const chatPushListeners = new Set<(characterId: string) => void>();
+const anyPushListeners = new Set<(data: PushData) => void>();
 let signedIn = false;
 
 const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
@@ -49,9 +50,11 @@ const targetOf = (data: PushData | undefined): PushOpenTarget => ({
   characterId: str(data?.characterId),
   conversationId: str(data?.conversationId),
   deepLink: str(data?.deepLink),
+  campaignId: str(data?.campaignId),
 });
 
 function open(target: PushOpenTarget) {
+  if (target.campaignId) void NotificationApi.campaignAction(target.campaignId, 'open').catch(() => undefined);
   if (!target.characterId && !target.deepLink) return;
   if (navigator && signedIn) navigator.open(target);
   else pendingOpen = target; // opened from a closed app: wait until sign-in and navigation are ready
@@ -76,6 +79,7 @@ function toStatus(s: AuthorizationStatus): PushPermissionStatus {
 async function showInApp(message: RemoteMessage) {
   const data = (message.data ?? {}) as PushData;
   const characterId = str(data.characterId);
+  anyPushListeners.forEach((l) => l(data));
   if (characterId) chatPushListeners.forEach((l) => l(characterId));
   if (characterId && navigator?.isViewingChat(characterId)) return; // the open chat shows it instead
   const title = message.notification?.title ?? str(data.title);
@@ -149,6 +153,14 @@ export const PushService = {
     chatPushListeners.add(listener);
     return () => {
       chatPushListeners.delete(listener);
+    };
+  },
+
+  /** Any push that arrived while the app is open (e.g. a campaign with a popup to fetch). */
+  onPush(listener: (data: PushData) => void): () => void {
+    anyPushListeners.add(listener);
+    return () => {
+      anyPushListeners.delete(listener);
     };
   },
 
