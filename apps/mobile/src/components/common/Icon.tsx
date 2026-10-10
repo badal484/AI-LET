@@ -48,7 +48,8 @@ export type IconName =
   | 'diamond'
   | 'more-vertical'
   | 'chevron-down-double'
-  | 'check-double';
+  | 'check-double'
+  | 'copy';
 
 export interface IconProps {
   name: IconName;
@@ -1389,6 +1390,38 @@ export const Icon: React.FC<IconProps> = ({
                 left: size * 0.36,
                 top: size * 0.12,
                 transform: [{ rotate: '-15deg' }],
+              }}
+            />
+          </View>
+        );
+      }
+
+      case 'copy': {
+        return (
+          <View style={{ width: size, height: size, position: 'relative' }}>
+            <View
+              style={{
+                width: size * 0.65,
+                height: size * 0.7,
+                borderRadius: 2,
+                borderWidth: 1.2,
+                borderColor: iconColor,
+                position: 'absolute',
+                right: 0,
+                bottom: 0,
+              }}
+            />
+            <View
+              style={{
+                width: size * 0.55,
+                height: size * 0.6,
+                borderRadius: 2,
+                borderWidth: 1.2,
+                borderColor: iconColor,
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                backgroundColor: 'transparent',
               }}
             />
           </View>
