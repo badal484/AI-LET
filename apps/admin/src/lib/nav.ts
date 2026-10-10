@@ -1,6 +1,6 @@
-import { Activity, Bot, Coins, HeartPulse, LayoutDashboard, LifeBuoy, Settings, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
+import { Activity, Bell, Bot, Coins, HeartPulse, LayoutDashboard, LifeBuoy, Settings, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
 
-/** The 9 screens. `permission` hides a screen from admins who can't use it. */
+/** The screens. `permission` hides a screen from admins who can't use it. */
 export interface NavItem {
   href: string;
   label: string;
@@ -17,6 +17,7 @@ export const NAV: NavItem[] = [
   { href: '/ai-cost', label: 'AI cost', icon: Activity, permission: 'ai.cost.read', blurb: 'What the AI costs, per message and per character' },
   { href: '/safety', label: 'Safety', icon: ShieldAlert, permission: 'moderation.read', blurb: 'Crisis moments, reports and blocked messages' },
   { href: '/support', label: 'Support', icon: LifeBuoy, permission: 'support.read', blurb: 'Messages from users' },
+  { href: '/notifications', label: 'Notifications', icon: Bell, permission: 'notifications.read', blurb: 'Send pushes, popups and banners to users' },
   { href: '/system', label: 'System', icon: HeartPulse, permission: 'settings.read', blurb: 'Health, errors and alerts' },
   { href: '/settings', label: 'Settings', icon: Settings, permission: 'settings.read', blurb: 'Switches, promo codes, team and audit log' },
 ];
