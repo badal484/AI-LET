@@ -6,9 +6,10 @@ import {
   Text,
   StyleSheet,
   Share,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+// React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import { IconButton } from './IconButton.js';
 
@@ -47,7 +48,7 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       statusBarTranslucent
     >
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <StatusBar barStyle="light-content" />
 
         {/* Top Controls Bar */}
         <View style={styles.headerBar}>

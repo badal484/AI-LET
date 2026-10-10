@@ -89,13 +89,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: darkThemeColors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
   errorOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: darkThemeColors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',

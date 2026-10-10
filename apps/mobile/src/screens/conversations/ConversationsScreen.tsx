@@ -210,7 +210,7 @@ export const ConversationsScreen: React.FC = () => {
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
-              onRefresh={refetch}
+              onRefresh={() => void refetch()}
               tintColor={darkThemeColors.accent}
             />
           }
