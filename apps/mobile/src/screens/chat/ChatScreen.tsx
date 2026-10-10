@@ -46,6 +46,7 @@ import { dayLabel, isDateDivider, withDateDividers, type DateDivider } from '../
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { looksLikeRealHelp, mayAskHelpful } from '../../utils/feedbackPrompt.js';
 import type { CharacterReportCreateInput } from '@ai-companion/validation';
+import { PushPrimer } from '../../components/PushPrimer.js';
 
 type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -525,6 +526,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           },
           onTurnCompleted: () => {
             setReplyNotice(n => (n?.kind === 'delayed' ? null : n));
+            // A good moment to offer notifications (never right after a crisis reply).
+            if (!supported) PushPrimer.noteGoodMoment({ name: characterName, avatarUrl: characterAvatarUrl });
             refetchRelationship();
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
           },

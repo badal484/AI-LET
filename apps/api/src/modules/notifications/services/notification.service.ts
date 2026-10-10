@@ -8,7 +8,6 @@ import type {
   UserNotificationPreferenceData,
   PushPlatform,
   PushPermissionStatus,
-  PushPayload,
 } from '@ai-companion/types';
 import type {
   RegisterPushDeviceInput,
@@ -42,6 +41,15 @@ export class NotificationService {
     input: RegisterPushDeviceInput,
   ): Promise<UserDeviceData> {
     const { deviceId, pushToken, platform, appVersion, pushPermissionStatus } = input;
+
+    // One phone, one account: after someone else signs in on this phone, the previous account
+    // must stop receiving its pushes.
+    if (pushToken) {
+      await prisma.userDevice.updateMany({
+        where: { pushToken, NOT: { userId, deviceId } },
+        data: { pushToken: null, isActive: false, invalidatedAt: new Date() },
+      });
+    }
 
     const device = await prisma.userDevice.upsert({
       where: {
@@ -107,6 +115,7 @@ export class NotificationService {
       where: { id: existing.id },
       data: {
         isActive: false,
+        pushToken: null,
         invalidatedAt: new Date(),
       },
     });
@@ -359,96 +368,22 @@ export class NotificationService {
   }): Promise<{ sentCount: number; failedCount: number; invalidatedTokensCount: number }> {
     const { userId, characterName, messageContent, category, conversationId, characterId, proactiveActionId } = params;
 
-    // 1. Resolve preferences
-    const prefs = await this.getUserPreferences(userId);
-    if (!prefs.pushEnabled) {
-      logger.info(`Push notifications disabled for user ${userId}; skipping delivery.`);
-      return { sentCount: 0, failedCount: 0, invalidatedTokensCount: 0 };
-    }
-
-    if (category === 'character_message' && !prefs.characterMessageCategoryEnabled) {
-      logger.info(`Character message notifications disabled for user ${userId}; skipping.`);
-      return { sentCount: 0, failedCount: 0, invalidatedTokensCount: 0 };
-    }
-
-    if (category === 'user_reminder' && !prefs.userReminderCategoryEnabled) {
-      logger.info(`User reminder notifications disabled for user ${userId}; skipping.`);
-      return { sentCount: 0, failedCount: 0, invalidatedTokensCount: 0 };
-    }
-
-    // 2. Resolve active devices with push tokens
-    const devices = await prisma.userDevice.findMany({
-      where: {
-        userId,
-        isActive: true,
-        pushToken: { not: null },
-        pushPermissionStatus: { in: ['AUTHORIZED', 'PROVISIONAL'] },
-      },
+    // One send path: preferences, mutes, privacy, devices and logging live in the delivery engine.
+    const { NotificationDeliveryEngine } = await import('./NotificationDeliveryEngine.js');
+    const result = await NotificationDeliveryEngine.dispatchNotification({
+      userId,
+      category: category === 'user_reminder' ? 'reminder' : category,
+      title: characterName,
+      body: messageContent,
+      characterId,
+      characterName,
+      conversationId,
+      proactiveActionId,
+      inbox: false,
+      idempotencyKey: proactiveActionId ? `proactive_${proactiveActionId}` : undefined,
+      // Quiet hours were already checked when deciding to text first.
+      bypassQuietHours: true,
     });
-
-    if (devices.length === 0) {
-      logger.info(`No active push devices registered for user ${userId}.`);
-      return { sentCount: 0, failedCount: 0, invalidatedTokensCount: 0 };
-    }
-
-    // 3. Format payload (respect privacy preview toggle)
-    const title = characterName;
-    const body = prefs.showPreview
-      ? messageContent.length > 120
-        ? `${messageContent.slice(0, 117)}...`
-        : messageContent
-      : `New message from ${characterName}`;
-
-    const deepLink = conversationId
-      ? `ai-companion://chat/${conversationId}`
-      : characterId
-      ? `ai-companion://character/${characterId}`
-      : 'ai-companion://home';
-
-    let sentCount = 0;
-    let failedCount = 0;
-    let invalidatedTokensCount = 0;
-
-    // 4. Send to all devices in parallel
-    await Promise.all(
-      devices.map(async device => {
-        if (!device.pushToken) return;
-
-        const payload: PushPayload = {
-          toToken: device.pushToken,
-          title,
-          body,
-          data: {
-            type: category,
-            conversationId,
-            characterId,
-            proactiveActionId,
-            deepLink,
-          },
-        };
-
-        const result = await this.pushProvider.sendPush(payload);
-
-        if (result.success) {
-          sentCount++;
-        } else {
-          failedCount++;
-          if (result.isInvalidToken) {
-            invalidatedTokensCount++;
-            // Invalidate dead token immediately
-            await prisma.userDevice.update({
-              where: { id: device.id },
-              data: {
-                isActive: false,
-                invalidatedAt: new Date(),
-              },
-            });
-            logger.warn(`Invalidated push device ${device.id} due to permanent provider rejection`);
-          }
-        }
-      }),
-    );
-
-    return { sentCount, failedCount, invalidatedTokensCount };
+    return { sentCount: result.sentDevicesCount, failedCount: result.failedDevicesCount, invalidatedTokensCount: result.invalidatedDevicesCount ?? 0 };
   }
 }

@@ -76,7 +76,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
       expect(body).toBe('New message from Elena');
     });
 
-    it('should format generic preview for HIDE_CONTENT or showPreview=false', () => {
+    it('hides everything for HIDE_CONTENT; showPreview=false keeps only who it is from', () => {
       const body = NotificationDeliveryEngine.formatBodyForPrivacy(
         'Hey! I found the research paper we discussed.',
         'Elena',
@@ -91,7 +91,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
         'FULL_PREVIEW',
         false,
       );
-      expect(body2).toBe('You have a new message waiting.');
+      expect(body2).toBe('New message from Elena');
     });
   });
 

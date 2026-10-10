@@ -110,7 +110,7 @@ export class ProactiveSimulatorService {
       ? {
           title: character.name,
           body: previewMessage || `New message from ${character.name}`,
-          deepLink: `ai-companion://chat/simulated-${character.id}`,
+          deepLink: `companion://chat/${character.id}`,
         }
       : null;
 

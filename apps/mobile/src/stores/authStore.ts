@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { api, setApiAuthToken, setSessionExpiredHandler } from '../services/api/client.js';
 import { SecureAuthStorage } from '../services/auth/SecureAuthStorage.js';
 import { RegisterRequestInput, LoginRequestInput } from '@ai-companion/validation';
+import { PushService } from '../services/push/PushService.js';
 
 export type AuthStateStatus =
   | 'initializing'
@@ -174,6 +175,8 @@ export const useAuthStore = create<AuthState>((set) => {
     logout: async () => {
       set({ isLoading: true });
       try {
+        // While still signed in: this account stops getting pushes on this phone.
+        await PushService.unregister();
         await api.post('/auth/logout', {});
       } catch {
         // Continue clearing client state even if server logout fails
