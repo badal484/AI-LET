@@ -12,7 +12,13 @@ export const SETTINGS = {
   'limits.freeDaily': { label: 'Free messages per day', type: 'number', default: () => Number(process.env['FREE_DAILY_MESSAGES'] ?? 5) },
   'limits.premiumDaily': { label: 'Premium messages per day (fair use)', type: 'number', default: () => Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150) },
   'maintenance.enabled': { label: 'Maintenance mode (app shows a message, chat paused)', type: 'boolean', default: () => false },
-  'maintenance.message': { label: 'Maintenance message', type: 'string', default: () => 'We are making Lovira better. Back in a few minutes 💜' },
+  'maintenance.title': { label: 'Title', type: 'string', default: () => 'Lovira is getting better' },
+  'maintenance.message': { label: 'Message', type: 'string', default: () => 'We are making Lovira better. Back in a few minutes 💜' },
+  'maintenance.emoji': { label: 'Emoji at the top', type: 'string', default: () => '💜' },
+  'maintenance.imageUrl': { label: 'Picture (optional, https link)', type: 'string', default: () => '' },
+  'maintenance.until': { label: 'Back by (optional)', type: 'string', default: () => '' },
+  'maintenance.linkLabel': { label: 'Button text (optional)', type: 'string', default: () => '' },
+  'maintenance.linkUrl': { label: 'Button link (optional, https)', type: 'string', default: () => '' },
   'announcement.enabled': { label: 'Show an announcement in the app', type: 'boolean', default: () => false },
   'announcement.text': { label: 'Announcement', type: 'string', default: () => '' },
   'app.minVersion': { label: 'Minimum app version (older apps must update)', type: 'string', default: () => '' },
@@ -61,10 +67,37 @@ export async function setSetting(adminId: string, key: string, value: unknown) {
     (def.type === 'string' && typeof value === 'string' && value.length <= 300);
   if (!ok) throw new BadRequestError(`Invalid value for ${def.label}`);
   if (key === 'app.minVersion' && value !== '' && !/^\d+(\.\d+){0,2}$/.test(String(value))) throw new BadRequestError('Write the version like 1.4.0 (or leave it empty).');
+  if ((key === 'maintenance.imageUrl' || key === 'maintenance.linkUrl') && value !== '' && !/^https:\/\/\S+$/.test(String(value))) {
+    throw new BadRequestError('Use a full https:// link (or leave it empty).');
+  }
+  if (key === 'maintenance.until' && value !== '' && Number.isNaN(Date.parse(String(value)))) throw new BadRequestError('Pick a date and time (or leave it empty).');
   const before = await getSetting(key as SettingKey);
   await prisma.appSetting.upsert({ where: { key }, create: { key, value: value as never, updatedBy: adminId }, update: { value: value as never, updatedBy: adminId } });
   cache = null;
   await AuditService.log({ actorType: 'ADMIN', actorId: adminId, action: 'console.setting.changed', resourceType: 'SETTING', resourceId: key, metadata: { before, after: value } });
   if (/^(maintenance|announcement|app)\./.test(key)) Realtime.broadcast({ type: 'settings.updated', keys: [key] });
   return { key, value };
+}
+
+/** What the app shows while maintenance is on (also sent with every blocked request). Null when off. */
+export async function maintenanceInfo() {
+  if (!(await getSetting('maintenance.enabled').catch(() => false))) return null;
+  const [title, message, emoji, imageUrl, until, linkLabel, linkUrl] = await Promise.all([
+    getSetting('maintenance.title'),
+    getSetting('maintenance.message'),
+    getSetting('maintenance.emoji'),
+    getSetting('maintenance.imageUrl'),
+    getSetting('maintenance.until'),
+    getSetting('maintenance.linkLabel'),
+    getSetting('maintenance.linkUrl'),
+  ]);
+  const back = until && Date.parse(until) > Date.now() ? new Date(until).toISOString() : null;
+  return {
+    title: title.trim() || 'Lovira is getting better',
+    message: message.trim(),
+    emoji: emoji.trim() || null,
+    imageUrl: imageUrl.trim() || null,
+    until: back,
+    link: linkLabel.trim() && linkUrl.trim() ? { label: linkLabel.trim(), url: linkUrl.trim() } : null,
+  };
 }

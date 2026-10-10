@@ -15,6 +15,7 @@ import type {
   StreamReplyStatusPayload,
   StreamCrisisSupportPayload,
 } from '@ai-companion/types';
+import { noteMaintenanceError } from '../../stores/maintenanceStore.js';
 
 export interface ChatStreamCallbacks {
   onStarted?: (payload: StreamMessageStartedPayload) => void;
@@ -267,6 +268,7 @@ export class ChatStreamClient {
           if (errJson?.error?.message) {
             errorMessage = errJson.error.message;
           }
+          noteMaintenanceError(errJson?.error);
         } catch {}
 
         callbacks.onFailed?.({

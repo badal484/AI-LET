@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSetting } from './appSettings.js';
+import { getSetting, maintenanceInfo } from './appSettings.js';
 
 /**
  * GET /api/v1/app/config — no login needed. The app reads it on start and when it comes back to the
@@ -10,20 +10,20 @@ export const appConfigRouter: Router = Router();
 
 appConfigRouter.get('/config', async (_req, res, next) => {
   try {
-    const [annOn, annText, minVersion, maintenance, maintenanceMessage] = await Promise.all([
+    const [annOn, annText, minVersion, maintenance] = await Promise.all([
       getSetting('announcement.enabled'),
       getSetting('announcement.text'),
       getSetting('app.minVersion'),
-      getSetting('maintenance.enabled'),
-      getSetting('maintenance.message'),
+      maintenanceInfo(),
     ]);
-    res.setHeader('Cache-Control', 'public, max-age=30');
+    // Switches must apply at once (maintenance on/off): never cached.
+    res.setHeader('Cache-Control', 'no-store');
     res.json({
       success: true,
       data: {
         announcement: annOn && annText.trim() ? { id: hash(annText), text: annText.trim() } : null,
         minVersion: minVersion || null,
-        maintenance: maintenance ? { message: maintenanceMessage } : null,
+        maintenance,
       },
     });
   } catch (err) {

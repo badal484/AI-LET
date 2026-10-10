@@ -27,13 +27,59 @@ const GROUPS = [
 ];
 const HINT: Record<string, string> = {
   'limits.enforce': 'Off = everyone unlimited. Turn on at launch. Crisis messages are never limited.',
-  'maintenance.enabled': 'The app shows your message and chat pauses. The admin panel keeps working.',
+  'maintenance.enabled': 'Every open app switches to the screen below at once, and back when you turn it off. The admin panel keeps working.',
+  'maintenance.emoji': 'Shown when there is no picture.',
+  'maintenance.until': 'Users see “Back by 6:30 pm · about 20 min”. Leave empty if you don’t know.',
+  'maintenance.linkUrl': 'Both button text and link are needed for the button to show.',
   'app.minVersion': 'Leave empty to allow every version. Example: 1.2.0',
   'proactive.enabled': 'Uses AI for each message (about ₹0.2). People can switch it off in the app.',
   'proactive.dailyBudget': '2 is friendly; more starts to feel needy.',
   'ai.dailyBudget': 'You get an alert on Overview and System when today\'s AI cost goes over this.',
 };
-const PLACEHOLDER: Record<string, string> = { 'announcement.text': 'e.g. New: meet Kiara, your skin-care bestie 💜', 'app.minVersion': 'e.g. 1.2.0' };
+const PLACEHOLDER: Record<string, string> = {
+  'announcement.text': 'e.g. New: meet Kiara, your skin-care bestie 💜',
+  'app.minVersion': 'e.g. 1.2.0',
+  'maintenance.imageUrl': 'https://…',
+  'maintenance.linkLabel': 'e.g. Follow updates on Instagram',
+  'maintenance.linkUrl': 'https://instagram.com/…',
+};
+
+/** ISO ↔ <input type="datetime-local"> in the admin's own time zone. */
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+/** What users see while maintenance is on (same layout as the app's MaintenanceScreen). */
+function MaintenancePreview({ v }: { v: (key: string) => string }) {
+  const until = v('maintenance.until');
+  const back = until && Date.parse(until) > Date.now() ? new Date(until) : null;
+  const mins = back ? Math.round((back.getTime() - Date.now()) / 60_000) : 0;
+  return (
+    <div className="mt-3 rounded-xl border border-border p-4">
+      <p className="mb-3 text-xs font-medium text-muted">Preview — what users see</p>
+      <div className="mx-auto flex w-[280px] flex-col items-center gap-3 rounded-[2rem] border-[6px] border-neutral-800 bg-[#0b0910] px-6 py-10 text-center text-white">
+        {v('maintenance.imageUrl') ? (
+          <img src={v('maintenance.imageUrl')} alt="" className="aspect-[2/1] w-full rounded-xl object-cover" />
+        ) : v('maintenance.emoji') ? (
+          <span className="text-5xl">{v('maintenance.emoji')}</span>
+        ) : null}
+        <p className="text-lg font-bold leading-tight">{v('maintenance.title') || 'Lovira is getting better'}</p>
+        {v('maintenance.message') && <p className="text-sm text-white/70">{v('maintenance.message')}</p>}
+        {back && (
+          <span className="rounded-full bg-pink-500/15 px-3 py-1 text-xs font-semibold text-pink-400">
+            Back by {back.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })} · about {mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h`}
+          </span>
+        )}
+        <p className="text-xs text-white/40">Your chats and memories are safe.</p>
+        <span className="mt-2 w-full rounded-xl bg-violet-500 py-2 text-sm font-semibold">Try again</span>
+        {v('maintenance.linkLabel') && v('maintenance.linkUrl') && <span className="text-sm font-semibold text-pink-400">{v('maintenance.linkLabel')}</span>}
+      </div>
+    </div>
+  );
+}
 
 function Switches() {
   const qc = useQueryClient();
@@ -45,7 +91,7 @@ function Switches() {
   });
   return (
     <Card>
-      <CardHeader><CardTitle>Limits and switches</CardTitle><span className="text-xs text-muted">Takes effect within 20 seconds, no app update needed</span></CardHeader>
+      <CardHeader><CardTitle>Limits and switches</CardTitle><span className="text-xs text-muted">Open apps update at once — no app update needed</span></CardHeader>
       <CardBody className="space-y-6">
         {GROUPS.map((g) => {
           const items = (data ?? []).filter((x) => x.key.startsWith(g.prefix));
@@ -63,13 +109,19 @@ function Switches() {
                     </div>
                     {s.type === 'boolean' ? (
                       <Switch checked={Boolean(s.value)} label={s.label} disabled={save.isPending} onChange={(v) => {
-                        if (s.key === 'maintenance.enabled' && v && !window.confirm('Turn on maintenance mode? Users will not be able to chat until you turn it off.')) return;
+                        if (s.key === 'maintenance.enabled' && v && !window.confirm('Turn on maintenance mode? Every open app switches to the maintenance screen now, and nobody can chat until you turn it off.')) return;
                         if (s.key === 'announcement.enabled' && v && !String(data?.find((x) => x.key === 'announcement.text')?.value ?? '').trim()) {
                           window.alert('Write the announcement first, then turn it on.');
                           return;
                         }
                         save.mutate({ key: s.key, value: v });
                       }} />
+                    ) : s.key === 'maintenance.until' ? (
+                      <form className="flex w-full gap-2 sm:w-auto" onSubmit={(e) => { e.preventDefault(); const raw = draft[s.key] ?? toLocalInput(String(s.value)); save.mutate({ key: s.key, value: raw ? new Date(raw).toISOString() : '' }); }}>
+                        <Input type="datetime-local" className="w-full sm:w-60" value={draft[s.key] ?? toLocalInput(String(s.value))} onChange={(e) => setDraft({ ...draft, [s.key]: e.target.value })} />
+                        <Button size="sm" variant="ghost" type="button" disabled={save.isPending || !s.value} onClick={() => { setDraft({ ...draft, [s.key]: '' }); save.mutate({ key: s.key, value: '' }); }}>Clear</Button>
+                        <Button size="sm" variant="secondary" type="submit" disabled={save.isPending}>Save</Button>
+                      </form>
                     ) : (
                       <form className="flex w-full gap-2 sm:w-auto" onSubmit={(e) => { e.preventDefault(); const raw = draft[s.key] ?? String(s.value); save.mutate({ key: s.key, value: s.type === 'number' ? Number(raw) : raw }); }}>
                         <Input
@@ -86,6 +138,9 @@ function Switches() {
                   </div>
                 ))}
               </div>
+              {g.prefix === 'maintenance.' && (
+                <MaintenancePreview v={(key) => draft[key] ?? String(items.find((x) => x.key === key)?.value ?? '')} />
+              )}
             </section>
           );
         })}

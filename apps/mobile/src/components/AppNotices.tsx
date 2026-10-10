@@ -8,9 +8,12 @@ import { APP_VERSION } from '../config/appInfo.js';
 import { darkThemeColors, spacing } from '../theme/index.js';
 import { compareVersions } from '../utils/versions.js';
 import { Realtime } from '../services/realtime/RealtimeClient.js';
+import { MaintenanceScreen } from './MaintenanceScreen.js';
+import { useMaintenanceStore, type MaintenanceInfo } from '../stores/maintenanceStore.js';
 
 /**
- * What the team sets in the admin console → Settings, shown over the whole app:
+ * What the team sets in the admin console → Settings, shown over the whole app (and maintenance mode,
+ * MaintenanceScreen):
  *  - an announcement banner at the top (each text can be closed once; a new text shows again);
  *  - "Please update" when this app is older than the minimum version (can't be closed).
  * Read on launch and whenever the app comes back to the foreground (at most every 5 minutes).
@@ -19,6 +22,7 @@ import { Realtime } from '../services/realtime/RealtimeClient.js';
 interface AppConfig {
   announcement: { id: string; text: string } | null;
   minVersion: string | null;
+  maintenance: MaintenanceInfo | null;
 }
 
 const DISMISSED_KEY = 'appNotices.dismissedAnnouncement';
@@ -41,7 +45,9 @@ export const AppNotices: React.FC = () => {
     lastFetch.current = Date.now();
     try {
       const res = await api.get('/app/config');
-      setConfig(res.data?.data ?? null);
+      const cfg = (res.data?.data ?? null) as AppConfig | null;
+      setConfig(cfg);
+      useMaintenanceStore.getState().set(cfg?.maintenance ?? null);
     } catch {
       lastFetch.current = 0; // offline: try again next time the app opens
     }
@@ -70,6 +76,7 @@ export const AppNotices: React.FC = () => {
 
   return (
     <>
+      <MaintenanceScreen onRetry={() => load(true)} />
       {announcement && !mustUpdate && (
         <View pointerEvents="box-none" style={[styles.bannerWrap, { top: insets.top + spacing.xs }]}>
           <Banner type="info" message={announcement.text} onDismiss={dismiss} />
