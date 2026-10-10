@@ -18,6 +18,7 @@ import {
   audienceSize, cancelCampaign, composerOptions, deleteDraft, duplicateCampaign, getCampaign, launchCampaign, listCampaigns, saveCampaign,
   testSend, uploadCampaignImage,
 } from './campaigns.service.js';
+import { notificationStats } from './notificationStats.service.js';
 
 /**
  * The admin console (apps/admin): one compact API made for its 9 screens.
@@ -137,6 +138,7 @@ consoleRouter.post('/support/:id/reply', requirePermission(P.SUPPORT_WRITE), han
 const N = { read: requirePermission(P.NOTIFICATIONS_READ), write: requirePermission(P.NOTIFICATIONS_WRITE) };
 consoleRouter.get('/notifications', N.read, handle(() => listCampaigns()));
 consoleRouter.get('/notifications/options', N.read, handle(() => composerOptions()));
+consoleRouter.get('/notifications/stats', N.read, handle(() => notificationStats()));
 consoleRouter.post('/notifications/audience', N.read, handle((req) => audienceSize(req.body ?? {})));
 consoleRouter.post('/notifications/image', N.write, express.raw({ type: 'image/*', limit: '10mb' }), handle((req) => uploadCampaignImage(req.body as Buffer)));
 consoleRouter.post('/notifications', N.write, handle((req) => saveCampaign(adminId(req), req.body ?? {})));

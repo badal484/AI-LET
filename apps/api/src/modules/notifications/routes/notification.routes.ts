@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { NotificationController } from '../controllers/notification.controller.js';
 import { authenticateUser } from '../../../shared/middleware/auth.middleware.js';
 import { inAppMessagesFor, recordCampaignAction } from '../../console/campaigns.service.js';
+import { prisma } from '../../../infrastructure/database/prisma.js';
 
 export const notificationRouter: Router = Router();
 
@@ -43,6 +44,22 @@ notificationRouter.post('/campaigns/:campaignId/:action', async (req, res, next)
       return;
     }
     res.json({ success: true, data: await recordCampaignAction(req.user!.userId, String(req.params['campaignId']), action) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// A notification was tapped: mark its delivery as opened (for the admin's numbers).
+notificationRouter.post('/opened', async (req, res, next) => {
+  try {
+    const key = String(req.body?.key ?? '').slice(0, 140);
+    if (key) {
+      await prisma.notificationDeliveryLog.updateMany({
+        where: { userId: req.user!.userId, idempotencyKey: { startsWith: `${key}_` }, openedAt: null },
+        data: { openedAt: new Date(), status: 'OPENED' },
+      });
+    }
+    res.json({ success: true, data: { ok: true } });
   } catch (err) {
     next(err);
   }

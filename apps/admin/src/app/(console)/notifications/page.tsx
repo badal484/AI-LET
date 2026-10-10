@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Live, LIVE_MS } from '@/components/ui/live';
+import { NotificationStats } from '@/components/NotificationStats';
 import { Table, Td, Th } from '@/components/ui/table';
 import { api } from '@/lib/api';
 import { KIND, STATUS, SURFACE, type Campaign } from '@/lib/campaigns';
@@ -35,6 +36,8 @@ export default function NotificationsPage() {
         <Live updatedAt={dataUpdatedAt} fetching={isFetching} />
       </div>
       {error && <Card className="p-6 text-sm text-bad">{(error as Error).message}</Card>}
+
+      <NotificationStats />
 
       {templates.length > 0 && (
         <Card>
