@@ -13,6 +13,7 @@
       android:allowBackup="false"
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
+      android:networkSecurityConfig="@xml/network_security_config"
       android:supportsRtl="true">
       <!-- Pushes the system draws while the app is closed use our heart icon (colour and channel: firebase.json). -->
       <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />

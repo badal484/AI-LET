@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MainTabNavigator } from './MainTabNavigator.js';
 import { ChatScreen } from '../screens/chat/ChatScreen.js';
 import { CharacterDetailScreen } from '../screens/explore/CharacterDetailScreen.js';
@@ -22,14 +22,16 @@ import { CreateCharacterScreen } from '../screens/creator/CreateCharacterScreen.
 import { HelpScreen } from '../screens/help/HelpScreen.js';
 import type { RootStackParamList } from './types.js';
 
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        cardStyle: { backgroundColor: '#090A0F' },
+        // Native Android/iOS transitions (smooth, swipe back), same as system apps.
+        animation: 'ios_from_right',
+        contentStyle: { backgroundColor: '#090A0F' },
       }}
       initialRouteName="MainTabs"
     >
@@ -41,7 +43,7 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="CollectionDetail" component={CollectionDetailScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
-      <Stack.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
       <Stack.Screen name="CreditWallet" component={CreditWalletScreen} />
       <Stack.Screen name="PreferencesSettings" component={PreferencesSettingsScreen} />

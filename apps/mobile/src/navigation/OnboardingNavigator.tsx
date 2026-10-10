@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen.js';
 import { LanguageSelectScreen } from '../screens/onboarding/LanguageSelectScreen.js';
 import { InterestsSelectScreen } from '../screens/onboarding/InterestsSelectScreen.js';
@@ -15,7 +15,7 @@ export type OnboardingStackParamList = {
   CharacterSelection: undefined;
 };
 
-const Stack = createStackNavigator<OnboardingStackParamList>();
+const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
 export const OnboardingNavigator: React.FC = () => {
   const { currentStep } = useOnboardingStore();
@@ -39,7 +39,9 @@ export const OnboardingNavigator: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        cardStyle: { backgroundColor: '#090A0F' },
+        // Native Android/iOS transitions (smooth, swipe back), same as system apps.
+        animation: 'ios_from_right',
+        contentStyle: { backgroundColor: '#090A0F' },
       }}
       initialRouteName={getInitialRoute()}
     >
