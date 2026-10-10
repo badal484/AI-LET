@@ -2,6 +2,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Android 13+: asked at a good moment from the app, never on first launch. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
       android:name=".MainApplication"
@@ -12,6 +14,10 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!-- Pushes the system draws while the app is closed: our heart icon, brand colour, chat channel. -->
+      <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />
+      <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_accent" />
+      <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="messages" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

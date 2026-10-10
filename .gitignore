@@ -60,3 +60,6 @@ ios/build/
 # Humanness eval outputs (generated transcripts/scores)
 apps/api/scripts/eval/results/
 apps/api/scripts/maintenance/backups/
+
+# Firebase app config: copied from ~/.config/lovira/ on each machine, not committed.
+apps/mobile/android/app/google-services.json

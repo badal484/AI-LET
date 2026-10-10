@@ -11,3 +11,5 @@ allowBuilds:
   'unrs-resolver': true
   'argon2': true
   'msgpackr-extract': false
+  '@firebase/util': false
+  protobufjs: false

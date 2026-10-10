@@ -1545,16 +1545,28 @@ export interface UserReminderData {
   updatedAt: string;
 }
 
+/** Android notification channels the app creates (users can switch each off in Android settings). */
+export type PushChannel = 'messages' | 'reminders' | 'account' | 'news';
+
 export interface PushPayload {
   toToken: string;
   title: string;
   body: string;
+  /** Big picture shown when the notification is expanded (https URL). */
+  imageUrl?: string;
+  /** Defaults from the category: character messages → messages, reminders → reminders, … */
+  channel?: PushChannel;
+  /** Same tag replaces the earlier notification (one per character instead of a pile). */
+  tag?: string;
+  /** false = no sound or vibration. */
+  sound?: boolean;
   data: {
     type: NotificationCategory | string;
     conversationId?: string;
     characterId?: string;
     proactiveActionId?: string;
     deepLink: string;
+    [key: string]: string | undefined;
   };
 }
 

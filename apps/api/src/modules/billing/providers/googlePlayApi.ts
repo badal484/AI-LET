@@ -1,4 +1,4 @@
-import { createSign } from 'node:crypto';
+import { readServiceAccount, tokenSource } from '../../../infrastructure/google/serviceAccount.js';
 
 /**
  * Google Play Developer API (androidpublisher v3) with a service account — no extra SDK.
@@ -9,45 +9,15 @@ import { createSign } from 'node:crypto';
 const SCOPE = 'https://www.googleapis.com/auth/androidpublisher';
 const API = 'https://androidpublisher.googleapis.com/androidpublisher/v3/applications';
 
-interface ServiceAccount {
-  client_email: string;
-  private_key: string;
-  token_uri?: string;
-}
-
 export function googlePlayConfigured(): boolean {
   return Boolean(process.env['GOOGLE_SERVICE_ACCOUNT_JSON'] && process.env['GOOGLE_PLAY_PACKAGE_NAME']);
 }
 
-function serviceAccount(): ServiceAccount {
-  const raw = process.env['GOOGLE_SERVICE_ACCOUNT_JSON'] ?? '';
-  const json = raw.trim().startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8');
-  return JSON.parse(json) as ServiceAccount;
-}
-
-const b64url = (data: string | Buffer) => Buffer.from(data).toString('base64url');
-
-let cached: { token: string; expiresAt: number } | null = null;
-
-async function accessToken(): Promise<string> {
-  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
-  const sa = serviceAccount();
-  const now = Math.floor(Date.now() / 1000);
-  const tokenUri = sa.token_uri || 'https://oauth2.googleapis.com/token';
-  const unsigned = `${b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${b64url(
-    JSON.stringify({ iss: sa.client_email, scope: SCOPE, aud: tokenUri, iat: now, exp: now + 3600 }),
-  )}`;
-  const signature = createSign('RSA-SHA256').update(unsigned).sign(sa.private_key);
-  const res = await fetch(tokenUri, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${unsigned}.${b64url(signature)}` }),
-  });
-  if (!res.ok) throw new Error(`Google OAuth failed: HTTP ${res.status}`);
-  const data = (await res.json()) as { access_token: string; expires_in: number };
-  cached = { token: data.access_token, expiresAt: Date.now() + data.expires_in * 1000 };
-  return data.access_token;
-}
+const accessToken = tokenSource(() => {
+  const sa = readServiceAccount(process.env['GOOGLE_SERVICE_ACCOUNT_JSON']);
+  if (!sa) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not set');
+  return sa;
+}, SCOPE);
 
 async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const pkg = process.env['GOOGLE_PLAY_PACKAGE_NAME'];
