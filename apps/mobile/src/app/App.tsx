@@ -1,7 +1,10 @@
 import { LimitReached } from '../services/limitReached.js';
 import React, { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
 import {
@@ -43,11 +46,26 @@ const queryClient = new QueryClient({
       retry: 1,
       retryDelay: 800,
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 30,
+      // Kept a day so the saved copy below can be shown at the next app start.
+      gcTime: 1000 * 60 * 60 * 24,
       refetchOnWindowFocus: false,
     },
   },
 });
+
+// Instant start: Home, Chats and the plan card appear from the last saved copy while fresh data loads.
+// Only these lists are saved (never chat messages), and the copy is wiped on sign-out.
+const PERSISTED = ['conversations', 'discovery', 'billing'];
+const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: 'lovira.cache', throttleTime: 2000 });
+const persistOptions = {
+  persister,
+  maxAge: 1000 * 60 * 60 * 24,
+  buster: APP_VERSION,
+  dehydrateOptions: {
+    shouldDehydrateQuery: (q: { queryKey: readonly unknown[]; state: { status: string } }) =>
+      q.state.status === 'success' && PERSISTED.includes(String(q.queryKey[0])),
+  },
+};
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['companion://', 'https://companion.ai'],
@@ -151,6 +169,11 @@ export const AppContent: React.FC = () => {
     void PushService.setSignedIn(status === 'authenticated' && Boolean(userId) && onboarded);
     Realtime.setSignedIn(status === 'authenticated' && Boolean(userId) && onboarded);
     if (status !== 'authenticated') useTypingStore.getState().clear();
+    // Signed out: nothing of this account stays on the phone (and the next account starts clean).
+    if (status === 'unauthenticated' || status === 'session-expired') {
+      queryClient.clear();
+      void persister.removeClient();
+    }
   }, [status, userId, onboarded]);
 
   // Live updates while the app is open: "typing…" and new messages in Chats, unread counts.
@@ -235,7 +258,7 @@ export const AppContent: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <SafeAreaProvider>
           <StatusBar
             barStyle="light-content"
@@ -245,7 +268,7 @@ export const App: React.FC = () => {
           <PushPrimerHost />
           <Toast />
         </SafeAreaProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 };

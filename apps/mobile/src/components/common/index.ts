@@ -23,3 +23,4 @@ export * from './ModalDialog.js';
 export * from './ScreenContainer.js';
 export * from './Typography.js';
 export * from './ErrorBoundary.js';
+export * from './PressableScale.js';

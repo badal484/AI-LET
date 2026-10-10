@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LoginScreen } from '../screens/auth/LoginScreen.js';
 import { RegisterScreen } from '../screens/auth/RegisterScreen.js';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen.js';
@@ -10,14 +10,16 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
 };
 
-const Stack = createStackNavigator<AuthStackParamList>();
+const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export const AuthNavigator: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        cardStyle: { backgroundColor: '#090A0F' },
+        // Native Android/iOS transitions (smooth, swipe back), same as system apps.
+        animation: 'ios_from_right',
+        contentStyle: { backgroundColor: '#090A0F' },
       }}
       initialRouteName="Login"
     >
