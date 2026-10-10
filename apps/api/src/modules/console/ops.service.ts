@@ -4,7 +4,8 @@ import { redis } from '../../infrastructure/redis/redis.js';
 import { BadRequestError, NotFoundError } from '../../shared/errors/AppError.js';
 import { hashPassword, validatePasswordStrength, verifyPassword } from '../../security/password.js';
 import { AuditService } from '../audit/audit.service.js';
-import { REAL_USERS } from './overview.service.js';
+import { attentionCounts, istMidnight, REAL_USERS } from './overview.service.js';
+import { jobStatus, recentErrors } from './health.js';
 
 /** Safety, Support, System, promo codes, team and audit log for the admin console. */
 
@@ -52,6 +53,16 @@ export async function resolveMoment(adminId: string, id: string, note: string) {
   return { ok: true };
 }
 
+/** "Mark all reviewed": every open moment (optionally of one kind) at once — after reading them, not instead. */
+export async function resolveAllMoments(adminId: string, kind: string | null, note: string) {
+  const res = await prisma.safetyMoment.updateMany({
+    where: { resolvedAt: null, ...(kind && { kind }) },
+    data: { resolvedAt: new Date(), resolvedBy: adminId, note: note.slice(0, 500) || 'Marked reviewed in bulk' },
+  });
+  await audit(adminId, 'console.safety.resolved_all', 'SAFETY_MOMENT', null, { kind, count: res.count, note });
+  return { ok: true, count: res.count };
+}
+
 export async function setReportStatus(adminId: string, id: string, status: string) {
   if (!['open', 'reviewed', 'dismissed', 'actioned'].includes(status)) throw new BadRequestError('Unknown status');
   await prisma.characterReport.update({ where: { id }, data: { status } }).catch(() => {
@@ -88,13 +99,17 @@ export async function reviewChat(adminId: string, params: { messageId?: string; 
 
 // ── Support ──────────────────────────────────────────────────────────────────
 
-export async function listSupport(status: string) {
+export async function listSupport(status: string, search = '') {
+  const q = search.trim() ? `%${search.trim().toLowerCase()}%` : null;
   return prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
     `SELECT s.id, s.topic, s.message, s.status, s.reply, to_char(s.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') at,
             to_char(s.replied_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') "repliedAt", u.id "userId", u.email, pr.display_name name
        FROM support_requests s JOIN users u ON u.id = s.user_id LEFT JOIN user_profiles pr ON pr.user_id = u.id
-      WHERE ($1 = 'all' OR s.status = $1) ORDER BY (s.status = 'open') DESC, s.created_at DESC LIMIT 100`,
+      WHERE ($1 = 'all' OR s.status = $1)
+        AND ($2::text IS NULL OR lower(s.message) LIKE $2 OR lower(u.email) LIKE $2 OR lower(coalesce(pr.display_name, '')) LIKE $2 OR lower(coalesce(s.reply, '')) LIKE $2)
+      ORDER BY (s.status = 'open') DESC, s.created_at DESC LIMIT 100`,
     status || 'open',
+    q,
   );
 }
 
@@ -150,6 +165,28 @@ export async function getSystem() {
     prisma.safetyMoment.count({ where: { resolvedAt: null, kind: { in: ['crisis', 'emergency'] }, createdAt: { gte: new Date(Date.now() - 86_400_000) } } }),
     prisma.supportRequest.count({ where: { status: 'open' } }),
   ]);
+  const [errors, jobs, aiToday, versions, attention] = await Promise.all([
+    recentErrors(15),
+    jobStatus(),
+    prisma.$queryRawUnsafe<Array<{ model: string; calls: number; failed: number; tokens: number; usd: number }>>(
+      `SELECT model, count(*)::int calls, count(*) FILTER (WHERE status = 'FAILED')::int failed, coalesce(sum(total_tokens), 0)::bigint::float tokens,
+              coalesce(sum(estimated_cost), 0)::float usd
+         FROM ai_usage_events WHERE created_at >= $1 GROUP BY 1 ORDER BY 2 DESC`,
+      istMidnight(0),
+    ),
+    // App versions people used in the last 30 days (one row per person: their newest device).
+    prisma.$queryRawUnsafe<Array<{ platform: string; version: string | null; users: number }>>(
+      `SELECT lower(d.platform) platform, d.app_version version, count(*)::int users FROM (
+         SELECT DISTINCT ON (x.user_id) x.user_id, x.platform, x.app_version FROM (
+           SELECT user_id, platform, app_version, last_seen_at FROM devices
+           UNION ALL SELECT user_id, platform, app_version, last_seen_at FROM user_devices
+         ) x JOIN users u ON u.id = x.user_id
+         WHERE x.last_seen_at >= now() - interval '30 days' AND ${REAL_USERS}
+         ORDER BY x.user_id, x.last_seen_at DESC
+       ) d GROUP BY 1, 2 ORDER BY 3 DESC`,
+    ),
+    attentionCounts(),
+  ]);
   const a = ai[0] ?? { calls: 0, failed: 0, avg_ms: 0, last_ok: null, last_fail: null, last_cause: null };
   const failRate = a.calls ? a.failed / a.calls : 0;
   const alerts: Array<{ level: 'bad' | 'warn'; text: string; href?: string }> = [];
@@ -160,7 +197,17 @@ export async function getSystem() {
   if (a.avg_ms > 15_000) alerts.push({ level: 'warn', text: `Replies are slow: ${Math.round(a.avg_ms / 1000)} s on average.` });
   if (openSafety > 0) alerts.push({ level: 'warn', text: `${openSafety} crisis/emergency moment(s) in the last 24 h not reviewed yet.`, href: '/safety' });
   if (openSupport > 0) alerts.push({ level: 'warn', text: `${openSupport} support request(s) waiting for a reply.`, href: '/support' });
+  if (errors.lastHour >= 5) alerts.push({ level: 'warn', text: `${errors.lastHour} server errors in the last hour — see Recent errors below.` });
+  if (attention.aiOverBudget) alerts.push({ level: 'warn', text: "Today's AI spend is over your daily budget.", href: '/ai-cost' });
+  const lateJobs = jobs.filter((j) => j.late || !j.ok);
+  if (!jobs.length) alerts.push({ level: 'warn', text: 'The background worker has never run (start it on the server with: pnpm --filter api start:worker). Without it, account deletions never happen.' });
+  if (lateJobs.length) alerts.push({ level: 'warn', text: `Background job${lateJobs.length > 1 ? 's' : ''} not running: ${lateJobs.map((j) => j.name).join(', ')}. Account deletions wait until the worker runs.` });
   return {
+    errors,
+    jobs,
+    worker: { seen: jobs.length > 0, running: jobs.length > 0 && jobs.some((j) => !j.late) },
+    aiToday: aiToday.map((r) => ({ model: r.model, calls: r.calls, failed: r.failed, tokens: r.tokens })),
+    appVersions: versions,
     services: {
       api: { ok: true, uptimeHours: Math.round((process.uptime() / 3600) * 10) / 10, memoryMb: Math.round(process.memoryUsage().rss / 1e6), node: process.version },
       database: db,

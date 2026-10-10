@@ -9,6 +9,7 @@ import { requestLoggerMiddleware } from './shared/middleware/requestLogger.js';
 import { idempotencyMiddleware } from './shared/middleware/idempotency.js';
 import { DeadlineManager } from './infrastructure/resilience/Deadline.js';
 import { errorHandler } from './shared/middleware/errorHandler.js';
+import { recordServerError } from './modules/console/health.js';
 import { standardRateLimiter } from './shared/middleware/rateLimiter.js';
 import { NotFoundError } from './shared/errors/AppError.js';
 import { healthRoutes } from './modules/health/health.routes.js';
@@ -17,6 +18,7 @@ import { usersRouter } from './modules/users/users.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { consoleRouter } from './modules/console/console.routes.js';
 import { supportRouter } from './modules/console/support.routes.js';
+import { appConfigRouter } from './modules/console/appConfig.routes.js';
 import { getSetting } from './modules/console/appSettings.js';
 import { UPLOAD_DIR } from './modules/console/media.js';
 import { characterRouter } from './modules/characters/routes/character.routes.js';
@@ -120,6 +122,8 @@ export const createApp = (): Express => {
   app.use('/health', healthRoutes);
   app.use(`${env.API_PREFIX}/health`, healthRoutes);
 
+  app.use(`${env.API_PREFIX}/app`, appConfigRouter);
+
   // Maintenance mode (admin console → Settings): the app gets a friendly 503; admin, health and
   // payment notifications keep working.
   app.use(env.API_PREFIX, async (req, res, next) => {
@@ -217,6 +221,7 @@ export const createApp = (): Express => {
   });
 
   // Central Error Handler
+  app.use(recordServerError);
   app.use(errorHandler);
 
   return app;

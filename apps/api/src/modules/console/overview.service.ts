@@ -1,4 +1,5 @@
 import { prisma } from '../../infrastructure/database/prisma.js';
+import { getSetting } from './appSettings.js';
 
 /**
  * The admin console's Overview: today / last 7 days at a glance, and 14-day trends.
@@ -18,6 +19,11 @@ export interface Overview {
   subscribers: { trialing: number; paying: number; cancelling: number };
   trialToPaid: { started: number; converted: number; rate: number | null };
   series: Array<{ day: string; messages: number; activeUsers: number; revenue: number; aiCost: number }>;
+  funnel: { signedUp: number; onboarded: number; firstMessage: number; cameBack: number };
+  returning: Array<{ after: number; eligible: number; returned: number }>;
+  topCharacters: Array<{ id: string; name: string; avatarUrl: string; messages: number; users: number }>;
+  newest: Array<{ id: string; name: string | null; email: string; joined: string; onboarded: boolean; messages: number }>;
+  attention: { support: number; safety: number; failedReplies: number; aiOverBudget: boolean };
 }
 
 interface Kpis {
@@ -68,7 +74,77 @@ export function istMidnight(daysAgo = 0): Date {
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() - daysAgo) - 330 * 60_000);
 }
 
+/**
+ * Sign-ups of the last 30 days, step by step: finished onboarding → sent a first message → came back
+ * on a later day (any message on a later India day than the day they joined).
+ */
+async function funnel() {
+  return one<Overview['funnel']>(
+    `WITH s AS (
+       SELECT u.id, (u.created_at AT TIME ZONE 'Asia/Kolkata')::date joined, coalesce(pr.onboarding_completed, false) onboarded
+         FROM users u LEFT JOIN user_profiles pr ON pr.user_id = u.id
+        WHERE u.created_at >= now() - interval '30 days' AND u.status <> 'DELETED' AND ${REAL_USERS}
+     ), a AS (
+       SELECT s.id, count(m.id) > 0 talked, bool_or((m.created_at AT TIME ZONE 'Asia/Kolkata')::date > s.joined) back
+         FROM s LEFT JOIN conversations c ON c.user_id = s.id LEFT JOIN messages m ON m.conversation_id = c.id AND m.role = 'user'
+        GROUP BY s.id
+     )
+     SELECT count(*)::int "signedUp", count(*) FILTER (WHERE s.onboarded)::int onboarded,
+            count(*) FILTER (WHERE a.talked)::int "firstMessage", count(*) FILTER (WHERE a.back)::int "cameBack"
+       FROM s JOIN a USING (id)`,
+  );
+}
+
+/** Of the people who joined in the last 90 days (and at least N days ago), how many chatted again N+ days after joining. */
+async function returning() {
+  const rows = await prisma.$queryRawUnsafe<Array<{ after: number; eligible: number; returned: number }>>(
+    `WITH s AS (
+       SELECT u.id, u.created_at,
+              (SELECT max(m.created_at) FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE c.user_id = u.id AND m.role = 'user') last_msg
+         FROM users u WHERE u.created_at >= now() - interval '90 days' AND u.status <> 'DELETED' AND ${REAL_USERS}
+     )
+     SELECT n.after, count(*) FILTER (WHERE s.created_at <= now() - make_interval(days => n.after))::int eligible,
+            count(*) FILTER (WHERE s.created_at <= now() - make_interval(days => n.after) AND s.last_msg >= s.created_at + make_interval(days => n.after))::int returned
+       FROM (VALUES (1), (7), (30)) n(after) CROSS JOIN s GROUP BY n.after ORDER BY n.after`,
+  );
+  return [1, 7, 30].map((after) => rows.find((r) => r.after === after) ?? { after, eligible: 0, returned: 0 });
+}
+
 export async function getOverview(): Promise<Overview> {
+  const today0 = istMidnight(0);
+  const [fun, ret, top, newest, attention] = await Promise.all([
+    funnel(),
+    returning(),
+    prisma.$queryRawUnsafe<Overview['topCharacters']>(
+      `SELECT ch.id, ch.name, ch.avatar_url "avatarUrl", count(*)::int messages, count(DISTINCT c.user_id)::int users
+         FROM messages m JOIN conversations c ON c.id = m.conversation_id JOIN users u ON u.id = c.user_id JOIN characters ch ON ch.id = c.character_id
+        WHERE m.role = 'user' AND m.created_at >= $1 AND ${REAL_USERS} GROUP BY ch.id ORDER BY 4 DESC LIMIT 5`,
+      today0,
+    ),
+    prisma.$queryRawUnsafe<Overview['newest']>(
+      `SELECT u.id, pr.display_name name, u.email, to_char(u.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') joined, coalesce(pr.onboarding_completed, false) onboarded,
+              (SELECT count(*)::int FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE c.user_id = u.id AND m.role = 'user') messages
+         FROM users u LEFT JOIN user_profiles pr ON pr.user_id = u.id
+        WHERE u.status <> 'DELETED' AND ${REAL_USERS} ORDER BY u.created_at DESC LIMIT 6`,
+    ),
+    attentionCounts(),
+  ]);
+  return { ...(await core()), funnel: { signedUp: fun.signedUp ?? 0, onboarded: fun.onboarded ?? 0, firstMessage: fun.firstMessage ?? 0, cameBack: fun.cameBack ?? 0 }, returning: ret, topCharacters: top, newest, attention };
+}
+
+/** What needs a human: open support, unreviewed safety moments, failed replies (24 h), AI spend over the daily budget. */
+export async function attentionCounts(): Promise<Overview['attention']> {
+  const [support, safety, failed, spend, budget] = await Promise.all([
+    prisma.supportRequest.count({ where: { status: 'open' } }),
+    prisma.safetyMoment.count({ where: { resolvedAt: null } }),
+    one<{ n: number }>(`SELECT count(*)::int n FROM messages WHERE role = 'assistant' AND status = 'FAILED' AND created_at >= now() - interval '24 hours'`),
+    one<{ usd: number }>(`SELECT coalesce(sum(estimated_cost), 0)::float usd FROM ai_usage_events WHERE created_at >= $1`, istMidnight(0)),
+    getSetting('ai.dailyBudget'),
+  ]);
+  return { support, safety, failedReplies: failed.n ?? 0, aiOverBudget: budget > 0 && (spend.usd ?? 0) * INR() > budget };
+}
+
+async function core(): Promise<Omit<Overview, 'funnel' | 'returning' | 'topCharacters' | 'newest' | 'attention'>> {
   const [today, week, subs, trial, series] = await Promise.all([
     kpis(istMidnight(0)),
     kpis(istMidnight(6)),

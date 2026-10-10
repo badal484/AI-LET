@@ -13,6 +13,21 @@ import { cn } from '@/lib/utils';
 
 type Tab = 'switches' | 'promos' | 'team' | 'audit';
 
+const GROUPS = [
+  { prefix: 'limits.', title: 'Message limits' },
+  { prefix: 'announcement.', title: 'Announcement banner', note: 'A message at the top of the app for everyone — new characters, offers, news. Each user can close it; a new text shows again.' },
+  { prefix: 'app.', title: 'App updates', note: 'People on an older version see "Please update" with a button to the Play Store, and can\'t continue until they do.' },
+  { prefix: 'ai.', title: 'AI spending' },
+  { prefix: 'maintenance.', title: 'Maintenance' },
+];
+const HINT: Record<string, string> = {
+  'limits.enforce': 'Off = everyone unlimited. Turn on at launch. Crisis messages are never limited.',
+  'maintenance.enabled': 'The app shows your message and chat pauses. The admin panel keeps working.',
+  'app.minVersion': 'Leave empty to allow every version. Example: 1.2.0',
+  'ai.dailyBudget': 'You get an alert on Overview and System when today\'s AI cost goes over this.',
+};
+const PLACEHOLDER: Record<string, string> = { 'announcement.text': 'e.g. New: meet Kiara, your skin-care bestie 💜', 'app.minVersion': 'e.g. 1.2.0' };
+
 function Switches() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['settings'], queryFn: () => api<Array<{ key: string; label: string; type: string; value: unknown; isDefault: boolean }>>('/console/settings') });
@@ -24,27 +39,49 @@ function Switches() {
   return (
     <Card>
       <CardHeader><CardTitle>Limits and switches</CardTitle><span className="text-xs text-muted">Takes effect within 20 seconds, no app update needed</span></CardHeader>
-      <CardBody className="divide-y divide-border">
-        {data?.map((s) => (
-          <div key={s.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
-            <div>
-              <p className="text-sm font-medium">{s.label}</p>
-              {s.key === 'limits.enforce' && <p className="text-xs text-muted">Off = everyone unlimited. Turn on at launch. Crisis messages are never limited.</p>}
-              {s.key === 'maintenance.enabled' && <p className="text-xs text-muted">The app shows your message and chat pauses. The admin panel keeps working.</p>}
-            </div>
-            {s.type === 'boolean' ? (
-              <Switch checked={Boolean(s.value)} label={s.label} disabled={save.isPending} onChange={(v) => {
-                if (s.key === 'maintenance.enabled' && v && !window.confirm('Turn on maintenance mode? Users will not be able to chat until you turn it off.')) return;
-                save.mutate({ key: s.key, value: v });
-              }} />
-            ) : (
-              <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const raw = draft[s.key] ?? String(s.value); save.mutate({ key: s.key, value: s.type === 'number' ? Number(raw) : raw }); }}>
-                <Input className={s.type === 'number' ? 'w-24' : 'w-72'} type={s.type === 'number' ? 'number' : 'text'} value={draft[s.key] ?? String(s.value)} onChange={(e) => setDraft({ ...draft, [s.key]: e.target.value })} />
-                <Button size="sm" variant="secondary" type="submit" disabled={save.isPending}>Save</Button>
-              </form>
-            )}
-          </div>
-        ))}
+      <CardBody className="space-y-6">
+        {GROUPS.map((g) => {
+          const items = (data ?? []).filter((x) => x.key.startsWith(g.prefix));
+          if (!items.length) return null;
+          return (
+            <section key={g.prefix}>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{g.title}</h3>
+              {g.note && <p className="mt-1 text-xs text-muted">{g.note}</p>}
+              <div className="divide-y divide-border">
+                {items.map((s) => (
+                  <div key={s.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div>
+                      <p className="text-sm font-medium">{s.label}</p>
+                      {HINT[s.key] && <p className="text-xs text-muted">{HINT[s.key]}</p>}
+                    </div>
+                    {s.type === 'boolean' ? (
+                      <Switch checked={Boolean(s.value)} label={s.label} disabled={save.isPending} onChange={(v) => {
+                        if (s.key === 'maintenance.enabled' && v && !window.confirm('Turn on maintenance mode? Users will not be able to chat until you turn it off.')) return;
+                        if (s.key === 'announcement.enabled' && v && !String(data?.find((x) => x.key === 'announcement.text')?.value ?? '').trim()) {
+                          window.alert('Write the announcement first, then turn it on.');
+                          return;
+                        }
+                        save.mutate({ key: s.key, value: v });
+                      }} />
+                    ) : (
+                      <form className="flex w-full gap-2 sm:w-auto" onSubmit={(e) => { e.preventDefault(); const raw = draft[s.key] ?? String(s.value); save.mutate({ key: s.key, value: s.type === 'number' ? Number(raw) : raw }); }}>
+                        <Input
+                          className={s.type === 'number' ? 'w-24' : s.key === 'announcement.text' ? 'w-full sm:w-96' : 'w-full sm:w-72'}
+                          type={s.type === 'number' ? 'number' : 'text'}
+                          placeholder={PLACEHOLDER[s.key]}
+                          maxLength={s.type === 'string' ? 300 : undefined}
+                          value={draft[s.key] ?? String(s.value)}
+                          onChange={(e) => setDraft({ ...draft, [s.key]: e.target.value })}
+                        />
+                        <Button size="sm" variant="secondary" type="submit" disabled={save.isPending}>Save</Button>
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
         {save.error && <p className="pt-3 text-sm text-bad">{(save.error as Error).message}</p>}
       </CardBody>
     </Card>

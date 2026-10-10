@@ -71,6 +71,11 @@ export default function UsersPage() {
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'lastActive', dir: 'desc' });
   const [showTest, setShowTest] = useState(false);
   const [page, setPage] = useState(1);
+  // Links like /users?filter=new open the list already filtered.
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get('filter');
+    if (f && FILTERS.some((x) => x.key === f)) setFilter(f);
+  }, []);
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(q);
