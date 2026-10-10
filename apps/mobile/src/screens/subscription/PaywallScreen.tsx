@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, SafeAreaView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+// React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import { useBillingStore } from '../../stores/billingStore.js';
@@ -45,7 +47,7 @@ export const PaywallScreen: React.FC = () => {
     let alive = true;
     StoreBilling.loadCatalog()
       .then((c) => alive && setCatalog(c))
-      .catch(() => alive && setCatalog({ offers: {} }));
+      .catch(() => alive && setCatalog({ connected: false, offers: {} }));
     return () => {
       alive = false;
     };
@@ -130,7 +132,11 @@ export const PaywallScreen: React.FC = () => {
         ) : loading ? (
           <ActivityIndicator color={darkThemeColors.accent} style={{ marginVertical: spacing.xl }} />
         ) : !storeReady ? (
-          <Text style={styles.notice}>Google Play isn't responding right now. Please check your connection and try again.</Text>
+          <Text style={styles.notice}>
+            {catalog?.connected
+              ? 'Premium plans are not available on this version of the app yet. Please update the app from Google Play.'
+              : "Google Play isn't responding right now. Please check your connection and try again."}
+          </Text>
         ) : (
           <>
             {(reason === 'fair_use' || isPremium) && catalog?.pack && (

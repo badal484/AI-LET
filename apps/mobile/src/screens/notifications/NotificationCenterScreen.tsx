@@ -249,7 +249,7 @@ export const NotificationCenterScreen: React.FC = () => {
           ListFooterComponent={
             loading && notifications.length > 0 ? (
               <ActivityIndicator color={darkThemeColors.accent} style={{ marginVertical: 16 }} />
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             <EmptyState

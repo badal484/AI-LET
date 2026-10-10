@@ -35,8 +35,8 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   // The chip for the section being read (null = "All"); follows the scroll, and a tap jumps there.
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const feedScrollRef = useRef<ScrollView>(null);
-  const chipBarRef = useRef<ScrollView>(null);
+  const feedScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const chipBarRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const sectionY = useRef<Record<string, number>>({});
   const chipX = useRef<Record<string, number>>({});
   // While a chip tap is scrolling the page, don't let the passing sections flicker the chips.
@@ -145,7 +145,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 6 }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" />
 
       {/* 1. Simple Clean Header */}
       <View style={styles.topBar}>
@@ -209,7 +209,7 @@ export const HomeScreen: React.FC = () => {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={() => refetch()}
+            onRefresh={() => void refetch()}
             tintColor="#E02494"
           />
         }

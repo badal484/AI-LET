@@ -170,8 +170,6 @@ export const App: React.FC = () => {
         <SafeAreaProvider>
           <StatusBar
             barStyle="light-content"
-            translucent
-            backgroundColor="transparent"
           />
           <AppContent />
           <AppNotices />

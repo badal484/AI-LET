@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   heroGradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(11, 13, 19, 0.45)',
   },
   topActionsRow: {
