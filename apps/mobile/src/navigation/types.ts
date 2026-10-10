@@ -54,6 +54,7 @@ export type RootStackParamList = {
   NotificationSettings: undefined;
   NotificationCenter: undefined;
   Reminders: undefined;
+  Help: undefined;
   SafetyPrivacySettings: undefined;
   CreatorProfile: {
     username: string;

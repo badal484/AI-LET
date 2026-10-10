@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  AppState,
   Switch,
   ScrollView,
   Alert,
@@ -16,6 +17,7 @@ import { typography } from '../../theme/typography.js';
 import { NotificationApi } from '../../services/api/notificationApi.js';
 import type { UserNotificationPreferenceData } from '@ai-companion/types';
 import { Icon, IconButton } from '../../components/common/index.js';
+import { PushService } from '../../services/push/PushService.js';
 
 const QUIET_HOURS_PRESETS = [
   { label: '10:30 PM – 8:00 AM (Default)', start: '22:30', end: '08:00' },
@@ -47,6 +49,21 @@ export const NotificationPreferencesScreen: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  // Whether Android lets this app show notifications (asked once from a chat; afterwards only Settings).
+  const [permission, setPermission] = useState<string>('AUTHORIZED');
+  const checkPermission = useCallback(() => {
+    PushService.permission().then(setPermission).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    checkPermission();
+    const sub = AppState.addEventListener('change', (st) => st === 'active' && checkPermission());
+    return () => sub.remove();
+  }, [checkPermission]);
+  const turnOn = async () => {
+    if (await PushService.askedAt()) PushService.openSettings();
+    else await PushService.askPermission().catch(() => undefined);
+    checkPermission();
+  };
   const [saving, setSaving] = useState(false);
 
   const loadPreferences = useCallback(async () => {
@@ -103,22 +120,43 @@ export const NotificationPreferencesScreen: React.FC = () => {
           accessibilityLabel="Go back"
           style={{ alignSelf: 'flex-start', marginBottom: 6 }}
         />
-        <Text style={styles.title}>Notification Settings</Text>
-        <Text style={styles.subtitle}>
-          Control when and how AI companions can reach out to you.
-        </Text>
+        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.subtitle}>Choose when characters and Lovira can reach you.</Text>
       </View>
 
-      {/* Ethical AI Notice Banner */}
-      <View style={styles.banner}>
+      {/* Are notifications reaching this phone? */}
+      <View style={[styles.banner, permission !== 'AUTHORIZED' && styles.bannerOff]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-          <Icon name="shield" size={16} color={darkThemeColors.accent} />
-          <Text style={styles.bannerTitle}>Intelligent &amp; Ethical Outreach</Text>
+          <Icon name="bell" size={16} color={permission === 'AUTHORIZED' ? darkThemeColors.success : darkThemeColors.warning} />
+          <Text style={styles.bannerTitle}>{permission === 'AUTHORIZED' ? 'Notifications are on for this phone' : 'Notifications are off for this phone'}</Text>
         </View>
         <Text style={styles.bannerBody}>
-          Companions will only reach out when genuinely relevant, never using guilt or fake urgency.
-          Quiet hours and limits are strictly enforced.
+          {permission === 'AUTHORIZED'
+            ? 'Characters only reach out when it means something — never with guilt or fake urgency. Quiet hours below are always respected.'
+            : 'You won’t see replies or reminders while the app is closed.'}
         </Text>
+        {permission !== 'AUTHORIZED' && (
+          <TouchableOpacity style={styles.turnOn} onPress={() => void turnOn()} accessibilityRole="button">
+            <Text style={styles.turnOnText}>Turn on notifications</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Reminders and inbox (used to be separate rows in Profile) */}
+      <View style={styles.card}>
+        {[
+          { icon: 'moon' as const, title: 'Reminders', sub: 'Reminders you asked a character for', route: 'Reminders' },
+          { icon: 'bell' as const, title: 'Inbox', sub: 'Past notifications and announcements', route: 'NotificationCenter' },
+        ].map((r, i) => (
+          <TouchableOpacity key={r.route} style={[styles.linkRow, i > 0 && styles.linkRowBorder]} onPress={() => navigation.navigate(r.route as never)} accessibilityRole="button">
+            <Icon name={r.icon} size={16} color={darkThemeColors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkTitle}>{r.title}</Text>
+              <Text style={styles.linkSub}>{r.sub}</Text>
+            </View>
+            <Icon name="arrow-right" size={12} color={darkThemeColors.textMuted} />
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Master Toggles Card */}
@@ -441,6 +479,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(99, 102, 241, 0.3)',
     marginBottom: spacing.lg,
   },
+  bannerOff: {
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    borderColor: 'rgba(251, 191, 36, 0.35)',
+  },
+  turnOn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: darkThemeColors.accent,
+  },
+  turnOnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 12 },
+  linkRowBorder: { borderTopWidth: 1, borderTopColor: darkThemeColors.border },
+  linkTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
+  linkSub: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 2 },
   bannerTitle: {
     fontSize: 14,
     fontWeight: '700',

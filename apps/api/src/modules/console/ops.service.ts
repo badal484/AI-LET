@@ -7,6 +7,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { attentionCounts, istMidnight, REAL_USERS } from './overview.service.js';
 import { jobStatus, recentErrors } from './health.js';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
+import { NotificationDeliveryEngine } from '../notifications/services/NotificationDeliveryEngine.js';
 
 /** Safety, Support, System, promo codes, team and audit log for the admin console. */
 
@@ -121,6 +122,17 @@ export async function replySupport(adminId: string, id: string, reply: string, c
     .catch(() => null);
   if (!s) throw new NotFoundError('Request not found');
   await audit(adminId, close ? 'console.support.closed' : 'console.support.replied', 'SUPPORT_REQUEST', id, {});
+  // They hear back where they wrote: a notification (+ inbox) that opens Help & contact us.
+  if (reply.trim()) {
+    void NotificationDeliveryEngine.dispatchNotification({
+      userId: s.userId,
+      category: 'system',
+      title: 'The Lovira team replied 💜',
+      body: reply.trim().slice(0, 140),
+      deepLink: 'companion://help',
+      idempotencyKey: `support_${id}_${Date.now()}`,
+    }).catch(() => undefined);
+  }
   return { ok: true };
 }
 

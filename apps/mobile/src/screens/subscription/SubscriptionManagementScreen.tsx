@@ -17,6 +17,7 @@ import { useBillingStore } from '../../stores/billingStore.js';
 import { StoreBilling } from '../../services/storeBilling.js';
 import { UsageMeterItem } from '@ai-companion/types';
 import { Icon, IconButton, IconName } from '../../components/common/index.js';
+import { PromoCodeBox } from '../../components/PromoCodeBox.js';
 
 export const SubscriptionManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -312,6 +313,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
             <Text style={styles.linkButtonText}>Restore Purchases</Text>
           </TouchableOpacity>
         </View>
+        <PromoCodeBox />
       </ScrollView>
     </SafeAreaView>
   );
