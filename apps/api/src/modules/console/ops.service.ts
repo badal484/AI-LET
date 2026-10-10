@@ -138,7 +138,7 @@ export async function replySupport(adminId: string, id: string, reply: string, c
 
 /** From the app: Help → Contact us. */
 export async function createSupportRequest(userId: string, topic: string, message: string) {
-  const t = ['payment', 'account', 'bug', 'delete_data', 'feedback', 'other'].includes(topic) ? topic : 'other';
+  const t = ['payment', 'account', 'bug', 'data_copy', 'delete_data', 'feedback', 'other'].includes(topic) ? topic : 'other';
   if (message.trim().length < 3) throw new BadRequestError('Please write a little more.');
   const open = await prisma.supportRequest.count({ where: { userId, status: 'open' } });
   if (open >= 5) throw new BadRequestError('You already have a few open requests — we will reply soon.');

@@ -45,6 +45,7 @@ const TOPICS: Array<{ id: string; label: string }> = [
   { id: 'account', label: 'Account' },
   { id: 'bug', label: 'Something broken' },
   { id: 'feedback', label: 'Idea / feedback' },
+  { id: 'data_copy', label: 'Get a copy of my data' },
   { id: 'delete_data', label: 'Delete my data' },
   { id: 'other', label: 'Other' },
 ];

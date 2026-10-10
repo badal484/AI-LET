@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 
 interface Req { id: string; topic: string; message: string; status: string; reply: string | null; at: string; repliedAt: string | null; userId: string; email: string; name: string | null }
 
-const TOPIC: Record<string, string> = { payment: 'Payment', account: 'Account', bug: 'Something broken', delete_data: 'Delete my data', feedback: 'Feedback', other: 'Other' };
+const TOPIC: Record<string, string> = { payment: 'Payment', account: 'Account', bug: 'Something broken', data_copy: 'Copy of my data', delete_data: 'Delete my data', feedback: 'Feedback', other: 'Other' };
 
 /** Ready-made replies: a starting point the admin edits, never sent as-is. */
 const TEMPLATES: Array<{ label: string; topics: string[]; text: (name: string) => string }> = [
@@ -32,6 +32,11 @@ const TEMPLATES: Array<{ label: string; topics: string[]; text: (name: string) =
     label: 'Cancel subscription',
     topics: ['payment', 'account'],
     text: (n) => `Hi ${n}, you can cancel any time: Play Store → your profile photo → Payments & subscriptions → Subscriptions → Lovira → Cancel. Premium stays on until the end of the period you paid for.`,
+  },
+  {
+    label: 'Copy of my data',
+    topics: ['data_copy'],
+    text: (n) => `Hi ${n}, sure! Here is what we keep: your account (email, name), your chats with each character, what the characters remember about you, and your payments. We'll email you a copy within 7 days. You can make characters forget you any time in Profile → Privacy & account.`,
   },
   {
     label: 'Delete my data',
@@ -61,7 +66,7 @@ function Item({ r }: { r: Req }) {
     <Card className="p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={r.status === 'open' ? 'warn' : r.status === 'answered' ? 'good' : 'neutral'}>{r.status}</Badge>
-        <Badge tone={r.topic === 'delete_data' || r.topic === 'payment' ? 'accent' : 'neutral'}>{TOPIC[r.topic] ?? r.topic}</Badge>
+        <Badge tone={r.topic === 'delete_data' || r.topic === 'data_copy' || r.topic === 'payment' ? 'accent' : 'neutral'}>{TOPIC[r.topic] ?? r.topic}</Badge>
         <Link href={`/users/${r.userId}`} className="text-sm font-medium hover:text-accent">{r.name ?? r.email}</Link>
         <span className="text-xs text-muted">{ago(r.at)}</span>
       </div>
