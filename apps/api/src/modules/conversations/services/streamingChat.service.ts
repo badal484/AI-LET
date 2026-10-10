@@ -65,6 +65,7 @@ import type {
 import { AIGateway } from '../../ai/gateway/AIGateway.js';
 import { NotificationDeliveryEngine } from '../../notifications/services/NotificationDeliveryEngine.js';
 import { Realtime } from '../../../infrastructure/realtime/realtime.js';
+import { ReminderIntent } from '../../notifications/services/reminderIntent.service.js';
 
 /** "can you give me code?", "script likh do" — a code answer needs more room than a chat reply. */
 const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|implement|likh (do|ke do)|bana (do|ke do))\b/i;
@@ -636,6 +637,10 @@ export class StreamingChatService {
 
     const providerChain = this.chatProviderChain(characterRuntime);
     const style = this.replyStyleFor(pendingText);
+    // "Remind me at 5 to…": saved now; the reply below confirms it in the character's own words.
+    const reminder = ReminderIntent.mightAsk(pendingText)
+      ? await ReminderIntent.handle({ userId, characterId: conversation.characterId, conversationId, text: pendingText, timeZone: conversation.user.profile?.timezone })
+      : null;
     const gender = String((conversation.character as { gender?: string | null }).gender ?? '').toLowerCase();
     const genderHint = /^(female|woman|f)$/.test(gender)
       ? ' You are female: always use feminine Hindi forms (karti hoon, gayi, bolungi, sakti).'
@@ -1076,6 +1081,7 @@ export class StreamingChatService {
     }
 
     // Generate, retrying provider failures (quota spikes, overload) before giving up.
+    if (reminder) request.systemPrompt += ReminderIntent.promptNote(reminder);
     let generated: { content: string; usage: any; finishReason?: string } | null = null;
     let used = providerChain[0]!;
     let lastError = '';
