@@ -161,4 +161,27 @@ export class NotificationApi {
     );
     return response.data.data;
   }
+
+  /** Admin campaigns to show inside the app (popup card / top banner). */
+  public static async inAppMessages(): Promise<InAppCampaignMessage[]> {
+    const response = await ApiClient.getInstance().get<ApiSuccessResponse<InAppCampaignMessage[]>>('/notifications/in-app');
+    return response.data.data;
+  }
+
+  /** What the person did with a campaign (for the admin's results). */
+  public static async campaignAction(campaignId: string, action: 'open' | 'click' | 'dismiss'): Promise<void> {
+    await ApiClient.getInstance().post(`/notifications/campaigns/${campaignId}/${action}`, {});
+  }
+}
+
+export interface InAppCampaignMessage {
+  id: string;
+  campaignId: string;
+  kind: 'popup' | 'banner';
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  link: string | null;
+  buttons: Array<{ label: string; link: string }>;
+  sender: { id: string; name: string | null; avatarUrl: string | null } | null;
 }
