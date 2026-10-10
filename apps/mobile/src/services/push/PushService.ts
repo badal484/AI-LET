@@ -41,6 +41,7 @@ const CHANNELS = [
 let navigator: { open: (t: PushOpenTarget) => void; isViewingChat: (characterId: string) => boolean } | null = null;
 let pendingOpen: PushOpenTarget | null = null;
 let started = false;
+const chatPushListeners = new Set<(characterId: string) => void>();
 let signedIn = false;
 
 const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
@@ -75,7 +76,8 @@ function toStatus(s: AuthorizationStatus): PushPermissionStatus {
 async function showInApp(message: RemoteMessage) {
   const data = (message.data ?? {}) as PushData;
   const characterId = str(data.characterId);
-  if (characterId && navigator?.isViewingChat(characterId)) return; // they're already reading it
+  if (characterId) chatPushListeners.forEach((l) => l(characterId));
+  if (characterId && navigator?.isViewingChat(characterId)) return; // the open chat shows it instead
   const title = message.notification?.title ?? str(data.title);
   const body = message.notification?.body ?? str(data.body);
   if (!title && !body) return;
@@ -140,6 +142,14 @@ export const PushService = {
     if (fromNotifee) open(targetOf(fromNotifee.notification.data as PushData));
     // Coming back from Android settings may have changed the permission: tell the server.
     AppState.addEventListener('change', (s) => s === 'active' && void register());
+  },
+
+  /** A push about a chat arrived while the app is open (refresh that chat and the Chats list). */
+  onChatPush(listener: (characterId: string) => void): () => void {
+    chatPushListeners.add(listener);
+    return () => {
+      chatPushListeners.delete(listener);
+    };
   },
 
   /** The app's navigation, so a tapped notification can open the right chat. */

@@ -130,7 +130,11 @@ export const AppContent: React.FC = () => {
         return route?.name === 'Chat' && (route.params as { characterId?: string } | undefined)?.characterId === characterId;
       },
     });
-    return () => PushService.setNavigator(null);
+    const offChatPush = PushService.onChatPush(() => queryClient.invalidateQueries({ queryKey: ['conversations'] }));
+    return () => {
+      offChatPush();
+      PushService.setNavigator(null);
+    };
   }, [navigationRef]);
 
   const onboarded = Boolean(

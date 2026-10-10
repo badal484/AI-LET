@@ -19,6 +19,7 @@ import {
   Alert,
   Animated,
   ListViewToken,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -47,6 +48,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { looksLikeRealHelp, mayAskHelpful } from '../../utils/feedbackPrompt.js';
 import type { CharacterReportCreateInput } from '@ai-companion/validation';
 import { PushPrimer } from '../../components/PushPrimer.js';
+import { PushService } from '../../services/push/PushService.js';
 
 type ChatScreenProps = StackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -387,6 +389,37 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     if (floatingHideTimer.current) clearTimeout(floatingHideTimer.current);
   }, []);
 
+  // Streams of replies still being written (see sendTurn). Closed when the user leaves the chat or
+  // the app, so the server sends the reply as a notification; reopened view just refetches.
+  const openTurnsRef = useRef(new Set<{ abort: AbortController; saved: boolean; leaving: boolean }>());
+  useEffect(() => {
+    const leave = () =>
+      openTurnsRef.current.forEach(t => {
+        if (t.saved) t.abort.abort();
+        else t.leaving = true;
+      });
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        if (effectiveConvId) queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+      } else leave();
+    });
+    return () => {
+      sub.remove();
+      leave();
+    };
+  }, [effectiveConvId, queryClient]);
+
+  // A push for this chat while it is on screen: show the new message instead of a notification.
+  useEffect(
+    () =>
+      PushService.onChatPush(pushedCharacterId => {
+        if (pushedCharacterId === characterId && effectiveConvId) {
+          queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });
+        }
+      }),
+    [characterId, effectiveConvId, queryClient],
+  );
+
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = e.nativeEvent.contentOffset.y;
     setIsScrolledUp(offsetY > 100);
@@ -474,6 +507,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     // Set when the server answered a blocked crisis message with caring words instead of an error.
     let supported = false;
     activeTurnsRef.current += 1;
+    // Leaving the chat closes this stream so the server knows to notify instead (the reply is
+    // still written and saved). Never before the message itself is saved, or it could be lost.
+    const turn = { abort: new AbortController(), saved: false, leaving: false };
+    openTurnsRef.current.add(turn);
     try {
       await ChatStreamClient.streamMessage(
         effectiveConvId,
@@ -482,6 +519,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         {
           onSaved: payload => {
             saved = true;
+            turn.saved = true;
+            if (turn.leaving) setTimeout(() => turn.abort.abort(), 0);
             upsertServerMessage({
               id: payload.messageId,
               conversationId: effectiveConvId,
@@ -570,7 +609,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             }
           },
         },
-        undefined,
+        turn.abort.signal,
         opts.retryMessageId,
         opts.replyTo?.id,
       );
@@ -581,6 +620,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         setSendError(err?.message || 'Message could not be sent. Please try again.');
       }
     } finally {
+      openTurnsRef.current.delete(turn);
       activeTurnsRef.current = Math.max(0, activeTurnsRef.current - 1);
       if (activeTurnsRef.current === 0 && !typingPollRef.current) setIsTyping(false);
       queryClient.invalidateQueries({ queryKey: ['messages', effectiveConvId] });

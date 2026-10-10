@@ -14,7 +14,7 @@ vi.mock('../src/infrastructure/database/prisma.js', () => ({
       findMany: vi.fn(),
     },
     notificationDeliveryLog: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     userNotificationPreference: {
