@@ -392,6 +392,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   // Streams of replies still being written (see sendTurn). Closed when the user leaves the chat or
   // the app, so the server sends the reply as a notification; reopened view just refetches.
   const openTurnsRef = useRef(new Set<{ abort: AbortController; saved: boolean; leaving: boolean }>());
+  // Asking for notifications: when they leave a chat that went well (her messages arrived, no crisis),
+  // never in the middle of a conversation.
+  const bubblesThisVisitRef = useRef(0);
+  const crisisThisVisitRef = useRef(false);
+  const whoRef = useRef({ name: '', avatarUrl: undefined as string | null | undefined });
+  whoRef.current = { name: characterName, avatarUrl: characterAvatarUrl };
   useEffect(() => {
     const leave = () =>
       openTurnsRef.current.forEach(t => {
@@ -406,6 +412,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     return () => {
       sub.remove();
       leave();
+      // The Chats list should show this chat's latest message right away.
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      if (!crisisThisVisitRef.current && bubblesThisVisitRef.current > 0) {
+        PushPrimer.noteGoodMoment({ ...whoRef.current, replies: bubblesThisVisitRef.current });
+      }
+      bubblesThisVisitRef.current = 0;
     };
   }, [effectiveConvId, queryClient]);
 
@@ -541,6 +553,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           onQueued: () => followBackgroundTurn(),
           onTyping: () => setIsTyping(true),
           onBubble: payload => {
+            bubblesThisVisitRef.current += 1;
             setReplyNotice(null);
             setIsTyping(false);
             upsertServerMessage({
@@ -565,13 +578,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           },
           onTurnCompleted: () => {
             setReplyNotice(n => (n?.kind === 'delayed' ? null : n));
-            // A good moment to offer notifications (never right after a crisis reply).
-            if (!supported) PushPrimer.noteGoodMoment({ name: characterName, avatarUrl: characterAvatarUrl });
             refetchRelationship();
             queryClient.invalidateQueries({ queryKey: ['conversations'] });
           },
           onCrisisSupport: payload => {
             supported = true;
+            crisisThisVisitRef.current = true;
             setIsTyping(false);
             setSendError(null);
             // Shown on this phone only (the blocked text never reaches the server): her caring words and

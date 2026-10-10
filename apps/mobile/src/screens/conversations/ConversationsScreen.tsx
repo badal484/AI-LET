@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ConversationApi } from '../../services/api/conversationApi.js';
 import type { ConversationSummary } from '@ai-companion/types';
@@ -44,6 +44,12 @@ export const ConversationsScreen: React.FC = () => {
     },
     retry: 1,
   });
+  // Coming back to Chats (e.g. from a chat that got a reply after you left): show the latest.
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   const queryClient = useQueryClient();
 
