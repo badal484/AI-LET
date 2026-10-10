@@ -19,6 +19,7 @@ import {
   testSend, uploadCampaignImage,
 } from './campaigns.service.js';
 import { notificationStats } from './notificationStats.service.js';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /**
  * The admin console (apps/admin): one compact API made for its 9 screens.
@@ -134,6 +135,14 @@ consoleRouter.get('/support', requirePermission(P.SUPPORT_READ), handle((req) =>
 consoleRouter.post('/support/:id/reply', requirePermission(P.SUPPORT_WRITE), handle((req) => replySupport(adminId(req), idOf(req), String(req.body?.reply ?? ''), Boolean(req.body?.close))));
 
 // System
+// ── Live updates: a 1-minute pass for this tab's live connection, and who has the app open ──
+consoleRouter.get('/realtime-ticket', handle(async (req) => ({
+  ticket: Realtime.adminTicket(adminId(req)),
+  // Where the API answers (the admin site may live elsewhere): ws(s)://…/api/v1/admin/realtime
+  url: `${(process.env['PUBLIC_API_URL'] || `http://localhost:${process.env['PORT'] || 4000}`).replace(/^http/, 'ws').replace(/\/$/, '')}/api/v1/admin/realtime`,
+})));
+consoleRouter.get('/online', requirePermission(ADMIN_PERMISSIONS.ANALYTICS_READ), handle(async () => ({ online: await Realtime.onlineCount() })));
+
 // ── Notifications (campaigns) ──
 const N = { read: requirePermission(P.NOTIFICATIONS_READ), write: requirePermission(P.NOTIFICATIONS_WRITE) };
 consoleRouter.get('/notifications', N.read, handle(() => listCampaigns()));

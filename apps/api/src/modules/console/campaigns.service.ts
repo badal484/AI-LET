@@ -9,6 +9,7 @@ import { PLAN_SQL } from './users.service.js';
 import { REAL_USERS } from './overview.service.js';
 import { processImage, storeImage } from './media.js';
 import type { NotificationCategory } from '@ai-companion/types';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /**
  * Admin notification campaigns (console → Notifications).
@@ -475,8 +476,12 @@ async function deliver(c: Campaign, userId: string, sender: Sender, opts: { test
         where: { id: conv.id },
         data: { lastMessageAt: new Date(), lastMessageSnippet: body.slice(0, 100), unreadCount: { increment: 1 }, hiddenAt: null },
       });
+      Realtime.publish(userId, { type: 'conversation.updated', conversationId: conv.id, characterId: sender.id });
     }
   }
+
+  // An open app shows the popup / banner right away.
+  if (!opts.test && (surfaces.includes('popup') || surfaces.includes('banner'))) Realtime.publish(userId, { type: 'campaign.inapp' });
 
   if (!surfaces.includes('push')) return { phones: 0, dead: 0 };
   const result = await NotificationDeliveryEngine.dispatchNotification({
@@ -571,6 +576,7 @@ export async function processCampaign(id: string): Promise<number> {
       ...(left === 0 && { status: 'COMPLETED', completedAt: new Date() }),
     },
   });
+  Realtime.admin({ kind: 'campaign', id });
   // More waiting people whose moment is now: keep going (local-hour / quiet-hour ones wait for the worker).
   if (left > 0 && handled === BATCH) return handled + (await processCampaign(id));
   return handled;

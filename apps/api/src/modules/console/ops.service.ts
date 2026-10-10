@@ -6,6 +6,7 @@ import { hashPassword, validatePasswordStrength, verifyPassword } from '../../se
 import { AuditService } from '../audit/audit.service.js';
 import { attentionCounts, istMidnight, REAL_USERS } from './overview.service.js';
 import { jobStatus, recentErrors } from './health.js';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /** Safety, Support, System, promo codes, team and audit log for the admin console. */
 
@@ -129,7 +130,9 @@ export async function createSupportRequest(userId: string, topic: string, messag
   if (message.trim().length < 3) throw new BadRequestError('Please write a little more.');
   const open = await prisma.supportRequest.count({ where: { userId, status: 'open' } });
   if (open >= 5) throw new BadRequestError('You already have a few open requests — we will reply soon.');
-  return prisma.supportRequest.create({ data: { userId, topic: t, message: message.trim().slice(0, 4000) }, select: { id: true, status: true, createdAt: true } });
+  const created = await prisma.supportRequest.create({ data: { userId, topic: t, message: message.trim().slice(0, 4000) }, select: { id: true, status: true, createdAt: true } });
+  Realtime.admin({ kind: 'support', text: t, id: created.id });
+  return created;
 }
 
 export const mySupportRequests = (userId: string) =>

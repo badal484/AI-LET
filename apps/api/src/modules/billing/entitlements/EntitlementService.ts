@@ -5,6 +5,7 @@ import { EffectiveEntitlementsResponse, SubscriptionStatus } from '@ai-companion
 import { ForbiddenError, NotFoundError } from '../../../shared/errors/AppError.js';
 import { logger } from '../../../config/logger.js';
 import { SubscriptionStateMachine } from '../domain/SubscriptionStateMachine.js';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 export class EntitlementService {
   private static readonly CACHE_PREFIX = 'entitlements:user:';
@@ -198,6 +199,8 @@ export class EntitlementService {
   public static async invalidateUserEntitlementsCache(userId: string): Promise<void> {
     try {
       await redis.del(`${this.CACHE_PREFIX}${userId}`);
+      // Open apps refresh Premium / limits right away.
+      Realtime.publish(userId, { type: 'billing.updated' });
     } catch (err) {
       logger.warn(`Failed to invalidate entitlement cache for user ${userId}:`, err);
     }

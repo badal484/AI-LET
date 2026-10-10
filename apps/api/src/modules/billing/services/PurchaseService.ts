@@ -13,6 +13,7 @@ import { BillingProviderFactory } from '../providers/BillingProviderFactory.js';
 import { EntitlementService } from '../entitlements/EntitlementService.js';
 import { CreditWalletService } from '../credits/CreditWalletService.js';
 import { logger } from '../../../config/logger.js';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 export class PurchaseService {
   /**
@@ -232,6 +233,7 @@ export class PurchaseService {
 
     // 6. Invalidate cached entitlements
     await EntitlementService.invalidateUserEntitlementsCache(userId);
+    Realtime.admin({ kind: 'payment', text: request.productId, id: userId });
     const effective = await EntitlementService.getEffectiveEntitlements(userId);
 
     return {

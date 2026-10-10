@@ -1,5 +1,6 @@
 import { prisma } from '../../infrastructure/database/prisma.js';
 import { logger } from '../../config/logger.js';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /** Kinds worth a human look in the admin Safety screen. Never stores what was said. */
 const KINDS = ['crisis', 'emergency', 'eating', 'boundary', 'minor'] as const;
@@ -8,6 +9,8 @@ export type SafetyKind = (typeof KINDS)[number];
 export function recordSafetyMoments(params: { userId: string; characterId?: string | null; conversationId?: string | null; messageId?: string | null; kinds: string[]; helplineShown?: boolean }): void {
   const kinds = [...new Set(params.kinds)].filter((k): k is SafetyKind => (KINDS as readonly string[]).includes(k));
   if (!kinds.length) return;
+  // Open admin tabs: an alert with a sound (crisis / emergency first).
+  Realtime.admin({ kind: 'safety', text: kinds.join(', '), id: params.userId });
   void prisma.safetyMoment
     .createMany({
       data: kinds.map((kind) => ({

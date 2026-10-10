@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { redis } from '../../infrastructure/redis/redis.js';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /**
  * What the System screen needs that isn't in the database: the last server errors (5xx) and when each
@@ -31,6 +32,7 @@ export function recordServerError(err: unknown, req: Request, _res: Response, ne
       .ltrim(ERRORS_KEY, 0, 99)
       .exec()
       .catch(() => undefined);
+    Realtime.admin({ kind: 'error', text: `${entry.method} ${entry.path} → ${status}` });
   }
   next(err);
 }
