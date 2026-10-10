@@ -362,7 +362,7 @@ export class NotificationDeliveryEngine {
   /**
    * Validates if a specific notification category is allowed by user preferences.
    */
-  private static checkCategoryPermission(category: NotificationCategory, prefs: any): boolean {
+  public static checkCategoryPermission(category: NotificationCategory, prefs: any): boolean {
     switch (category) {
       case 'character_message':
         return prefs.characterMessageCategoryEnabled ?? true;

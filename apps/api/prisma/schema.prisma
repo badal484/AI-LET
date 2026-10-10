@@ -1217,9 +1217,43 @@ model NotificationCampaign {
   createdByAdminId  String?   @map("created_by_admin_id") @db.Uuid
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Admin composer (console): big picture, sender, buttons, where it shows, timing, caps.
+  imageUrl          String?   @map("image_url") @db.VarChar(500)
+  senderCharacterId String?   @map("sender_character_id") @db.Uuid
+  postInChat        Boolean   @default(false) @map("post_in_chat")
+  buttons           Json      @default("[]") @db.JsonB // [{ label, link }]
+  surfaces          Json      @default("[\"push\",\"inbox\"]") @db.JsonB // push | inbox | banner | popup
+  sound             Boolean   @default(true)
+  localHour         Int?      @map("local_hour") // send at this hour in each person's time zone
+  respectQuietHours Boolean   @default(true) @map("respect_quiet_hours")
+  skipRecentDays    Int       @default(0) @map("skip_recent_days")
+  isTemplate        Boolean   @default(false) @map("is_template")
+  clickedCount      Int       @default(0) @map("clicked_count")
+  startedAt         DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz(6)
 
   @@index([status, scheduledFor])
   @@map("notification_campaigns")
+}
+
+/// One person in a campaign: waiting, sent or skipped, then opened / tapped / dismissed.
+model CampaignRecipient {
+  id          String    @id @default(uuid()) @db.Uuid
+  campaignId  String    @map("campaign_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  status      String    @default("PENDING") @db.VarChar(20) // PENDING | SENT | SKIPPED | FAILED
+  skipReason  String?   @map("skip_reason") @db.VarChar(60)
+  devicesSent Int       @default(0) @map("devices_sent")
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
+  openedAt    DateTime? @map("opened_at") @db.Timestamptz(6)
+  clickedAt   DateTime? @map("clicked_at") @db.Timestamptz(6)
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, status])
+  @@index([userId, sentAt(sort: Desc)])
+  @@map("campaign_recipients")
 }
 
 model NotificationDeliveryLog {

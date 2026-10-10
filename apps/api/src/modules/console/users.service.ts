@@ -35,7 +35,7 @@ export interface UserRow {
 }
 
 // No active subscription → NULL → 'free' (an empty set must not fall through to 'premium').
-const PLAN_SQL = `(SELECT CASE WHEN count(*) = 0 THEN NULL WHEN bool_or(s.status = 'TRIALING') THEN 'trial' ELSE 'premium' END
+export const PLAN_SQL = `(SELECT CASE WHEN count(*) = 0 THEN NULL WHEN bool_or(s.status = 'TRIALING') THEN 'trial' ELSE 'premium' END
                      FROM billing_subscriptions s JOIN billing_plans p ON p.id = s.plan_id
                     WHERE s.user_id = u.id AND p.code <> 'FREE' AND s.current_period_end > now()
                       AND s.status IN ('TRIALING','ACTIVE','GRACE_PERIOD','CANCELLED'))`;

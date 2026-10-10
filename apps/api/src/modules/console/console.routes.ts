@@ -14,6 +14,10 @@ import {
   changeOwnPassword, createPromo, resolveAllMoments, getSafety, getSystem, inviteAdmin, listAudit, listPromos, listSupport, listTeam,
   replySupport, resolveMoment, reviewChat, setAdminActive, setPromoActive, setReportStatus,
 } from './ops.service.js';
+import {
+  audienceSize, cancelCampaign, composerOptions, deleteDraft, duplicateCampaign, getCampaign, launchCampaign, listCampaigns, saveCampaign,
+  testSend, uploadCampaignImage,
+} from './campaigns.service.js';
 
 /**
  * The admin console (apps/admin): one compact API made for its 9 screens.
@@ -129,6 +133,21 @@ consoleRouter.get('/support', requirePermission(P.SUPPORT_READ), handle((req) =>
 consoleRouter.post('/support/:id/reply', requirePermission(P.SUPPORT_WRITE), handle((req) => replySupport(adminId(req), idOf(req), String(req.body?.reply ?? ''), Boolean(req.body?.close))));
 
 // System
+// ── Notifications (campaigns) ──
+const N = { read: requirePermission(P.NOTIFICATIONS_READ), write: requirePermission(P.NOTIFICATIONS_WRITE) };
+consoleRouter.get('/notifications', N.read, handle(() => listCampaigns()));
+consoleRouter.get('/notifications/options', N.read, handle(() => composerOptions()));
+consoleRouter.post('/notifications/audience', N.read, handle((req) => audienceSize(req.body ?? {})));
+consoleRouter.post('/notifications/image', N.write, express.raw({ type: 'image/*', limit: '10mb' }), handle((req) => uploadCampaignImage(req.body as Buffer)));
+consoleRouter.post('/notifications', N.write, handle((req) => saveCampaign(adminId(req), req.body ?? {})));
+consoleRouter.get('/notifications/:id', N.read, handle((req) => getCampaign(idOf(req))));
+consoleRouter.put('/notifications/:id', N.write, handle((req) => saveCampaign(adminId(req), req.body ?? {}, idOf(req))));
+consoleRouter.delete('/notifications/:id', N.write, handle((req) => deleteDraft(adminId(req), idOf(req))));
+consoleRouter.post('/notifications/:id/duplicate', N.write, handle((req) => duplicateCampaign(adminId(req), idOf(req), Boolean(req.body?.asTemplate))));
+consoleRouter.post('/notifications/:id/test', N.write, handle((req) => testSend(adminId(req), idOf(req), String(req.body?.email ?? ''))));
+consoleRouter.post('/notifications/:id/send', N.write, handle((req) => launchCampaign(adminId(req), idOf(req))));
+consoleRouter.post('/notifications/:id/stop', N.write, handle((req) => cancelCampaign(adminId(req), idOf(req))));
+
 consoleRouter.get('/system', requirePermission(P.SETTINGS_READ), handle(() => getSystem()));
 
 // Settings: switches and limits, promo codes, team, audit log
