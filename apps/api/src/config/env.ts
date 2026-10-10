@@ -72,6 +72,8 @@ const envSchema = z.object({
   // Phase 11 Billing & Payment Providers (Optional / Fallback to MOCK)
   APPLE_SHARED_SECRET: z.string().optional(),
   GOOGLE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  /** Firebase Admin key for push notifications (JSON, base64, or a file path locally). */
+  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 
@@ -142,6 +144,7 @@ export const ENV_SECRET_CLASSIFICATION: Record<keyof EnvConfig, 'SECRET' | 'PUBL
   RATE_LIMIT_MAX_REQUESTS: 'PUBLIC_CONFIG',
   APPLE_SHARED_SECRET: 'SECRET',
   GOOGLE_SERVICE_ACCOUNT_JSON: 'SECRET',
+  FIREBASE_SERVICE_ACCOUNT_JSON: 'SECRET',
   STRIPE_SECRET_KEY: 'SECRET',
   STRIPE_WEBHOOK_SECRET: 'SECRET',
   AGENT_SIMULATED_TOOLS: 'PUBLIC_CONFIG',

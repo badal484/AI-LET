@@ -15,9 +15,11 @@ import type {
   UpdateNotificationPreferencesInput,
 } from '@ai-companion/validation';
 import { IPushProvider, MockPushProvider } from './pushProvider.interface.js';
+import { FcmPushProvider, fcmConfigured } from './fcmPushProvider.js';
 
 export class NotificationService {
-  private static pushProvider: IPushProvider = new MockPushProvider();
+  /** Real Firebase pushes when the key is set; otherwise pushes are only logged (development/tests). */
+  private static pushProvider: IPushProvider = fcmConfigured() ? new FcmPushProvider() : new MockPushProvider();
   private static readonly PREF_CACHE_TTL = SYSTEM_CONSTANTS.CACHE.USER_NOTIFICATIONS_TTL_SECONDS;
 
   public static setPushProvider(provider: IPushProvider): void {

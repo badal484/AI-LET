@@ -19,7 +19,10 @@
     "@ai-companion/utils": "workspace:*",
     "@ai-companion/validation": "workspace:*",
     "@babel/runtime": "^8.0.5",
+    "@notifee/react-native": "9.1.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-firebase/app": "26.4.0",
+    "@react-native-firebase/messaging": "26.4.0",
     "@react-navigation/bottom-tabs": "^7.20.0",
     "@react-navigation/native": "^7.5.0",
     "@react-navigation/stack": "^7.12.0",
@@ -38,6 +41,7 @@
   },
   "devDependencies": {
     "@react-native-community/cli": "20.2.0",
+    "@react-native-community/cli-platform-android": "20.2.0",
     "@react-native-community/cli-server-api": "20.2.0",
     "@react-native/babel-preset": "0.87.1",
     "@react-native/codegen": "0.87.1",
@@ -45,7 +49,6 @@
     "@react-native/metro-config": "0.87.1",
     "@types/react": "^19.2.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.7",
-    "@react-native-community/cli-platform-android": "20.2.0"
+    "vitest": "^3.2.7"
   }
 }
