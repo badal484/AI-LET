@@ -22,6 +22,7 @@ import { installStorageEngines } from '../services/storage/storageEngines.js';
 import { Analytics } from '../services/analytics/AnalyticsSDK.js';
 import { APP_VERSION } from '../config/appInfo.js';
 import { api } from '../services/api/client.js';
+import { AppNotices } from '../components/AppNotices.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
 installStorageEngines();
@@ -173,6 +174,7 @@ export const App: React.FC = () => {
             backgroundColor="transparent"
           />
           <AppContent />
+          <AppNotices />
           <Toast />
         </SafeAreaProvider>
       </QueryClientProvider>
