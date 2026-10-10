@@ -7,37 +7,19 @@ import { privacyApi, type BlockedItem } from '../../services/api/privacyApi.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 
 /**
- * Privacy & account, kept to what people actually need: a copy of their data, making the characters
- * forget them, characters they blocked, and deleting the account (14-day grace period).
+ * Privacy & account, kept to what people actually need: making the characters forget them, characters
+ * they blocked, and deleting the account (14-day grace period; required by Google Play and the DPDP Act).
+ * A copy of their data is asked for in Help & contact us ("Get a copy of my data"); the team replies.
  */
 
 export const SafetyPrivacyScreen: React.FC = () => {
   const navigation = useNavigation();
   const [blocks, setBlocks] = useState<BlockedItem[]>([]);
-  const [busy, setBusy] = useState<'export' | 'forget' | 'delete' | null>(null);
+  const [busy, setBusy] = useState<'forget' | 'delete' | null>(null);
 
   useEffect(() => {
     privacyApi.getBlocks().then(setBlocks).catch(() => undefined);
   }, []);
-
-  const exportData = () =>
-    Alert.alert('Download your data', 'We’ll prepare a copy of your chats, memories and profile and let you know when it’s ready (within 24 hours).', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Request copy',
-        onPress: async () => {
-          setBusy('export');
-          try {
-            await privacyApi.requestExport();
-            Alert.alert('Requested', 'We’ll notify you when your copy is ready.');
-          } catch {
-            Alert.alert('Could not request', 'Please try again later.');
-          } finally {
-            setBusy(null);
-          }
-        },
-      },
-    ]);
 
   const forget = () =>
     Alert.alert('Make every character forget you?', 'They will forget everything they remembered about you — your name, your life, your goals. Your chats stay. This can’t be undone.', [
@@ -120,11 +102,12 @@ export const SafetyPrivacyScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.note}>Your chats are private. Our team never reads them, except a logged safety review if something serious is reported.</Text>
+        <Text style={styles.note}>
+          Your chats are private. Our team never reads them, except a logged safety review if something serious is reported. Want a copy of your data? Ask us in Help & contact us.
+        </Text>
 
         <View style={styles.card}>
-          {action('book', 'Download your data', 'A copy of your chats, memories and profile', exportData, 'export', true)}
-          {action('brain', 'Make characters forget me', 'Delete everything they remember about you', forget, 'forget')}
+          {action('brain', 'Make characters forget me', 'Delete everything they remember about you', forget, 'forget', true)}
         </View>
 
         {blocks.length > 0 && (
