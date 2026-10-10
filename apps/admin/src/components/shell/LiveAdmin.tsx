@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  * browser tab until you open that screen. The 15-second refresh stays as a safety net.
  */
 
-type Kind = 'signup' | 'payment' | 'safety' | 'support' | 'campaign' | 'error' | 'online';
+type Kind = 'signup' | 'payment' | 'safety' | 'support' | 'campaign' | 'error' | 'online' | 'activity';
 interface AdminEvent { type: 'admin' | 'hello'; kind?: Kind; text?: string; id?: string }
 interface Toast { id: number; kind: Kind; text: string; href: string }
 
@@ -27,6 +27,8 @@ const REFRESH: Record<Kind, QueryKey[]> = {
   campaign: [['campaigns'], ['campaign'], ['notification-stats']],
   error: [['system']],
   online: [['online']],
+  // People chatting (batched by the server, at most every 4 s): messages, active users, AI cost.
+  activity: [['overview'], ['ai-cost'], ['characters'], ['character'], ['users'], ['user'], ['notification-stats']],
 };
 
 const TOAST: Partial<Record<Kind, { text: (e: AdminEvent) => string; href: string }>> = {

@@ -233,6 +233,9 @@ export class StreamingChatService {
           where: { id: conversationId },
           data: { lastMessageAt: new Date(), lastMessageSnippet: input.content.trim().slice(0, 120) },
         });
+        // Their other phones show the message they just sent; admin numbers tick up.
+        Realtime.publish(userId, { type: 'conversation.updated', conversationId, characterId: conversation.characterId });
+        Realtime.activity();
       }
 
       lockToken = await ConversationLockManager.acquireLock(conversationId, userId);

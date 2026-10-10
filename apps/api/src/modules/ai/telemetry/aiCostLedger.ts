@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 /**
  * The real cost of every Gemini call — the reply, rewrites, translations, profile and memory updates,
@@ -84,6 +85,7 @@ export function recordGeminiCall(params: {
       },
     })
     .catch((err: unknown) => logger.warn(`AI cost ledger write failed: ${err instanceof Error ? err.message : 'Unknown'}`));
+  Realtime.activity(); // admin AI cost ticks up
 }
 
 /** A call that failed on every model (the user saw "can't reply right now"). Cost 0; shown in System. */

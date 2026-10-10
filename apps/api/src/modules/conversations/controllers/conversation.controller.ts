@@ -9,6 +9,7 @@ import {
 } from '@ai-companion/validation';
 import { ApiResponse } from '../../../shared/utils/apiResponse.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 export class ConversationController {
   public static async createConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -58,9 +59,14 @@ export class ConversationController {
       const result = await ConversationService.getMessageHistory(userId, conversationId, query);
       // Opening the chat (its newest page) reads everything: clear the Chats-list badge.
       if (!query.cursor) {
-        await prisma.conversation
+        const cleared = await prisma.conversation
           .updateMany({ where: { id: conversationId, userId, unreadCount: { gt: 0 } }, data: { unreadCount: 0 } })
-          .catch(() => undefined);
+          .catch(() => ({ count: 0 }));
+        // Read on one phone = read on the others (badge and tab count update).
+        if (cleared.count) {
+          const conv = await prisma.conversation.findUnique({ where: { id: conversationId }, select: { characterId: true } });
+          if (conv) Realtime.publish(userId, { type: 'conversation.updated', conversationId, characterId: conv.characterId });
+        }
       }
 
       ApiResponse.success(res, result.items, 200, {
