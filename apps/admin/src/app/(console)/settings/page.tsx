@@ -18,12 +18,19 @@ const GROUPS = [
   { prefix: 'announcement.', title: 'Announcement banner', note: 'A message at the top of the app for everyone — new characters, offers, news. Each user can close it; a new text shows again.' },
   { prefix: 'app.', title: 'App updates', note: 'People on an older version see "Please update" with a button to the Play Store, and can\'t continue until they do.' },
   { prefix: 'ai.', title: 'AI spending' },
+  {
+    prefix: 'proactive.',
+    title: 'Characters text first',
+    note: 'A character a person chats with sends them a message, in their own voice, at the hour that person usually chats. One decision per person: never more than the daily number below across all characters, never in their quiet hours, never after a crisis moment, and slower and slower if they don’t reply (1, 3, 7, 14 days, then it stops until they come back).',
+  },
   { prefix: 'maintenance.', title: 'Maintenance' },
 ];
 const HINT: Record<string, string> = {
   'limits.enforce': 'Off = everyone unlimited. Turn on at launch. Crisis messages are never limited.',
   'maintenance.enabled': 'The app shows your message and chat pauses. The admin panel keeps working.',
   'app.minVersion': 'Leave empty to allow every version. Example: 1.2.0',
+  'proactive.enabled': 'Uses AI for each message (about ₹0.2). People can switch it off in the app.',
+  'proactive.dailyBudget': '2 is friendly; more starts to feel needy.',
   'ai.dailyBudget': 'You get an alert on Overview and System when today\'s AI cost goes over this.',
 };
 const PLACEHOLDER: Record<string, string> = { 'announcement.text': 'e.g. New: meet Kiara, your skin-care bestie 💜', 'app.minVersion': 'e.g. 1.2.0' };
