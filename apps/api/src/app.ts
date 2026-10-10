@@ -57,6 +57,9 @@ import { simulationRouter, adminSimulationRouter } from './modules/character-sim
 
 export const createApp = (): Express => {
   const app = express();
+  // Behind the host's load balancer (Render etc.): use the real client IP from X-Forwarded-For, not the
+  // proxy's — otherwise every user shares one rate limit. TRUST_PROXY = number of proxy hops (default 1).
+  app.set('trust proxy', Number(process.env['TRUST_PROXY'] ?? 1));
 
   // Security headers & CORS
   app.use(helmet());

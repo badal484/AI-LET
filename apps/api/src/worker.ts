@@ -1,4 +1,5 @@
 import { QueueManager } from './infrastructure/queues/QueueManager.js';
+import { runAfterReply, type AfterReplyJob } from './modules/conversations/services/afterReply.service.js';
 import { AccountDeletionService } from './modules/privacy/services/AccountDeletionService.js';
 import { processDueCampaigns } from './modules/console/campaigns.service.js';
 import { runProactiveRound } from './modules/notifications/services/proactiveRound.service.js';
@@ -8,7 +9,9 @@ import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { logger } from './config/logger.js';
 import { env } from './config/env.js';
+import { initSentry, reportError } from './infrastructure/monitoring/sentry.js';
 
+initSentry('worker');
 logger.info(`⚙️  AI Companion Background Queue Worker process starting [${env.NODE_ENV}]...`);
 
 // 1. Register Chat AI Job Processor
@@ -19,12 +22,12 @@ QueueManager.registerWorker('chat-ai', async (job) => {
   return { status: 'SUCCESS', jobId: job.id };
 }, 10);
 
-// 2. Register Memory Extraction Processor
+// 2. After every chat reply: profile card, memories, summary, relationship (afterReply.service.ts).
+//    Limited concurrency so a busy evening never floods the AI provider; failed jobs retry with back-off.
 QueueManager.registerWorker('memory-extraction', async (job) => {
-  logger.info(`[Worker:memory-extraction] Extracting memory entities for conversation ${job.data?.conversationId}`);
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  if (job.name === 'after-reply') await runAfterReply(job.data as AfterReplyJob);
   return { status: 'SUCCESS' };
-}, 5);
+}, Number(process.env['BACKGROUND_AI_CONCURRENCY'] ?? 6));
 
 // 3. Register Notification Delivery Processor
 QueueManager.registerWorker('notifications', async (job) => {
@@ -74,6 +77,7 @@ function every(name: string, ms: number, job: () => Promise<unknown>): NodeJS.Ti
       })
       .catch((err) => {
         logger.error(`[Worker:${name}] failed`, { error: err instanceof Error ? err.message : err });
+        reportError(err, { job: name });
         void recordJobRun(name, ms, false, err instanceof Error ? err.message : String(err));
       })
       .finally(() => {

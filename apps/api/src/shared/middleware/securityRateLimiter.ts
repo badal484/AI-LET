@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { rateLimitStore } from './rateLimitStore.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ErrorCode } from '@ai-companion/config';
 import { Request, Response } from 'express';
@@ -7,12 +8,15 @@ const createRateLimiter = (options: {
   windowMs: number;
   max: number;
   message: string;
+  name: string;
 }) => {
   return rateLimit({
     windowMs: options.windowMs,
     max: options.max,
     standardHeaders: true,
     legacyHeaders: false,
+    store: rateLimitStore(options.name),
+    passOnStoreError: true,
     skip: () => process.env['NODE_ENV'] === 'test',
     handler: (_req: Request, res: Response) => {
       ApiResponse.error(
@@ -27,6 +31,7 @@ const createRateLimiter = (options: {
 
 // Strict limit for login and registration attempts (10 requests per 15 minutes per IP)
 export const authRateLimiter = createRateLimiter({
+  name: 'auth',
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: 'Too many authentication attempts. Please try again in 15 minutes.',
@@ -34,6 +39,7 @@ export const authRateLimiter = createRateLimiter({
 
 // Strict limit for password reset and email verification requests (5 requests per hour)
 export const passwordResetRateLimiter = createRateLimiter({
+  name: 'password-reset',
   windowMs: 60 * 60 * 1000,
   max: 5,
   message: 'Too many password reset requests. Please try again later.',
@@ -41,6 +47,7 @@ export const passwordResetRateLimiter = createRateLimiter({
 
 // Refresh token rate limit (60 per 15 mins)
 export const tokenRefreshRateLimiter = createRateLimiter({
+  name: 'token-refresh',
   windowMs: 15 * 60 * 1000,
   max: 60,
   message: 'Too many token refresh requests. Please slow down.',
@@ -48,6 +55,7 @@ export const tokenRefreshRateLimiter = createRateLimiter({
 
 // Admin login rate limiter (5 attempts per 15 mins)
 export const adminLoginRateLimiter = createRateLimiter({
+  name: 'admin-login',
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: 'Too many privileged login attempts. Access temporarily restricted.',
