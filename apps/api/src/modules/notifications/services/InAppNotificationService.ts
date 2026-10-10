@@ -9,6 +9,7 @@ import type {
   NotificationCategory,
 } from '@ai-companion/types';
 import type { InAppNotificationQueryInput } from '@ai-companion/validation';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 export class InAppNotificationService {
   private static getUnreadCacheKey(userId: string): string {
@@ -45,6 +46,7 @@ export class InAppNotificationService {
         isRead: false,
       },
     });
+    Realtime.publish(userId, { type: 'notification.new' });
 
     // Invalidate unread cache
     try {

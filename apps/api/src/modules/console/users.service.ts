@@ -8,6 +8,7 @@ import { CreditWalletService } from '../billing/credits/CreditWalletService.js';
 import { EntitlementService } from '../billing/entitlements/EntitlementService.js';
 import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
 import { istMidnight, REAL_USERS, TEST_USERS } from './overview.service.js';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /** Users screen: find a user, see their plan and usage, and help them. Every change is audited. */
 
@@ -373,6 +374,7 @@ export async function addMessages(adminId: string, userId: string, amount: numbe
     referenceId: adminId,
   });
   await audit(adminId, 'console.user.messages_added', userId, { amount, reason });
+  Realtime.publish(userId, { type: 'billing.updated' });
   return { ok: true };
 }
 
@@ -382,6 +384,7 @@ export async function resetToday(adminId: string, userId: string, reason: string
   const key = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
   await redis.del(`msgs:${userId}:${key}`);
   await audit(adminId, 'console.user.limit_reset', userId, { reason });
+  Realtime.publish(userId, { type: 'billing.updated' });
   return { ok: true };
 }
 
@@ -390,6 +393,8 @@ export async function setBlocked(adminId: string, userId: string, blocked: boole
   if (!user) throw new NotFoundError('User not found');
   if (blocked) await prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date(), revokeReason: 'admin_block' } }).catch(() => undefined);
   await audit(adminId, blocked ? 'console.user.blocked' : 'console.user.unblocked', userId, { reason });
+  // Blocked: their open app signs out now, not at the next request.
+  if (blocked) Realtime.publish(userId, { type: 'session.revoked' });
   return { ok: true, status: user.status };
 }
 
@@ -398,6 +403,7 @@ export async function signOutEverywhere(adminId: string, userId: string, reason:
   await mustExist(userId);
   const res = await prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date(), revokeReason: 'admin_sign_out' } });
   await audit(adminId, 'console.user.signed_out', userId, { reason, sessions: res.count });
+  Realtime.publish(userId, { type: 'session.revoked' });
   return { ok: true, sessions: res.count };
 }
 

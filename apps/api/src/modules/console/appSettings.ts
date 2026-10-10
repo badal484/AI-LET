@@ -1,6 +1,7 @@
 import { prisma } from '../../infrastructure/database/prisma.js';
 import { AuditService } from '../audit/audit.service.js';
 import { BadRequestError } from '../../shared/errors/AppError.js';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 /**
  * Settings changed from the admin console without a release. Read on hot paths (every message), so
@@ -64,5 +65,6 @@ export async function setSetting(adminId: string, key: string, value: unknown) {
   await prisma.appSetting.upsert({ where: { key }, create: { key, value: value as never, updatedBy: adminId }, update: { value: value as never, updatedBy: adminId } });
   cache = null;
   await AuditService.log({ actorType: 'ADMIN', actorId: adminId, action: 'console.setting.changed', resourceType: 'SETTING', resourceId: key, metadata: { before, after: value } });
+  if (/^(maintenance|announcement|app)\./.test(key)) Realtime.broadcast({ type: 'settings.updated', keys: [key] });
   return { key, value };
 }

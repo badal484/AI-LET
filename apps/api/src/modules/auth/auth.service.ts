@@ -15,6 +15,7 @@ import {
 } from '@ai-companion/validation';
 import { UserStatus } from '@prisma/client';
 import crypto from 'crypto';
+import { Realtime } from '../../infrastructure/realtime/realtime.js';
 
 export class AuthService {
   /**
@@ -137,6 +138,8 @@ export class AuthService {
 
       return { user, profile, session, rawVerificationToken };
     });
+    // Open admin tabs: a new sign-up.
+    Realtime.admin({ kind: 'signup' });
 
     // 5. Generate short-lived access token
     const accessToken = signAccessToken({
