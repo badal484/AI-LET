@@ -10,7 +10,12 @@ vi.mock('../src/infrastructure/database/prisma.js', () => ({
       upsert: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       findMany: vi.fn(),
+    },
+    notificationDeliveryLog: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
     userNotificationPreference: {
       findUnique: vi.fn(),

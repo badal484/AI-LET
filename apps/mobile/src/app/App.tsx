@@ -1,6 +1,6 @@
 import { LimitReached } from '../services/limitReached.js';
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, StatusBar, Linking } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, LinkingOptions, useNavigationContainerRef } from '@react-navigation/native';
@@ -23,6 +23,8 @@ import { Analytics } from '../services/analytics/AnalyticsSDK.js';
 import { APP_VERSION } from '../config/appInfo.js';
 import { api } from '../services/api/client.js';
 import { AppNotices } from '../components/AppNotices.js';
+import { PushPrimerHost } from '../components/PushPrimer.js';
+import { PushService } from '../services/push/PushService.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
 installStorageEngines();
@@ -113,6 +115,31 @@ export const AppContent: React.FC = () => {
     bootstrap();
   }, [bootstrap]);
 
+  // Push notifications: listen from the start, register this phone once signed in, and let a
+  // tapped notification open its chat (waits for sign-in when the app was closed).
+  useEffect(() => {
+    void PushService.start();
+    PushService.setNavigator({
+      open: ({ characterId, conversationId, deepLink }) => {
+        if (!navigationRef.isReady()) return;
+        if (characterId) navigationRef.navigate('Chat', { characterId, conversationId });
+        else if (deepLink) Linking.openURL(deepLink).catch(() => undefined);
+      },
+      isViewingChat: (characterId) => {
+        const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
+        return route?.name === 'Chat' && (route.params as { characterId?: string } | undefined)?.characterId === characterId;
+      },
+    });
+    return () => PushService.setNavigator(null);
+  }, [navigationRef]);
+
+  const onboarded = Boolean(
+    user?.profile?.onboardingCompleted || user?.profile?.onboardingStatus === 'COMPLETED' || user?.profile?.onboardingStatus === 'SKIPPED',
+  );
+  useEffect(() => {
+    void PushService.setSignedIn(status === 'authenticated' && Boolean(userId) && onboarded);
+  }, [status, userId, onboarded]);
+
   if (status === 'initializing') {
     return (
       <View style={styles.centerContainer}>
@@ -173,6 +200,7 @@ export const App: React.FC = () => {
           />
           <AppContent />
           <AppNotices />
+          <PushPrimerHost />
           <Toast />
         </SafeAreaProvider>
       </QueryClientProvider>

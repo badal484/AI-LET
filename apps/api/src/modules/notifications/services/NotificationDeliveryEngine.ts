@@ -21,6 +21,11 @@ export interface DispatchNotificationParams {
   data?: Record<string, any>;
   idempotencyKey?: string;
   bypassQuietHours?: boolean;
+  /** Big picture shown when the notification is expanded. */
+  imageUrl?: string;
+  /** false: push only, no copy in the in-app inbox (chat messages already live in Chats). */
+  inbox?: boolean;
+  sound?: boolean;
 }
 
 export interface DispatchNotificationResult {
@@ -28,9 +33,16 @@ export interface DispatchNotificationResult {
   status: 'SENT' | 'QUEUED_FOR_QUIET_HOURS' | 'SKIPPED_PREFERENCE' | 'SKIPPED_LIMIT' | 'SKIPPED_MUTED' | 'FAILED' | 'DUPLICATE';
   sentDevicesCount: number;
   failedDevicesCount: number;
+  /** Devices dropped because the app was uninstalled or the token died. */
+  invalidatedDevicesCount?: number;
   scheduledFor?: Date;
   idempotencyKey: string;
   inAppNotificationId?: string;
+}
+
+/** Links the app understands (see linking in apps/mobile/src/app/App.tsx). */
+export function appLink(target: { characterId?: string }): string {
+  return target.characterId ? `companion://chat/${target.characterId}` : 'companion://notifications';
 }
 
 export class NotificationDeliveryEngine {
@@ -98,11 +110,11 @@ export class NotificationDeliveryEngine {
     privacy: LockScreenPrivacy = 'FULL_PREVIEW',
     showPreview = true,
   ): string {
-    if (!showPreview || privacy === 'HIDE_CONTENT') {
+    if (privacy === 'HIDE_CONTENT') {
       return 'You have a new message waiting.';
     }
 
-    if (privacy === 'LIMITED_PREVIEW') {
+    if (!showPreview || privacy === 'LIMITED_PREVIEW') {
       return characterName ? `New message from ${characterName}` : 'New companion message';
     }
 
@@ -126,6 +138,9 @@ export class NotificationDeliveryEngine {
       deepLink,
       data = {},
       bypassQuietHours = false,
+      imageUrl,
+      inbox = true,
+      sound,
     } = params;
 
     const idempotencyKey =
@@ -213,7 +228,7 @@ export class NotificationDeliveryEngine {
 
     // 4. Create In-App Notification entry
     let inAppNotificationId: string | undefined;
-    try {
+    if (inbox) try {
       const inApp = await InAppNotificationService.createNotification({
         userId,
         category,
@@ -260,17 +275,12 @@ export class NotificationDeliveryEngine {
     // 6. Format Payload with Privacy
     const privacy = (prefs.lockScreenPrivacy as LockScreenPrivacy) || 'FULL_PREVIEW';
     const formattedBody = this.formatBodyForPrivacy(body, characterName, privacy, prefs.showPreview);
-    const resolvedDeepLink =
-      deepLink ||
-      (conversationId
-        ? `ai-companion://chat/${conversationId}`
-        : characterId
-        ? `ai-companion://character/${characterId}`
-        : 'ai-companion://notifications');
+    const resolvedDeepLink = deepLink || appLink({ characterId });
 
     const pushProvider = NotificationService.getPushProvider();
     let sentDevicesCount = 0;
     let failedDevicesCount = 0;
+    let invalidatedDevicesCount = 0;
 
     // 7. Dispatch to devices
     await Promise.all(
@@ -281,12 +291,17 @@ export class NotificationDeliveryEngine {
           toToken: device.pushToken,
           title,
           body: formattedBody,
+          imageUrl,
+          sound,
+          // One notification per character (newer replaces older) instead of a pile.
+          tag: characterId ? `chat_${characterId}` : undefined,
           data: {
             type: category,
             conversationId,
             characterId,
             proactiveActionId,
             deepLink: resolvedDeepLink,
+            ...Object.fromEntries(Object.entries(data).filter((e): e is [string, string] => typeof e[1] === 'string')),
           },
         };
 
@@ -320,6 +335,7 @@ export class NotificationDeliveryEngine {
           });
 
           if (result.isInvalidToken) {
+            invalidatedDevicesCount++;
             await prisma.userDevice.update({
               where: { id: device.id },
               data: { isActive: false, invalidatedAt: new Date() },
@@ -335,6 +351,7 @@ export class NotificationDeliveryEngine {
       status: sentDevicesCount > 0 ? 'SENT' : 'FAILED',
       sentDevicesCount,
       failedDevicesCount,
+      invalidatedDevicesCount,
       idempotencyKey,
       inAppNotificationId,
     };
