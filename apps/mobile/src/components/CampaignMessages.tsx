@@ -5,6 +5,7 @@ import type { NavigationContainerRefWithCurrent } from '@react-navigation/native
 import { Avatar, Button, Icon } from './common/index.js';
 import { NotificationApi, type InAppCampaignMessage } from '../services/api/notificationApi.js';
 import { PushService } from '../services/push/PushService.js';
+import { Realtime } from '../services/realtime/RealtimeClient.js';
 import { openAppLink } from '../navigation/openAppLink.js';
 import type { RootStackParamList } from '../navigation/types.js';
 import { darkThemeColors, radius, spacing } from '../theme/index.js';
@@ -39,9 +40,11 @@ export const CampaignMessages: React.FC<{ navigationRef: NavigationContainerRefW
     void load(true);
     const sub = AppState.addEventListener('change', (s) => s === 'active' && void load());
     const off = PushService.onPush((data) => data['kind'] === 'campaign' && void load(true));
+    const offLive = Realtime.on((e) => e.type === 'campaign.inapp' && void load(true));
     return () => {
       sub.remove();
       off();
+      offLive();
     };
   }, [load]);
 

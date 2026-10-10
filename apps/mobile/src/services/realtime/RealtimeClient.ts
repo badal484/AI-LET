@@ -11,7 +11,12 @@ import { SecureAuthStorage } from '../auth/SecureAuthStorage.js';
 export type RealtimeEvent =
   | { type: 'hello' }
   | { type: 'typing'; conversationId: string; characterId: string; typing: boolean }
-  | { type: 'conversation.updated'; conversationId: string; characterId: string };
+  | { type: 'conversation.updated'; conversationId: string; characterId: string }
+  | { type: 'notification.new' }
+  | { type: 'campaign.inapp' }
+  | { type: 'billing.updated' }
+  | { type: 'session.revoked' }
+  | { type: 'settings.updated'; keys: string[] };
 
 type Listener = (event: RealtimeEvent) => void;
 
