@@ -120,6 +120,7 @@ export class ProactiveSchedulerService {
           userId: reminder.userId,
           characterId: reminder.characterId,
           forcedIntent: 'USER_REQUESTED_REMINDER',
+          reminderText: reminder.content,
         });
 
         if (result.isExecuted) {
@@ -131,6 +132,9 @@ export class ProactiveSchedulerService {
             },
           });
           triggeredCount++;
+        } else if (Date.now() - reminder.targetTime.getTime() > 60 * 60_000) {
+          // Still failing an hour later: stop retrying (and paying for AI) every minute.
+          await prisma.userReminder.update({ where: { id: reminder.id }, data: { status: 'EXPIRED' } });
         }
       } catch (err: any) {
         logger.error(`Failed to trigger due reminder ${reminder.id}: ${err.message}`);

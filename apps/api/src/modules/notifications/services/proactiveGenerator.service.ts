@@ -26,6 +26,8 @@ export interface ProactiveGenerationParams {
   characterVersionId?: string;
   forcedIntent?: ProactiveIntentType;
   dryRun?: boolean;
+  /** USER_REQUESTED_REMINDER: what they asked to be reminded of. */
+  reminderText?: string;
 }
 
 export interface ProactiveGenerationResult {
@@ -43,13 +45,32 @@ export class ProactiveGeneratorService {
   /**
    * Orchestrates the complete proactive AI pipeline from eligibility to generation, validation, and delivery.
    */
+  /** Reminders: only an active account and a published character are needed. */
+  private static async reminderEligibility(userId: string, characterId: string) {
+    const [user, character] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { status: true } }),
+      prisma.character.findUnique({ where: { id: characterId }, select: { status: true, currentPublishedVersionId: true } }),
+    ]);
+    const ok = user?.status === 'ACTIVE' && character?.status === 'PUBLISHED' && Boolean(character.currentPublishedVersionId);
+    return {
+      isEligible: ok,
+      reason: ok ? 'Reminder the user asked for.' : 'Account or character not active.',
+      skipReason: ok ? undefined : ('CHARACTER_DISABLED' as const),
+      characterVersionId: character?.currentPublishedVersionId ?? undefined,
+    };
+  }
+
   public static async processProactiveOutreach(
     params: ProactiveGenerationParams,
   ): Promise<ProactiveGenerationResult> {
-    const { userId, characterId, characterVersionId, forcedIntent, dryRun = false } = params;
+    const { userId, characterId, characterVersionId, forcedIntent, dryRun = false, reminderText } = params;
+    const isReminder = forcedIntent === 'USER_REQUESTED_REMINDER';
 
-    // 1. Evaluate Multi-tier Eligibility Rules
-    const eligibility = await ProactiveEligibilityService.evaluateEligibility(userId, characterId);
+    // 1. Eligibility. A reminder they asked for goes out at their time — the "texting first" limits (daily
+    // cap, cooldowns, quiet hours, the switch) don't apply; only an active account and a live character do.
+    const eligibility = isReminder
+      ? await this.reminderEligibility(userId, characterId)
+      : await ProactiveEligibilityService.evaluateEligibility(userId, characterId);
     if (!eligibility.isEligible) {
       await prisma.proactiveDecisionLog.create({
         data: {
@@ -141,7 +162,10 @@ export class ProactiveGeneratorService {
     });
 
     // 5. Construct Proactive Generation Prompt
-    const intentInstruction = this.getIntentInstruction(activeIntent, characterRuntime.name);
+    const intentInstruction =
+      isReminder && reminderText
+        ? `It is time for the reminder they asked you for: "${reminderText}". Remind them in one or two short, warm lines in your own voice, like a friend texting — say exactly what it is. No "this is your reminder".`
+        : this.getIntentInstruction(activeIntent, characterRuntime.name);
     const relationshipProvider = new RelationshipContextProvider();
     const context = await ContextBuilder.buildModelContext({
       characterRuntime,
