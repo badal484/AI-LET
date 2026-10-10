@@ -51,7 +51,25 @@ export const errorHandler = (
     return;
   }
 
-  // 3. Unhandled Internal Server Errors
+  // 3. Database Connection / Reachability Errors
+  if (err.message && (err.message.includes("Can't reach database server") || err.name === 'PrismaClientInitializationError')) {
+    logger.error('Database connection error occurred', {
+      correlationId,
+      message: err.message,
+      url: req.originalUrl,
+      method: req.method,
+    });
+
+    ApiResponse.error(
+      res,
+      ErrorCode.INTERNAL_SERVER_ERROR,
+      'Database server is currently unreachable. Please ensure the PostgreSQL service is running.',
+      500,
+    );
+    return;
+  }
+
+  // 4. Unhandled Internal Server Errors
   logger.error('Unhandled Exception occurred', {
     correlationId,
     message: err.message,

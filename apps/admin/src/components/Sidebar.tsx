@@ -42,43 +42,42 @@ const navSections: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { label: 'Command Center', href: '/', icon: LayoutDashboard },
-      { label: 'Growth & Retention', href: '/analytics/growth', icon: TrendingUp },
-      { label: 'AI Economics', href: '/analytics/ai-economics', icon: DollarSign },
+      { label: 'Executive Dashboard', href: '/', icon: LayoutDashboard },
+      { label: 'Growth & Analytics', href: '/analytics/growth', icon: TrendingUp },
     ],
   },
   {
-    title: 'Companion Studio',
+    title: 'AI Companion Studio',
     items: [
-      { label: 'Characters & Avatars', href: '/characters', icon: Bot, badge: 'Core', badgeColor: '#A855F7' },
-      { label: 'Knowledge & RAG', href: '/ai/knowledge', icon: BookOpen },
-      { label: 'Simulation & Sandbox', href: '/character-simulation', icon: Sparkles },
-      { label: 'AI Routing & Models', href: '/ai', icon: BrainCircuit },
+      { label: 'Companions Studio', href: '/characters', icon: Bot, badge: 'Core', badgeColor: '#A855F7' },
+      { label: 'Routines & Simulation', href: '/character-simulation', icon: Sparkles },
+      { label: 'RAG Knowledge & Lore', href: '/knowledge', icon: BookOpen },
+      { label: 'AI Engine & Router', href: '/ai', icon: BrainCircuit },
     ],
   },
   {
-    title: 'Mobile Experience',
-    items: [
-      { label: 'Discovery & Home', href: '/discovery', icon: Compass },
-      { label: 'Notifications & Drops', href: '/notifications', icon: Bell },
-    ],
-  },
-  {
-    title: 'Trust & Monetization',
+    title: 'User & Creator Operations',
     items: [
       { label: 'Users & Accounts', href: '/users', icon: Users },
-      { label: 'Moderation & Safety', href: '/moderation', icon: ShieldCheck, badge: 'Auto', badgeColor: '#3B82F6' },
-      { label: 'Monetization & Plans', href: '/monetization', icon: CreditCard },
-      { label: 'Creators & UGC', href: '/creators', icon: Users },
+      { label: 'Creator Ecosystem', href: '/creators', icon: Sparkles, badge: 'Revenue', badgeColor: '#10B981' },
+      { label: 'Moderation & Safety', href: '/moderation', icon: ShieldCheck, badge: 'Safety', badgeColor: '#EF4444' },
     ],
   },
   {
-    title: 'Advanced Platform',
-    collapsible: true,
-    defaultOpen: false,
+    title: 'Experience & Economy',
     items: [
-      { label: 'A/B Experiments', href: '/analytics/experiments', icon: FlaskConical },
-      { label: 'System & Cluster', href: '/infrastructure', icon: Settings },
+      { label: 'Home Feed Curation', href: '/discovery', icon: Compass },
+      { label: 'Billing & Economy', href: '/monetization', icon: CreditCard },
+      { label: 'Push & Notifications', href: '/notifications', icon: Bell },
+    ],
+  },
+  {
+    title: 'System & Security',
+    collapsible: true,
+    defaultOpen: true,
+    items: [
+      { label: 'Infrastructure Health', href: '/infrastructure', icon: Settings },
+      { label: 'Audit Trail & Access', href: '/audit', icon: ShieldCheck },
     ],
   },
 ];

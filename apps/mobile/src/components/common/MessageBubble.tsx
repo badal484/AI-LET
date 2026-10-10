@@ -14,7 +14,7 @@ import {
 import { Avatar } from './Avatar.js';
 import { ToastService } from './Toast.js';
 import { Icon } from './Icon.js';
-import { darkThemeColors, spacing, radius } from '../../theme/index.js';
+import { darkThemeColors, radius } from '../../theme/index.js';
 import type { ChatMessageItem } from '@ai-companion/types';
 import { messageTime } from '../../utils/chatDates.js';
 import { withInlineCode } from '../../utils/inlineCode.js';
@@ -144,7 +144,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       onPanResponderMove: (_e, g) => swipeX.setValue(Math.max(0, Math.min(g.dx, 72))),
       onPanResponderRelease: (_e, g) => {
         if (g.dx > 52 && replyRef.current) {
-          Vibration.vibrate(10);
+          try {
+            Vibration.vibrate(10);
+          } catch {
+            // Ignore haptic error
+          }
           replyRef.current();
         }
         Animated.spring(swipeX, { toValue: 0, useNativeDriver: true }).start();
@@ -236,13 +240,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   return (
                     <View style={styles.codeCard}>
                       <View style={styles.codeHeader}>
-                        <Text style={styles.codeLang}>{code[1] || 'code'}</Text>
-                        <TouchableOpacity onPress={() => copyCode(code[2] ?? '')} accessibilityRole="button" accessibilityLabel="Copy code">
-                          <Text style={styles.codeCopy}>Copy</Text>
+                        <View style={styles.codeHeaderLeft}>
+                          <View style={styles.codeDotRed} />
+                          <View style={styles.codeDotYellow} />
+                          <View style={styles.codeDotGreen} />
+                          <Text style={styles.codeLang}>{code[1] || 'code'}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.codeCopyPill}
+                          onPress={() => copyCode(code[2] ?? '')}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel="Copy code"
+                        >
+                          <Icon name="copy" size={12} color="#CBD5E1" />
+                          <Text style={styles.codeCopyText}>Copy</Text>
                         </TouchableOpacity>
                       </View>
                       {/* Long lines wrap: a sideways scroller with no visible bar looked like cut-off code on phones. */}
-                      <View>
+                      <View style={styles.codeScrollContent}>
                         <Text style={styles.codeText} selectable>
                           {code[2]}
                         </Text>
@@ -364,8 +380,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 const styles = StyleSheet.create({
   messageRow: {
     flexDirection: 'row',
-    marginVertical: 5,
-    maxWidth: '84%',
+    marginVertical: 6,
+    maxWidth: '82%',
   },
   userRow: {
     alignSelf: 'flex-end',
@@ -376,9 +392,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   avatar: {
-    alignSelf: 'flex-end',
-    marginBottom: 4,
-    marginRight: spacing.xs,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    marginRight: 8,
   },
   bubbleContainer: {
     flexShrink: 1,
@@ -388,29 +404,29 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   bubble: {
-    paddingHorizontal: 15,
-    paddingVertical: 11,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 18,
   },
   userBubble: {
-    backgroundColor: '#3B1F6E',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.35)',
+    backgroundColor: '#5B21A0',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.16)',
     borderBottomRightRadius: 4,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowColor: '#5B21A0',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
     shadowRadius: 6,
     elevation: 3,
   },
   assistantBubble: {
-    backgroundColor: '#332052',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.25)',
+    backgroundColor: '#241938',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
     borderBottomLeftRadius: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
     shadowRadius: 5,
     elevation: 2,
   },
@@ -457,35 +473,76 @@ const styles = StyleSheet.create({
     borderColor: '#F0ABFC',
   },
   codeCard: {
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderRadius: 12,
+    backgroundColor: '#0A0614',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.25)',
     overflow: 'hidden',
-    minWidth: 220,
+    marginTop: 4,
+    marginBottom: 4,
+    width: '100%',
   },
   codeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#140C24',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  codeHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  codeDotRed: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF5F56',
+  },
+  codeDotYellow: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFBD2E',
+  },
+  codeDotGreen: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#27C93F',
   },
   codeLang: {
-    color: '#A78BFA',
+    color: '#C084FC',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginLeft: 4,
+  },
+  codeCopyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  codeCopyText: {
+    color: '#CBD5E1',
     fontSize: 11,
     fontWeight: '600',
-    textTransform: 'lowercase',
   },
-  codeCopy: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+  codeScrollContent: {
+    padding: 12,
   },
   codeText: {
-    color: '#E5E7EB',
+    color: '#E2E8F0',
     fontSize: 12.5,
-    lineHeight: 18,
-    padding: 10,
+    lineHeight: 19,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
   },
   inlineCode: {
@@ -495,16 +552,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10, 6, 20, 0.6)',
   },
   messageText: {
-    fontSize: 15,
+    fontSize: 15.5,
     lineHeight: 22,
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   userText: {
     color: '#FFFFFF',
     fontWeight: '400',
   },
   assistantText: {
-    color: '#F1F5F9',
+    color: '#FFFFFF',
     fontWeight: '400',
   },
   cancelledLabel: {
@@ -534,16 +591,16 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timestamp: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '400',
   },
   userTimestamp: {
     color: '#D8B4FE',
-    opacity: 0.75,
+    opacity: 0.85,
   },
   assistantTimestamp: {
-    color: '#94A3B8',
-    opacity: 0.75,
+    color: '#9E9AA9',
+    opacity: 0.85,
   },
   actionStrip: {
     flexDirection: 'row',

@@ -12,13 +12,10 @@ import {
   StyleSheet,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  ImageBackground,
   Modal,
   Dimensions,
   StatusBar,
-  Alert,
-  Animated,
-  ViewToken,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -42,7 +39,7 @@ import {
 import { MessageFeedbackModal } from '../../components/chat/MessageFeedbackModal.js';
 import { spacing, radius } from '../../theme/index.js';
 import type { ChatMessageItem, ConversationDetail } from '@ai-companion/types';
-import { dayLabel, isDateDivider, withDateDividers, type DateDivider } from '../../utils/chatDates.js';
+import { isDateDivider, withDateDividers, type DateDivider } from '../../utils/chatDates.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { looksLikeRealHelp, mayAskHelpful } from '../../utils/feedbackPrompt.js';
 import type { CharacterReportCreateInput } from '@ai-companion/validation';
@@ -170,6 +167,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [chatConfirmModal, setChatConfirmModal] = useState<'clear' | 'start_fresh' | null>(null);
   const [isBondModalVisible, setIsBondModalVisible] = useState(false);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
   const [reportReason, setReportReason] =
@@ -251,9 +249,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   const characterAvatarUrl =
     conversation?.character?.avatarUrl || routeCharacterAvatarUrl || characterProfile?.avatarUrl;
-
-  const characterCoverUrl =
-    conversation?.character?.coverImageUrl || characterProfile?.coverImageUrl || characterAvatarUrl;
 
   const characterTagline =
     conversation?.character?.tagline ||
@@ -359,43 +354,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpert, isTyping, effectiveConvId, latestAnswerId]);
 
-  // 5. Scroll Management
-  // WhatsApp-style floating date: shows the day you're looking at while scrolling, then fades.
-  const [floatingDate, setFloatingDate] = useState<string | null>(null);
-  const floatingOpacity = useRef(new Animated.Value(0)).current;
-  const floatingHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [now, setNow] = useState(() => new Date());
-
-  // Keep "Today"/"Yesterday" right if the chat stays open past midnight.
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    // Inverted list: the highest index on screen is the one at the top.
-    const top = viewableItems.reduce<ViewToken | null>((a, b) => (a && (a.index ?? 0) > (b.index ?? 0) ? a : b), null);
-    const item = top?.item as ChatMessageItem | DateDivider | undefined;
-    if (!item) return;
-    if (isDateDivider(item)) setFloatingDate(item.label);
-    else if (item.createdAt) setFloatingDate(dayLabel(item.createdAt));
-  }).current;
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 10 }).current;
-
-  useEffect(() => () => {
-    if (floatingHideTimer.current) clearTimeout(floatingHideTimer.current);
-  }, []);
-
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetY = e.nativeEvent.contentOffset.y;
     setIsScrolledUp(offsetY > 100);
-    if (offsetY > 100) {
-      Animated.timing(floatingOpacity, { toValue: 1, duration: 120, useNativeDriver: true }).start();
-      if (floatingHideTimer.current) clearTimeout(floatingHideTimer.current);
-      floatingHideTimer.current = setTimeout(() => {
-        Animated.timing(floatingOpacity, { toValue: 0, duration: 400, useNativeDriver: true }).start();
-      }, 1200);
-    }
   };
 
   const scrollToBottom = useCallback(() => {
@@ -679,59 +640,42 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     refetchRelationship();
   };
 
-  // "Clear chat": gone from this screen, but they still remember — like deleting a chat on your phone.
+  const executeClearChat = async () => {
+    if (!effectiveConvId) return;
+    try {
+      await ConversationApi.clearChat(effectiveConvId, false);
+      setOptimisticMessages([]);
+      await queryClient.resetQueries({ queryKey: ['messages', effectiveConvId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      ToastService.show({ message: 'Chat cleared.', type: 'info', duration: 2000 });
+    } catch {
+      ToastService.show({ message: 'Could not clear the chat. Try again.', type: 'error', duration: 2500 });
+    }
+  };
+
+  const executeStartFresh = async () => {
+    if (!effectiveConvId) return;
+    try {
+      await ConversationApi.startFresh(effectiveConvId);
+      queryClient.removeQueries({ queryKey: ['messages', effectiveConvId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      ToastService.show({ message: `${characterName} has forgotten everything.`, type: 'info', duration: 2500 });
+      navigation.goBack();
+    } catch {
+      ToastService.show({ message: 'Could not start fresh. Try again.', type: 'error', duration: 2500 });
+    }
+  };
+
   const handleClearChat = () => {
     setIsMenuVisible(false);
     if (!effectiveConvId) return;
-    Alert.alert(
-      'Clear chat?',
-      `Messages will disappear from your screen. ${characterName} will still remember what you talked about.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear chat',
-          onPress: async () => {
-            try {
-              await ConversationApi.clearChat(effectiveConvId, false);
-              setOptimisticMessages([]);
-              await queryClient.resetQueries({ queryKey: ['messages', effectiveConvId] });
-              queryClient.invalidateQueries({ queryKey: ['conversations'] });
-              ToastService.show({ message: 'Chat cleared.', type: 'info', duration: 2000 });
-            } catch {
-              ToastService.show({ message: 'Could not clear the chat. Try again.', type: 'error', duration: 2500 });
-            }
-          },
-        },
-      ],
-    );
+    setChatConfirmModal('clear');
   };
 
-  // "Start fresh": they truly forget this person — chats, memories and the bond.
   const handleStartFresh = () => {
     setIsMenuVisible(false);
     if (!effectiveConvId) return;
-    Alert.alert(
-      `Start fresh with ${characterName}?`,
-      `${characterName} will forget everything about you — your chats, what they remember and your bond. You'll meet as strangers. This can't be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start fresh',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ConversationApi.startFresh(effectiveConvId);
-              queryClient.removeQueries({ queryKey: ['messages', effectiveConvId] });
-              queryClient.invalidateQueries({ queryKey: ['conversations'] });
-              ToastService.show({ message: `${characterName} has forgotten everything.`, type: 'info', duration: 2500 });
-              navigation.goBack();
-            } catch {
-              ToastService.show({ message: 'Could not start fresh. Try again.', type: 'error', duration: 2500 });
-            }
-          },
-        },
-      ],
-    );
+    setChatConfirmModal('start_fresh');
   };
 
   const handleReportCharacter = async () => {
@@ -828,7 +772,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   };
 
   // While she is typing, a "…" bubble sits under her latest message (inverted list: index 0).
-  const withDividers = withDateDividers(allMessages, now);
+  const withDividers = withDateDividers(allMessages, new Date());
   const listData: Array<ChatMessageItem | DateDivider> = isTyping
     ? [
         {
@@ -911,17 +855,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     : 20;
 
   return (
-    <ImageBackground
-      source={{
-        uri:
-          characterCoverUrl ||
-          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=1200&q=80',
-      }}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
+    <View style={styles.screenWrapper}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.backgroundScrim} />
 
       <View
         style={[
@@ -969,7 +904,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               <Text style={styles.headerName} numberOfLines={1}>
                 {characterName}
               </Text>
-              {/* WhatsApp-style status; no "last seen". */}
               <Text style={styles.headerStatus}>{isTyping ? 'typing…' : 'online'}</Text>
             </View>
           </TouchableOpacity>
@@ -977,11 +911,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           {/* Header Right Actions: Menu */}
           <View style={styles.headerRightActions}>
             <TouchableOpacity
-              style={styles.menuButton}
+              style={styles.headerIconButton}
               onPress={() => setIsMenuVisible(true)}
               activeOpacity={0.7}
+              accessibilityLabel="More options"
             >
-              <Icon name="more-vertical" size={20} color="#FFFFFF" />
+              <Icon name="more-vertical" size={19} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -1027,8 +962,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               inverted
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
               contentContainerStyle={styles.listContent}
               onEndReached={() => {
                 if (hasNextPage && !isFetchingNextPage) {
@@ -1043,15 +976,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   ) : null}
                 </>
               }
-              ListHeaderComponent={null}
             />
-            {floatingDate && allMessages.length > 0 ? (
-              <Animated.View pointerEvents="none" style={[styles.floatingDateContainer, { opacity: floatingOpacity }]}>
-                <View style={styles.todayPill}>
-                  <Text style={styles.todayPillText}>{floatingDate}</Text>
-                </View>
-              </Animated.View>
-            ) : null}
           </View>
         )}
 
@@ -1140,15 +1065,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                 maxLength={8000}
                 selectionColor="#A78BFA"
               />
-
-              <TouchableOpacity
-                style={styles.pillTrailingBtn}
-                onPress={() => setIsGiftModalVisible(true)}
-                activeOpacity={0.7}
-                accessibilityLabel="Send gift or spark"
-              >
-                <Icon name="sparkles" size={18} color="#C084FC" />
-              </TouchableOpacity>
             </View>
 
             {/* Circular Action Button */}
@@ -1283,6 +1199,61 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
+        </Modal>
+
+        {/* Simple Clean Dark Confirmation Dialog for ChatScreen */}
+        <Modal
+          visible={!!chatConfirmModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setChatConfirmModal(null)}
+        >
+          <TouchableWithoutFeedback onPress={() => setChatConfirmModal(null)}>
+            <View style={styles.simpleBackdrop}>
+              <TouchableWithoutFeedback>
+                <View style={styles.simpleCard}>
+                  <Text style={styles.simpleTitle}>
+                    {chatConfirmModal === 'start_fresh'
+                      ? `Start fresh with ${characterName}?`
+                      : 'Clear chat messages?'}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.simpleRow}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const action = chatConfirmModal;
+                      setChatConfirmModal(null);
+                      if (action === 'start_fresh') {
+                        executeStartFresh();
+                      } else {
+                        executeClearChat();
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.simpleRowText,
+                        chatConfirmModal === 'start_fresh' ? { color: '#C084FC' } : { color: '#F87171' },
+                      ]}
+                    >
+                      {chatConfirmModal === 'start_fresh' ? 'Start Fresh' : 'Clear Chat'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.simpleDivider} />
+
+                  <TouchableOpacity
+                    style={styles.simpleRow}
+                    activeOpacity={0.7}
+                    onPress={() => setChatConfirmModal(null)}
+                  >
+                    <Text style={styles.simpleCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
         </Modal>
 
         {/* Bond & Chemistry Modal */}
@@ -1519,7 +1490,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           />
         )}
       </View>
-    </ImageBackground>
+    </View>
   );
 };
 
@@ -1562,17 +1533,21 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(7, 5, 14, 0.72)',
   },
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: '#07050E',
+  },
   container: {
     flex: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: 'rgba(15, 11, 24, 0.96)',
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+    backgroundColor: '#090710',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   backButton: {
     padding: 8,
@@ -1592,8 +1567,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerName: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.2,
   },
@@ -1601,12 +1576,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 2,
+    marginTop: 1,
   },
   headerStatus: {
-    fontSize: 11,
-    color: '#34D399',
-    fontWeight: '600',
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '500',
   },
   relationshipBadge: {
     backgroundColor: 'rgba(168, 85, 247, 0.2)',
@@ -1627,11 +1602,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  headerIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#1E1632',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   menuButton: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#1C152B',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
@@ -1639,14 +1624,14 @@ const styles = StyleSheet.create({
   },
   onlineBadge: {
     position: 'absolute',
-    bottom: -1,
-    right: -1,
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#10B981',
     borderWidth: 2,
-    borderColor: '#0F0B18',
+    borderColor: '#090710',
   },
   messageArea: {
     flex: 1,
@@ -1731,8 +1716,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1813,32 +1798,31 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   composerContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
-    backgroundColor: 'rgba(11, 8, 18, 0.96)',
+    backgroundColor: '#07050C',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.07)',
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
   inputRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
+    alignItems: 'center',
+    gap: 10,
   },
   pillInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
-    maxHeight: 120,
-    backgroundColor: '#191328',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    height: 50,
+    backgroundColor: '#1C152B',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderRadius: 25,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   pillLeadingBtn: {
-    padding: 6,
+    padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1849,11 +1833,11 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#FFFFFF',
     fontSize: 15,
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 8,
   },
   pillTrailingBtn: {
-    padding: 6,
+    padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1861,20 +1845,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#9333EA',
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#9333EA',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
     elevation: 5,
-    marginBottom: 0,
   },
   giftCircleButton: {
-    backgroundColor: '#2D1B4E',
+    backgroundColor: '#371D5E',
     borderWidth: 1,
-    borderColor: 'rgba(192, 132, 252, 0.4)',
+    borderColor: 'rgba(192, 132, 252, 0.3)',
     shadowColor: '#7C3AED',
   },
   giftActionEmoji: {
@@ -2214,5 +2197,50 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  // Simple Dark Dialog Styles
+  simpleBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  simpleCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#161124',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2D2342',
+    overflow: 'hidden',
+  },
+  simpleTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  simpleRow: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  simpleRowText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  simpleDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  simpleCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 });

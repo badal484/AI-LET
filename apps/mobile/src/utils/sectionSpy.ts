@@ -10,7 +10,7 @@ const SHORT_LABELS: Record<string, string> = {
   astrology: 'Astrology',
   health: 'Health',
   coaching: 'Coaching',
-  'learn-earn': 'Learn',
+  'learn-earn': 'Learn & Earn',
   professionals: 'Professionals',
   neighbours: 'Neighbours',
   wisdom: 'Wisdom',

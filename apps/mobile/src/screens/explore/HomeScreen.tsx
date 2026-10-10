@@ -19,6 +19,7 @@ import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import type { RootStackParamList } from '../../navigation/types.js';
 import { Skeleton, ErrorState } from '../../components/common/index.js';
 import { activeSectionAt, chipLabelFor } from '../../utils/sectionSpy.js';
+import { getCategoryOrbImage } from '../../utils/categoryIcons.js';
 import type {
   CharacterCatalogItem,
   HomeFeedSection,
@@ -68,10 +69,28 @@ export const HomeScreen: React.FC = () => {
   // Every category row, in order (the chips mirror these).
   const sections = useMemo(() => {
     if (!homeFeed?.sections) return [];
-    return homeFeed.sections.filter(
+    const list = homeFeed.sections.filter(
       (section: HomeFeedSection) =>
         section.sectionKey !== 'CATEGORIES' && section.sectionKey !== 'CONTINUE' && (section.items?.length ?? 0) > 0,
     );
+    const ORDER: Record<string, number> = {
+      love: 1,
+      astrology: 2,
+      'learn-earn': 3,
+      friendship: 4,
+      health: 5,
+      coaching: 6,
+      wisdom: 7,
+      professionals: 8,
+      neighbours: 9,
+    };
+    return list.sort((a, b) => {
+      const slugA = (a.id || '').replace('section_cat_', '').toLowerCase();
+      const slugB = (b.id || '').replace('section_cat_', '').toLowerCase();
+      const orderA = ORDER[slugA] ?? 99;
+      const orderB = ORDER[slugB] ?? 99;
+      return orderA - orderB;
+    });
   }, [homeFeed]);
 
   const chips = useMemo(
@@ -81,15 +100,24 @@ export const HomeScreen: React.FC = () => {
 
   // Keep the active chip visible in the chip bar.
   useEffect(() => {
-    const x = chipX.current[activeSectionId ?? 'all'];
-    if (x !== undefined) chipBarRef.current?.scrollTo({ x: Math.max(0, x - 40), animated: true });
-  }, [activeSectionId]);
+    const key = activeSectionId ?? 'all';
+    const x = chipX.current[key];
+    if (x !== undefined) {
+      const isLast = key === chips[chips.length - 1]?.id;
+      if (isLast) {
+        chipBarRef.current?.scrollToEnd({ animated: true });
+      } else {
+        chipBarRef.current?.scrollTo({ x: Math.max(0, x - 30), animated: true });
+      }
+    }
+  }, [activeSectionId, chips]);
 
   const handleFeedScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (Date.now() < jumpingUntil.current) return;
     const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
     const y = contentOffset.y;
-    // Only the true end of the page counts as "the last row" (the short last row never reaches the top).
+    // Only the true end of the page counts as "the last row" (a loose margin lit up Neighbours while
+    // Professionals was still being read, and switching back and forth made the chips flicker).
     const atEnd = y > 20 && y + layoutMeasurement.height >= contentSize.height - 48;
     const next = activeSectionAt(
       Object.entries(sectionY.current).map(([id, top]) => ({ id, y: top })),
@@ -175,16 +203,20 @@ export const HomeScreen: React.FC = () => {
         >
           {chips.map((chip) => {
             const isSelected = activeSectionId === chip.id;
+            const orbImage = getCategoryOrbImage(chip.id);
             return (
               <TouchableOpacity
                 key={chip.id ?? 'all'}
                 style={[styles.filterChip, isSelected && styles.filterChipActive]}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
                 onLayout={(e) => {
                   chipX.current[chip.id ?? 'all'] = e.nativeEvent.layout.x;
                 }}
                 onPress={() => handleChipPress(chip.id)}
               >
+                <View style={[styles.orbImageContainer, isSelected && styles.orbImageContainerActive]}>
+                  <Image source={orbImage} style={styles.orbImage} resizeMode="cover" />
+                </View>
                 <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
                   {chip.label}
                 </Text>
@@ -240,6 +272,83 @@ export const HomeScreen: React.FC = () => {
 // Clean Minimalist Section Renderer
 // ---------------------------------------------------------------------------
 
+function getCharacterHashtags(char: CharacterCatalogItem): string[] {
+  const name = (char.name || '').toLowerCase();
+  const cat = (char.category || '').toLowerCase();
+  const tagline = (char.tagline || '').toLowerCase();
+  const archetype = (char.archetype || '').toLowerCase();
+  const occupation = (char.occupation || '').toLowerCase();
+
+  // Explicit companion mappings
+  if (name.includes('simran')) return ['#dating', '#coach'];
+  if (name.includes('aarav')) return ['#boyfriend', '#love'];
+  if (name.includes('ritika')) return ['#possessive', '#romance'];
+  if (name.includes('maya')) return ['#psychology', '#empathy'];
+  if (name.includes('ananya')) return ['#wellness', '#guidance'];
+  if (name.includes('priya')) return ['#friendship', '#romance'];
+  if (name.includes('muskan')) return ['#companion', '#love'];
+  if (name.includes('meera')) return ['#mentor', '#wisdom'];
+  if (name.includes('joel')) return ['#fitness', '#coach'];
+  if (name.includes('natasha')) return ['#gym', '#partner'];
+  if (name.includes('shreya')) return ['#instagram', '#reels'];
+  if (name.includes('sakshi')) return ['#astrology', '#tarot'];
+  if (name.includes('rohan')) return ['#freelancing', '#upwork'];
+  if (name.includes('arjun')) return ['#career', '#resume'];
+  if (name.includes('dev')) return ['#coding', '#AI'];
+  if (name.includes('jiya')) return ['#english', '#fluency'];
+  if (name.includes('aditya')) return ['#business', '#startup'];
+  if (name.includes('raj')) return ['#wealth', '#trading'];
+  if (name.includes('sandeep')) return ['#life', '#wisdom'];
+
+  if (char.tags && char.tags.length > 0) {
+    const list = char.tags
+      .slice(0, 2)
+      .map((t) => {
+        let raw = (t.displayName || t.slug || t.name).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (raw.length > 9) raw = raw.substring(0, 9);
+        return `#${raw}`;
+      })
+      .filter(Boolean);
+    if (list.length > 0) return list;
+  }
+
+  if (cat.includes('love') || tagline.includes('boyfriend') || tagline.includes('girlfriend') || tagline.includes('partner') || archetype.includes('romantic')) {
+    if (tagline.includes('boyfriend') || archetype.includes('boyfriend')) return ['#boyfriend', '#love'];
+    if (tagline.includes('girlfriend') || archetype.includes('girlfriend')) return ['#girlfriend', '#love'];
+    return ['#love', '#romance'];
+  }
+
+  if (cat.includes('astro') || tagline.includes('astro') || tagline.includes('tarot') || tagline.includes('vedic')) {
+    return ['#astrology', '#tarot'];
+  }
+
+  if (cat.includes('learn') || cat.includes('earn') || cat.includes('coaching') || cat.includes('business')) {
+    if (tagline.includes('dating') || tagline.includes('attraction')) return ['#dating', '#coach'];
+    if (tagline.includes('code') || tagline.includes('developer') || occupation.includes('engineer')) return ['#coding', '#AI'];
+    if (tagline.includes('design') || tagline.includes('freelance')) return ['#freelancing', '#design'];
+    if (tagline.includes('business') || tagline.includes('startup')) return ['#business', '#startup'];
+    return ['#learning', '#growth'];
+  }
+
+  if (cat.includes('friend')) return ['#friendship', '#chat'];
+  if (cat.includes('health') || cat.includes('wellness')) return ['#fitness', '#health'];
+  if (cat.includes('wisdom') || cat.includes('mentor')) return ['#mentor', '#guidance'];
+
+  const words = `${archetype} ${occupation} ${tagline}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && w !== 'companion' && w !== 'partner' && w !== 'from');
+
+  if (words.length >= 2) {
+    return [`#${words[0].substring(0, 9)}`, `#${words[1].substring(0, 9)}`];
+  } else if (words.length === 1) {
+    return [`#${words[0].substring(0, 9)}`, '#ai'];
+  }
+
+  return ['#love', '#ai'];
+}
+
 function renderSection(
   section: HomeFeedSection,
   onOpen: (char: CharacterCatalogItem) => void,
@@ -249,17 +358,27 @@ function renderSection(
   if (items.length === 0) return null;
 
   const categorySlug = (section.id || '').replace('section_cat_', '');
-  const title = section.title || 'Companions';
+  const orbImage = getCategoryOrbImage(categorySlug);
+  const rawTitle = section.title || 'Companions';
+  const cleanTitle = rawTitle
+    .replace(/\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Emoji_Component}|\p{Emoji}/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+    .trim();
 
   return (
     <View key={section.id} style={styles.sectionContainer}>
-      {/* Clean Header */}
+      {/* Clean Header with 3D Orb Icon */}
       <TouchableOpacity
         style={styles.sectionHeaderRow}
         activeOpacity={0.75}
         onPress={() => onOpenCategory(categorySlug, section.title)}
       >
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionOrbContainer}>
+            <Image source={orbImage} style={styles.sectionOrbImage} resizeMode="cover" />
+          </View>
+          <Text style={styles.sectionTitle}>{cleanTitle}</Text>
+        </View>
         <Text style={styles.seeAllText}>See all ›</Text>
       </TouchableOpacity>
 
@@ -272,7 +391,7 @@ function renderSection(
         contentContainerStyle={styles.carouselScrollContent}
       >
         {items.map((char) => {
-          const subtitle = char.archetype || char.occupation || 'Companion';
+          const hashtags = getCharacterHashtags(char);
 
           return (
             <TouchableOpacity
@@ -288,7 +407,7 @@ function renderSection(
                 resizeMode="cover"
               />
 
-              {/* Bottom Gradient Overlay with Name & Info */}
+              {/* Bottom Gradient Overlay with Name & Hashtag Pills */}
               <View style={styles.cardBottomOverlay}>
                 <View style={styles.nameRow}>
                   <Text style={styles.cardName} numberOfLines={1}>
@@ -297,9 +416,15 @@ function renderSection(
                   <View style={styles.onlineDot} />
                 </View>
 
-                <Text style={styles.cardSubtitle} numberOfLines={1}>
-                  {subtitle}
-                </Text>
+                <View style={styles.tagRow}>
+                  {hashtags.map((tag, idx) => (
+                    <View key={idx} style={styles.hashtagPill}>
+                      <Text style={styles.cardHashtag} numberOfLines={1} ellipsizeMode="tail">
+                        {tag}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             </TouchableOpacity>
           );
@@ -380,7 +505,7 @@ const styles = StyleSheet.create({
 
   // Filter Chips
   filterBarContainer: {
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   filterChipsScroll: {
     paddingHorizontal: 16,
@@ -388,27 +513,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterChip: {
-    height: 34,
-    backgroundColor: '#160D26',
-    borderRadius: 17,
-    paddingHorizontal: 14,
+    height: 42,
+    backgroundColor: '#0F0918',
+    borderRadius: 14,
+    paddingLeft: 7,
+    paddingRight: 14,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#24143D',
+    borderWidth: 1.5,
+    borderColor: '#292136',
+    gap: 8,
   },
   filterChipActive: {
-    backgroundColor: '#E02494',
-    borderColor: '#E02494',
+    backgroundColor: '#180B26',
+    borderColor: '#E639B5',
+    borderWidth: 2,
+  },
+  orbImageContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+  },
+  orbImageContainerActive: {
+    borderWidth: 0,
+  },
+  orbImage: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.15 }],
   },
   filterChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    letterSpacing: -0.1,
   },
   filterChipTextActive: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   // Scroll Content
@@ -429,6 +574,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 10,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionOrbContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+  },
+  sectionOrbImage: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.15 }],
   },
   sectionTitle: {
     fontSize: 18,
@@ -486,11 +648,28 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#10B981',
   },
-  cardSubtitle: {
-    fontSize: 11.5,
-    color: '#D1D5DB',
-    marginTop: 2,
-    fontWeight: '500',
+  tagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    gap: 4,
+    marginTop: 4,
+  },
+  hashtagPill: {
+    backgroundColor: 'rgba(168, 85, 247, 0.22)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 132, 252, 0.35)',
+    maxWidth: 62,
+    flexShrink: 1,
+  },
+  cardHashtag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F3E8FF',
+    letterSpacing: -0.1,
   },
 
   // Empty State
