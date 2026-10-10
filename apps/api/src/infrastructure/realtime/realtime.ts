@@ -33,7 +33,7 @@ export type BroadcastEvent = { type: 'settings.updated'; keys: string[] };
 /** To every open admin tab. */
 export type AdminEvent = {
   type: 'admin';
-  kind: 'signup' | 'payment' | 'safety' | 'support' | 'campaign' | 'error' | 'online';
+  kind: 'signup' | 'payment' | 'safety' | 'support' | 'campaign' | 'error' | 'online' | 'activity';
   text?: string;
   id?: string;
 };
@@ -47,6 +47,8 @@ const HEARTBEAT_MS = 25_000;
 const ONLINE_TTL_MS = 70_000;
 
 const users = new Map<string, Set<WebSocket>>(); // userId → this server's app sockets
+let activityTimer: ReturnType<typeof setTimeout> | null = null;
+const ACTIVITY_BATCH_MS = 4000;
 const admins = new Set<WebSocket>();
 
 async function markOnline(userId: string, connId: string) {
@@ -76,6 +78,19 @@ export const Realtime = {
   /** To every open admin tab. */
   admin(event: Omit<AdminEvent, 'type'>): void {
     redis.publish(ADMIN, JSON.stringify({ type: 'admin', ...event })).catch(() => undefined);
+  },
+
+  /**
+   * Something counted on the admin screens changed (a message, an AI call). Batched: at most one
+   * update every 4 s per server, however busy chat gets.
+   */
+  activity(): void {
+    if (activityTimer) return;
+    activityTimer = setTimeout(() => {
+      activityTimer = null;
+      Realtime.admin({ kind: 'activity' });
+    }, ACTIVITY_BATCH_MS);
+    activityTimer.unref?.();
   },
 
   async isOnline(userId: string): Promise<boolean> {
