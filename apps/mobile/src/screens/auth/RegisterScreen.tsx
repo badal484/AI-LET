@@ -15,6 +15,7 @@ import { typography } from '../../theme/typography.js';
 import { spacing } from '../../theme/spacing.js';
 import { radius } from '../../theme/radius.js';
 import { useAuthStore } from '../../stores/authStore.js';
+import { APP_VERSION } from '../../config/appInfo.js';
 
 interface RegisterScreenProps {
   navigation: {
@@ -55,6 +56,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
         device: {
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
           deviceName: `${Platform.OS.toUpperCase()} Mobile Client`,
+          appVersion: APP_VERSION,
+          osVersion: String(Platform.Version),
         },
       });
     } catch {

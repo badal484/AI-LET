@@ -15,6 +15,7 @@ import { typography } from '../../theme/typography.js';
 import { spacing } from '../../theme/spacing.js';
 import { radius } from '../../theme/radius.js';
 import { useAuthStore } from '../../stores/authStore.js';
+import { APP_VERSION } from '../../config/appInfo.js';
 
 interface LoginScreenProps {
   navigation: {
@@ -45,6 +46,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         device: {
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
           deviceName: `${Platform.OS.toUpperCase()} Mobile Client`,
+          appVersion: APP_VERSION,
+          osVersion: String(Platform.Version),
         },
       });
     } catch {
@@ -62,6 +65,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         device: {
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
           deviceName: `${Platform.OS.toUpperCase()} Mobile Client`,
+          appVersion: APP_VERSION,
+          osVersion: String(Platform.Version),
         },
       });
     } catch {}
