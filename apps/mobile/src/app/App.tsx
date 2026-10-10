@@ -26,6 +26,8 @@ import { AppNotices } from '../components/AppNotices.js';
 import { PushPrimerHost } from '../components/PushPrimer.js';
 import { PushService } from '../services/push/PushService.js';
 import { openAppLink } from '../navigation/openAppLink.js';
+import { Realtime } from '../services/realtime/RealtimeClient.js';
+import { useTypingStore } from '../stores/typingStore.js';
 import { CampaignMessages } from '../components/CampaignMessages.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
@@ -145,7 +147,25 @@ export const AppContent: React.FC = () => {
   );
   useEffect(() => {
     void PushService.setSignedIn(status === 'authenticated' && Boolean(userId) && onboarded);
+    Realtime.setSignedIn(status === 'authenticated' && Boolean(userId) && onboarded);
+    if (status !== 'authenticated') useTypingStore.getState().clear();
   }, [status, userId, onboarded]);
+
+  // Live updates while the app is open: "typing…" and new messages in Chats, unread counts.
+  useEffect(() => {
+    Realtime.start();
+    return Realtime.on((event) => {
+      if (event.type === 'typing') useTypingStore.getState().set(event.conversationId, event.typing);
+      else if (event.type === 'conversation.updated') {
+        useTypingStore.getState().set(event.conversationId, false);
+        void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        void queryClient.invalidateQueries({ queryKey: ['messages', event.conversationId] });
+      } else if (event.type === 'hello') {
+        // (Re)connected: catch up on anything missed while offline.
+        void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      }
+    });
+  }, []);
 
   if (status === 'initializing') {
     return (

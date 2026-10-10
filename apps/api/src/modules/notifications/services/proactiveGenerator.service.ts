@@ -18,6 +18,7 @@ import { characterVoiceAIRoute } from '../../ai/routing/aiRoutes.js';
 import { personaPackFor } from '../../conversations/human/personaPacks/index.js';
 import { buildTextFirstPrompt, kindTextFirstCheck } from '../../conversations/human/textFirst.js';
 import { UserProfileService } from '../../memory/services/userProfile.service.js';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 export interface ProactiveGenerationParams {
   userId: string;
@@ -314,6 +315,8 @@ export class ProactiveGeneratorService {
     });
 
     await commitTextFirst?.();
+    // An open app shows her message in Chats right away (badge + preview).
+    Realtime.publish(userId, { type: 'conversation.updated', conversationId: conversation.id, characterId });
 
     // 10. Persist Proactive Action Record
     const expiresAt = new Date(Date.now() + SYSTEM_CONSTANTS.PROACTIVITY.INTENT_DEFAULT_EXPIRY_HOURS * 3600 * 1000);

@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { Realtime } from './infrastructure/realtime/realtime.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
@@ -13,6 +14,9 @@ const server = app.listen(env.PORT, () => {
     `📡 Health endpoints available at http://localhost:${env.PORT}/health and http://localhost:${env.PORT}${env.API_PREFIX}/health`,
   );
 });
+// Live updates for open apps (typing in the Chats list, new messages, unread counts).
+Realtime.attach(server);
+
 
 let isShuttingDown = false;
 
