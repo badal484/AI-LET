@@ -2,6 +2,7 @@ import { Queue, Worker, Job } from 'bullmq';
 import { redis } from '../redis/redis.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
+import { reportError } from '../monitoring/sentry.js';
 
 export type QueueName =
   | 'billing-webhooks'
@@ -150,6 +151,7 @@ export class QueueManager {
         } catch (err: any) {
           const category = this.categorizeError(err);
           logger.error(`[QueueWorker:${queueName}] Job ${job.id} (${job.name}) failed: [${category}] ${err.message}`);
+          reportError(err, { queue: queueName, job: job.name, category });
 
           // If permanent error, do not retry further
           if (category === 'PERMANENT' || category === 'AUTHENTICATION') {

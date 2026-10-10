@@ -89,11 +89,15 @@ export class MemoryRetrieverService {
         };
       }
 
+      // Bounded work per reply: someone with thousands of memories is scored on their most important and
+      // most recent ones (each candidate carries a 1,536-number embedding).
       const candidateRecords = await prisma.memory.findMany({
         where: whereCondition,
         include: {
           embeddings: true,
         },
+        orderBy: [{ importanceScore: 'desc' }, { updatedAt: 'desc' }],
+        take: Number(process.env['MEMORY_CANDIDATE_LIMIT'] ?? 400),
       });
 
       if (candidateRecords.length === 0) {

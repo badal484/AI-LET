@@ -5,7 +5,9 @@ import { logger } from './config/logger.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { API_CONSTANTS } from './config/constants.js';
+import { flushSentry, initSentry, reportError } from './infrastructure/monitoring/sentry.js';
 
+initSentry('api');
 const app = createApp();
 
 const server = app.listen(env.PORT, () => {
@@ -25,6 +27,7 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
   isShuttingDown = true;
 
   logger.warn(`Received ${signal}, initiating graceful shutdown...`);
+  await flushSentry();
 
   const forceTimer = setTimeout(() => {
     logger.error('Graceful shutdown timeout exceeded, forcing exit');
@@ -50,10 +53,12 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 process.on('uncaughtException', (err: Error) => {
+  reportError(err, { kind: 'uncaughtException' });
   logger.error('Uncaught Exception occurred:', { error: err.message, stack: err.stack });
   gracefulShutdown('uncaughtException');
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
+  reportError(reason, { kind: 'unhandledRejection' });
   logger.error('Unhandled Promise Rejection:', { reason });
 });

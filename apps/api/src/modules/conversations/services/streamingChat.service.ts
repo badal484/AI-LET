@@ -1,6 +1,6 @@
 import { recordSafetyMoments } from '../../console/safetyMoments.js';
 import { useMessage } from '../../billing/messageAllowance.js';
-import { setAICostContext, withAICostTask } from '../../ai/telemetry/aiCostLedger.js';
+import { setAICostContext } from '../../ai/telemetry/aiCostLedger.js';
 import { Response, Request } from 'express';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
@@ -16,11 +16,8 @@ import { ModerationService } from '../../moderation/moderation.service.js';
 import { AIOrchestrator } from '../../../infrastructure/ai/AIOrchestrator.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { MemoryContextProvider } from '../../memory/services/memoryContext.provider.js';
-import { MemoryExtractionService } from '../../memory/services/memoryExtraction.service.js';
 import { ConversationSummaryService } from '../../memory/services/conversationSummary.service.js';
 import { RelationshipContextProvider } from '../../relationships/services/relationshipContext.provider.js';
-import { RelationshipAnalyzerService } from '../../relationships/services/relationshipAnalyzer.service.js';
-import { RelationshipStateService } from '../../relationships/services/relationshipState.service.js';
 import type { SendMessageInput } from '@ai-companion/validation';
 import { SafetyService } from '../../safety/services/SafetyService.js';
 import { AbusePreventionService } from '../../safety/services/AbusePreventionService.js';
@@ -66,6 +63,7 @@ import { AIGateway } from '../../ai/gateway/AIGateway.js';
 import { NotificationDeliveryEngine } from '../../notifications/services/NotificationDeliveryEngine.js';
 import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 import { ReminderIntent } from '../../notifications/services/reminderIntent.service.js';
+import { scheduleAfterReply } from './afterReply.service.js';
 
 /** "can you give me code?", "script likh do" — a code answer needs more room than a chat reply. */
 const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|implement|likh (do|ke do)|bana (do|ke do))\b/i;
@@ -1500,10 +1498,12 @@ export class StreamingChatService {
       })
       .catch((snapErr) => logger.warn(`Failed to capture runtime snapshot: ${snapErr.message}`));
 
-    // Keep the "who they are" card up to date (background, never blocks).
-    void UserProfileService.updateFromExchange({
+    // The AI work after the reply (profile card, memories, summary, relationship): queued for the worker
+    // when it runs (limited concurrency, retries), otherwise right away. Never blocks the reply.
+    scheduleAfterReply({
       userId,
       characterId: conversation.characterId,
+      conversationId,
       userMessage: pendingText,
       assistantMessage: deliveredText,
       previousAssistantMessage: herRecentReplies[herRecentReplies.length - 1],
@@ -1511,40 +1511,11 @@ export class StreamingChatService {
       justGivenTask: pack?.mentor ? newTask : undefined,
       characterGender: pack?.gender,
       userLanguage: pack ? (hinglishTalker ? 'hinglish' : 'english') : undefined,
-    });
-
-    withAICostTask('memory', {}, () =>
-      MemoryExtractionService.processConversationMessage({
-        userId,
-        characterId: conversation.characterId,
-        conversationId,
-        userMessage: pendingText,
-        assistantMessage: deliveredText,
-        sourceMessageId: pending[pending.length - 1]!.id,
-      }),
-    ).catch((err) => logger.warn(`Background memory extraction failed: ${err instanceof Error ? err.message : 'Unknown'}`));
-
-    withAICostTask('memory', {}, () => ConversationSummaryService.checkAndSummarizeConversation(conversationId)).catch((err) =>
-      logger.warn(`Background conversation summarization failed: ${err instanceof Error ? err.message : 'Unknown'}`),
-    );
-
-    RelationshipAnalyzerService.analyzeInteraction({
-      userMessage: pendingText,
-      assistantMessage: deliveredText,
+      sourceMessageId: pending[pending.length - 1]!.id,
+      replyMessageId: firstReplyId,
       characterName: characterRuntime.name,
       characterRole: characterRuntime.identity.role,
-      hoursSinceLastInteraction: null,
-    })
-      .then((analysisResult) =>
-        RelationshipStateService.applyInteractionUpdate({
-          userId,
-          characterId: conversation.characterId,
-          analysisResult,
-          conversationId,
-          messageId: firstReplyId,
-        }),
-      )
-      .catch((err) => logger.warn(`Background relationship analysis failed: ${err instanceof Error ? err.message : 'Unknown'}`));
+    });
 
     await AuditService.log({
       actorType: 'USER',
