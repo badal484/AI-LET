@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Switch,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -14,8 +13,8 @@ import { onboardingApi } from '../../services/api/onboardingApi.js';
 import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
-import type { ConversationStyle, UserPreferenceProfile } from '@ai-companion/types';
-import { Icon, IconButton, IconName } from '../../components/common/index.js';
+import type { UserPreferenceProfile } from '@ai-companion/types';
+import { IconButton } from '../../components/common/index.js';
 
 export const PreferencesSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -55,32 +54,6 @@ export const PreferencesSettingsScreen: React.FC = () => {
     }
   };
 
-  const handleReset = () => {
-    Alert.alert(
-      'Reset Discovery Preferences',
-      'This will reset your interest categories, conversation tone, and recommendation signals to defaults. Your chat history and memories will NOT be affected.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset Preferences',
-          style: 'destructive',
-          onPress: async () => {
-            setIsSaving(true);
-            try {
-              const reset = await onboardingApi.resetPreferences();
-              setProfile(reset);
-              Alert.alert('Success', 'Discovery preferences have been reset.');
-            } catch {
-              Alert.alert('Error', 'Failed to reset preferences.');
-            } finally {
-              setIsSaving(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -89,13 +62,6 @@ export const PreferencesSettingsScreen: React.FC = () => {
     );
   }
 
-  const stylesList: Array<{ key: ConversationStyle; label: string; icon: IconName }> = [
-    { key: 'CASUAL', label: 'Casual & Natural', icon: 'coffee' },
-    { key: 'PLAYFUL', label: 'Playful & Witty', icon: 'sparkles' },
-    { key: 'DEEP', label: 'Deep & Thoughtful', icon: 'moon' },
-    { key: 'SUPPORTIVE', label: 'Warm & Supportive', icon: 'heart' },
-    { key: 'DIRECT', label: 'Direct & Candid', icon: 'zap' },
-  ];
 
   return (
     <View style={styles.container}>
@@ -113,37 +79,6 @@ export const PreferencesSettingsScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Section 1: Conversation Tone */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferred Conversation Dynamic</Text>
-          <Text style={styles.sectionDescription}>
-            Companions will subtly tune their banter to your preferred rhythm.
-          </Text>
-
-          <View style={styles.styleGrid}>
-            {stylesList.map(s => {
-              const isSelected = profile?.conversationStyle === s.key;
-              return (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.styleChip, isSelected && styles.styleChipSelected]}
-                  activeOpacity={0.8}
-                  onPress={() => updateField({ conversationStyle: s.key })}
-                >
-                  <Icon
-                    name={s.icon}
-                    size={16}
-                    color={isSelected ? '#000000' : darkThemeColors.accent}
-                  />
-                  <Text style={[styles.chipLabel, isSelected && styles.chipLabelSelected]}>
-                    {s.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
         {/* Section 2: Preferred Language */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Primary Language</Text>
@@ -196,37 +131,6 @@ export const PreferencesSettingsScreen: React.FC = () => {
               );
             })}
           </View>
-        </View>
-
-        {/* Section 3: Personalization Controls */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Discovery & Privacy</Text>
-
-          <View style={styles.switchRow}>
-            <View style={styles.switchTextGroup}>
-              <Text style={styles.switchTitle}>Personalized Recommendations</Text>
-              <Text style={styles.switchSubtitle}>
-                Adapt home feed and recommendations based on companion interactions.
-              </Text>
-            </View>
-            <Switch
-              value={profile?.personalizationEnabled ?? true}
-              onValueChange={val => updateField({ personalizationEnabled: val })}
-              trackColor={{ false: '#3A3F55', true: darkThemeColors.accent }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-        </View>
-
-        {/* Section 4: Reset */}
-        <View style={styles.resetSection}>
-          <TouchableOpacity style={styles.resetButton} activeOpacity={0.8} onPress={handleReset}>
-            <Text style={styles.resetButtonText}>Reset Discovery Preferences</Text>
-          </TouchableOpacity>
-          <Text style={styles.resetNote}>
-            Restores initial recommendation signals to factory defaults.
-          </Text>
         </View>
 
         {isSaving && (

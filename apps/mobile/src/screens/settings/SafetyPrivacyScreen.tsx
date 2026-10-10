@@ -1,785 +1,166 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Switch,
-  Alert,
-  ActivityIndicator,
-  FlatList,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { darkThemeColors } from '../../theme/colors.js';
-import { spacing } from '../../theme/spacing.js';
-import { typography } from '../../theme/typography.js';
-import { privacyApi, type PrivacySettings, type BlockedItem } from '../../services/api/privacyApi.js';
-import { Icon, IconButton, IconName } from '../../components/common/index.js';
+import { Icon, IconButton, type IconName } from '../../components/common/index.js';
+import { privacyApi, type BlockedItem } from '../../services/api/privacyApi.js';
+import { darkThemeColors, spacing } from '../../theme/index.js';
 
-// ─── Section Header ───────────────────────────────────────────────────────────
-
-interface SectionHeaderProps {
-  title: string;
-  description?: string;
-}
-
-const SectionHeader: React.FC<SectionHeaderProps> = ({ title, description }) => (
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {description ? <Text style={styles.sectionDescription}>{description}</Text> : null}
-  </View>
-);
-
-// ─── Toggle Row ───────────────────────────────────────────────────────────────
-
-interface ToggleRowProps {
-  label: string;
-  description?: string;
-  value: boolean;
-  onToggle: (v: boolean) => void;
-  disabled?: boolean;
-  dangerMode?: boolean;
-}
-
-const ToggleRow: React.FC<ToggleRowProps> = ({
-  label,
-  description,
-  value,
-  onToggle,
-  disabled = false,
-  dangerMode = false,
-}) => (
-  <View style={styles.toggleRow}>
-    <View style={styles.toggleRowText}>
-      <Text style={[styles.toggleLabel, dangerMode && styles.dangerText]}>{label}</Text>
-      {description ? <Text style={styles.toggleDescription}>{description}</Text> : null}
-    </View>
-    <Switch
-      value={value}
-      onValueChange={onToggle}
-      disabled={disabled}
-      trackColor={{ false: darkThemeColors.border, true: dangerMode ? darkThemeColors.danger : darkThemeColors.accent }}
-      thumbColor={darkThemeColors.textPrimary}
-      ios_backgroundColor={darkThemeColors.border}
-    />
-  </View>
-);
-
-// ─── Action Row ───────────────────────────────────────────────────────────────
-
-interface ActionRowProps {
-  label: string;
-  description?: string;
-  onPress: () => void;
-  loading?: boolean;
-  dangerMode?: boolean;
-  icon?: IconName;
-}
-
-const ActionRow: React.FC<ActionRowProps> = ({
-  label,
-  description,
-  onPress,
-  loading = false,
-  dangerMode = false,
-  icon = 'arrow-right',
-}) => (
-  <TouchableOpacity
-    style={styles.actionRow}
-    onPress={onPress}
-    disabled={loading}
-    activeOpacity={0.7}
-    accessibilityRole="button"
-    accessibilityLabel={label}
-  >
-    <View style={styles.actionRowText}>
-      <Text style={[styles.actionLabel, dangerMode && styles.dangerText]}>{label}</Text>
-      {description ? <Text style={styles.actionDescription}>{description}</Text> : null}
-    </View>
-    {loading ? (
-      <ActivityIndicator size="small" color={darkThemeColors.textMuted} />
-    ) : (
-      <Icon
-        name={icon}
-        size={16}
-        color={dangerMode ? darkThemeColors.danger : darkThemeColors.textMuted}
-      />
-    )}
-  </TouchableOpacity>
-);
-
-// ─── Blocked Item Row ─────────────────────────────────────────────────────────
-
-interface BlockedRowProps {
-  item: BlockedItem;
-  onUnblock: (id: string) => void;
-}
-
-const BlockedRow: React.FC<BlockedRowProps> = ({ item, onUnblock }) => {
-  const typeLabel = item.blockType === 'USER' ? 'User' : item.blockType === 'CHARACTER' ? 'Character' : 'Creator';
-  const typeIcon: IconName = item.blockType === 'USER' ? 'user' : item.blockType === 'CHARACTER' ? 'sparkles' : 'user';
-
-  return (
-    <View style={styles.blockedRow}>
-      <View style={styles.blockedInfo}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <Icon name={typeIcon} size={14} color={darkThemeColors.textMuted} />
-          <Text style={styles.blockedType}>{typeLabel}</Text>
-        </View>
-        <Text style={styles.blockedName}>{item.targetDisplayName || item.targetId}</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.unblockButton}
-        onPress={() => onUnblock(item.id)}
-        accessibilityRole="button"
-        accessibilityLabel={`Unblock ${item.targetDisplayName || item.targetId}`}
-      >
-        <Text style={styles.unblockText}>Unblock</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
-type ActiveTab = 'privacy' | 'blocks';
+/**
+ * Privacy & account, kept to what people actually need: a copy of their data, making the characters
+ * forget them, characters they blocked, and deleting the account (14-day grace period).
+ */
 
 export const SafetyPrivacyScreen: React.FC = () => {
   const navigation = useNavigation();
-
-  const [activeTab, setActiveTab] = useState<ActiveTab>('privacy');
-  const [settings, setSettings] = useState<PrivacySettings | null>(null);
   const [blocks, setBlocks] = useState<BlockedItem[]>([]);
-  const [loadingSettings, setLoadingSettings] = useState(true);
-  const [loadingBlocks, setLoadingBlocks] = useState(false);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [purgeLoading, setPurgeLoading] = useState(false);
-
-  // ── Load privacy settings ──────────────────────────────────────────────────
-
-  const loadSettings = useCallback(async () => {
-    setLoadingSettings(true);
-    try {
-      const data = await privacyApi.getSettings();
-      setSettings(data);
-    } catch {
-      Alert.alert('Error', 'Could not load your privacy settings. Please try again.');
-    } finally {
-      setLoadingSettings(false);
-    }
-  }, []);
-
-  // ── Load block list ────────────────────────────────────────────────────────
-
-  const loadBlocks = useCallback(async () => {
-    setLoadingBlocks(true);
-    try {
-      const data = await privacyApi.getBlocks();
-      setBlocks(data);
-    } catch {
-      // Non-fatal; show empty
-    } finally {
-      setLoadingBlocks(false);
-    }
-  }, []);
+  const [busy, setBusy] = useState<'export' | 'forget' | 'delete' | null>(null);
 
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    privacyApi.getBlocks().then(setBlocks).catch(() => undefined);
+  }, []);
 
-  useEffect(() => {
-    if (activeTab === 'blocks') {
-      loadBlocks();
-    }
-  }, [activeTab, loadBlocks]);
-
-  // ── Toggle helper ──────────────────────────────────────────────────────────
-
-  const handleToggle = async (key: keyof PrivacySettings, value: boolean) => {
-    if (!settings) return;
-    const prev = { ...settings };
-    setSettings({ ...settings, [key]: value });
-    setSavingKey(key);
-    try {
-      const updated = await privacyApi.updateSettings({ [key]: value });
-      setSettings(updated);
-    } catch {
-      setSettings(prev);
-      Alert.alert('Error', 'Could not save this setting. Please try again.');
-    } finally {
-      setSavingKey(null);
-    }
-  };
-
-  // ── Data export ────────────────────────────────────────────────────────────
-
-  const handleRequestExport = async () => {
-    Alert.alert(
-      'Request Data Export',
-      'We will prepare a full copy of your data (conversations, memories, profile) and notify you when it is ready. This may take up to 24 hours.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Request Export',
-          onPress: async () => {
-            setExportLoading(true);
-            try {
-              await privacyApi.requestExport();
-              Alert.alert('Request Submitted', 'Your data export has been queued. You will receive a notification when it is ready to download.');
-            } catch {
-              Alert.alert('Error', 'Could not submit your export request. Please try again later.');
-            } finally {
-              setExportLoading(false);
-            }
-          },
+  const exportData = () =>
+    Alert.alert('Download your data', 'We’ll prepare a copy of your chats, memories and profile and let you know when it’s ready (within 24 hours).', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Request copy',
+        onPress: async () => {
+          setBusy('export');
+          try {
+            await privacyApi.requestExport();
+            Alert.alert('Requested', 'We’ll notify you when your copy is ready.');
+          } catch {
+            Alert.alert('Could not request', 'Please try again later.');
+          } finally {
+            setBusy(null);
+          }
         },
-      ],
-    );
-  };
+      },
+    ]);
 
-  // ── Memory purge ───────────────────────────────────────────────────────────
+  const forget = () =>
+    Alert.alert('Make every character forget you?', 'They will forget everything they remembered about you — your name, your life, your goals. Your chats stay. This can’t be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Forget me',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy('forget');
+          try {
+            const r = await privacyApi.purgeMemories();
+            Alert.alert('Done', r.deletedCount ? `${r.deletedCount} memories deleted.` : 'There was nothing to forget.');
+          } catch {
+            Alert.alert('Could not delete', 'Please try again later.');
+          } finally {
+            setBusy(null);
+          }
+        },
+      },
+    ]);
 
-  const handlePurgeMemories = async () => {
+  const deleteAccount = () =>
     Alert.alert(
-      'Purge All Memories',
-      'This will permanently delete all memories your AI companion has built about you. This cannot be undone. Your conversations will be retained.',
+      'Delete your account?',
+      'Your account, chats and memories will be deleted after 14 days. Sign in before then to cancel. Premium bought through Google Play must be cancelled in the Play Store.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Purge Memories',
+          text: 'Delete account',
           style: 'destructive',
           onPress: async () => {
-            setPurgeLoading(true);
+            setBusy('delete');
             try {
-              const result = await privacyApi.purgeMemories();
-              Alert.alert('Done', `${result.deletedCount} memories have been permanently deleted.`);
+              const r = await privacyApi.requestAccountDeletion('User-initiated from app');
+              Alert.alert('Account will be deleted', `On ${new Date(r.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}. Sign in before then to keep it.`);
             } catch {
-              Alert.alert('Error', 'Could not purge memories. Please try again later.');
+              Alert.alert('Could not delete', 'Please write to us from Help & contact us.');
             } finally {
-              setPurgeLoading(false);
+              setBusy(null);
             }
           },
         },
       ],
     );
-  };
 
-  // ── Account deletion ───────────────────────────────────────────────────────
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account, all conversations, memories, and personal data. A 14-day grace period applies during which you can cancel the request by signing back in.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Schedule Deletion',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const result = await privacyApi.requestAccountDeletion('User-initiated from app');
-              Alert.alert(
-                'Deletion Scheduled',
-                `Your account is scheduled for deletion on ${new Date(result.scheduledAt).toLocaleDateString()}. Sign in before then to cancel.`,
-              );
-            } catch {
-              Alert.alert('Error', 'Could not process your request. Please contact support.');
-            }
-          },
+  const unblock = (b: BlockedItem) =>
+    Alert.alert(`Unblock ${b.targetDisplayName || 'this character'}?`, 'They will show up again.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Unblock',
+        onPress: async () => {
+          try {
+            await privacyApi.removeBlock(b.id);
+            setBlocks((all) => all.filter((x) => x.id !== b.id));
+          } catch {
+            Alert.alert('Could not unblock', 'Please try again.');
+          }
         },
-      ],
-    );
-  };
+      },
+    ]);
 
-  // ── Unblock ────────────────────────────────────────────────────────────────
-
-  const handleUnblock = (id: string) => {
-    const item = blocks.find(b => b.id === id);
-    Alert.alert(
-      'Remove Block',
-      `Unblock ${item?.targetDisplayName || 'this item'}? They will be able to appear in discovery and interactions again.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unblock',
-          onPress: async () => {
-            try {
-              await privacyApi.removeBlock(id);
-              setBlocks(prev => prev.filter(b => b.id !== id));
-            } catch {
-              Alert.alert('Error', 'Could not remove this block. Please try again.');
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const action = (icon: IconName, title: string, sub: string, onPress: () => void, key: typeof busy, first = false, danger = false) => (
+    <Pressable style={({ pressed }) => [styles.row, !first && styles.rowBorder, pressed && styles.pressed]} onPress={onPress} disabled={busy !== null} accessibilityRole="button">
+      <View style={[styles.icon, danger && styles.iconDanger]}>
+        <Icon name={icon} size={16} color={danger ? darkThemeColors.danger : darkThemeColors.accent} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.rowTitle, danger && { color: darkThemeColors.danger }]}>{title}</Text>
+        <Text style={styles.rowSub}>{sub}</Text>
+      </View>
+      {busy === key ? <ActivityIndicator size="small" color={darkThemeColors.accent} /> : <Icon name="arrow-right" size={12} color={darkThemeColors.textMuted} />}
+    </Pressable>
+  );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size="sm"
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
-        <Text style={styles.headerTitle}>Safety &amp; Privacy</Text>
-        <View style={styles.headerSpacer} />
+        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
+        <Text style={styles.title}>Privacy & account</Text>
       </View>
 
-      {/* Tab Bar */}
-      <View style={styles.tabBar}>
-        {(['privacy', 'blocks'] as ActiveTab[]).map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
-            accessibilityRole="tab"
-            accessibilityLabel={tab === 'privacy' ? 'Privacy tab' : 'Blocked list tab'}
-            accessibilityState={{ selected: activeTab === tab }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Icon
-                name={tab === 'privacy' ? 'lock' : 'ban'}
-                size={14}
-                color={activeTab === tab ? darkThemeColors.accent : darkThemeColors.textMuted}
-              />
-              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab === 'privacy' ? 'Privacy' : 'Blocked'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.note}>Your chats are private. Our team never reads them, except a logged safety review if something serious is reported.</Text>
 
-      {/* Privacy Tab */}
-      {activeTab === 'privacy' && (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {loadingSettings ? (
-            <ActivityIndicator size="large" color={darkThemeColors.accent} style={styles.loader} />
-          ) : settings ? (
-            <>
-              {/* Visibility */}
-              <SectionHeader
-                title="Visibility"
-                description="Control what other people and systems can see about you."
-              />
-              <View style={styles.card}>
-                <ToggleRow
-                  label="Show Online Status"
-                  description="Let creators see when you are active on the platform."
-                  value={settings.showOnlineStatus}
-                  onToggle={v => handleToggle('showOnlineStatus', v)}
-                  disabled={savingKey === 'showOnlineStatus'}
-                />
-              </View>
-
-              {/* Personalization & AI */}
-              <SectionHeader
-                title="AI &amp; Personalization"
-                description="Manage how your data is used to improve your experience."
-              />
-              <View style={styles.card}>
-                <ToggleRow
-                  label="Allow Analytics"
-                  description="Help improve the platform by sharing anonymous usage data."
-                  value={settings.allowAnalytics}
-                  onToggle={v => handleToggle('allowAnalytics', v)}
-                  disabled={savingKey === 'allowAnalytics'}
-                />
-                <View style={styles.divider} />
-                <ToggleRow
-                  label="AI Personalization"
-                  description="Use your interactions to tailor character responses and recommendations."
-                  value={settings.allowPersonalization}
-                  onToggle={v => handleToggle('allowPersonalization', v)}
-                  disabled={savingKey === 'allowPersonalization'}
-                />
-                <View style={styles.divider} />
-                <ToggleRow
-                  label="Memory Retention"
-                  description="Allow AI characters to build and recall memories of your conversations."
-                  value={settings.allowMemoryRetention}
-                  onToggle={v => handleToggle('allowMemoryRetention', v)}
-                  disabled={savingKey === 'allowMemoryRetention'}
-                />
-                <View style={styles.divider} />
-                <ToggleRow
-                  label="Proactive Messages"
-                  description="Let AI characters reach out to you between conversations."
-                  value={settings.allowProactiveMessaging}
-                  onToggle={v => handleToggle('allowProactiveMessaging', v)}
-                  disabled={savingKey === 'allowProactiveMessaging'}
-                />
-              </View>
-
-              {/* Communications */}
-              <SectionHeader
-                title="Communications"
-                description="Control marketing and promotional communications."
-              />
-              <View style={styles.card}>
-                <ToggleRow
-                  label="Marketing Emails"
-                  description="Receive updates, tips, and offers from the team."
-                  value={settings.marketingEmailsEnabled}
-                  onToggle={v => handleToggle('marketingEmailsEnabled', v)}
-                  disabled={savingKey === 'marketingEmailsEnabled'}
-                />
-              </View>
-
-              {/* Your Data */}
-              <SectionHeader
-                title="Your Data"
-                description="Download or manage the data associated with your account."
-              />
-              <View style={styles.card}>
-                <ActionRow
-                  label="Request Data Export"
-                  description="Download a full copy of your conversations, memories, and profile."
-                  onPress={handleRequestExport}
-                  loading={exportLoading}
-                  icon="arrow-right"
-                />
-                <View style={styles.divider} />
-                <ActionRow
-                  label="Purge All Memories"
-                  description="Permanently erase all AI memories about you. Cannot be undone."
-                  onPress={handlePurgeMemories}
-                  loading={purgeLoading}
-                  dangerMode
-                  icon="trash"
-                />
-              </View>
-
-              {/* Danger Zone */}
-              <SectionHeader
-                title="Danger Zone"
-                description="Irreversible account actions. Proceed with caution."
-              />
-              <View style={[styles.card, styles.dangerCard]}>
-                <ActionRow
-                  label="Delete Account"
-                  description="Permanently delete your account and all associated data after a 14-day grace period."
-                  onPress={handleDeleteAccount}
-                  dangerMode
-                  icon="warning"
-                />
-              </View>
-
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                  Your privacy matters. Data processed in accordance with our Privacy Policy.
-                  For questions, contact privacy@lovira.ai
-                </Text>
-              </View>
-            </>
-          ) : (
-            <Text style={styles.emptyText}>Could not load settings.</Text>
-          )}
-        </ScrollView>
-      )}
-
-      {/* Blocks Tab */}
-      {activeTab === 'blocks' && (
-        <View style={styles.flex}>
-          {loadingBlocks ? (
-            <ActivityIndicator size="large" color={darkThemeColors.accent} style={styles.loader} />
-          ) : blocks.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: `${darkThemeColors.accent}15`, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Icon name="ban" size={24} color={darkThemeColors.textMuted} />
-              </View>
-              <Text style={styles.emptyStateTitle}>No Blocked Items</Text>
-              <Text style={styles.emptyStateDesc}>
-                Characters, creators, or users you block will appear here. You can remove blocks at any time.
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={blocks}
-              keyExtractor={item => item.id}
-              renderItem={({ item }) => (
-                <BlockedRow item={item} onUnblock={handleUnblock} />
-              )}
-              contentContainerStyle={styles.blockList}
-              ItemSeparatorComponent={() => <View style={styles.divider} />}
-            />
-          )}
+        <View style={styles.card}>
+          {action('book', 'Download your data', 'A copy of your chats, memories and profile', exportData, 'export', true)}
+          {action('brain', 'Make characters forget me', 'Delete everything they remember about you', forget, 'forget')}
         </View>
-      )}
-    </View>
+
+        {blocks.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Blocked</Text>
+            {blocks.map((b) => (
+              <View key={b.id} style={[styles.row, styles.rowBorder]}>
+                <Text style={[styles.rowTitle, { flex: 1 }]}>{b.targetDisplayName || 'Character'}</Text>
+                <Pressable onPress={() => unblock(b)} hitSlop={8}>
+                  <Text style={styles.unblock}>Unblock</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.card}>{action('trash', 'Delete account', 'Deleted after 14 days — sign in to cancel', deleteAccount, 'delete', true, true)}</View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: darkThemeColors.background,
-  },
-  flex: {
-    flex: 1,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.huge,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: darkThemeColors.border,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backIcon: {
-    fontSize: 28,
-    color: darkThemeColors.textPrimary,
-    lineHeight: 32,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    ...typography.headingMedium,
-    color: darkThemeColors.textPrimary,
-  },
-  headerSpacer: {
-    width: 36,
-  },
-
-  // Tab Bar
-  tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
-    gap: spacing.xs,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: darkThemeColors.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 10,
-    alignItems: 'center',
-    backgroundColor: darkThemeColors.surface,
-  },
-  activeTab: {
-    backgroundColor: darkThemeColors.accentMuted,
-  },
-  tabText: {
-    ...typography.labelMedium,
-    color: darkThemeColors.textMuted,
-  },
-  activeTabText: {
-    color: darkThemeColors.accent,
-  },
-
-  // Scroll
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.huge,
-  },
-
-  // Section
-  sectionHeader: {
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.labelLarge,
-    color: darkThemeColors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.xxs,
-  },
-  sectionDescription: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textMuted,
-    lineHeight: 18,
-  },
-
-  // Card
-  card: {
-    backgroundColor: darkThemeColors.surface,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: darkThemeColors.border,
-    overflow: 'hidden',
-  },
-  dangerCard: {
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.06)',
-  },
-
-  // Toggle Row
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-  },
-  toggleRowText: {
-    flex: 1,
-  },
-  toggleLabel: {
-    ...typography.bodyMedium,
-    color: darkThemeColors.textPrimary,
-    marginBottom: 2,
-  },
-  toggleDescription: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textMuted,
-    lineHeight: 18,
-  },
-
-  // Action Row
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-  },
-  actionRowText: {
-    flex: 1,
-  },
-  actionLabel: {
-    ...typography.bodyMedium,
-    color: darkThemeColors.textPrimary,
-    marginBottom: 2,
-  },
-  actionDescription: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textMuted,
-    lineHeight: 18,
-  },
-  chevron: {
-    fontSize: 18,
-    color: darkThemeColors.textMuted,
-  },
-
-  // Danger
-  dangerText: {
-    color: darkThemeColors.danger,
-  },
-
-  // Divider
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: darkThemeColors.border,
-    marginLeft: spacing.lg,
-  },
-
-  // Blocked list
-  blockList: {
-    padding: spacing.lg,
-    paddingBottom: spacing.huge,
-  },
-  blockedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: darkThemeColors.surface,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: darkThemeColors.border,
-    marginVertical: spacing.xxs,
-  },
-  blockedInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  blockedType: {
-    ...typography.caption,
-    color: darkThemeColors.textMuted,
-  },
-  blockedName: {
-    ...typography.bodyMedium,
-    color: darkThemeColors.textPrimary,
-  },
-  unblockButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: darkThemeColors.danger,
-  },
-  unblockText: {
-    ...typography.caption,
-    color: darkThemeColors.danger,
-  },
-
-  // Empty / loader states
-  loader: {
-    marginTop: spacing.huge,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xxxl,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.lg,
-  },
-  emptyStateTitle: {
-    ...typography.headingMedium,
-    color: darkThemeColors.textPrimary,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  emptyStateDesc: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  emptyText: {
-    ...typography.bodyMedium,
-    color: darkThemeColors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.huge,
-  },
-
-  // Footer
-  footer: {
-    marginTop: spacing.xxxl,
-    marginBottom: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: darkThemeColors.surface,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: darkThemeColors.border,
-  },
-  footerText: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+  container: { flex: 1, backgroundColor: darkThemeColors.background },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
+  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: 48 },
+  note: { color: darkThemeColors.textSecondary, fontSize: 13, lineHeight: 19 },
+  card: { backgroundColor: darkThemeColors.surface, borderRadius: 16, borderWidth: 1, borderColor: darkThemeColors.border, paddingHorizontal: spacing.md },
+  cardTitle: { color: darkThemeColors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', paddingTop: 14 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 14 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: darkThemeColors.border },
+  pressed: { opacity: 0.7 },
+  icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139,92,246,0.14)' },
+  iconDanger: { backgroundColor: 'rgba(239,68,68,0.12)' },
+  rowTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
+  rowSub: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 2 },
+  unblock: { color: '#F472B6', fontSize: 14, fontWeight: '600' },
 });

@@ -9,6 +9,7 @@ import type {
   DataExportRequestItem,
   AccountDeletionRequestItem,
 } from '@ai-companion/types';
+import { UserProfileService } from '../../memory/services/userProfile.service.js';
 
 export class PrivacyService {
   /**
@@ -352,15 +353,19 @@ export class PrivacyService {
         status: 'DELETED',
       },
     });
+    // Also each character's profile card about them (name, life, birthdays, upcoming events) — otherwise
+    // "forget me" would leave the most personal part behind.
+    const profiles = await prisma.userCharacterProfile.count({ where: { userId } }).catch(() => 0);
+    await UserProfileService.clear(userId);
 
     await AuditService.log({
       actorType: 'USER',
       actorId: userId,
       action: 'USER_MEMORIES_PURGED',
       resourceType: 'memory',
-      metadata: { deletedCount: result.count },
+      metadata: { deletedCount: result.count, profileCards: profiles },
     });
 
-    return { deletedCount: result.count };
+    return { deletedCount: result.count + profiles };
   }
 }

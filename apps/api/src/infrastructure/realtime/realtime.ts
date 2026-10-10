@@ -64,20 +64,29 @@ async function markOnline(userId: string, connId: string) {
 
 const ticketSecret = () => `${env.JWT_ACCESS_SECRET}:realtime-admin`;
 
+/** Live updates are a bonus: they must never break the request that triggered them. */
+function send(channel: string, message: string): void {
+  try {
+    void Promise.resolve(redis.publish(channel, message)).catch(() => undefined);
+  } catch {
+    /* no Redis (tests, outage) */
+  }
+}
+
 export const Realtime = {
   /** To every open app of this user. Never throws. */
   publish(userId: string, event: UserEvent): void {
-    redis.publish(`${USER}${userId}`, JSON.stringify(event)).catch(() => undefined);
+    send(`${USER}${userId}`, JSON.stringify(event));
   },
 
   /** To every open app (e.g. maintenance switched on). */
   broadcast(event: BroadcastEvent): void {
-    redis.publish(ALL, JSON.stringify(event)).catch(() => undefined);
+    send(ALL, JSON.stringify(event));
   },
 
   /** To every open admin tab. */
   admin(event: Omit<AdminEvent, 'type'>): void {
-    redis.publish(ADMIN, JSON.stringify({ type: 'admin', ...event })).catch(() => undefined);
+    send(ADMIN, JSON.stringify({ type: 'admin', ...event }));
   },
 
   /**
@@ -123,13 +132,13 @@ export const Realtime = {
     sub.on('error', (err: Error) => logger.warn(`Realtime Redis: ${err.message}`));
     void sub.psubscribe(`${USER}*`).catch((err) => logger.warn('Realtime subscribe failed', { error: String(err) }));
     void sub.subscribe(ALL, ADMIN).catch((err) => logger.warn('Realtime subscribe failed', { error: String(err) }));
-    const send = (ws: WebSocket, message: string) => ws.readyState === ws.OPEN && ws.send(message);
+    const deliver = (ws: WebSocket, message: string) => ws.readyState === ws.OPEN && ws.send(message);
     sub.on('pmessage', (_p: string, channel: string, message: string) => {
-      users.get(channel.slice(USER.length))?.forEach((ws) => send(ws, message));
+      users.get(channel.slice(USER.length))?.forEach((ws) => deliver(ws, message));
     });
     sub.on('message', (channel: string, message: string) => {
-      if (channel === ALL) users.forEach((set) => set.forEach((ws) => send(ws, message)));
-      else if (channel === ADMIN) admins.forEach((ws) => send(ws, message));
+      if (channel === ALL) users.forEach((set) => set.forEach((ws) => deliver(ws, message)));
+      else if (channel === ADMIN) admins.forEach((ws) => deliver(ws, message));
     });
 
     server.on('upgrade', (req: IncomingMessage, socket, head) => {

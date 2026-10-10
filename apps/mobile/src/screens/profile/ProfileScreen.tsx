@@ -14,7 +14,7 @@ import { darkThemeColors, spacing } from '../../theme/index.js';
 import type { RootStackParamList } from '../../navigation/types.js';
 
 /**
- * Profile: who you are, your plan, and five settings — nothing else.
+ * Profile: who you are, your plan, and four settings — nothing else.
  * (Older screens — credits wallet, documents, personalization — are no longer linked here.)
  */
 
@@ -27,9 +27,8 @@ interface Row {
 
 const ROWS: Row[] = [
   { icon: 'palette', title: 'Chat preferences', subtitle: 'Language and how characters talk to you', route: 'PreferencesSettings' },
-  { icon: 'bell', title: 'Notifications', subtitle: 'Messages, quiet hours, reminders, inbox', route: 'NotificationSettings' },
-  { icon: 'brain', title: 'What characters remember', subtitle: 'See or delete what they know about you', route: 'MemorySettings' },
-  { icon: 'shield', title: 'Privacy & account', subtitle: 'Download your data or delete your account', route: 'SafetyPrivacySettings' },
+  { icon: 'bell', title: 'Notifications', subtitle: 'What reaches you, quiet hours, reminders', route: 'NotificationSettings' },
+  { icon: 'shield', title: 'Privacy & account', subtitle: 'Your data, blocked characters, delete account', route: 'SafetyPrivacySettings' },
   { icon: 'chat', title: 'Help & contact us', subtitle: 'Quick answers, or write to the team', route: 'Help' },
 ];
 
