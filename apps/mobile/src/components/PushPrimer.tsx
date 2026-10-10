@@ -6,15 +6,17 @@ import { PushService } from '../services/push/PushService.js';
 import { darkThemeColors, spacing } from '../theme/index.js';
 
 /**
- * Asks for notification permission at a good moment — after a few replies the user enjoyed, in the
- * character's name — instead of on first launch (when most people tap "Don't allow" for good).
+ * Asks for notification permission at a good moment — when they leave a chat after a few messages from
+ * the character, in the character's name — instead of on first launch (when most people tap "Don't allow" for good).
  * Android's own popup only appears after "Yes". "Not now" waits 3 days; we stop after 3 tries.
  */
 
 type Who = { name: string; avatarUrl?: string | null };
+type Moment = Who & { replies: number };
 
 const MOMENTS_KEY = 'push.goodMoments';
 const DECLINED_KEY = 'push.primerDeclined'; // "count:lastTimestamp"
+/** Messages from characters before we ask (counted across chats). */
 const MOMENTS_NEEDED = 3;
 const WAIT_MS = 3 * 86_400_000;
 const MAX_TRIES = 3;
@@ -22,10 +24,10 @@ const MAX_TRIES = 3;
 let show: ((who: Who) => void) | null = null;
 let checking = false;
 
-async function shouldAsk(): Promise<boolean> {
+async function shouldAsk(replies: number): Promise<boolean> {
   if ((await PushService.permission()) === 'AUTHORIZED') return false;
   if (await PushService.askedAt()) return false; // Android's popup was shown already: Settings is the way now
-  const moments = Number(await AsyncStorage.getItem(MOMENTS_KEY)) + 1;
+  const moments = Number(await AsyncStorage.getItem(MOMENTS_KEY)) + replies;
   await AsyncStorage.setItem(MOMENTS_KEY, String(moments));
   if (moments < MOMENTS_NEEDED) return false;
   const [tries = 0, last = 0] = String((await AsyncStorage.getItem(DECLINED_KEY)) ?? '').split(':').map(Number);
@@ -33,11 +35,11 @@ async function shouldAsk(): Promise<boolean> {
 }
 
 export const PushPrimer = {
-  /** Call when a reply finished well (not after a crisis or an error). */
-  noteGoodMoment(who: Who) {
+  /** Call when they leave a chat that went well, with how many messages the character sent. */
+  noteGoodMoment({ replies, ...who }: Moment) {
     if (checking || !show) return;
     checking = true;
-    shouldAsk()
+    shouldAsk(replies)
       .then((ask) => ask && show?.(who))
       .catch(() => undefined)
       .finally(() => {
@@ -50,8 +52,8 @@ export const PushPrimerHost: React.FC = () => {
   const [who, setWho] = useState<Who | null>(null);
 
   useEffect(() => {
-    // A short pause so the sheet doesn't cover the reply they're reading.
-    show = (w) => setTimeout(() => setWho(w), 2500);
+    // Shown on the screen they go back to, after the transition settles.
+    show = (w) => setTimeout(() => setWho(w), 700);
     return () => {
       show = null;
     };
