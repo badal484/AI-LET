@@ -148,8 +148,10 @@ export class NotificationDeliveryEngine {
       `notif_${userId}_${category}_${characterId || 'global'}_${Math.floor(Date.now() / 60000)}`;
 
     // 1. Check Idempotency in delivery logs
-    const existingLog = await prisma.notificationDeliveryLog.findUnique({
-      where: { idempotencyKey },
+    // Logged per device as `${idempotencyKey}_${deviceId}`.
+    const existingLog = await prisma.notificationDeliveryLog.findFirst({
+      where: { idempotencyKey: { startsWith: `${idempotencyKey}_` } },
+      select: { id: true },
     });
 
     if (existingLog) {

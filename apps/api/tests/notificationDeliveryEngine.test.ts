@@ -16,7 +16,7 @@ vi.mock('../src/infrastructure/database/prisma.js', () => ({
       create: vi.fn(),
     },
     notificationDeliveryLog: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     inAppNotification: {
@@ -114,7 +114,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
         updatedAt: new Date(),
       } as any);
 
-      vi.mocked(prisma.notificationDeliveryLog.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.notificationDeliveryLog.findFirst).mockResolvedValue(null);
 
       const result = await NotificationDeliveryEngine.dispatchNotification({
         userId: 'user-1',
@@ -145,7 +145,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
         updatedAt: new Date(),
       } as any);
 
-      vi.mocked(prisma.notificationDeliveryLog.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.notificationDeliveryLog.findFirst).mockResolvedValue(null);
 
       const result = await NotificationDeliveryEngine.dispatchNotification({
         userId: 'user-1',
@@ -175,7 +175,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
         updatedAt: new Date(),
       } as any);
 
-      vi.mocked(prisma.notificationDeliveryLog.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.notificationDeliveryLog.findFirst).mockResolvedValue(null);
 
       const result = await NotificationDeliveryEngine.dispatchNotification({
         userId: 'user-1',
@@ -189,7 +189,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
     });
 
     it('should return DUPLICATE if idempotencyKey already exists in delivery logs', async () => {
-      vi.mocked(prisma.notificationDeliveryLog.findUnique).mockResolvedValue({
+      vi.mocked(prisma.notificationDeliveryLog.findFirst).mockResolvedValue({
         id: 'log-existing-1',
         idempotencyKey: 'proactive-msg-msg-12345',
         status: 'DELIVERED',
@@ -225,7 +225,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
         updatedAt: new Date(),
       } as any);
 
-      vi.mocked(prisma.notificationDeliveryLog.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.notificationDeliveryLog.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.notificationDeliveryLog.create).mockResolvedValue({ id: 'log-new-1' } as any);
       vi.mocked(prisma.inAppNotification.create).mockResolvedValue({
         id: 'inapp-new-1',
@@ -293,7 +293,7 @@ describe('Phase 14: NotificationDeliveryEngine', () => {
         updatedAt: new Date(),
       } as any);
 
-      vi.mocked(prisma.notificationDeliveryLog.findUnique).mockResolvedValue(null);
+      vi.mocked(prisma.notificationDeliveryLog.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.notificationDeliveryLog.create).mockResolvedValue({ id: 'log-new-2' } as any);
       vi.mocked(prisma.inAppNotification.create).mockResolvedValue({
         id: 'inapp-new-2',

@@ -63,6 +63,7 @@ import type {
   AIProviderName,
 } from '@ai-companion/types';
 import { AIGateway } from '../../ai/gateway/AIGateway.js';
+import { NotificationDeliveryEngine } from '../../notifications/services/NotificationDeliveryEngine.js';
 
 /** "can you give me code?", "script likh do" — a code answer needs more room than a chat reply. */
 const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|implement|likh (do|ke do)|bana (do|ke do))\b/i;
@@ -211,9 +212,12 @@ export class StreamingChatService {
       }
 
       this.initSseResponse(res);
-      req.on('close', () => {
-        // The turn keeps running without the client: the reply is stored and shown on return.
-        clientGone = true;
+      // The response closing before we end it = the phone hung up (left the chat or the app). The
+      // request's own 'close' fires as soon as its body is read on current Node, so it can't tell.
+      res.on('close', () => {
+        // The turn keeps running without the client: the reply is stored, shown on return, and
+        // sent as a notification.
+        if (!res.writableEnded) clientGone = true;
       });
 
       if (saved) {
@@ -1395,10 +1399,33 @@ export class StreamingChatService {
       data: {
         lastMessageAt: new Date(),
         lastMessageSnippet: isCodeBubble(delivered[delivered.length - 1]!.content) ? '💻 Code' : delivered[delivered.length - 1]!.content.slice(0, 120),
-        unreadCount: 0,
+        // They left mid-reply: unread until they open the chat again.
+        unreadCount: params.isClientGone() ? { increment: delivered.length } : 0,
         hiddenAt: null,
       },
     });
+
+    // Like WhatsApp: the reply reaches them as a notification. Sent in quiet hours too — it answers
+    // what they just wrote — and never counted against the "texting first" budget.
+    if (params.isClientGone()) {
+      const preview = delivered
+        .slice(-3)
+        .map((d) => (isCodeBubble(d.content) ? '💻 Code' : d.content))
+        .join('\n');
+      NotificationDeliveryEngine.dispatchNotification({
+        userId,
+        category: 'character_message',
+        title: characterRuntime.name,
+        body: preview,
+        characterId: conversation.characterId,
+        characterName: characterRuntime.name,
+        conversationId,
+        inbox: false,
+        bypassQuietHours: true,
+        idempotencyKey: `reply_${firstReplyId}`,
+        data: { kind: 'reply' },
+      }).catch((err) => logger.warn('Reply notification failed', { conversationId, error: err instanceof Error ? err.message : err }));
+    }
 
     // Compatibility summary event for clients that do not render bubbles individually.
     send<StreamMessageCompletedPayload>('message.completed', {

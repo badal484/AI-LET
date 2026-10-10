@@ -8,6 +8,7 @@ import {
   messageFeedbackSchema,
 } from '@ai-companion/validation';
 import { ApiResponse } from '../../../shared/utils/apiResponse.js';
+import { prisma } from '../../../infrastructure/database/prisma.js';
 
 export class ConversationController {
   public static async createConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -55,6 +56,12 @@ export class ConversationController {
       const conversationId = req.params['conversationId'] as string;
       const query = messagePaginationQuerySchema.parse(req.query);
       const result = await ConversationService.getMessageHistory(userId, conversationId, query);
+      // Opening the chat (its newest page) reads everything: clear the Chats-list badge.
+      if (!query.cursor) {
+        await prisma.conversation
+          .updateMany({ where: { id: conversationId, userId, unreadCount: { gt: 0 } }, data: { unreadCount: 0 } })
+          .catch(() => undefined);
+      }
 
       ApiResponse.success(res, result.items, 200, {
         hasMore: result.hasMore,
