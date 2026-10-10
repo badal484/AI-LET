@@ -108,8 +108,8 @@ export const PreferencesSettingsScreen: React.FC = () => {
           accessibilityLabel="Go back"
           style={{ alignSelf: 'flex-start', marginBottom: 6 }}
         />
-        <Text style={styles.title}>Preferences & Tone</Text>
-        <Text style={styles.subtitle}>Manage conversational style and discovery signals</Text>
+        <Text style={styles.title}>Chat preferences</Text>
+        <Text style={styles.subtitle}>Language and how characters talk to you</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -217,20 +217,6 @@ export const PreferencesSettingsScreen: React.FC = () => {
             />
           </View>
 
-          <View style={[styles.switchRow, { borderBottomWidth: 0 }]}>
-            <View style={styles.switchTextGroup}>
-              <Text style={styles.switchTitle}>Auto-Play Voice Greetings</Text>
-              <Text style={styles.switchSubtitle}>
-                Automatically stream voice audio when available.
-              </Text>
-            </View>
-            <Switch
-              value={profile?.audioAutoPlay ?? true}
-              onValueChange={val => updateField({ audioAutoPlay: val })}
-              trackColor={{ false: '#3A3F55', true: darkThemeColors.accent }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
         </View>
 
         {/* Section 4: Reset */}

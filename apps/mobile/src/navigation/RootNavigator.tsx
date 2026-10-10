@@ -19,6 +19,7 @@ import { SubscriptionManagementScreen } from '../screens/subscription/Subscripti
 import { CreditWalletScreen } from '../screens/subscription/CreditWalletScreen.js';
 import { KnowledgeDocumentsScreen } from '../screens/knowledge/KnowledgeDocumentsScreen.js';
 import { CreateCharacterScreen } from '../screens/creator/CreateCharacterScreen.js';
+import { HelpScreen } from '../screens/help/HelpScreen.js';
 import type { RootStackParamList } from './types.js';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -50,6 +51,7 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
       <Stack.Screen name="Reminders" component={RemindersScreen} />
       <Stack.Screen name="SafetyPrivacySettings" component={SafetyPrivacyScreen} />
+      <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="KnowledgeDocuments" component={KnowledgeDocumentsScreen} />
     </Stack.Navigator>
   );

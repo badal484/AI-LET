@@ -10,6 +10,7 @@ import type { RootStackParamList } from './types.js';
  *   companion://character/<slug>        a character's profile
  *   companion://paywall                 Premium
  *   companion://notifications           the inbox
+ *   companion://help                    Help & contact us (support replies)
  *   companion://home | messages | profile   a tab
  */
 export function openAppLink(nav: NavigationContainerRefWithCurrent<RootStackParamList>, link: string | null | undefined): boolean {
@@ -37,6 +38,9 @@ export function openAppLink(nav: NavigationContainerRefWithCurrent<RootStackPara
       return true;
     case 'notifications':
       nav.navigate('NotificationCenter');
+      return true;
+    case 'help':
+      nav.navigate('Help');
       return true;
     case 'messages':
     case 'chats':
