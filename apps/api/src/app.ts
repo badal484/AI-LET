@@ -19,7 +19,7 @@ import { adminRouter } from './modules/admin/admin.routes.js';
 import { consoleRouter } from './modules/console/console.routes.js';
 import { supportRouter } from './modules/console/support.routes.js';
 import { appConfigRouter } from './modules/console/appConfig.routes.js';
-import { getSetting } from './modules/console/appSettings.js';
+import { maintenanceInfo } from './modules/console/appSettings.js';
 import { UPLOAD_DIR } from './modules/console/media.js';
 import { characterRouter } from './modules/characters/routes/character.routes.js';
 import { adminCharacterRouter } from './modules/characters/routes/adminCharacter.routes.js';
@@ -128,8 +128,10 @@ export const createApp = (): Express => {
   // payment notifications keep working.
   app.use(env.API_PREFIX, async (req, res, next) => {
     if (req.path.startsWith('/admin') || req.path.startsWith('/health') || req.path.startsWith('/billing/webhooks')) return next();
-    if (!(await getSetting('maintenance.enabled').catch(() => false))) return next();
-    res.status(503).json({ success: false, error: { code: 'MAINTENANCE', message: await getSetting('maintenance.message') } });
+    const maintenance = await maintenanceInfo().catch(() => null);
+    if (!maintenance) return next();
+    // The app shows its maintenance screen from this (title, message, picture, back-by time, button).
+    res.status(503).json({ success: false, error: { code: 'MAINTENANCE', message: maintenance.message, maintenance } });
   });
 
   // Phase 2 Identity, Auth & Admin Routes

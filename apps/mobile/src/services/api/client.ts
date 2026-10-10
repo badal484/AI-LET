@@ -3,6 +3,7 @@ import { ApiErrorResponse } from '@ai-companion/types';
 import { SecureAuthStorage } from '../auth/SecureAuthStorage.js';
 
 import { API_BASE_URL } from '../../config/appInfo.js';
+import { noteMaintenanceError } from '../../stores/maintenanceStore.js';
 
 export { API_BASE_URL };
 
@@ -166,6 +167,8 @@ export class ApiClient {
           }
 
           if (error.response?.data?.error) {
+            // Maintenance mode: the app switches to its maintenance screen.
+            noteMaintenanceError(error.response.data.error);
             return Promise.reject(error.response.data.error);
           }
 
