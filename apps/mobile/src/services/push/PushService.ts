@@ -26,7 +26,7 @@ import { APP_VERSION } from '../../config/appInfo.js';
  */
 
 type PushData = Record<string, string | object | undefined>;
-export type PushOpenTarget = { characterId?: string; conversationId?: string; deepLink?: string; campaignId?: string };
+export type PushOpenTarget = { characterId?: string; conversationId?: string; deepLink?: string; campaignId?: string; nkey?: string };
 
 const DEVICE_ID_KEY = 'push.deviceId';
 const ASKED_KEY = 'push.askedAt';
@@ -51,10 +51,12 @@ const targetOf = (data: PushData | undefined): PushOpenTarget => ({
   conversationId: str(data?.conversationId),
   deepLink: str(data?.deepLink),
   campaignId: str(data?.campaignId),
+  nkey: str(data?.nkey),
 });
 
 function open(target: PushOpenTarget) {
   if (target.campaignId) void NotificationApi.campaignAction(target.campaignId, 'open').catch(() => undefined);
+  if (target.nkey) void NotificationApi.opened(target.nkey).catch(() => undefined);
   if (!target.characterId && !target.deepLink) return;
   if (navigator && signedIn) navigator.open(target);
   else pendingOpen = target; // opened from a closed app: wait until sign-in and navigation are ready

@@ -168,6 +168,11 @@ export class NotificationApi {
     return response.data.data;
   }
 
+  /** A notification was tapped (for the admin's open rates). */
+  public static async opened(key: string): Promise<void> {
+    await ApiClient.getInstance().post('/notifications/opened', { key });
+  }
+
   /** What the person did with a campaign (for the admin's results). */
   public static async campaignAction(campaignId: string, action: 'open' | 'click' | 'dismiss'): Promise<void> {
     await ApiClient.getInstance().post(`/notifications/campaigns/${campaignId}/${action}`, {});

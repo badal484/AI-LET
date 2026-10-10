@@ -303,6 +303,8 @@ export class NotificationDeliveryEngine {
             characterId,
             proactiveActionId,
             deepLink: resolvedDeepLink,
+            // The app sends this back when the notification is tapped (opens in the admin's numbers).
+            nkey: idempotencyKey,
             ...Object.fromEntries(Object.entries(data).filter((e): e is [string, string] => typeof e[1] === 'string')),
           },
         };
