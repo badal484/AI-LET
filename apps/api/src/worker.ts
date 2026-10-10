@@ -1,5 +1,6 @@
 import { QueueManager } from './infrastructure/queues/QueueManager.js';
 import { AccountDeletionService } from './modules/privacy/services/AccountDeletionService.js';
+import { recordJobRun } from './modules/console/health.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { logger } from './config/logger.js';
@@ -64,8 +65,14 @@ function every(name: string, ms: number, job: () => Promise<unknown>): NodeJS.Ti
     if (running) return;
     running = true;
     job()
-      .then((r) => r && logger.debug(`[Worker:${name}]`, { result: r }))
-      .catch((err) => logger.error(`[Worker:${name}] failed`, { error: err instanceof Error ? err.message : err }))
+      .then((r) => {
+        if (r) logger.debug(`[Worker:${name}]`, { result: r });
+        void recordJobRun(name, ms, true);
+      })
+      .catch((err) => {
+        logger.error(`[Worker:${name}] failed`, { error: err instanceof Error ? err.message : err });
+        void recordJobRun(name, ms, false, err instanceof Error ? err.message : String(err));
+      })
       .finally(() => {
         running = false;
       });

@@ -6,12 +6,12 @@ import {
   addMessages, cancelDeletion, deleteMemory, getMemories, getUser, grantPremium, listUsers, removePremium, requestDeletion, resetToday,
   setBlocked, signOutEverywhere, usersCsv, type ListParams,
 } from './users.service.js';
-import { addGalleryImage, getAiCost, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
+import { addGalleryImage, getAiCost, getCharacter, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
 import express from 'express';
 import { allSettings, setSetting } from './appSettings.js';
 import { AuditService } from '../audit/audit.service.js';
 import {
-  changeOwnPassword, createPromo, getSafety, getSystem, inviteAdmin, listAudit, listPromos, listSupport, listTeam,
+  changeOwnPassword, createPromo, resolveAllMoments, getSafety, getSystem, inviteAdmin, listAudit, listPromos, listSupport, listTeam,
   replySupport, resolveMoment, reviewChat, setAdminActive, setPromoActive, setReportStatus,
 } from './ops.service.js';
 
@@ -77,6 +77,7 @@ consoleRouter.delete('/users/:id/memories/:memoryId', requirePermission(P.MEMORI
 
 // Characters
 consoleRouter.get('/characters', requirePermission(P.CHARACTERS_READ), handle(() => listCharacters()));
+consoleRouter.get('/characters/:id', requirePermission(P.CHARACTERS_READ), handle((req) => getCharacter(idOf(req))));
 consoleRouter.patch('/characters/:id', requirePermission(P.CHARACTERS_PUBLISH), handle((req) =>
   updateCharacter(adminId(req), idOf(req), { live: req.body?.live, featured: req.body?.featured, name: req.body?.name, tagline: req.body?.tagline }),
 ));
@@ -115,13 +116,16 @@ consoleRouter.get('/ai-cost', requirePermission(P.AI_COST_READ), handle((req) =>
 // Safety
 consoleRouter.get('/safety', requirePermission(P.MODERATION_READ), handle(() => getSafety()));
 consoleRouter.post('/safety/moments/:id/resolve', requirePermission(P.MODERATION_WRITE), handle((req) => resolveMoment(adminId(req), idOf(req), String(req.body?.note ?? ''))));
+consoleRouter.post('/safety/moments/resolve-all', requirePermission(P.MODERATION_WRITE), handle((req) =>
+  resolveAllMoments(adminId(req), typeof req.body?.kind === 'string' && req.body.kind ? req.body.kind : null, String(req.body?.note ?? '')),
+));
 consoleRouter.post('/safety/reports/:id/status', requirePermission(P.MODERATION_WRITE), handle((req) => setReportStatus(adminId(req), idOf(req), String(req.body?.status ?? ''))));
 consoleRouter.post('/safety/review', requirePermission(P.MODERATION_WRITE), handle((req) =>
   reviewChat(adminId(req), { messageId: req.body?.messageId, momentId: req.body?.momentId }, reasonOf(req)),
 ));
 
 // Support
-consoleRouter.get('/support', requirePermission(P.SUPPORT_READ), handle((req) => listSupport(String(req.query['status'] ?? 'open'))));
+consoleRouter.get('/support', requirePermission(P.SUPPORT_READ), handle((req) => listSupport(String(req.query['status'] ?? 'open'), String(req.query['search'] ?? ''))));
 consoleRouter.post('/support/:id/reply', requirePermission(P.SUPPORT_WRITE), handle((req) => replySupport(adminId(req), idOf(req), String(req.body?.reply ?? ''), Boolean(req.body?.close))));
 
 // System
