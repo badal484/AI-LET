@@ -64,6 +64,7 @@ import type {
 } from '@ai-companion/types';
 import { AIGateway } from '../../ai/gateway/AIGateway.js';
 import { NotificationDeliveryEngine } from '../../notifications/services/NotificationDeliveryEngine.js';
+import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 
 /** "can you give me code?", "script likh do" — a code answer needs more room than a chat reply. */
 const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|implement|likh (do|ke do)|bana (do|ke do))\b/i;
@@ -355,7 +356,12 @@ export class StreamingChatService {
       lastAttemptedSeq = attempted;
 
       await ConversationLockManager.extendLock(conversation.id, lockToken);
-      const answered = await this.replyToPending({ ...params, characterRuntime, pending });
+      let answered = false;
+      try {
+        answered = await this.replyToPending({ ...params, characterRuntime, pending });
+      } finally {
+        Realtime.publish(params.userId, { type: 'typing', conversationId: conversation.id, characterId: conversation.characterId, typing: false });
+      }
       if (!answered) break;
     }
     return lastAttemptedSeq;
@@ -584,6 +590,8 @@ export class StreamingChatService {
     const lastSeq = pending[pending.length - 1]!.sequenceNumber;
 
     send<Record<string, string>>('typing', { conversationId });
+    // The Chats list (and other devices) show "typing…" too.
+    Realtime.publish(userId, { type: 'typing', conversationId, characterId: conversation.characterId, typing: true });
 
     // Context: history before the pending messages; the pending burst is the current user turn.
     const recentMessages = await prisma.message.findMany({
@@ -1405,9 +1413,13 @@ export class StreamingChatService {
       },
     });
 
-    // Like WhatsApp: the reply reaches them as a notification. Sent in quiet hours too — it answers
-    // what they just wrote — and never counted against the "texting first" budget.
-    if (params.isClientGone()) {
+    // Open apps update the Chats list (new message, unread badge) right away.
+    Realtime.publish(userId, { type: 'conversation.updated', conversationId, characterId: conversation.characterId });
+
+    // Like WhatsApp: the reply reaches them as a notification — only if the app isn't open (an open app
+    // just shows it in Chats with a badge). Sent in quiet hours too — it answers what they just wrote —
+    // and never counted against the "texting first" budget.
+    if (params.isClientGone() && !(await Realtime.isOnline(userId))) {
       const preview = delivered
         .slice(-3)
         .map((d) => (isCodeBubble(d.content) ? '💻 Code' : d.content))
