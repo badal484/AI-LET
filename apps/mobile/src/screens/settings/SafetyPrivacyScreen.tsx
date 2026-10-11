@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Icon, IconButton, type IconName } from '../../components/common/index.js';
 import { privacyApi, type BlockedItem } from '../../services/api/privacyApi.js';
+import { useAuthStore } from '../../stores/authStore.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
+import { LEGAL_URLS } from '../../config/appInfo.js';
 
 /**
  * Privacy & account, kept to what people actually need: making the characters forget them, characters
@@ -44,7 +46,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
   const deleteAccount = () =>
     Alert.alert(
       'Delete your account?',
-      'Your account, chats and memories will be deleted after 14 days. Sign in before then to cancel. Premium bought through Google Play must be cancelled in the Play Store.',
+      'You will be signed out. Your account, chats and memories are deleted after 14 days — sign in again before then to keep everything. Premium bought on Google Play must be cancelled in the Play Store.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -54,7 +56,11 @@ export const SafetyPrivacyScreen: React.FC = () => {
             setBusy('delete');
             try {
               const r = await privacyApi.requestAccountDeletion('User-initiated from app');
-              Alert.alert('Account will be deleted', `On ${new Date(r.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}. Sign in before then to keep it.`);
+              const on = new Date(r.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' });
+              // Signed out now; signing in again before that date cancels the deletion.
+              Alert.alert('Your account will be deleted', `On ${on}. Changed your mind? Just sign in again before then.`, [
+                { text: 'OK', onPress: () => void useAuthStore.getState().logout() },
+              ]);
             } catch {
               Alert.alert('Could not delete', 'Please write to us from Help & contact us.');
             } finally {
@@ -125,6 +131,11 @@ export const SafetyPrivacyScreen: React.FC = () => {
         )}
 
         <View style={styles.card}>{action('trash', 'Delete account', 'Deleted after 14 days — sign in to cancel', deleteAccount, 'delete', true, true)}</View>
+        <View style={legalLinks.row}>
+          <Text style={legalLinks.link} onPress={() => Linking.openURL(LEGAL_URLS.privacy).catch(() => undefined)}>Privacy policy</Text>
+          <Text style={legalLinks.dot}>·</Text>
+          <Text style={legalLinks.link} onPress={() => Linking.openURL(LEGAL_URLS.terms).catch(() => undefined)}>Terms of use</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -146,4 +157,10 @@ const styles = StyleSheet.create({
   rowTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
   rowSub: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 2 },
   unblock: { color: '#F472B6', fontSize: 14, fontWeight: '600' },
+});
+
+const legalLinks = StyleSheet.create({
+  row: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 },
+  link: { color: darkThemeColors.textMuted, fontSize: 13, textDecorationLine: 'underline' },
+  dot: { color: darkThemeColors.textMuted, fontSize: 13 },
 });

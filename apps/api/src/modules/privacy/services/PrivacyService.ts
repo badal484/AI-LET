@@ -11,6 +11,9 @@ import type {
 } from '@ai-companion/types';
 import { UserProfileService } from '../../memory/services/userProfile.service.js';
 
+/** Days between "Delete account" and the actual deletion (the app and the legal pages say the same). */
+export const ACCOUNT_DELETION_GRACE_DAYS = 14;
+
 export class PrivacyService {
   /**
    * Retrieves or creates default privacy settings for a user.
@@ -306,8 +309,9 @@ export class PrivacyService {
       };
     }
 
-    // Schedule deletion with 24-hour grace window
-    const scheduledFor = new Date(Date.now() + 24 * 3600 * 1000);
+    // 14 days to change their mind: signing in again cancels it (AuthService.login). Then everything is
+    // deleted for good (AccountDeletionService, worker).
+    const scheduledFor = new Date(Date.now() + ACCOUNT_DELETION_GRACE_DAYS * 86_400_000);
 
     const deletionReq = await prisma.accountDeletionRequest.create({
       data: {

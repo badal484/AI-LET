@@ -3,6 +3,7 @@ import { api, setApiAuthToken, setSessionExpiredHandler } from '../services/api/
 import { SecureAuthStorage } from '../services/auth/SecureAuthStorage.js';
 import { RegisterRequestInput, LoginRequestInput } from '@ai-companion/validation';
 import { PushService } from '../services/push/PushService.js';
+import { ToastService } from '../components/common/Toast.js';
 
 export type AuthStateStatus =
   | 'initializing'
@@ -128,7 +129,7 @@ export const useAuthStore = create<AuthState>((set) => {
       set({ isLoading: true, errorMessage: null });
       try {
         const response = await api.post('/auth/login', input);
-        const { user, tokens } = response.data.data;
+        const { user, tokens, deletionCancelled } = response.data.data;
 
         await SecureAuthStorage.saveSession({
           accessToken: tokens.accessToken,
@@ -140,6 +141,8 @@ export const useAuthStore = create<AuthState>((set) => {
 
         setApiAuthToken(tokens.accessToken);
         set({ status: 'authenticated', user, isLoading: false, errorMessage: null });
+        // Signing in during the 14-day grace period cancels "Delete account".
+        if (deletionCancelled) ToastService.show({ message: 'Welcome back! Your account will not be deleted.', type: 'success', duration: 4000 });
       } catch (err: unknown) {
         const message =
           (err as { message?: string })?.message || 'Login failed. Please check your credentials.';

@@ -16,6 +16,7 @@ import {
 import { UserStatus } from '@prisma/client';
 import crypto from 'crypto';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
+import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
 
 export class AuthService {
   /**
@@ -257,6 +258,9 @@ export class AuthService {
       );
     }
 
+    // Signing in during the 14-day grace period cancels their own "Delete account" (not one the team made).
+    const { cancelled: deletionCancelled } = await AccountDeletionService.cancel(user.id, { onlyUserRequested: true }).catch(() => ({ cancelled: false }));
+
     // Issue new session and token family
     const tokenFamilyId = crypto.randomUUID();
     const rawRefreshToken = generateRandomToken(48);
@@ -325,6 +329,8 @@ export class AuthService {
     });
 
     return {
+      // The app tells them "Your account won't be deleted".
+      deletionCancelled,
       user: {
         id: user.id,
         email: user.email,

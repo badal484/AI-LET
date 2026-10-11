@@ -7,6 +7,7 @@ import { Button, Icon, IconButton, ToastService } from '../../components/common/
 import { api } from '../../services/api/client.js';
 import { Realtime } from '../../services/realtime/RealtimeClient.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
+import { LEGAL_URLS } from '../../config/appInfo.js';
 
 /**
  * Help & contact us: quick answers, a message to the team, and their replies (admin console → Support).
@@ -160,6 +161,11 @@ export const HelpScreen: React.FC = () => {
             )}
           </View>
         ))}
+        <View style={legalLinks.row}>
+          <Text style={legalLinks.link} onPress={() => Linking.openURL(LEGAL_URLS.privacy).catch(() => undefined)}>Privacy policy</Text>
+          <Text style={legalLinks.dot}>·</Text>
+          <Text style={legalLinks.link} onPress={() => Linking.openURL(LEGAL_URLS.terms).catch(() => undefined)}>Terms of use</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -204,4 +210,10 @@ const styles = StyleSheet.create({
   reply: { marginTop: 4, borderRadius: 12, padding: spacing.md, backgroundColor: 'rgba(236,72,153,0.10)', gap: 4 },
   replyFrom: { color: '#F472B6', fontSize: 12, fontWeight: '700' },
   replyText: { color: darkThemeColors.textPrimary, fontSize: 14, lineHeight: 20 },
+});
+
+const legalLinks = StyleSheet.create({
+  row: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 },
+  link: { color: darkThemeColors.textMuted, fontSize: 13, textDecorationLine: 'underline' },
+  dot: { color: darkThemeColors.textMuted, fontSize: 13 },
 });

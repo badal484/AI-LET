@@ -32,3 +32,9 @@ export const PROD_API_ORIGIN = 'https://ai-let.onrender.com';
 export const API_ORIGIN = DEV_API_ORIGIN;
 export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 export const WS_ORIGIN = API_ORIGIN.replace(/^http/, 'ws');
+
+/** Public legal pages served by the API (/legal/*): privacy policy, terms, account deletion. */
+export const LEGAL_URLS = {
+  privacy: `${API_ORIGIN}/legal/privacy`,
+  terms: `${API_ORIGIN}/legal/terms`,
+} as const;

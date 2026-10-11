@@ -10,7 +10,7 @@ import { AuditService } from '../../audit/audit.service.js';
 /**
  * Account deletion pipeline: idempotent, resumable, retryable, leased, observable and audited.
  *
- *   PENDING (24h grace, cancellable) → PROCESSING → [steps] → COMPLETED
+ *   PENDING (grace: 14 days when the user asks, 24h when the team does; cancellable) → PROCESSING → [steps] → COMPLETED
  *                                              ↘ FAILED (after MAX_ATTEMPTS; reconciliation alerts)
  *
  * Every step is idempotent and recorded in `completedSteps`, so a crash at any point resumes at the
@@ -219,8 +219,11 @@ export class AccountDeletionService {
   // ---------------------------------------------------------------------------
 
   /** Cancels a request during the grace period. Once processing has started it cannot be cancelled. */
-  public static async cancel(userId: string): Promise<{ cancelled: boolean }> {
-    const res = await prisma.accountDeletionRequest.updateMany({ where: { userId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+  public static async cancel(userId: string, opts: { onlyUserRequested?: boolean } = {}): Promise<{ cancelled: boolean }> {
+    const res = await prisma.accountDeletionRequest.updateMany({
+      where: { userId, status: 'PENDING', ...(opts.onlyUserRequested && { NOT: { reason: { startsWith: 'Admin:' } } }) },
+      data: { status: 'CANCELLED' },
+    });
     if (res.count) await AuditService.log({ actorType: 'USER', actorId: userId, action: 'ACCOUNT_DELETION_CANCELLED', resourceType: 'account_deletion_request', resourceId: userId });
     return { cancelled: res.count > 0 };
   }
