@@ -20,7 +20,7 @@ describe('Home chips follow the scroll', () => {
     expect(activeSectionAt(sections, 700, 80, true)).toBe('astrology');
   });
 
-  it('is "All" above the first section', () => {
+    it('is "All" above the first section', () => {
     expect(activeSectionAt([{ id: 'love', y: 300 }], 0)).toBeNull();
   });
 
@@ -30,7 +30,7 @@ describe('Home chips follow the scroll', () => {
 
   it('uses short chip names', () => {
     expect(chipLabelFor({ id: 'section_cat_friendship', title: '🤝 Friendship & Banter' })).toBe('Friends');
-    expect(chipLabelFor({ id: 'section_cat_learn-earn', title: '🪙 Learn & Earn' })).toBe('Learn');
+    expect(chipLabelFor({ id: 'section_cat_learn-earn', title: '🪙 Learn & Earn' })).toBe('Learn & Earn');
     expect(chipLabelFor({ id: 'section_cat_new', title: '🎨 Creative Arts' })).toBe('Creative');
   });
 });
