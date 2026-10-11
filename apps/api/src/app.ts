@@ -54,6 +54,7 @@ import { operationsRouter, adminOperationsRouter } from './modules/operations/in
 import { intelligenceRouter, adminIntelligenceRouter } from './modules/intelligence/index.js';
 import { knowledgeRouter, adminKnowledgeRouter } from './modules/knowledge/knowledge.routes.js';
 import { simulationRouter, adminSimulationRouter } from './modules/character-simulation/simulation.routes.js';
+import { legalRouter } from './modules/legal/legal.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -129,6 +130,10 @@ export const createApp = (): Express => {
 
   // Maintenance mode (admin console → Settings): the app gets a friendly 503; admin, health and
   // payment notifications keep working.
+  // Public legal pages (privacy, terms, account deletion) — outside the API prefix, so they work even in
+  // maintenance mode.
+  app.use('/legal', legalRouter);
+
   app.use(env.API_PREFIX, async (req, res, next) => {
     if (req.path.startsWith('/admin') || req.path.startsWith('/health') || req.path.startsWith('/billing/webhooks')) return next();
     const maintenance = await maintenanceInfo().catch(() => null);

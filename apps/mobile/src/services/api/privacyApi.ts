@@ -91,8 +91,8 @@ export const privacyApi = {
    */
   async requestAccountDeletion(reason?: string): Promise<{ scheduledAt: string }> {
     const client = ApiClient.getInstance();
-    const res = await client.post<ApiSuccessResponse<{ scheduledAt: string }>>('/privacy/delete-account', { reason });
-    return res.data.data;
+    const res = await client.post<ApiSuccessResponse<{ scheduledFor: string }>>('/privacy/delete-account', { reason });
+    return { scheduledAt: res.data.data.scheduledFor };
   },
 
   // ---------------------------------------------------------------------------

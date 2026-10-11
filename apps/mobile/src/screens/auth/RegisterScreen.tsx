@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { darkThemeColors } from '../../theme/colors.js';
 import { typography } from '../../theme/typography.js';
@@ -16,6 +17,7 @@ import { spacing } from '../../theme/spacing.js';
 import { radius } from '../../theme/radius.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { APP_VERSION } from '../../config/appInfo.js';
+import { LEGAL_URLS } from '../../config/appInfo.js';
 
 interface RegisterScreenProps {
   navigation: {
@@ -154,6 +156,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <Text style={styles.primaryButtonText}>Create Account</Text>
             )}
           </TouchableOpacity>
+          <Text style={styles.legalText}>
+            By creating an account you confirm you are 18 or older and agree to the{' '}
+            <Text style={styles.legalLink} onPress={() => Linking.openURL(LEGAL_URLS.terms).catch(() => undefined)}>Terms</Text> and{' '}
+            <Text style={styles.legalLink} onPress={() => Linking.openURL(LEGAL_URLS.privacy).catch(() => undefined)}>Privacy Policy</Text>.
+          </Text>
         </View>
 
         <View style={styles.footer}>
@@ -243,6 +250,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  legalText: {
+    ...typography.bodySmall,
+    color: darkThemeColors.textMuted,
+    textAlign: 'center',
+    marginTop: 14,
+    lineHeight: 18,
+  },
+  legalLink: {
+    color: darkThemeColors.textSecondary,
+    textDecorationLine: 'underline',
   },
   footerText: {
     ...typography.bodySmall,
