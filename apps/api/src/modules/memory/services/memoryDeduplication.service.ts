@@ -4,6 +4,7 @@ import { MemoryEmbeddingService } from './memoryEmbedding.service.js';
 import { logger } from '../../../config/logger.js';
 import type { Prisma } from '@prisma/client';
 import type { MemoryScope, MemoryCategory } from '@ai-companion/types';
+import { memorySimilarities } from './memoryVectorSearch.service.js';
 
 export interface DeduplicationDecision {
   action: 'CREATE' | 'REINFORCE' | 'SUPERSEDE';
@@ -40,11 +41,11 @@ export class MemoryDeduplicationService {
       ];
     }
 
+    // No embeddings loaded: similarity is computed in Postgres (memoryVectorSearch).
     const activeMemories = await prisma.memory.findMany({
       where: whereClause,
-      include: {
-        embeddings: true,
-      },
+      orderBy: [{ importanceScore: 'desc' }, { updatedAt: 'desc' }],
+      take: 5000,
     });
 
     if (activeMemories.length === 0) {
@@ -53,6 +54,7 @@ export class MemoryDeduplicationService {
 
     // Generate candidate embedding if not supplied
     const candVector = candidateEmbedding || await MemoryEmbeddingService.generateEmbedding(candidateContent);
+    const similarities = await memorySimilarities(candVector, activeMemories);
 
     let highestSimilarity = -1;
     let closestMemory: (typeof activeMemories)[0] | null = null;
@@ -70,18 +72,8 @@ export class MemoryDeduplicationService {
         };
       }
 
-      // Check vector similarity
-      let memVector: number[] | null = null;
-      const firstEmb = mem.embeddings && mem.embeddings.length > 0 ? mem.embeddings[0] : null;
-      if (firstEmb && Array.isArray(firstEmb.embedding)) {
-        memVector = firstEmb.embedding as unknown as number[];
-      }
-
-      if (!memVector) {
-        memVector = MemoryEmbeddingService.generateDeterministicPseudoEmbedding(mem.content);
-      }
-
-      const similarity = MemoryEmbeddingService.computeCosineSimilarity(candVector, memVector);
+      // Vector similarity (computed in the database)
+      const similarity = similarities.get(mem.id) ?? 0;
 
       if (similarity > highestSimilarity) {
         highestSimilarity = similarity;

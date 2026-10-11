@@ -13,6 +13,7 @@ import type {
   MemorySignalType,
   MemoryType,
 } from '@ai-companion/types';
+import { memorySimilarities } from './memoryVectorSearch.service.js';
 
 export interface RetrieveMemoryParams {
   userId: string;
@@ -89,15 +90,12 @@ export class MemoryRetrieverService {
         };
       }
 
-      // Bounded work per reply: someone with thousands of memories is scored on their most important and
-      // most recent ones (each candidate carries a 1,536-number embedding).
+      // Similarity is computed inside Postgres (memoryVectorSearch), so no embeddings are loaded here and
+      // every memory counts. The limit only guards against a pathological account.
       const candidateRecords = await prisma.memory.findMany({
         where: whereCondition,
-        include: {
-          embeddings: true,
-        },
         orderBy: [{ importanceScore: 'desc' }, { updatedAt: 'desc' }],
-        take: Number(process.env['MEMORY_CANDIDATE_LIMIT'] ?? 400),
+        take: Number(process.env['MEMORY_CANDIDATE_LIMIT'] ?? 5000),
       });
 
       if (candidateRecords.length === 0) {
@@ -106,24 +104,14 @@ export class MemoryRetrieverService {
 
       // 3. Generate embedding for query text
       const queryEmbedding = await MemoryEmbeddingService.generateEmbedding(query);
+      const similarities = await memorySimilarities(queryEmbedding, candidateRecords);
 
       // 4. Score each candidate memory
       const scoredCandidates: ScoredMemory[] = [];
       const now = Date.now();
 
       for (const record of candidateRecords) {
-        let memEmbedding: number[] | null = null;
-        const firstEmb = record.embeddings && record.embeddings.length > 0 ? record.embeddings[0] : null;
-        if (firstEmb && Array.isArray(firstEmb.embedding)) {
-          memEmbedding = firstEmb.embedding as unknown as number[];
-        }
-
-        if (!memEmbedding) {
-          memEmbedding = MemoryEmbeddingService.generateDeterministicPseudoEmbedding(record.content);
-        }
-
-        // Semantic Cosine Similarity: [0, 1]
-        const rawSim = MemoryEmbeddingService.computeCosineSimilarity(queryEmbedding, memEmbedding);
+        const rawSim = similarities.get(record.id) ?? 0;
         const similarityScore = Math.max(0, (rawSim + 1) / 2); // Normalize from [-1, 1] to [0, 1]
 
         // Recency exponential decay: e^(-lambda * days)
