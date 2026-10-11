@@ -10,7 +10,7 @@ per message. The limits are the AI provider, the database and cost — not serve
 |---|---|
 | API | **2+ instances** (paid, always on — no sleeping free tier), health check `/health`, behind the host's load balancer. WebSockets must be allowed. |
 | Worker | **1 instance** running `start:worker` (reminders, campaigns, text-first, deletions, and the after-reply AI queue). Without it, after-reply work runs inside the API (still works, less protected). |
-| Postgres | Managed, daily backups. Connect the app **through the provider's pooler** (PgBouncer, transaction mode): `DATABASE_URL=…pooler…?pgbouncer=true&connection_limit=10`. Run migrations with the **direct** URL: `DATABASE_URL=<direct> npx prisma migrate deploy`. |
+| Postgres | Managed, daily backups, **pgvector** extension available. Connect the app **through the provider's pooler** (PgBouncer, transaction mode): `DATABASE_URL=…pooler…?pgbouncer=true&connection_limit=10`. Run migrations with the **direct** URL: `DATABASE_URL=<direct> npx prisma migrate deploy`. |
 | Redis | Managed, persistence on. Holds rate limits, live updates (pub/sub), queues, counters, caches. |
 | Gemini | **Paid tier** with higher per-minute limits. Fallback across Gemini models is built in (busy/slow models are tried last). |
 | Images | Character photos in your own storage (S3 / Cloudflare R2) behind a CDN (`S3_*`, `MEDIA_PUBLIC_URL`). |
@@ -23,7 +23,7 @@ per message. The limits are the AI provider, the database and cost — not serve
 | `PUBLIC_API_URL` | Admin live connection address. |
 | `SENTRY_DSN` | Error tracking (API + worker); off when empty. Never sends chat text or bodies. |
 | `BACKGROUND_AI_CONCURRENCY` | After-reply AI jobs at once per worker (default 6). Raise with a higher Gemini tier. |
-| `MEMORY_CANDIDATE_LIMIT` | Memories scored per reply (default 400) — bounds the cost of long-time users. |
+| `MEMORY_CANDIDATE_LIMIT` | Safety limit on memories per search (default 5000). Similarity is computed in Postgres, so only ids and scores travel. |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS` | General API limit — counted per **account** (per IP when signed out), shared by all instances via Redis. |
 
 ## Built in
@@ -32,7 +32,10 @@ per message. The limits are the AI provider, the database and cost — not serve
   limited concurrency and retries, so peaks can't flood Gemini or slow live replies.
 - **Rate limits in Redis**, per account — correct with any number of API instances, fair on shared mobile IPs.
 - **Live updates through Redis pub/sub** — any instance or the worker reaches any open app.
-- **Bounded memory search** per reply.
+- **Memory search in the database (pgvector):** similarity between the message and a person's memories is
+  computed inside Postgres — exact, every memory counts, a few hundred bytes back instead of ~11 KB per
+  memory. Production Postgres needs the `vector` extension (Render, Neon, Supabase, RDS have it); without it
+  the migration skips and the app compares in Node as before.
 - **Error tracking** (Sentry) on crashes, 5xx and failed jobs.
 
 ## Before launch: load test on staging

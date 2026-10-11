@@ -927,6 +927,9 @@ model MemoryEmbedding {
   embeddingVersion String   @default("v1") @map("embedding_version") @db.VarChar(50)
   dimension        Int      @default(1536)
   embedding        Json?
+  /// pgvector copy of `embedding`, filled by a database trigger (migration 20261011000000); similarity
+  /// is computed in Postgres. Absent where pgvector isn't installed.
+  embeddingVec     Unsupported("vector(1536)")? @map("embedding_vec")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([memoryId])
