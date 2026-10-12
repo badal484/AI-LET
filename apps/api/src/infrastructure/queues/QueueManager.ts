@@ -1,6 +1,5 @@
 import { Queue, Worker, Job } from 'bullmq';
-import { redis } from '../redis/redis.js';
-import { env } from '../../config/env.js';
+import { redis, redisConnectionOptions } from '../redis/redis.js';
 import { logger } from '../../config/logger.js';
 import { reportError } from '../monitoring/sentry.js';
 
@@ -41,12 +40,7 @@ export class QueueManager {
   private static deadLetterStore: Map<string, DeadLetterJobSummary> = new Map();
 
   private static getRedisConnection() {
-    return {
-      host: env.REDIS_HOST,
-      port: env.REDIS_PORT,
-      password: env.REDIS_PASSWORD || undefined,
-      db: env.REDIS_DB,
-    };
+    return redisConnectionOptions();
   }
 
   /**
