@@ -219,99 +219,7 @@ export class HomeFeedService {
         });
       }
 
-      // Only categories that actually have characters (no empty "Wisdom" chip).
-      const populated = categories.filter((cat) => characters.some((c) => c.categoryId === cat.id));
-      if (populated.length > 0) {
-        sections.push({
-          id: 'section_categories',
-          sectionKey: 'CATEGORIES',
-          title: 'Categories',
-          subtitle: 'Browse companions by interest and specialty',
-          layoutStyle: 'CHIPS',
-          items: populated,
-        });
-      }
-
-      const CANONICAL_SLUG_ORDER = [
-        'dr-ananya',
-        'joel',
-        'anjali',
-        'tanu',
-        'sakshi',
-        'sangeeta',
-        'aman',
-        'raj',
-        'neha',
-        'nancy',
-        'renu',
-        'kavya',
-        'gita-gpt',
-        'krishna',
-        'indira',
-        'keerthana',
-      ];
-
-      // Track which characters have been placed in category sections
-      const assignedCharIds = new Set<string>();
-
-      // Add Category-wise Sections for 2-column grid view
-      for (const cat of categories) {
-        const catSlug = (cat.slug || '').toLowerCase().trim();
-        const catName = (cat.name || '').toLowerCase().trim();
-        const catDisplay = (cat.displayName || '').toLowerCase().trim();
-
-        // A character belongs to exactly one category: its categoryId decides. The old free-text
-        // field is only a fallback for characters without one (exact match, never fuzzy — fuzzy
-        // matching put characters in several rows, and '' matched every category).
-        const catChars = characters.filter((c) => {
-          if (assignedCharIds.has(c.id)) return false;
-          if (c.categoryId) return c.categoryId === cat.id;
-          const charCat = (c.category || '').toLowerCase().trim();
-          return charCat !== '' && (charCat === catSlug || charCat === catName || charCat === catDisplay);
-        });
-
-        if (catChars.length > 0) {
-          catChars.forEach((c) => assignedCharIds.add(c.id));
-          const catItems = catChars
-            .map((c) => charMap.get(c.id))
-            .filter(Boolean) as CharacterCatalogItem[];
-
-          catItems.sort((a, b) => {
-            const idxA = CANONICAL_SLUG_ORDER.indexOf(a.slug);
-            const idxB = CANONICAL_SLUG_ORDER.indexOf(b.slug);
-            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-            if (idxA !== -1) return -1;
-            if (idxB !== -1) return 1;
-            return 0;
-          });
-
-          sections.push({
-            id: `section_cat_${cat.slug}`,
-            sectionKey: `CATEGORY_${cat.slug.toUpperCase()}`,
-            title: `${cat.iconUrl ? cat.iconUrl + ' ' : ''}${cat.displayName}`,
-            subtitle: cat.description || '',
-            layoutStyle: 'GRID',
-            items: catItems,
-          });
-        }
-      }
-
-      // Catch-all: Any published characters that didn't match a predefined category
-      const unassignedChars = characters.filter((c) => !assignedCharIds.has(c.id));
-      if (unassignedChars.length > 0) {
-        const unassignedItems = unassignedChars
-          .map((c) => charMap.get(c.id))
-          .filter(Boolean) as CharacterCatalogItem[];
-
-        sections.push({
-          id: 'section_cat_custom',
-          sectionKey: 'CATEGORY_ALL',
-          title: '✨ Featured Companions',
-          subtitle: 'Discover new and popular AI companions',
-          layoutStyle: 'GRID',
-          items: unassignedItems,
-        });
-      }
+      sections.push(...HomeFeedService.categorySections(characters, categories, charMap));
 
       const response: HomeFeedResponse = {
         greeting,
@@ -334,12 +242,119 @@ export class HomeFeedService {
   }
 
   /**
+   * The category chips plus one row per category (each character in exactly one row), and a catch-all
+   * row for characters without a matching category. Used by the normal feed and by the fallback.
+   */
+  private static categorySections(
+    characters: Array<{ id: string; categoryId: string | null; category: string | null }>,
+    categories: Awaited<ReturnType<typeof CatalogService.getCategories>>,
+    charMap: Map<string, CharacterCatalogItem>,
+  ): HomeFeedSection[] {
+    const sections: HomeFeedSection[] = [];
+    // Only categories that actually have characters (no empty "Wisdom" chip).
+    const populated = categories.filter((cat) => characters.some((c) => c.categoryId === cat.id));
+    if (populated.length > 0) {
+      sections.push({
+        id: 'section_categories',
+        sectionKey: 'CATEGORIES',
+        title: 'Categories',
+        subtitle: 'Browse companions by interest and specialty',
+        layoutStyle: 'CHIPS',
+        items: populated,
+      });
+    }
+
+    const CANONICAL_SLUG_ORDER = [
+      'dr-ananya',
+      'joel',
+      'anjali',
+      'tanu',
+      'sakshi',
+      'sangeeta',
+      'aman',
+      'raj',
+      'neha',
+      'nancy',
+      'renu',
+      'kavya',
+      'gita-gpt',
+      'krishna',
+      'indira',
+      'keerthana',
+    ];
+
+    // Track which characters have been placed in category sections
+    const assignedCharIds = new Set<string>();
+
+    // Add Category-wise Sections for 2-column grid view
+    for (const cat of categories) {
+      const catSlug = (cat.slug || '').toLowerCase().trim();
+      const catName = (cat.name || '').toLowerCase().trim();
+      const catDisplay = (cat.displayName || '').toLowerCase().trim();
+
+      // A character belongs to exactly one category: its categoryId decides. The old free-text
+      // field is only a fallback for characters without one (exact match, never fuzzy — fuzzy
+      // matching put characters in several rows, and '' matched every category).
+      const catChars = characters.filter((c) => {
+        if (assignedCharIds.has(c.id)) return false;
+        if (c.categoryId) return c.categoryId === cat.id;
+        const charCat = (c.category || '').toLowerCase().trim();
+        return charCat !== '' && (charCat === catSlug || charCat === catName || charCat === catDisplay);
+      });
+
+      if (catChars.length > 0) {
+        catChars.forEach((c) => assignedCharIds.add(c.id));
+        const catItems = catChars
+          .map((c) => charMap.get(c.id))
+          .filter(Boolean) as CharacterCatalogItem[];
+
+        catItems.sort((a, b) => {
+          const idxA = CANONICAL_SLUG_ORDER.indexOf(a.slug);
+          const idxB = CANONICAL_SLUG_ORDER.indexOf(b.slug);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return 0;
+        });
+
+        sections.push({
+          id: `section_cat_${cat.slug}`,
+          sectionKey: `CATEGORY_${cat.slug.toUpperCase()}`,
+          title: `${cat.iconUrl ? cat.iconUrl + ' ' : ''}${cat.displayName}`,
+          subtitle: cat.description || '',
+          layoutStyle: 'GRID',
+          items: catItems,
+        });
+      }
+    }
+
+    // Catch-all: Any published characters that didn't match a predefined category
+    const unassignedChars = characters.filter((c) => !assignedCharIds.has(c.id));
+    if (unassignedChars.length > 0) {
+      const unassignedItems = unassignedChars
+        .map((c) => charMap.get(c.id))
+        .filter(Boolean) as CharacterCatalogItem[];
+
+      sections.push({
+        id: 'section_cat_custom',
+        sectionKey: 'CATEGORY_ALL',
+        title: '✨ Featured Companions',
+        subtitle: 'Discover new and popular AI companions',
+        layoutStyle: 'GRID',
+        items: unassignedItems,
+      });
+    }
+
+    return sections;
+  }
+
+  /**
    * Safe generic fallback Home feed in case ranking or candidate generation fails.
    */
   private static async getFallbackHomeFeed(userId?: string, userEntitlements: string[] = []): Promise<HomeFeedResponse> {
     const chars = await prisma.character.findMany({
       where: { status: 'PUBLISHED', deletedAt: null },
-      take: 40,
+      take: 100,
       orderBy: [{ isFeatured: 'desc' }, { updatedAt: 'desc' }],
       include: {
         categoryRef: true,
@@ -351,33 +366,14 @@ export class HomeFeedService {
 
     const eligibleIds = await CharacterEligibilityService.filterEligible(chars.map(c => c.id), { userId });
     const eligibleSet = new Set(eligibleIds);
-    const items = chars.filter(c => eligibleSet.has(c.id)).slice(0, 20).map(c => CatalogService.mapToCatalogItem(c, { userEntitlements }));
+    const eligible = chars.filter(c => eligibleSet.has(c.id));
+    const charMap = new Map(eligible.map(c => [c.id, CatalogService.mapToCatalogItem(c, { userEntitlements })]));
     const categories = await CatalogService.getCategories();
 
+    // Same rows as the normal feed (by category), just without personal ranking.
     return {
-      greeting: {
-        title: 'Welcome to AI Lovira',
-        subtitle: 'Discover intelligent companion characters',
-        isReturningUser: false,
-      },
-      sections: [
-        {
-          id: 'section_featured',
-          sectionKey: 'FEATURED',
-          title: 'Featured Companions',
-          subtitle: 'Popular characters ready to chat',
-          layoutStyle: 'HERO',
-          items: items.slice(0, 8),
-        },
-        {
-          id: 'section_categories',
-          sectionKey: 'CATEGORIES',
-          title: 'Categories',
-          subtitle: 'Explore genres',
-          layoutStyle: 'CHIPS',
-          items: categories,
-        },
-      ],
+      greeting: this.generateGreeting(),
+      sections: this.categorySections(eligible, categories, charMap),
       recommendationVersion: 'fallback_v1',
     };
   }
