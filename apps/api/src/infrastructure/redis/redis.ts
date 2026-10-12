@@ -7,8 +7,16 @@ import { logger } from '../../config/logger.js';
  * otherwise REDIS_HOST / REDIS_PORT / REDIS_PASSWORD. Shared by the app's client and the job queues.
  */
 export function redisConnectionOptions(): Pick<RedisOptions, 'host' | 'port' | 'username' | 'password' | 'db' | 'tls'> {
-  if (env.REDIS_URL) {
-    const u = new URL(env.REDIS_URL);
+  // Takes the redis:// or rediss:// part even if a whole "redis-cli --tls -u <url>" line was pasted.
+  const raw = env.REDIS_URL?.match(/rediss?:\/\/\S+/)?.[0];
+  let u: URL | null = null;
+  try {
+    u = raw ? new URL(raw) : null;
+  } catch {
+    u = null;
+  }
+  if (env.REDIS_URL && !u) logger.error('REDIS_URL is not a redis:// or rediss:// URL — using REDIS_HOST/REDIS_PORT instead');
+  if (u) {
     // Upstash only takes TLS, so it's on for their hosts even when the URL says redis://.
     const tls = u.protocol === 'rediss:' || env.REDIS_TLS || u.hostname.endsWith('.upstash.io');
     return {
