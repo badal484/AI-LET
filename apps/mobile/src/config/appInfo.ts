@@ -28,8 +28,10 @@ function getDevHost(): string {
 export const DEV_API_ORIGIN = `http://${getDevHost()}:4000`;
 export const PROD_API_ORIGIN = 'https://ai-let.onrender.com';
 
-// Set to DEV_API_ORIGIN for local development & phone USB testing
-export const API_ORIGIN = DEV_API_ORIGIN;
+// Development builds talk to the Mac (USB / Wi-Fi); release builds always use the production server.
+// To try a release build against the Mac, temporarily set this to DEV_API_ORIGIN (release builds allow
+// plain HTTP only to localhost).
+export const API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
 export const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 export const WS_ORIGIN = API_ORIGIN.replace(/^http/, 'ws');
 
