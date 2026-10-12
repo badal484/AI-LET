@@ -9,6 +9,9 @@ envVarGroups:
         value: production
       - key: NODE_VERSION
         value: "24"
+      # Render's /usr/bin is read-only: use pnpm through corepack without "corepack enable".
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
       - key: LOG_LEVEL
         value: info
       - key: TRUST_PROXY
@@ -47,12 +50,11 @@ services:
     autoDeploy: true
     healthCheckPath: /health
     buildCommand: >-
-      corepack enable &&
-      pnpm install --frozen-lockfile &&
-      pnpm --filter @ai-companion/api exec prisma generate &&
-      pnpm --filter "@ai-companion/api..." run build &&
-      pnpm --filter @ai-companion/api exec prisma migrate deploy
-    startCommand: pnpm --filter @ai-companion/api start
+      corepack pnpm install --frozen-lockfile &&
+      corepack pnpm --filter @ai-companion/api exec prisma generate &&
+      corepack pnpm --filter "@ai-companion/api..." run build &&
+      corepack pnpm --filter @ai-companion/api exec prisma migrate deploy
+    startCommand: cd apps/api && node dist/server.js
     envVars:
       - fromGroup: lovira-shared
       - key: DATABASE_URL
@@ -79,11 +81,10 @@ services:
     branch: main
     autoDeploy: true
     buildCommand: >-
-      corepack enable &&
-      pnpm install --frozen-lockfile &&
-      pnpm --filter @ai-companion/api exec prisma generate &&
-      pnpm --filter "@ai-companion/api..." run build
-    startCommand: pnpm --filter @ai-companion/api start:worker
+      corepack pnpm install --frozen-lockfile &&
+      corepack pnpm --filter @ai-companion/api exec prisma generate &&
+      corepack pnpm --filter "@ai-companion/api..." run build
+    startCommand: cd apps/api && node dist/worker.js
     envVars:
       - fromGroup: lovira-shared
       - key: DATABASE_URL
@@ -110,13 +111,14 @@ services:
     branch: main
     autoDeploy: true
     buildCommand: >-
-      corepack enable &&
-      pnpm install --frozen-lockfile &&
-      pnpm --filter "@ai-companion/admin..." run build
-    startCommand: pnpm --filter @ai-companion/admin start
+      corepack pnpm install --frozen-lockfile &&
+      corepack pnpm --filter "@ai-companion/admin..." run build
+    startCommand: cd apps/admin && node_modules/.bin/next start --port $PORT
     envVars:
       - key: NODE_VERSION
         value: "24"
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
       - key: API_URL
         value: https://lovira-api.onrender.com
 
