@@ -19,6 +19,17 @@ const server = app.listen(env.PORT, () => {
 // Live updates for open apps (typing in the Chats list, new messages, unread counts).
 Realtime.attach(server);
 
+// Render's free plan sleeps the API after 15 minutes without outside requests, and waking takes ~1 minute
+// (sign-in fails meanwhile). On Render (RENDER_EXTERNAL_URL is set by Render) it calls its own public
+// address every 10 minutes, which counts as a visit. /health/live doesn't touch the database, so Neon can
+// still sleep. KEEP_AWAKE=false turns it off — not needed on a paid Render plan.
+const publicUrl = process.env['RENDER_EXTERNAL_URL'];
+if (publicUrl && process.env['KEEP_AWAKE'] !== 'false') {
+  const ping = () => void fetch(`${publicUrl}/health/live`, { signal: AbortSignal.timeout(30_000) }).catch(() => undefined);
+  setInterval(ping, 10 * 60_000).unref();
+  logger.info(`Keep-awake: pinging ${publicUrl}/health/live every 10 minutes`);
+}
+
 
 let isShuttingDown = false;
 
