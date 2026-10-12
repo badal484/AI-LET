@@ -265,6 +265,11 @@ export class StreamingChatService {
       });
       send<Record<string, string>>('turn.completed', { conversationId });
     } catch (err: any) {
+      // Not your conversation / not allowed: a plain 404/403 before anything is streamed (not a 200 stream).
+      if (!res.headersSent && (err instanceof NotFoundError || err instanceof ForbiddenError)) {
+        res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+        return;
+      }
       logger.error(`Error during chat turn: ${err.message}`, { stack: err.stack });
       send<StreamMessageFailedPayload>('message.failed', {
         conversationId,

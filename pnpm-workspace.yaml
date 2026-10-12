@@ -17,3 +17,9 @@ allowBuilds:
 # recharts 2 draws nothing on React 19 unless it uses react-is 19 (admin charts).
 overrides:
   'recharts>react-is': 19.2.3
+  # Security fixes (pnpm audit, 2026-10-12) for packages pulled in by Next, React Native tooling and Firebase.
+  'postcss@<8.5.23': ^8.5.28
+  'shell-quote@<1.11.0': ^1.11.0
+  'source-map-js@<1.2.2': ^1.2.2
+  '@grpc/grpc-js@<1.13.6': ^1.13.6
+  'sharp@<0.35.5': ^0.35.5
