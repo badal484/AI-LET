@@ -71,7 +71,7 @@ export async function storeImage(buffer: Buffer, folder: string, kind: ImageKind
   const file = path.join(UPLOAD_DIR, key);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, buffer);
-  const origin = (process.env['PUBLIC_API_URL'] || `http://localhost:${process.env['PORT'] || 4000}`).replace(/\/$/, '');
+  const origin = (process.env['PUBLIC_API_URL'] || process.env['RENDER_EXTERNAL_URL'] || `http://localhost:${process.env['PORT'] || 4000}`).replace(/\/$/, '');
   return `${origin}/media/${key}`;
 }
 

@@ -139,7 +139,7 @@ consoleRouter.post('/support/:id/reply', requirePermission(P.SUPPORT_WRITE), han
 consoleRouter.get('/realtime-ticket', handle(async (req) => ({
   ticket: Realtime.adminTicket(adminId(req)),
   // Where the API answers (the admin site may live elsewhere): ws(s)://…/api/v1/admin/realtime
-  url: `${(process.env['PUBLIC_API_URL'] || `http://localhost:${process.env['PORT'] || 4000}`).replace(/^http/, 'ws').replace(/\/$/, '')}/api/v1/admin/realtime`,
+  url: `${(process.env['PUBLIC_API_URL'] || process.env['RENDER_EXTERNAL_URL'] || `http://localhost:${process.env['PORT'] || 4000}`).replace(/^http/, 'ws').replace(/\/$/, '')}/api/v1/admin/realtime`,
 })));
 consoleRouter.get('/online', requirePermission(ADMIN_PERMISSIONS.ANALYTICS_READ), handle(async () => ({ online: await Realtime.onlineCount() })));
 
