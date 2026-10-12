@@ -23,6 +23,9 @@ const envSchema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().default(25),
   DATABASE_POOL_TIMEOUT_MS: z.coerce.number().default(10000),
 
+  /** One URL instead of host/port/password, e.g. Upstash: rediss://default:<password>@<host>:6379 (rediss = TLS). */
+  REDIS_URL: z.string().optional(),
+  REDIS_TLS: z.coerce.boolean().default(false),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional(),
@@ -113,6 +116,8 @@ export const ENV_SECRET_CLASSIFICATION: Record<keyof EnvConfig, 'SECRET' | 'PUBL
   DATABASE_POOL_MIN: 'PUBLIC_CONFIG',
   DATABASE_POOL_MAX: 'PUBLIC_CONFIG',
   DATABASE_POOL_TIMEOUT_MS: 'PUBLIC_CONFIG',
+  REDIS_URL: 'SECRET',
+  REDIS_TLS: 'PUBLIC_CONFIG',
   REDIS_HOST: 'PUBLIC_CONFIG',
   REDIS_PORT: 'PUBLIC_CONFIG',
   REDIS_PASSWORD: 'SECRET',
