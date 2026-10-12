@@ -68,7 +68,9 @@ const persistOptions = {
 };
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['companion://', 'https://companion.ai'],
+  // Only our own scheme (companion.ai is not our domain). Every screen still loads its data from the server,
+  // which checks the account — a link can open a screen, never someone else's data.
+  prefixes: ['companion://'],
   config: {
     screens: {
       MainTabs: {
