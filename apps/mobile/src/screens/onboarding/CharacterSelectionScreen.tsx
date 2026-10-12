@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,10 +27,15 @@ export const CharacterSelectionScreen: React.FC = () => {
   } = useOnboardingStore();
 
   const { bootstrap } = useAuthStore();
+  // Load once: an empty list must not trigger another load (that spun forever with no characters).
+  const loaded = useRef(false);
 
   useEffect(() => {
     if (starterCharacters.length === 0) {
-      init();
+      if (!loaded.current) {
+        loaded.current = true;
+        void init();
+      }
     } else if (!selectedCharacterId && starterCharacters.length > 0) {
       selectCharacter(starterCharacters[0].id);
     }
@@ -71,6 +76,17 @@ export const CharacterSelectionScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.cardList} showsVerticalScrollIndicator={false}>
+        {starterCharacters.length === 0 && (
+          <TouchableOpacity
+            onPress={() => void init()}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+          >
+            <Text style={styles.subtitle}>
+              Couldn't load companions right now. Tap to try again, or continue and pick one later.
+            </Text>
+          </TouchableOpacity>
+        )}
         {starterCharacters.map(char => {
           const isSelected = selectedCharacterId === char.id;
           return (
