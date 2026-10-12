@@ -26,7 +26,7 @@ function getDevHost(): string {
 }
 
 export const DEV_API_ORIGIN = `http://${getDevHost()}:4000`;
-export const PROD_API_ORIGIN = 'https://lovira-api.onrender.com'; // render.yaml service "lovira-api"
+export const PROD_API_ORIGIN = 'https://ai-let-fgx6.onrender.com'; // Render service "AI-LET"
 
 // Development builds talk to the Mac (USB / Wi-Fi); release builds always use the production server.
 // To try a release build against the Mac, temporarily set this to DEV_API_ORIGIN (release builds allow
