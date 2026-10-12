@@ -8,7 +8,12 @@ import { Realtime } from '../../infrastructure/realtime/realtime.js';
  * cached for 20 s per process; a change takes effect everywhere within that time.
  */
 export const SETTINGS = {
-  'limits.enforce': { label: 'Message limits on', type: 'boolean', default: () => process.env['BILLING_ENFORCE_LIMITS'] === 'true' },
+  // On by default in production (unlimited free AI is a cost risk); BILLING_ENFORCE_LIMITS=false turns it off.
+  'limits.enforce': {
+    label: 'Message limits on',
+    type: 'boolean',
+    default: () => (process.env['BILLING_ENFORCE_LIMITS'] ? process.env['BILLING_ENFORCE_LIMITS'] === 'true' : process.env['NODE_ENV'] === 'production'),
+  },
   'limits.freeDaily': { label: 'Free messages per day', type: 'number', default: () => Number(process.env['FREE_DAILY_MESSAGES'] ?? 5) },
   'limits.premiumDaily': { label: 'Premium messages per day (fair use)', type: 'number', default: () => Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150) },
   'maintenance.enabled': { label: 'Maintenance mode (app shows a message, chat paused)', type: 'boolean', default: () => false },

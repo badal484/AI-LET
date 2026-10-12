@@ -11,7 +11,7 @@ import { verifyAccessToken } from '../../security/tokens.js';
 /**
  * Live updates (WebSocket) for open apps and open admin tabs.
  *
- *   App:   /api/v1/realtime?token=<access token>
+ *   App:   /api/v1/realtime  (Authorization: Bearer <access token>)
  *   Admin: /api/v1/admin/realtime?ticket=<1-minute ticket from GET /admin/console/realtime-ticket>
  *
  * Anything — this API, another API instance or the worker — publishes through Redis; every server
@@ -148,7 +148,11 @@ export const Realtime = {
         socket.destroy();
       };
       if (url.pathname === '/api/v1/realtime') {
-        void authenticateUser(url.searchParams.get('token'))
+        // The app sends its token in the Authorization header (kept out of URLs and proxy logs); the
+        // ?token= form still works for older app builds.
+        const header = req.headers['authorization'];
+        const token = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : url.searchParams.get('token');
+        void authenticateUser(token)
           .then((userId) => (userId ? wss.handleUpgrade(req, socket, head, (ws) => onUser(ws, userId)) : reject()))
           .catch(() => socket.destroy());
       } else if (url.pathname === '/api/v1/admin/realtime') {
