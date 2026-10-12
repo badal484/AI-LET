@@ -28,3 +28,21 @@ export const standardRateLimiter = rateLimit({
     next(new RateLimitError());
   },
 });
+
+/**
+ * Sending chat messages (each one costs an AI reply): at most CHAT_RATE_LIMIT_PER_MINUTE per account
+ * (default 20) — far above any human, and stops a script from running up the AI bill.
+ */
+export const chatSendRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: Number(process.env['CHAT_RATE_LIMIT_PER_MINUTE'] ?? 20),
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: rateLimitStore('chat'),
+  passOnStoreError: true,
+  skip: () => process.env['NODE_ENV'] === 'test',
+  keyGenerator: (req) => `u:${(req as { user?: { userId?: string } }).user?.userId ?? req.ip ?? 'unknown'}`,
+  handler: (_req, _res, next) => {
+    next(new RateLimitError('You are sending messages too fast. Please wait a few seconds.'));
+  },
+});

@@ -35,8 +35,11 @@ async function open() {
   if (socket || !signedIn || AppState.currentState !== 'active') return;
   const token = (await SecureAuthStorage.getSession().catch(() => null))?.accessToken;
   if (!token || !signedIn) return;
-  const url = `${ApiClient.getBaseUrl().replace(/^http/, 'ws').replace(/\/$/, '')}/realtime?token=${encodeURIComponent(token)}`;
-  const ws = new WebSocket(url);
+  const url = `${ApiClient.getBaseUrl().replace(/^http/, 'ws').replace(/\/$/, '')}/realtime`;
+  // Token in a header, not the URL (URLs end up in proxy and server logs). React Native supports headers.
+  const ws = new (WebSocket as unknown as new (u: string, p?: string[] | null, o?: { headers: Record<string, string> }) => WebSocket)(url, null, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   socket = ws;
   ws.onopen = () => {
     retry = 0;
