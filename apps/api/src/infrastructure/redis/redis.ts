@@ -9,7 +9,8 @@ import { logger } from '../../config/logger.js';
 export function redisConnectionOptions(): Pick<RedisOptions, 'host' | 'port' | 'username' | 'password' | 'db' | 'tls'> {
   if (env.REDIS_URL) {
     const u = new URL(env.REDIS_URL);
-    const tls = u.protocol === 'rediss:' || env.REDIS_TLS;
+    // Upstash only takes TLS, so it's on for their hosts even when the URL says redis://.
+    const tls = u.protocol === 'rediss:' || env.REDIS_TLS || u.hostname.endsWith('.upstash.io');
     return {
       host: u.hostname,
       port: Number(u.port) || 6379,
