@@ -16,9 +16,26 @@ import type {
 import { IPushProvider, MockPushProvider } from './pushProvider.interface.js';
 import { FcmPushProvider, fcmConfigured } from './fcmPushProvider.js';
 
+/**
+ * Real pushes when the Firebase key is valid. A missing or wrong key (e.g. google-services.json pasted
+ * instead of the service account key) must not take the whole API down: log it and run without pushes.
+ */
+function createPushProvider(): IPushProvider {
+  if (!fcmConfigured()) return new MockPushProvider();
+  try {
+    return new FcmPushProvider();
+  } catch (err) {
+    logger.error(
+      `Push notifications are OFF: FIREBASE_SERVICE_ACCOUNT_JSON is not a valid Firebase service account key (${err instanceof Error ? err.message : err}). ` +
+        'Use Project settings → Service accounts → Generate new private key (starts with {"type":"service_account"…), not google-services.json.',
+    );
+    return new MockPushProvider();
+  }
+}
+
 export class NotificationService {
   /** Real Firebase pushes when the key is set; otherwise pushes are only logged (development/tests). */
-  private static pushProvider: IPushProvider = fcmConfigured() ? new FcmPushProvider() : new MockPushProvider();
+  private static pushProvider: IPushProvider = createPushProvider();
   private static readonly PREF_CACHE_TTL = SYSTEM_CONSTANTS.CACHE.USER_NOTIFICATIONS_TTL_SECONDS;
 
   public static setPushProvider(provider: IPushProvider): void {
