@@ -24,8 +24,9 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const [email, setEmail] = useState('user@ai-companion.local');
-  const [password, setPassword] = useState('UserPass123!');
+  // The test account is filled in only in development builds; release builds start empty.
+  const [email, setEmail] = useState(__DEV__ ? 'user@ai-companion.local' : '');
+  const [password, setPassword] = useState(__DEV__ ? 'UserPass123!' : '');
   const [localError, setLocalError] = useState<string | null>(null);
 
   const { login, isLoading, errorMessage, clearError } = useAuthStore();
@@ -149,14 +150,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.demoButton}
-            onPress={handleDemoLogin}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.demoButtonText}>Quick Demo Sign In</Text>
-          </TouchableOpacity>
+          {__DEV__ && (
+            <TouchableOpacity
+              style={styles.demoButton}
+              onPress={handleDemoLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.demoButtonText}>Quick Demo Sign In</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.footer}>
