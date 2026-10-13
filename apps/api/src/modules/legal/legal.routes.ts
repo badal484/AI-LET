@@ -20,7 +20,7 @@ export const legalRouter: Router = Router();
 
 const UPDATED = '11 October 2026';
 const env = (k: string) => (process.env[k] ?? '').trim();
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 function contactHtml(): string {
   const email = env('LEGAL_CONTACT_EMAIL');
@@ -34,7 +34,7 @@ function contactHtml(): string {
   return `<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>`;
 }
 
-function page(title: string, body: string): string {
+export function page(title: string, body: string): string {
   const operator = env('LEGAL_OPERATOR_NAME');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} · Lovira</title>
