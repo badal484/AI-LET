@@ -64,3 +64,9 @@ apps/api/scripts/maintenance/backups/
 
 # Firebase app config: copied from ~/.config/lovira/ on each machine, not committed.
 apps/mobile/android/app/google-services.json
+
+# Signing keys and service-account files must never be committed (Play upload key, Firebase/Google keys).
+*.jks
+*.keystore
+*.p12
+*service-account*.json

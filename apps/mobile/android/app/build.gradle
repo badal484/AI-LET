@@ -85,8 +85,9 @@ android {
         applicationId "com.aicompanionmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Raise for every Play upload: ./gradlew bundleRelease -PloviraVersionCode=2 -PloviraVersionName=1.0.1
+        versionCode((project.findProperty('loviraVersionCode') ?: '1') as Integer)
+        versionName((project.findProperty('loviraVersionName') ?: '1.0') as String)
     }
     signingConfigs {
         debug {
@@ -94,6 +95,19 @@ android {
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
+        }
+        // The Play upload key. Its file and passwords live only on the release machine, in
+        // ~/.gradle/gradle.properties (never in this repo):
+        //   LOVIRA_UPLOAD_STORE_FILE=/absolute/path/lovira-upload.jks
+        //   LOVIRA_UPLOAD_STORE_PASSWORD=…   LOVIRA_UPLOAD_KEY_ALIAS=lovira-upload   LOVIRA_UPLOAD_KEY_PASSWORD=…
+        // See docs/PLAY_STORE_RELEASE_CHECKLIST.md (keep a backup: a lost upload key means a reset request to Google).
+        if (project.hasProperty('LOVIRA_UPLOAD_STORE_FILE')) {
+            release {
+                storeFile file(LOVIRA_UPLOAD_STORE_FILE)
+                storePassword LOVIRA_UPLOAD_STORE_PASSWORD
+                keyAlias LOVIRA_UPLOAD_KEY_ALIAS
+                keyPassword LOVIRA_UPLOAD_KEY_PASSWORD
+            }
         }
     }
     buildTypes {
@@ -118,5 +132,14 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// A Play bundle must be signed with the upload key — never the public debug key.
+tasks.matching { it.name == 'bundleRelease' }.configureEach {
+    doFirst {
+        if (!project.hasProperty('LOVIRA_UPLOAD_STORE_FILE')) {
+            throw new GradleException('bundleRelease needs the upload key: set LOVIRA_UPLOAD_STORE_FILE (and the passwords) in ~/.gradle/gradle.properties — see docs/PLAY_STORE_RELEASE_CHECKLIST.md')
+        }
     }
 }
