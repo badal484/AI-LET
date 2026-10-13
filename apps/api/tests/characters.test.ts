@@ -4,7 +4,7 @@ import { createApp } from '../src/app.js';
 import { prisma } from '../src/infrastructure/database/prisma.js';
 import { redis } from '../src/infrastructure/redis/redis.js';
 import { hashPassword } from '../src/security/password.js';
-import { signAdminToken } from '../src/security/tokens.js';
+import { adminToken } from './fixtures.js';
 import { AdminCharacterService } from '../src/modules/characters/services/adminCharacter.service.js';
 import { ADMIN_PERMISSIONS, ADMIN_ROLES, DEFAULT_ROLE_PERMISSIONS } from '@ai-companion/config';
 
@@ -76,12 +76,7 @@ describe('Public Character API & Admin RBAC Endpoints', () => {
       data: { adminId: superAdmin.id, roleId: superRole!.id },
     });
 
-    superAdminToken = signAdminToken({
-      adminId: superAdmin.id,
-      email: superAdmin.email,
-      roles: [ADMIN_ROLES.SUPER_ADMIN],
-      permissions: Object.values(ADMIN_PERMISSIONS),
-    });
+    superAdminToken = await adminToken(superAdmin, [ADMIN_ROLES.SUPER_ADMIN], Object.values(ADMIN_PERMISSIONS));
 
     // Create Content Manager Admin
     const contentManager = await prisma.adminUser.create({
@@ -99,12 +94,7 @@ describe('Public Character API & Admin RBAC Endpoints', () => {
       data: { adminId: contentManager.id, roleId: contentRole!.id },
     });
 
-    contentManagerToken = signAdminToken({
-      adminId: contentManager.id,
-      email: contentManager.email,
-      roles: [ADMIN_ROLES.CONTENT_MANAGER],
-      permissions: DEFAULT_ROLE_PERMISSIONS.content_manager as string[],
-    });
+    contentManagerToken = await adminToken(contentManager, [ADMIN_ROLES.CONTENT_MANAGER], DEFAULT_ROLE_PERMISSIONS.content_manager as string[]);
 
     // Create Support Admin (Support role has users.read, but NO characters.read/characters.create)
     const supportAdmin = await prisma.adminUser.create({
@@ -122,12 +112,7 @@ describe('Public Character API & Admin RBAC Endpoints', () => {
       data: { adminId: supportAdmin.id, roleId: supportRole!.id },
     });
 
-    supportAdminToken = signAdminToken({
-      adminId: supportAdmin.id,
-      email: supportAdmin.email,
-      roles: [ADMIN_ROLES.SUPPORT],
-      permissions: DEFAULT_ROLE_PERMISSIONS.support as string[],
-    });
+    supportAdminToken = await adminToken(supportAdmin, [ADMIN_ROLES.SUPPORT], DEFAULT_ROLE_PERMISSIONS.support as string[]);
   });
 
   it('GET /api/v1/characters only returns published characters and excludes drafts', async () => {

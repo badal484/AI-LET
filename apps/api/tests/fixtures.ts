@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '../src/infrastructure/database/prisma.js';
-import { signAccessToken } from '../src/security/tokens.js';
+import { hashToken, signAccessToken, signAdminToken } from '../src/security/tokens.js';
 
 /** Shared test helpers: users, creators, characters and conversations. */
 export const rid = (n = 6) => crypto.randomBytes(n).toString('hex');
@@ -70,3 +70,11 @@ export async function createConversation(userId: string, characterId: string, li
   return { conversationId: conv.id, messageIds: ids };
 }
 
+
+/** An admin token backed by a real session, as login issues it (the admin check rejects tokens without one). */
+export async function adminToken(admin: { id: string; email: string }, roles: string[], permissions: string[]) {
+  const session = await prisma.adminSession.create({
+    data: { adminId: admin.id, sessionTokenHash: hashToken(rid(24)), expiresAt: new Date(Date.now() + 8 * 3_600_000) },
+  });
+  return signAdminToken({ adminId: admin.id, email: admin.email, roles, permissions, sessionId: session.id });
+}

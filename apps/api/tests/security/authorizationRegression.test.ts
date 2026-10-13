@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 import { ADMIN_PERMISSIONS } from '@ai-companion/config';
-import { signAccessToken, signAdminToken } from '../../src/security/tokens.js';
-import { createCharacter, createConversation } from '../fixtures.js';
+import { signAccessToken } from '../../src/security/tokens.js';
+import { adminToken, createCharacter, createConversation } from '../fixtures.js';
 import { env } from '../../src/config/env.js';
 
 const app = createApp();
@@ -154,7 +154,7 @@ async function adminWith(permissions: string[]) {
     await prisma.adminRolePermission.create({ data: { roleId: role.id, permissionId: perm.id } });
   }
   await prisma.adminRoleAssignment.create({ data: { adminId: admin.id, roleId: role.id } });
-  return signAdminToken({ adminId: admin.id, email: admin.email, roles: [role.name], permissions });
+  return adminToken(admin, [role.name], permissions);
 }
 
 describe('admin operator surfaces act on an explicit target and need specific permissions', () => {
