@@ -17,6 +17,7 @@ import { UserStatus } from '@prisma/client';
 import crypto from 'crypto';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
 import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
+import { publicOrigin, sendEmail } from '../../infrastructure/email/email.js';
 
 export class AuthService {
   /**
@@ -571,6 +572,16 @@ export class AuthService {
           tokenHash,
           expiresAt,
         },
+      });
+
+      // The link opens a small page on this server (account/accountPages.routes.ts), so it works on any phone.
+      const link = `${publicOrigin()}/account/reset-password?token=${rawToken}`;
+      const minutes = Math.round(SYSTEM_CONSTANTS.AUTH.PASSWORD_RESET_TOKEN_LIFETIME_SECONDS / 60);
+      await sendEmail({
+        to: user.email,
+        subject: 'Reset your Lovira password',
+        text: `Someone (hopefully you) asked to reset the password of your Lovira account.\n\nSet a new password here (the link works once, for ${minutes} minutes):\n${link}\n\nDidn't ask? Ignore this email — your password stays the same.`,
+        html: `<p>Someone (hopefully you) asked to reset the password of your Lovira account.</p><p><a href="${link}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#ec4899;color:#fff;font-weight:700;text-decoration:none">Set a new password</a></p><p style="color:#6b6577;font-size:14px">The link works once, for ${minutes} minutes. Didn't ask? Ignore this email — your password stays the same.</p>`,
       });
 
       await AuditService.logEvent({

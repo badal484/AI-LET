@@ -55,6 +55,7 @@ import { intelligenceRouter, adminIntelligenceRouter } from './modules/intellige
 import { knowledgeRouter, adminKnowledgeRouter } from './modules/knowledge/knowledge.routes.js';
 import { simulationRouter, adminSimulationRouter } from './modules/character-simulation/simulation.routes.js';
 import { legalRouter } from './modules/legal/legal.routes.js';
+import { accountPagesRouter } from './modules/account/accountPages.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -133,6 +134,8 @@ export const createApp = (): Express => {
   // Public legal pages (privacy, terms, account deletion) — outside the API prefix, so they work even in
   // maintenance mode.
   app.use('/legal', legalRouter);
+  // Pages opened from emails (set a new password).
+  app.use('/account', accountPagesRouter);
 
   app.use(env.API_PREFIX, async (req, res, next) => {
     if (req.path.startsWith('/admin') || req.path.startsWith('/health') || req.path.startsWith('/billing/webhooks')) return next();
