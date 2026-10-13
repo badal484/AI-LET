@@ -23,10 +23,13 @@ interface LoginScreenProps {
   };
 }
 
+// The local test account, for development builds only. In release builds __DEV__ is false, so the bundler
+// drops these strings entirely (they must never ship inside the app).
+const DEMO_ACCOUNT = __DEV__ ? { email: 'user@ai-companion.local', password: 'UserPass123!' } : null;
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  // The test account is filled in only in development builds; release builds start empty.
-  const [email, setEmail] = useState(__DEV__ ? 'user@ai-companion.local' : '');
-  const [password, setPassword] = useState(__DEV__ ? 'UserPass123!' : '');
+  const [email, setEmail] = useState(DEMO_ACCOUNT?.email ?? '');
+  const [password, setPassword] = useState(DEMO_ACCOUNT?.password ?? '');
   const [localError, setLocalError] = useState<string | null>(null);
 
   const { login, isLoading, errorMessage, clearError } = useAuthStore();
@@ -57,12 +60,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   const handleDemoLogin = async () => {
+    if (!DEMO_ACCOUNT) return;
     setLocalError(null);
     clearError();
     try {
       await login({
-        email: 'user@ai-companion.local',
-        password: 'UserPass123!',
+        email: DEMO_ACCOUNT.email,
+        password: DEMO_ACCOUNT.password,
         device: {
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
           deviceName: `${Platform.OS.toUpperCase()} Mobile Client`,

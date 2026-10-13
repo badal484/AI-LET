@@ -360,7 +360,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpert, isTyping, effectiveConvId, latestAnswerId]);
 
   // Streams of replies still being written (see sendTurn). Closed when the user leaves the chat or
