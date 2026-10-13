@@ -6,6 +6,7 @@ import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { API_CONSTANTS } from './config/constants.js';
 import { flushSentry, initSentry, reportError } from './infrastructure/monitoring/sentry.js';
+import { startScheduledJobs } from './jobs/scheduledJobs.js';
 
 initSentry('api');
 const app = createApp();
@@ -23,6 +24,10 @@ Realtime.attach(server);
 // (sign-in fails meanwhile). On Render (RENDER_EXTERNAL_URL is set by Render) it calls its own public
 // address every 10 minutes, which counts as a visit. /health/live doesn't touch the database, so Neon can
 // still sleep. KEEP_AWAKE=false turns it off — not needed on a paid Render plan.
+// No worker (e.g. Render's free plan): the API runs the periodic jobs itself — account deletions,
+// reminders, text-first, campaigns. Safe alongside a worker too (each run takes a Redis lock).
+if (process.env['RUN_SCHEDULED_JOBS_IN_API'] === 'true') startScheduledJobs('api');
+
 const publicUrl = process.env['RENDER_EXTERNAL_URL'];
 if (publicUrl && process.env['KEEP_AWAKE'] !== 'false') {
   const ping = () => void fetch(`${publicUrl}/health/live`, { signal: AbortSignal.timeout(30_000) }).catch(() => undefined);

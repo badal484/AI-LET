@@ -1,6 +1,7 @@
 import { redis } from '../../../infrastructure/redis/redis.js';
 import { QueueManager } from '../../../infrastructure/queues/QueueManager.js';
 import { logger } from '../../../config/logger.js';
+import { WORKER_ALIVE_KEY } from '../../../jobs/scheduledJobs.js';
 import { setAICostContext, withAICostTask } from '../../ai/telemetry/aiCostLedger.js';
 import { UserProfileService } from '../../memory/services/userProfile.service.js';
 import { MemoryExtractionService } from '../../memory/services/memoryExtraction.service.js';
@@ -34,16 +35,14 @@ export interface AfterReplyJob {
   characterRole: string;
 }
 
-const JOBS_KEY = 'console:jobs';
 let workerSeen = { at: 0, alive: false };
 
-/** A worker that ran any scheduled job in the last 3 minutes is alive (checked at most every 30 s). */
+/** The worker's own heartbeat (not the scheduled jobs' — the API may run those itself). Checked at most every 30 s. */
 async function workerAlive(): Promise<boolean> {
   if (Date.now() - workerSeen.at < 30_000) return workerSeen.alive;
   let alive = false;
   try {
-    const raw = await redis.hget(JOBS_KEY, 'reminders');
-    alive = Boolean(raw && Date.now() - Date.parse((JSON.parse(raw) as { lastRun: string }).lastRun) < 3 * 60_000);
+    alive = (await redis.exists(WORKER_ALIVE_KEY)) === 1;
   } catch {
     alive = false;
   }
