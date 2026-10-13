@@ -1,15 +1,11 @@
 import { QueueManager } from './infrastructure/queues/QueueManager.js';
 import { runAfterReply, type AfterReplyJob } from './modules/conversations/services/afterReply.service.js';
-import { AccountDeletionService } from './modules/privacy/services/AccountDeletionService.js';
-import { processDueCampaigns } from './modules/console/campaigns.service.js';
-import { runProactiveRound } from './modules/notifications/services/proactiveRound.service.js';
-import { ProactiveSchedulerService } from './modules/notifications/services/proactiveScheduler.service.js';
-import { recordJobRun } from './modules/console/health.js';
 import { disconnectDatabase } from './infrastructure/database/prisma.js';
 import { disconnectRedis } from './infrastructure/redis/redis.js';
 import { logger } from './config/logger.js';
 import { env } from './config/env.js';
-import { initSentry, reportError } from './infrastructure/monitoring/sentry.js';
+import { initSentry } from './infrastructure/monitoring/sentry.js';
+import { startScheduledJobs, startWorkerHeartbeat } from './jobs/scheduledJobs.js';
 
 initSentry('worker');
 logger.info(`⚙️  AI Companion Background Queue Worker process starting [${env.NODE_ENV}]...`);
@@ -64,39 +60,9 @@ QueueManager.registerWorker('analytics-events', async (job) => {
   return { status: 'INGESTED' };
 }, 8);
 
-/** Runs a periodic job without overlap; failures are logged and never crash the worker. */
-function every(name: string, ms: number, job: () => Promise<unknown>): NodeJS.Timeout {
-  let running = false;
-  const t = setInterval(() => {
-    if (running) return;
-    running = true;
-    job()
-      .then((r) => {
-        if (r) logger.debug(`[Worker:${name}]`, { result: r });
-        void recordJobRun(name, ms, true);
-      })
-      .catch((err) => {
-        logger.error(`[Worker:${name}] failed`, { error: err instanceof Error ? err.message : err });
-        reportError(err, { job: name });
-        void recordJobRun(name, ms, false, err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => {
-        running = false;
-      });
-  }, ms);
-  t.unref();
-  return t;
-}
-
-// Account deletion pipeline (leased, resumable) and its reconciliation.
-every('account-deletion', 60_000, () => AccountDeletionService.processDue(10));
-every('account-deletion-reconcile', 15 * 60_000, () => AccountDeletionService.reconcile());
-// Admin notification campaigns: scheduled ones, each person's local hour, people waiting out quiet hours.
-every('notification-campaigns', 60_000, () => processDueCampaigns());
-// Characters texting first: one decision per person (admin switch in Settings), and reminders people asked for.
-every('text-first', 15 * 60_000, () => runProactiveRound());
-every('reminders', 60_000, () => ProactiveSchedulerService.processDueReminders());
-every('proactive-expire', 60 * 60_000, () => ProactiveSchedulerService.expireStaleActions());
+// Periodic jobs (account deletion, reminders, text-first, campaigns) — shared with the API (jobs/scheduledJobs.ts).
+startScheduledJobs('worker');
+startWorkerHeartbeat();
 
 logger.info('✅ All background queue workers initialized and listening for jobs.');
 
