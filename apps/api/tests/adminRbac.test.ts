@@ -127,6 +127,23 @@ describe('Admin RBAC & Privilege Escalation Defense Tests', () => {
       expect(roleAssignRes.body.error.code).toBe('ADMIN_FORBIDDEN');
     });
 
+    it('an admin token stops working after logout, and a token without a session is refused', async () => {
+      const admin = await createAdminWithRole('logout@example.com', 'LogoutPass123!', ADMIN_ROLES.SUPPORT);
+      const loginRes = await request(app).post('/api/v1/admin/login').send({ email: 'logout@example.com', password: 'LogoutPass123!' });
+      const token = loginRes.body.data.token;
+
+      expect((await request(app).get('/api/v1/admin/users').set('Authorization', `Bearer ${token}`)).status).toBe(200);
+      expect((await request(app).post('/api/v1/admin/logout').set('Authorization', `Bearer ${token}`)).status).toBe(200);
+      // Before the fix the signed token kept working for its full 8 hours.
+      const after = await request(app).get('/api/v1/admin/users').set('Authorization', `Bearer ${token}`);
+      expect(after.status).toBe(401);
+
+      // A correctly signed token that no session backs (e.g. minted with a leaked secret) is refused too.
+      const { signAdminToken } = await import('../src/security/tokens.js');
+      const bare = signAdminToken({ adminId: admin.id, email: admin.email, roles: [ADMIN_ROLES.SUPPORT], permissions: [ADMIN_PERMISSIONS.USERS_READ] });
+      expect((await request(app).get('/api/v1/admin/users').set('Authorization', `Bearer ${bare}`)).status).toBe(401);
+    });
+
     it('rejects regular consumer users from accessing admin routes', async () => {
       // Register regular consumer user
       const userReg = await request(app).post('/api/v1/auth/register').send({

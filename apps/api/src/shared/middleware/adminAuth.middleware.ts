@@ -45,6 +45,14 @@ export async function authenticateAdmin(
       }
       adminId = payload.adminId;
       sessionId = payload.sessionId;
+      // A signed token is only as good as its session: after logout (or a revoke) it must stop working,
+      // not live on for its full 8 hours.
+      const session = sessionId
+        ? await prisma.adminSession.findUnique({ where: { id: sessionId }, select: { adminId: true, revokedAt: true, expiresAt: true } })
+        : null;
+      if (!session || session.adminId !== adminId || session.revokedAt || session.expiresAt < new Date()) {
+        return next(new AppError('Admin session is expired or revoked', 401, ErrorCode.ADMIN_UNAUTHORIZED));
+      }
     } else {
       // Direct session token lookup via hash
       const tokenHash = hashToken(token);
