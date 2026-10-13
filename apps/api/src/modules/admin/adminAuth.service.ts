@@ -68,7 +68,9 @@ export class AdminAuthService {
       if (!input.mfaCode) {
         throw new AppError('MFA verification code required', 403, ErrorCode.AUTH_MFA_REQUIRED);
       }
-      // Note: TOTP validation hook is prepared here
+      // Codes can't be checked yet (no TOTP verifier or enrolment exists), so refuse rather than accept any
+      // code: a "2-step" login that lets every code through is worse than none.
+      throw new AppError('Two-step sign-in is not available yet — ask a super admin to turn it off for this account', 403, ErrorCode.AUTH_MFA_REQUIRED);
     }
 
     // Create Admin Session
