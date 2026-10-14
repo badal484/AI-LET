@@ -2,6 +2,7 @@
 
 Status: **planned, not started** (analysis 14 October 2026). Do Steps 1–2 before real traffic; Step 3 needs
 the owner's OK (it deletes data copies for good); Step 4 at roughly 100k daily users.
+AI cost (tokens per message) is planned separately in `AI_COST_OPTIMIZATION_PLAN.md`.
 
 ## Measurements (14 Oct 2026)
 
