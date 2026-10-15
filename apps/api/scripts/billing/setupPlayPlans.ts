@@ -1,6 +1,6 @@
 /**
  * The plans this app sells, on Google Play (run once per database; safe to re-run):
- *   PREMIUM — ₹399/month (₹1 for the first 3 days), ₹99/week, ₹3,999/year; fair use 150 messages a day.
+ *   PREMIUM — ₹399/month (₹1 for the first day), ₹99/week, ₹3,999/year; fair use 150 messages a day.
  *   FREE    — 5 messages a day.
  *   Message pack — 100 extra messages for ₹49.
  * The old placeholder plans (PLUS, PRO, ULTRA with MOCK prices) are hidden from the paywall.
@@ -23,7 +23,7 @@ const PRICES = [
 ];
 
 console.log(apply ? 'Applying…' : 'Dry run (add --apply to write):');
-console.log(`- PREMIUM plan: ${PRICES.map((x) => `${x.id} ₹${x.amount / 100}/${x.interval.toLowerCase()}`).join(', ')}; 3-day ₹1 trial on monthly`);
+console.log(`- PREMIUM plan: ${PRICES.map((x) => `${x.id} ₹${x.amount / 100}/${x.interval.toLowerCase()}`).join(', ')}; 1-day ₹1 trial on monthly`);
 console.log(`- Message pack: ${PACK} ₹49 → 100 messages`);
 console.log('- Hide PLUS, PRO, ULTRA from the paywall (isActive=false); keep FREE');
 
@@ -39,12 +39,12 @@ if (apply) {
       productId: product.id,
       code: 'PREMIUM',
       name: 'Premium',
-      tagline: '₹1 for 3 days, then ₹399/month. Cancel anytime.',
+      tagline: '₹1 for the first day, then ₹399/month. Cancel anytime.',
       description: 'Chat with every character, full courses and health programs, long memory. Fair use: 150 messages a day.',
       isPopular: true,
-      trialDays: 3,
+      trialDays: 1,
     },
-    update: { isActive: true, trialDays: 3, tagline: '₹1 for 3 days, then ₹399/month. Cancel anytime.' },
+    update: { isActive: true, trialDays: 1, tagline: '₹1 for the first day, then ₹399/month. Cancel anytime.' },
   });
   for (const x of PRICES) {
     await p.billingPrice.upsert({

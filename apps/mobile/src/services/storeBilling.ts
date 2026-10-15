@@ -11,12 +11,13 @@ import {
 } from 'react-native-iap';
 import { billingApi } from './api/billingApi.js';
 import { api } from './api/client.js';
+import { isoDays } from '../utils/isoPeriod.js';
 
 /**
  * Google Play Billing. Every purchase is verified by our server (which checks it with Google,
  * acknowledges it and ties it to this account) before it's finished here — nothing is granted on
  * the phone's word. Play Console catalog: subscription `companion_premium` (base plans monthly /
- * weekly / yearly; offer `trial` = ₹1 for 3 days on monthly) and consumable `messages_100`.
+ * weekly / yearly; offer `trial` = ₹1 for 1 day on monthly) and consumable `messages_100`.
  */
 
 export type BasePlan = 'monthly' | 'weekly' | 'yearly';
@@ -26,8 +27,9 @@ export interface StoreOffer {
   /** Localized price from Play, e.g. "₹399.00". */
   price: string;
   offerToken: string;
-  /** The ₹1-for-3-days intro offer (new customers only — Play leaves it out otherwise). */
-  trial?: { offerToken: string; price: string };
+  /** The ₹1 intro offer (new customers only — Play leaves it out otherwise). `days` is read from Play, so
+   *  the paywall always states the length Google will actually charge for. */
+  trial?: { offerToken: string; price: string; days: number };
 }
 
 export interface StoreCatalog {
@@ -110,13 +112,28 @@ export const StoreBilling = {
     if (!(await StoreBilling.connect())) return { connected: false, offers: {} };
     const catalog: StoreCatalog = { connected: true, offers: {} };
     const subs = ((await fetchProducts({ skus: [catalogIds.subscription], type: 'subs' })) ?? []) as Array<{
-      subscriptionOffers?: Array<{ id: string; basePlanIdAndroid?: string | null; displayPrice: string; offerTokenAndroid?: string | null; price: number }>;
+      subscriptionOffers?: Array<{
+        id: string;
+        basePlanIdAndroid?: string | null;
+        displayPrice: string;
+        offerTokenAndroid?: string | null;
+        price: number;
+        pricingPhasesAndroid?: { pricingPhaseList: Array<{ billingPeriod: string; billingCycleCount: number; formattedPrice: string }> } | null;
+      }>;
     }>;
     for (const offer of subs[0]?.subscriptionOffers ?? []) {
       const basePlan = offer.basePlanIdAndroid as BasePlan | undefined;
       if (!basePlan || !offer.offerTokenAndroid) continue;
       const entry = (catalog.offers[basePlan] ??= { basePlan, price: offer.displayPrice, offerToken: offer.offerTokenAndroid });
-      if (offer.id === 'trial') entry.trial = { offerToken: offer.offerTokenAndroid, price: offer.displayPrice };
+      if (offer.id === 'trial') {
+        // The intro phase is the first one (e.g. "₹1.00" for P1D); the regular price follows it.
+        const intro = offer.pricingPhasesAndroid?.pricingPhaseList?.[0];
+        entry.trial = {
+          offerToken: offer.offerTokenAndroid,
+          price: intro?.formattedPrice ?? offer.displayPrice,
+          days: intro ? isoDays(intro.billingPeriod) * Math.max(1, intro.billingCycleCount || 1) : 1,
+        };
+      }
       // The plain base plan (no offer id) carries the regular price.
       else if (!offer.id || offer.id === basePlan) Object.assign(entry, { price: offer.displayPrice, offerToken: offer.offerTokenAndroid });
     }
@@ -172,3 +189,4 @@ export class StoreBillingUnavailableError extends Error {
     this.name = 'StoreBillingUnavailableError';
   }
 }
+
