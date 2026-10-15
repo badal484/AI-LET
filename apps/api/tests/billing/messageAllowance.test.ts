@@ -27,4 +27,17 @@ describe('Daily message allowance', () => {
     expect((await useMessage(userId, 'jeene ka mann nahi karta')).allowed).toBe(true);
     expect((await useMessage(userId, 'papa ko seene mein dard ho raha hai, paseena aa raha')).allowed).toBe(true);
   });
+
+  it('by default there is no free plan: the first message without Premium offers the ₹1 day — crisis still goes through', async () => {
+    const newUser = randomUUID();
+    process.env['BILLING_ENFORCE_LIMITS'] = 'true';
+    delete process.env['FREE_DAILY_MESSAGES'];
+    const first = await useMessage(newUser, 'hii');
+    expect(first.allowed).toBe(false);
+    expect(first.reason).toBe('free_limit');
+    expect(first.limit).toBe(0);
+    expect((await useMessage(newUser, 'jeene ka mann nahi karta')).allowed).toBe(true);
+    const keys = await redis.keys(`msgs:${newUser}:*`);
+    if (keys.length) await redis.del(...keys);
+  });
 });

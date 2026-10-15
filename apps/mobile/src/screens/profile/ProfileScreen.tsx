@@ -142,7 +142,7 @@ export const ProfileScreen: React.FC = () => {
         >
           <View style={styles.planHead}>
             <Icon name={premium ? 'diamond' : 'sparkles'} size={18} color={premium ? '#F472B6' : darkThemeColors.accent} />
-            <Text style={styles.planTitle}>{premium ? (trial ? 'Premium trial' : 'Premium') : 'Free plan'}</Text>
+            <Text style={styles.planTitle}>{premium ? (trial ? 'Premium trial' : 'Premium') : 'Lovira Premium'}</Text>
           </View>
           {premium ? (
             <Text style={styles.planText}>
@@ -158,12 +158,13 @@ export const ProfileScreen: React.FC = () => {
           ) : (
             <>
               <Text style={styles.planText}>
-                {allowance && allowance.enforced
+                {/* No free plan by default (limits.freeDaily = 0); if the admin sets a free allowance, it shows here. */}
+                {allowance && allowance.enforced && allowance.limit > 0
                   ? `${left} of ${allowance.limit} free messages left today${allowance.credits ? ` · +${allowance.credits} extra` : ''}`
-                  : 'A few free messages every day'}
+                  : `Every character, up to 150 messages a day${allowance?.credits ? ` · ${allowance.credits} extra messages` : ''}`}
               </Text>
               <View style={styles.planCta}>
-                <Text style={styles.planCtaText}>Try Premium for ₹1</Text>
+                <Text style={styles.planCtaText}>Start for ₹1</Text>
               </View>
             </>
           )}

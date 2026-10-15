@@ -6,7 +6,7 @@ import { acknowledgeSubscription, consumeProduct, getProductPurchase, getSubscri
 
 /**
  * The Play catalog this app sells (create the same IDs in Play Console → Monetize):
- *  - subscription `companion_premium`, base plans `monthly` (₹499), `weekly` (₹99), `yearly` (₹3,999);
+ *  - subscription `companion_premium`, base plan `monthly` (₹499) — the only plan sold (weekly/yearly retired);
  *    on `monthly`, an introductory offer of ₹1 for 1 day (offer id `trial`), new customers only.
  *  - one-time consumable `messages_100` (₹49): 100 extra messages.
  */

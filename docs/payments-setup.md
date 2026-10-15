@@ -8,13 +8,11 @@ You need a developer account ($25, one-time) and the app uploaded at least once.
 
 Go to **Monetize → Products → Subscriptions → Create subscription**.
 - Product ID: `companion_premium` (it must be exactly this).
-- Add three base plans:
+- Add **one** base plan (the only plan sold — no weekly, yearly or free plan; owner's decision, 15 Oct 2026):
 
 | Base plan ID | Billing period | Price (India) | Renewal |
 |---|---|---|---|
 | `monthly` | 1 month | ₹499 | Auto-renewing |
-| `weekly` | 1 week | ₹99 | Auto-renewing |
-| `yearly` | 1 year | ₹3,999 | Auto-renewing |
 
 - On the `monthly` base plan, add an offer:
   - Offer ID: `trial`
@@ -59,7 +57,7 @@ The server re-reads every notification from Google, so a fake message can't gran
 npx prisma migrate deploy
 npx tsx scripts/billing/setupPlayPlans.ts --apply
 ```
-This creates the Premium plan (monthly, weekly and yearly) and the message pack, and hides the old placeholder plans.
+This creates the Premium plan (monthly only; it switches off weekly/yearly prices if an earlier run created them) and the message pack, and hides the old placeholder plans.
 
 ## 5. Test before launch
 

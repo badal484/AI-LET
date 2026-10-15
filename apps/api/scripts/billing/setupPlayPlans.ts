@@ -1,7 +1,7 @@
 /**
  * The plans this app sells, on Google Play (run once per database; safe to re-run):
- *   PREMIUM — ₹499/month (₹1 for the first day), ₹99/week, ₹3,999/year; fair use 150 messages a day.
- *   FREE    — 5 messages a day.
+ *   PREMIUM — ₹499/month, starting with ₹1 for the first day; fair use 150 messages a day. The only plan:
+ *             no weekly or yearly plan, and no free messages (limits.freeDaily = 0; the admin can change it).
  *   Message pack — 100 extra messages for ₹49.
  * The old placeholder plans (PLUS, PRO, ULTRA with MOCK prices) are hidden from the paywall.
  *
@@ -18,14 +18,15 @@ const PACK = process.env['PLAY_PACK_ID'] || 'messages_100';
 
 const PRICES = [
   { id: `${SUB}:monthly`, amount: 49900, interval: 'MONTH' as const },
-  { id: `${SUB}:weekly`, amount: 9900, interval: 'WEEK' as const },
-  { id: `${SUB}:yearly`, amount: 399900, interval: 'YEAR' as const },
 ];
+// Plans no longer sold — switched off if an earlier run created them.
+const RETIRED = [`${SUB}:weekly`, `${SUB}:yearly`];
 
 console.log(apply ? 'Applying…' : 'Dry run (add --apply to write):');
 console.log(`- PREMIUM plan: ${PRICES.map((x) => `${x.id} ₹${x.amount / 100}/${x.interval.toLowerCase()}`).join(', ')}; 1-day ₹1 trial on monthly`);
 console.log(`- Message pack: ${PACK} ₹49 → 100 messages`);
-console.log('- Hide PLUS, PRO, ULTRA from the paywall (isActive=false); keep FREE');
+console.log(`- Switch off retired prices: ${RETIRED.join(', ')}`);
+console.log('- Hide PLUS, PRO, ULTRA from the paywall (isActive=false); keep FREE (= no subscription)');
 
 if (apply) {
   const product = await p.billingProduct.upsert({
@@ -53,6 +54,7 @@ if (apply) {
       update: { amountMinorUnits: x.amount, active: true },
     });
   }
+  await p.billingPrice.updateMany({ where: { provider: 'GOOGLE', providerPriceId: { in: RETIRED } }, data: { active: false } });
   for (const key of ['chat_basic', 'chat_priority', 'premium_characters', 'advanced_memory', 'proactive_messages']) {
     await p.planEntitlement.upsert({ where: { planId_entitlementKey: { planId: plan.id, entitlementKey: key } }, create: { planId: plan.id, entitlementKey: key }, update: {} });
   }

@@ -17,7 +17,7 @@ import { LEGAL_URLS } from '../../config/appInfo.js';
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'How many messages can I send?',
-    a: 'The free plan has a few messages every day, and they refill at midnight. Premium gives you 150 a day, and you can add 100 more any time for ₹49.',
+    a: 'Premium gives you up to 150 messages a day with every character; they refill at midnight. Your first day is ₹1, then ₹499 a month. Need more on a busy day? Add 100 messages any time for ₹49.',
   },
   {
     q: 'How do I cancel Premium?',
@@ -29,11 +29,11 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Is my chat private?',
-    a: 'Yes. Your chats are only for you. Our team never reads them, except for a safety review when something serious is reported, and that is logged. You can download or delete your data in Profile → Privacy & account.',
+    a: 'Yes. Your chats are only for you. Our team never reads them, except for a safety review when something serious is reported, and that is logged. You can delete your account in Profile → Privacy & account, and ask us for a copy of your data below (Get a copy of my data).',
   },
   {
     q: 'How do I make a character forget something?',
-    a: 'Go to Profile → What characters remember. You can delete single memories or everything a character knows about you.',
+    a: 'Go to Profile → Privacy & account → Make characters forget me. Every character forgets what they remembered about you; your chats stay.',
   },
   {
     q: 'I am going through something really hard',
