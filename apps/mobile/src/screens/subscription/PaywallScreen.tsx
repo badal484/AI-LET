@@ -9,7 +9,7 @@ import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from 
 import { IconButton, Button, Badge, ToastService } from '../../components/common/index.js';
 
 /**
- * Premium: ₹1 for the first day, then ₹399/month (or ₹99/week, ₹3,999/year), plus ₹49 message packs.
+ * Premium: ₹1 for the first day, then ₹499/month (or ₹99/week, ₹3,999/year), plus ₹49 message packs.
  * Prices shown are Google Play's own (localized); the price and the auto-renewal are stated in plain
  * words right above the button — no surprise charges.
  */

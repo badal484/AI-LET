@@ -6,7 +6,7 @@ import { acknowledgeSubscription, consumeProduct, getProductPurchase, getSubscri
 
 /**
  * The Play catalog this app sells (create the same IDs in Play Console → Monetize):
- *  - subscription `companion_premium`, base plans `monthly` (₹399), `weekly` (₹99), `yearly` (₹3,999);
+ *  - subscription `companion_premium`, base plans `monthly` (₹499), `weekly` (₹99), `yearly` (₹3,999);
  *    on `monthly`, an introductory offer of ₹1 for 1 day (offer id `trial`), new customers only.
  *  - one-time consumable `messages_100` (₹49): 100 extra messages.
  */
@@ -91,7 +91,7 @@ export class GooglePlayBillingProvider implements IBillingProvider {
         productId: `${item.productId}:${basePlan}`,
         planCode: PLAY_CATALOG.planCode,
         currency: 'INR',
-        amountMinorUnits: inTrial ? 100 : basePlan === 'weekly' ? 9900 : basePlan === 'yearly' ? 399900 : 39900,
+        amountMinorUnits: inTrial ? 100 : basePlan === 'weekly' ? 9900 : basePlan === 'yearly' ? 399900 : 49900,
         paymentStatus: 'SUCCEEDED',
         subscriptionStatus: inTrial ? 'trialing' : STATUS[sub.subscriptionState] ?? 'active',
         currentPeriodStart: start,
