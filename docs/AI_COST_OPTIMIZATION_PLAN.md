@@ -72,6 +72,57 @@ So the history is a small lever; the **fixed instructions sent with every messag
 | Cost per message | ~₹0.21 | ~₹0.08–0.09 |
 | 10k daily users (~300k messages/day) | ~₹16 lakh/month | ~₹6–7 lakh/month |
 
+## More techniques (added 15 Oct 2026)
+
+Extra measurements (local ledger, includes eval runs): every reply is exactly **1 AI call** (no retries or
+rewrites), thinking tokens are 0, but **55 % of chat replies used Flash** (≈2.5× Flash-Lite's input price) —
+check production before acting, evals over-sample emotional/crisis moments.
+
+### Safe — no visible change for users
+
+| # | Technique | How | Saving |
+|---|---|---|---|
+| A | **Merge background calls** | Profile-card update (~1,300 tokens, every message) and memory extraction (~600) each re-send the same exchange. One call returns both as structured JSON (`afterReply.service.ts`). | ~40 % of background cost |
+| B | **Skip background work for small messages** | "ok", "😂", "hmm": extend `nothingToRemember.ts` (already skips 48 % of memory work) to the profile update. | ~25–35 % of background cost |
+| C | **Batch API (50 % cheaper) for non-urgent work** | Pre-generate tomorrow's "text first" messages overnight; summarise old chats in batches. Never for live replies or same-day memory. | 50 % off that work |
+| D | **Explicit cache per character** | If implicit caching hits too rarely, store each character's fixed text in Gemini's context cache (small storage fee, guaranteed discount). | Makes step 1 reliable |
+| E | **Short facts instead of prose in the changing blocks** | e.g. "Relational Dynamic: Initial Connection (Formative familiarity, polite baseline rapport)…" → "relationship: new, 21 chats". | ~150–300 tokens/message |
+
+### Needs a test first
+
+| # | Technique | How | Saving |
+|---|---|---|---|
+| F | **Flash only where it helps** | Keep Flash for crisis, safety and boundary moments; test whether "emotional" moments need it (`GEMINI_FLASH_MOMENTS`). Flash 55 % → ~15 % of replies. | Up to ~30 % of chat cost |
+| G | **Free users on Flash-Lite with a shorter memory window** | Premium keeps the full experience — a plan difference, not a downgrade. | Depends on free/paid mix |
+
+### Protection (no saving on normal days; stops surprises)
+
+- Daily AI limit per user while message limits are off.
+- Monthly budget alert in the admin console; kill switch per feature (web search, text-first).
+
+### Keeping quality
+
+For any change that affects replies (F, G, steps 2 and 4): character evals before/after on all 32 characters
+(small runs — shared quota) → A/B test for a week on half the users, comparing 👍/👎 on replies, messages per
+session and next-day return → keep only if those hold. Each change sits behind a setting so it can be switched
+back instantly.
+
+### Where it lands
+
+| | Cost per message |
+|---|---|
+| Today | ~₹0.21 |
+| After steps 1–4 | ~₹0.08–0.09 |
+| Plus A–F | **~₹0.05–0.06** (~70–75 % cheaper; 10k daily users: ~₹16 lakh → ~₹4–5 lakh/month) |
+
+Build first when this starts: **A + B** (safe, quick, no quality risk).
+
+### Avoid (they do hurt quality)
+
+- Reusing old replies for "similar" messages (characters repeat themselves).
+- Summarising away the recent chat.
+- Cutting safety rules.
+
 ## Already done
 
 - Cheapest model for small talk; Flash only for key moments (`GEMINI_FLASH_MOMENTS`).
