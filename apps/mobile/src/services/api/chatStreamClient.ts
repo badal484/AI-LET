@@ -186,7 +186,7 @@ export class ChatStreamClient {
               callbacks.onFailed?.({
                 conversationId: parsed.conversationId,
                 errorCode: 'LIMIT_REACHED',
-                errorMessage: parsed.reason === 'fair_use' ? "You've reached today's 150 messages." : "You've used today's free messages.",
+                errorMessage: parsed.reason === 'fair_use' ? "You've reached today's 150 messages." : 'Start Premium to keep chatting — your first day is ₹1.',
                 retryable: true,
               });
               break;

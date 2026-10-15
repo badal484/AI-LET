@@ -9,7 +9,7 @@ import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from 
 import { IconButton, Button, Badge, ToastService } from '../../components/common/index.js';
 
 /**
- * Premium: ₹1 for the first day, then ₹499/month (or ₹99/week, ₹3,999/year), plus ₹49 message packs.
+ * Premium: ₹1 for the first day, then ₹499/month — the only plan (no free plan) — plus ₹49 message packs.
  * Prices shown are Google Play's own (localized); the price and the auto-renewal are stated in plain
  * words right above the button — no surprise charges.
  */
@@ -19,7 +19,9 @@ const PLAN_LABEL: Record<BasePlan, { title: string; per: string; note?: string }
   weekly: { title: 'Weekly', per: '/week' },
   yearly: { title: 'Yearly', per: '/year', note: 'Save 17%' },
 };
-const ORDER: BasePlan[] = ['monthly', 'yearly', 'weekly'];
+// One plan (owner's decision, 15 Oct 2026): monthly, starting with the ₹1 first day. The other base plans stay in
+// the type so a catalog that still has them doesn't break, but they aren't offered.
+const ORDER: BasePlan[] = ['monthly'];
 
 const BENEFITS = [
   'Chat with all 32 characters — 150 messages a day',
@@ -63,13 +65,13 @@ export const PaywallScreen: React.FC = () => {
     reason === 'fair_use'
       ? "You've reached today's 150 messages"
       : reason === 'free_limit'
-        ? "You've used today's free messages"
+        ? `Start chatting for ${trial?.price ?? '₹1'}`
         : 'Go Premium';
   const subtitle =
     reason === 'fair_use'
       ? `Your messages refill at ${resetTime}. Can't wait? Add 100 messages now.`
       : reason === 'free_limit'
-        ? `More free messages at ${resetTime} — or keep talking right now with Premium.`
+        ? 'Premium opens every character — up to 150 messages a day. Your first day is just ₹1.'
         : 'Keep talking with the people who get you.';
 
   const finish = (r: { ok: boolean; message?: string }, success: string) => {

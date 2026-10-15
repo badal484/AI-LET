@@ -14,7 +14,9 @@ export const SETTINGS = {
     type: 'boolean',
     default: () => (process.env['BILLING_ENFORCE_LIMITS'] ? process.env['BILLING_ENFORCE_LIMITS'] === 'true' : process.env['NODE_ENV'] === 'production'),
   },
-  'limits.freeDaily': { label: 'Free messages per day', type: 'number', default: () => Number(process.env['FREE_DAILY_MESSAGES'] ?? 5) },
+  // No free plan (owner's decision, 15 Oct 2026): chatting starts with Premium's ₹1 first day. Crisis and
+  // emergency messages always go through. Set a number here to bring back a free daily allowance.
+  'limits.freeDaily': { label: 'Free messages per day (0 = no free plan)', type: 'number', default: () => Number(process.env['FREE_DAILY_MESSAGES'] ?? 0) },
   'limits.premiumDaily': { label: 'Premium messages per day (fair use)', type: 'number', default: () => Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150) },
   'maintenance.enabled': { label: 'Maintenance mode (app shows a message, chat paused)', type: 'boolean', default: () => false },
   'maintenance.title': { label: 'Title', type: 'string', default: () => 'Lovira is getting better' },

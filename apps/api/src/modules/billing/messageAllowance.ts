@@ -7,7 +7,8 @@ import { isCrisisMessage } from '../conversations/human/crisisSupport.js';
 import { classifySituations } from '../conversations/human/situation.js';
 
 /**
- * How many messages a user may send today. Free: FREE_DAILY_MESSAGES (5). Premium (trial included):
+ * How many messages a user may send today. Without Premium: limits.freeDaily (default 0 — no free plan; the
+ * paywall offers the ₹1 first day). Premium (₹1 first day included):
  * PREMIUM_DAILY_MESSAGES (150, fair use). Past the limit, one message-pack credit per message.
  * Crisis and emergency messages are never counted or blocked.
  * Off until BILLING_ENFORCE_LIMITS=true (turn on together with payments at launch).
@@ -85,7 +86,7 @@ export async function useMessage(userId: string, text: string): Promise<Allowanc
     return { allowed: false, premium, used: limit, limit, credits: 0, reason: premium ? 'fair_use' : 'free_limit', ...base };
   } catch (err) {
     logger.warn(`Message allowance check failed (allowing): ${err instanceof Error ? err.message : 'Unknown'}`);
-    return { allowed: true, premium: false, used: 0, limit: (await limits().catch(() => ({ free: 5 }))).free, ...base };
+    return { allowed: true, premium: false, used: 0, limit: (await limits().catch(() => ({ free: 0 }))).free, ...base };
   }
 }
 

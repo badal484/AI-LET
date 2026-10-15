@@ -189,12 +189,12 @@ app; or get around limits or payments. We may limit, suspend or close accounts t
 <p>What you write stays yours. You let us store and process it to run Lovira for you, as described in the
 <a href="/legal/privacy">privacy policy</a>. The characters, their stories and the app itself belong to Lovira.</p>
 
-<h2>Free plan and Premium</h2>
+<h2>Premium</h2>
 <ul>
-<li>The free plan includes a limited number of messages each day, refilled at midnight (India time).</li>
-<li><b>Premium</b> is a subscription through Google Play. It may start with a low-cost trial (for example ₹1); unless
-you cancel before the trial ends, it continues at the price shown in the app (currently ₹499 a month), and renews
-automatically each period until you cancel.</li>
+<li>Chatting with the characters needs <b>Premium</b>, a monthly subscription through Google Play. Your first day
+costs ₹1 (new subscribers); unless you cancel before that day ends, it continues at the price shown in the app
+(currently ₹499 a month), charged automatically each month until you cancel.</li>
+<li>Messages about a crisis or an emergency always go through, with or without Premium.</li>
 <li>Cancel any time in the Play Store (Payments &amp; subscriptions → Subscriptions → Lovira). Premium stays on until
 the end of the period you paid for. Refunds follow Google Play's policies.</li>
 <li>Premium has a fair-use daily message limit; extra message packs can be bought in the app.</li>
