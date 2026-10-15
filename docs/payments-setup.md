@@ -19,9 +19,13 @@ Go to **Monetize → Products → Subscriptions → Create subscription**.
 - On the `monthly` base plan, add an offer:
   - Offer ID: `trial`
   - Eligibility: new customers only
-  - Phase: single payment of ₹1 for 3 days
+  - Phase: single payment of ₹1 for 1 day (owner's decision, 15 Oct 2026)
 
-  If Play won't allow a 3-day single payment, use a 3-day free trial phase instead. The server treats both as a trial.
+  Check two things while creating it — Google's help pages don't state them: the shortest single-payment
+  phase Play accepts, and India's minimum price. If 1 day or ₹1 isn't accepted, use the shortest length /
+  lowest price Play allows; a free trial is the other option, but Play requires at least 3 days for those.
+  The server treats any intro phase as a trial, and the app reads the length and price from Play, so the
+  paywall text always matches what Google charges.
 - Activate the base plans and the offer.
 
 Go to **Monetize → Products → In-app products → Create product**.
@@ -79,5 +83,5 @@ Crisis and emergency messages are never counted or blocked.
 
 - **Clear pricing:** the paywall already shows "₹1 today, then ₹399/month from <date>, renews automatically, cancel anytime in Google Play" above the button. Don't hide or shorten it. Subscription traps are a named dark pattern under the CCPA's 2023 guidelines.
 - **Easy cancelling:** "Manage subscription" opens Google Play.
-- **Reminder before the first charge:** Google Play handles payments and its own receipts. Check in Play Console whether Google sends a reminder before the trial ends. If it doesn't, ask for an in-app reminder on day 2; the user's trial end date is in `billing_subscriptions.trial_end`.
+- **Reminder before the first charge:** Google Play handles payments and its own receipts. Check in Play Console whether Google sends a reminder before the trial ends. If it doesn't, add an in-app reminder a few hours before the ₹1 day ends (with a 1-day offer there's no "day 2"); the user's trial end date is in `billing_subscriptions.trial_end`. In India, Google may place the payment authorisation up to 5 days before a renewal, so with a 1-day offer users may see their bank's "upcoming debit" notice on the day they pay ₹1 — the paywall text says plainly that the full price is charged from tomorrow.
 - **GST:** Play collects and remits GST on in-app sales in India. Check with your CA how it shows in your books.

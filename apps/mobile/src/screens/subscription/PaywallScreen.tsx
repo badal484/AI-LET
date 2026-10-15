@@ -9,7 +9,7 @@ import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from 
 import { IconButton, Button, Badge, ToastService } from '../../components/common/index.js';
 
 /**
- * Premium: ₹1 for 3 days, then ₹399/month (or ₹99/week, ₹3,999/year), plus ₹49 message packs.
+ * Premium: ₹1 for the first day, then ₹399/month (or ₹99/week, ₹3,999/year), plus ₹49 message packs.
  * Prices shown are Google Play's own (localized); the price and the auto-renewal are stated in plain
  * words right above the button — no surprise charges.
  */
@@ -55,7 +55,8 @@ export const PaywallScreen: React.FC = () => {
 
   const offer: StoreOffer | undefined = catalog?.offers[selected];
   const trial = selected === 'monthly' ? offer?.trial : undefined;
-  const firstCharge = useMemo(() => fmtDate(new Date(Date.now() + 3 * 86_400_000)), []);
+  const trialDays = trial?.days ?? 1;
+  const firstCharge = useMemo(() => fmtDate(new Date(Date.now() + trialDays * 86_400_000)), [trialDays]);
   const resetTime = resetsAt ? new Date(resetsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : 'midnight';
 
   const title =
@@ -110,7 +111,7 @@ export const PaywallScreen: React.FC = () => {
   const disclosure = !offer
     ? ''
     : trial
-      ? `${trial.price} today. Then ${offer.price}/month from ${firstCharge}. Renews automatically until you cancel — cancel anytime in Google Play, at least a day before ${firstCharge} to avoid the charge.`
+      ? `${trial.price} today. Then ${offer.price}/month from ${trialDays === 1 ? `tomorrow (${firstCharge})` : firstCharge}, charged automatically. Cancel anytime in Google Play — cancel before then and you won't be charged ${offer.price}.`
       : `${offer.price}${PLAN_LABEL[selected].per}. Renews automatically until you cancel — cancel anytime in Google Play.`;
 
   return (
@@ -175,7 +176,7 @@ export const PaywallScreen: React.FC = () => {
                       <View style={{ flex: 1 }}>
                         <View style={styles.row}>
                           <Text style={styles.cardTitle}>{PLAN_LABEL[p].title}</Text>
-                          {p === 'monthly' && o.trial && <Badge label={`${o.trial.price} for 3 days`} variant="success" size="sm" />}
+                          {p === 'monthly' && o.trial && <Badge label={`${o.trial.price} for ${o.trial.days === 1 ? 'the first day' : `${o.trial.days} days`}`} variant="success" size="sm" />}
                           {PLAN_LABEL[p].note && <Badge label={PLAN_LABEL[p].note!} variant="success" size="sm" />}
                         </View>
                       </View>
