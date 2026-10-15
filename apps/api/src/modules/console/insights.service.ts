@@ -233,7 +233,7 @@ async function moneyExtras() {
   const [mrr, byProduct, renewals, trouble, cancellations, refunds] = await Promise.all([
     prisma.$queryRawUnsafe<Array<{ monthly: number; subs: number }>>(
       `SELECT coalesce(sum(CASE bp.billing_interval WHEN 'WEEK' THEN bp.amount_minor_units * 52 / 12.0 WHEN 'YEAR' THEN bp.amount_minor_units / 12.0
-                                                    WHEN 'MONTH' THEN bp.amount_minor_units ELSE 39900 END), 0)::float / 100 monthly, count(*)::int subs
+                                                    WHEN 'MONTH' THEN bp.amount_minor_units ELSE 49900 END), 0)::float / 100 monthly, count(*)::int subs
          FROM billing_subscriptions s ${PEOPLE_JOIN}
         WHERE s.provider <> 'MOCK' AND pl.code <> 'FREE' AND s.status IN ('ACTIVE','GRACE_PERIOD') AND s.current_period_end > now() AND NOT s.cancel_at_period_end AND ${REAL_USERS}`,
     ),

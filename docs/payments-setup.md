@@ -12,7 +12,7 @@ Go to **Monetize → Products → Subscriptions → Create subscription**.
 
 | Base plan ID | Billing period | Price (India) | Renewal |
 |---|---|---|---|
-| `monthly` | 1 month | ₹399 | Auto-renewing |
+| `monthly` | 1 month | ₹499 | Auto-renewing |
 | `weekly` | 1 week | ₹99 | Auto-renewing |
 | `yearly` | 1 year | ₹3,999 | Auto-renewing |
 
@@ -81,7 +81,7 @@ Crisis and emergency messages are never counted or blocked.
 
 ## Your obligations (India)
 
-- **Clear pricing:** the paywall already shows "₹1 today, then ₹399/month from <date>, renews automatically, cancel anytime in Google Play" above the button. Don't hide or shorten it. Subscription traps are a named dark pattern under the CCPA's 2023 guidelines.
+- **Clear pricing:** the paywall already shows "₹1 today, then ₹499/month from tomorrow, renews automatically, cancel anytime in Google Play" above the button. Don't hide or shorten it. Subscription traps are a named dark pattern under the CCPA's 2023 guidelines.
 - **Easy cancelling:** "Manage subscription" opens Google Play.
 - **Reminder before the first charge:** Google Play handles payments and its own receipts. Check in Play Console whether Google sends a reminder before the trial ends. If it doesn't, add an in-app reminder a few hours before the ₹1 day ends (with a 1-day offer there's no "day 2"); the user's trial end date is in `billing_subscriptions.trial_end`. In India, Google may place the payment authorisation up to 5 days before a renewal, so with a 1-day offer users may see their bank's "upcoming debit" notice on the day they pay ₹1 — the paywall text says plainly that the full price is charged from tomorrow.
 - **GST:** Play collects and remits GST on in-app sales in India. Check with your CA how it shows in your books.

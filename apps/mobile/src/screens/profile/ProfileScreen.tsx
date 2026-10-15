@@ -150,7 +150,7 @@ export const ProfileScreen: React.FC = () => {
                 ? cancelling
                   ? `Ends on ${date(subscription.currentPeriodEnd)} — you won't be charged again`
                   : trial
-                    ? `Becomes ₹399/month on ${date(subscription.currentPeriodEnd)}`
+                    ? `Becomes ₹499/month on ${date(subscription.currentPeriodEnd)}`
                     : `Renews on ${date(subscription.currentPeriodEnd)}`
                 : 'All characters, 150 messages a day'}
               {allowance && allowance.enforced ? ` · ${left} messages left today` : ''}

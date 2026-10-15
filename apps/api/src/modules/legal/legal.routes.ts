@@ -18,7 +18,7 @@ import { ACCOUNT_DELETION_GRACE_DAYS } from '../privacy/services/PrivacyService.
  */
 export const legalRouter: Router = Router();
 
-const UPDATED = '11 October 2026';
+const UPDATED = '15 October 2026';
 const env = (k: string) => (process.env[k] ?? '').trim();
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -193,7 +193,7 @@ app; or get around limits or payments. We may limit, suspend or close accounts t
 <ul>
 <li>The free plan includes a limited number of messages each day, refilled at midnight (India time).</li>
 <li><b>Premium</b> is a subscription through Google Play. It may start with a low-cost trial (for example ₹1); unless
-you cancel before the trial ends, it continues at the price shown in the app (currently ₹399 a month), and renews
+you cancel before the trial ends, it continues at the price shown in the app (currently ₹499 a month), and renews
 automatically each period until you cancel.</li>
 <li>Cancel any time in the Play Store (Payments &amp; subscriptions → Subscriptions → Lovira). Premium stays on until
 the end of the period you paid for. Refunds follow Google Play's policies.</li>

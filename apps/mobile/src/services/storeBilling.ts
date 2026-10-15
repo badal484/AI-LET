@@ -24,7 +24,7 @@ export type BasePlan = 'monthly' | 'weekly' | 'yearly';
 
 export interface StoreOffer {
   basePlan: BasePlan;
-  /** Localized price from Play, e.g. "₹399.00". */
+  /** Localized price from Play, e.g. "₹499.00". */
   price: string;
   offerToken: string;
   /** The ₹1 intro offer (new customers only — Play leaves it out otherwise). `days` is read from Play, so
