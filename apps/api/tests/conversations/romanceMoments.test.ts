@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRomanticPhrase, romanceMomentName, romanceNote, saysLoveBack } from '../../src/modules/conversations/human/romanceMoments.js';
+import { afterSomeoneElseNote, inSomeoneElseMoment, isRomanticPhrase, romanceMomentName, romanceNote, saysLoveBack } from '../../src/modules/conversations/human/romanceMoments.js';
 import { englishSentences, talksHinglish, writesEnglish } from '../../src/modules/conversations/human/userFirst.js';
 import { personaPackFor } from '../../src/modules/conversations/human/personaPacks/index.js';
 
@@ -80,5 +80,46 @@ describe('From the phone: "Boor dekhoge ??" and an Urdu-script word', () => {
     expect(classifySituations('kal board exam hai', null)).not.toContain('boundary');
     const r = checkReply({ bubbles: ['thoda sa سانس lene do yaar'], herRecentReplies: [], gender: 'male', mode: 'chat', userText: 'Bolo', romanOnly: true });
     expect(r.problems.some((p) => p.includes('No Urdu'))).toBe(true);
+  });
+});
+
+describe('someone else (seen with Muskan, 14 Oct)', () => {
+  const said = [
+    'Ek ladki aayi thi to sex kar rhe the uske sath tum to yaar mana kar rhi thi to uske sath kar liya',
+    'Abhi to bataya ek ladki dost h jiske sath sex karta hoo',
+    'kal raat ek ladki ke sath date pe gaya tha',
+    'maine tumhe cheat kiya',
+    'I slept with another girl yesterday',
+    'meri ek aur girlfriend hai',
+    'ex ke sath kiss kiya',
+  ];
+  const notIt = [
+    'kisi aur se bhi itni baat karti ho?', // jealous question about HER — the "jealous" chat, not this
+    'tumhara koi ex tha?',
+    'date pe chalogi?',
+    'meri dost ka birthday hai, kya gift du',
+    'aaj office mein ek ladki ne help ki',
+  ];
+  it('is recognised in Hinglish and English', () => {
+    for (const t of said) expect(romanceMomentName(t), t).toBe('someone else');
+  });
+  it('is not triggered by ordinary messages', () => {
+    for (const t of notIt) expect(romanceMomentName(t), t).not.toBe('someone else');
+  });
+  it('a girlfriend is hurt, never amused or curious about the other person', () => {
+    const note = romanceNote(said[0]!, 'partner');
+    expect(note).toMatch(/HURT/);
+    expect(note).toMatch(/no 😂/);
+    expect(note).toMatch(/Never ask about the other person/);
+  });
+  it('follow-ups without trigger words keep her hurt, and the moment ends after a few messages', () => {
+    const history = [said[0]!];
+    expect(afterSomeoneElseNote('Bahut royi yaar lekin wo', history)).toMatch(/still hurt/);
+    expect(afterSomeoneElseNote('Dard bahut huwa uska first time tha', [...history, 'Bahut royi yaar lekin wo'])).toMatch(/shut it down/);
+    expect(inSomeoneElseMoment('Dard bahut huwa uska first time tha', history)).toBe(true);
+    expect(afterSomeoneElseNote('aur batao kya chal raha', [said[0]!, 'a', 'b', 'c'])).toBe('');
+  });
+  it('"tumko pyaar hi nahi humse" asks for reassurance', () => {
+    expect(romanceMomentName('To tumko pyaar hi nahi humse to kya karta')).toBe("you don't love me");
   });
 });
