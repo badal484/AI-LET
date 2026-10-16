@@ -47,6 +47,7 @@ import type { CharacterReportCreateInput } from '@ai-companion/validation';
 import { PushPrimer } from '../../components/PushPrimer.js';
 import { PushService } from '../../services/push/PushService.js';
 import { useTypingStore } from '../../stores/typingStore.js';
+import { mergeChatMessages } from '../../utils/mergeChatMessages.js';
 
 /** The "…" typing bubble's timestamp: fixed, so it doesn't count as a new message every render. */
 const TYPING_AT = new Date(0).toISOString();
@@ -331,7 +332,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const pendingOptimistic = optimisticMessages.filter(
     m => !serverMessageIds.has(m.id) && !serverClientRequestIds.has(m.clientRequestId),
   );
-  const allMessages = [...pendingOptimistic, ...serverMessages];
+  const allMessages = mergeChatMessages(pendingOptimistic, serverMessages);
 
   // "Helpful?" only after real help (code, a plan, a proper explanation) — never small talk — under the
   // LAST message of that answer, at most once a day per chat, and gone once they reply.
@@ -501,6 +502,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           onSaved: payload => {
             saved = true;
             turn.saved = true;
+            // The server's copy replaces the instant one. Drop the instant copy now — if it were only hidden
+            // by matching, it would come back at the bottom once its server copy left the loaded page.
+            setOptimisticMessages(prev => prev.filter(m => m.clientRequestId !== opts.clientRequestId));
             if (turn.leaving) setTimeout(() => turn.abort.abort(), 0);
             upsertServerMessage({
               id: payload.messageId,
