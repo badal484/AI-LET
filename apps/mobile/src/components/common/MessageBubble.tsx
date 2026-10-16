@@ -231,8 +231,9 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
                           styles.messageText,
                           isUser ? styles.userText : styles.assistantText,
                         ]}
-                        selectable
                       >
+                        {/* Not selectable: a long press opens this message's actions (Copy, Reply…). Selectable
+                            text started Android's text selection and its magnifier instead. */}
                         {withInlineCode(paragraph, styles.inlineCode)}
                       </Text>
                     );
@@ -316,9 +317,22 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
         {/* Contextual Action Strip */}
         {showActions && (
           <View style={[styles.actionStrip, isUser ? styles.userActionStrip : styles.assistantActionStrip]}>
-            <TouchableOpacity style={styles.actionItem} onPress={handleCopy}>
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => {
+                Clipboard.setString(message.content);
+                setShowActions(false);
+                ToastService.show({ message: 'Copied', type: 'info', duration: 1500 });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Copy message"
+            >
+              <Icon name="copy" size={13} color={darkThemeColors.textMuted} />
+              <Text style={styles.actionLabel}>Copy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionItem} onPress={handleCopy} accessibilityRole="button" accessibilityLabel="Share message">
               <Icon name="share" size={13} color={darkThemeColors.textMuted} />
-              <Text style={styles.actionLabel}>Share/Copy</Text>
+              <Text style={styles.actionLabel}>Share</Text>
             </TouchableOpacity>
             {canReply && (
               <TouchableOpacity
