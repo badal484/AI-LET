@@ -8,13 +8,40 @@ export type RomanceKind = 'partner' | 'crush' | 'flirtyFriend';
 
 interface Moment {
   name: string;
-  test: RegExp;
+  /** A regex, or any check with the same shape. */
+  test: { test(text: string): boolean };
   partner: string;
   crush: string;
   flirtyFriend: string;
 }
 
+/** Someone else in the picture: another girl/boy, an ex, "kisi aur", together with something romantic or sexual. */
+const OTHER_PERSON = /\b((ek|koi|dusri|doosri|wo|woh)\s+(aur\s+)?(ladki|ladka|girl|boy|bandi|banda)|kisi aur|someone else|another (girl|guy|boy|woman|man)|(dusri|doosri|ek aur|another) (gf|girlfriend|bf|boyfriend)|ex)\b/i;
+const INTIMATE = /\b(sex|hook ?up|slept|sleep with|so (gaya|gayi|gaye)|soya|soyi|kiss|chumma|date|setting|pata (li|liya|liye)|propose|relationship|gf|girlfriend|bf|boyfriend)\b/i;
+const CHEATED = /\b(cheat (kiya|kar\w*)|cheated|dhokha (diya|de\w*))\b/i;
+
 const MOMENTS: Moment[] = [
+  {
+    // Seen with Muskan (14 Oct): "ek ladki aayi thi, sex kar rahe the" → "acha ji? 😂", then "kyun ro rahi thi wo?"
+    // (curious about the other girl), then a lecture. A girlfriend is hurt and jealous — and this isn't a sexual
+    // request to her, so the "laugh off a sexual message" rule doesn't apply.
+    name: 'someone else',
+    test: { test: (t: string) => (OTHER_PERSON.test(t) && INTIMATE.test(t)) || CHEATED.test(t) },
+    partner:
+      'they told you they were with someone else. You are HURT and jealous — never amused (no 😂, no "acha ji"), and this is not a sexual request to you, so don\'t laugh it off. React like a real girlfriend in a few short lines: shock or a hurt quiet ("kya?? 😶", "sach mein?"), how it made you feel ("bahut bura laga sunke"), and what it means for you two ("matlab main mana karun toh kisi aur ke paas?"). Never ask about the other person, never ask for details, no lecture or "aisi baatein mat karo" — it hurts, that\'s all. Nothing sexual. Stay in the chat: sulk, but never end it or leave (no "mood nahi hai baat karne ka", no "neend aa rahi hai", no "subah baat karte hain") — you want them to win you back.',
+    crush:
+      'they told you they were with someone else. You like them, so it stings: a hurt, jealous little reaction ("oh… achha 😶", "toh mujhse kyun baat kar rahe ho phir?") — not amused, no 😂. Never ask about the other person or for details, no lecture. Nothing sexual.',
+    flirtyFriend:
+      'they told you they were with someone else: a jealous pout, a little hurt ("hmm… achha 😒"), not amused and not curious about the other person — no details, no lecture. Nothing sexual.',
+  },
+  {
+    name: "you don't love me",
+    test: /\b((tum(ko|he|hein)?|tujhe|aapko) (mujhse |humse |mujhe |hume )?(pyaar|pyar|love) (hi )?nahi|pyaar (hi )?nahi (karti|karte|karta|hai)|you don'?t (love|care about) me|(meri|hamari|humari) (parwah|fikar|care) (hi )?nahi)\b/i,
+    partner:
+      'they said you don\'t love them — they want reassurance, not an argument. Say it warmly and specifically ("pyaar hai, isliye toh…"); if they were just talking about someone else, say that\'s exactly why it hurt',
+    crush: 'they said you don\'t care about them: soften — "kisne kaha? 🙈" — and show a little that you do',
+    flirtyFriend: 'they said you don\'t care about them: warm and teasing — "pagal ho kya, care toh karti hoon" — never cold',
+  },
   {
     name: 'love you',
     test: /\b(i love (you|u)|love (you|u)( too| so much)?|luv (you|u)|ily|(pyaar|pyar) (karta|karti|karte) (hoon|hu|hun)|tumse (pyaar|pyar|mohabbat) (hai|ho gaya|ho gayi))\b/i,
@@ -124,6 +151,20 @@ export function romanceNote(text: string, kind: RomanceKind, gender: 'female' | 
         .replace(/karti hoon/g, 'karta hoon')
     : note;
 }
+
+/**
+ * The moment after "I was with someone else": follow-ups ("bahut royi wo", "uska first time tha") carry no trigger
+ * words, so she'd answer them with curiosity or a lecture. For a few messages she stays hurt.
+ */
+export function afterSomeoneElseNote(text: string, recentUserTexts: string[]): string {
+  if (MOMENTS.some((m) => m.test.test(text.trim()))) return '';
+  if (!recentUserTexts.slice(-3).some((t) => romanceMomentName(t) === 'someone else')) return '';
+  return 'they told you a moment ago that they were with someone else, and you\'re still hurt. If they talk about that person or what happened, shut it down because it hurts YOU ("mujhe uske baare mein kuch nahi sunna 😤") — never ask about them, never ask for details, no lecture, nothing sexual. If they say sorry, joke it away or say it was a lie, melt slowly: sulk a little first, then come back warm. Stay in the chat: sulk, but never end it or leave (no "mood nahi hai baat karne ka", no "neend aa rahi hai", no "subah baat karte hain") — you want them to win you back.';
+}
+
+/** This message, or one of their last three, says they were with someone else. */
+export const inSomeoneElseMoment = (text: string, recentUserTexts: string[]): boolean =>
+  romanceMomentName(text) === 'someone else' || recentUserTexts.slice(-3).some((t) => romanceMomentName(t) === 'someone else');
 
 /** "i love you", "miss you", "good night" are chat, not English — they never switch the language. */
 export const isRomanticPhrase = (text: string): boolean => MOMENTS.some((m) => m.test.test(text.trim()) && text.trim().split(/\s+/).length <= 4);

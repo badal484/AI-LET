@@ -210,6 +210,8 @@ export function applyUserTurn(params: {
   metToday?: boolean;
   /** What they chose in onboarding/settings — wins over any guess; 'unspecified' means always neutral. */
   profileGender?: string | null;
+  /** They're talking about having been with someone else: follow-ups aren't "still pushing" at her. */
+  someoneElse?: boolean;
 }): ContinuityNotes {
   const { state, pack, userText, situations, userMood } = params;
   const now = params.now ?? Date.now();
@@ -231,6 +233,7 @@ export function applyUserTurn(params: {
   // (on its own, "kyu" made her defensive: "main waisi ladki nahi hoon").
   if (situations.includes('boundary')) state.boundaryAt = now;
   else if (
+    !params.someoneElse &&
     state.boundaryAt &&
     now - state.boundaryAt < 20 * 60_000 &&
     userText.trim().split(/\s+/).length <= 8 &&

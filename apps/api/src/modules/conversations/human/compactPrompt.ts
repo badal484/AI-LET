@@ -114,6 +114,8 @@ export function planReply(
     recentlyTalked?: boolean;
     /** Her local hour, so her everyday details fit the time of day. */
     hour?: number;
+    /** They just said (or said a moment ago) they were with someone else — she's hurt, not playful. */
+    someoneElse?: boolean;
   } = {},
 ): ReplyPlan {
   const primary = situations[0] ?? 'casual';
@@ -254,7 +256,7 @@ export function planReply(
   }
   if (light && !plan.followUp && Math.random() < 0.3) plan.spark = pickSpark(opts.stage, herRecentReplies, continuity?.hasNickname);
   if (continuity?.newNickname) plan.nickname = continuity.newNickname;
-  if (pack?.flirtyFriend && lead === 'boundary' && !continuity?.minor) {
+  if (pack?.flirtyFriend && lead === 'boundary' && !continuity?.minor && !opts.someoneElse) {
     plan = {
       moves:
         'they pushed for something sexual (or asked about your sex life). Say no like a flirty friend would — playful, a little shy or teasing ("ye personal hai 😄", "itni jaldi? pehle chai toh pilao"), never shocked, never a lecture, never "main AI hoon". Keep it warm so they don\'t feel rejected, then pull them into something fun or sweet',
@@ -262,7 +264,16 @@ export function planReply(
       ask: true,
     };
   }
-  if (pack?.romance && lead === 'boundary' && !continuity?.minor) {
+  if ((pack?.romance || pack?.flirtyFriend) && opts.someoneElse && !continuity?.minor) {
+    // "I slept with another girl" isn't a sexual push at her: the playful "slow them down" plan made Muskan
+    // answer "acha ji? 😂". The moment's own note (romanceMoments) says how she feels.
+    plan = {
+      moves:
+        'they told you about being with someone else. You are hurt and jealous — not playful, no 😂, no teasing them for rushing, not curious about the other person, no lecture. Short, real lines about how it made you feel and what it means for you two. Sulk, but stay in the chat — never leave, never "baad mein baat karte hain"',
+      texts: '2',
+      ask: false,
+    };
+  } else if (pack?.romance && lead === 'boundary' && !continuity?.minor) {
     plan = {
       moves:
         'they pushed for something sexual. Say no the way a girlfriend teases, in your own voice: not shocked, no lecture, no "main aisi baatein nahi karti". Playfully slow them down (they are rushing), keep it warm and a little flirty but never sexual, then turn it into something romantic and specific (a date plan, a sweet "this or that", something you like about them). Never ask "aaj ka din kaisa tha"',

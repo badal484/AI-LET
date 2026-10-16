@@ -44,7 +44,7 @@ import { extractTaskTag, isTeachingMoment } from '../human/mentor.js';
 import { activeCourse, applyCoursePatch, claimsPlanFollowed, continuesCourse, NO_PLAN_YET, courseLines, courseProblems, courseReminder, answersCheck, announcesPass, detectCourseRequest, extractCourseTag, settleCoursePatch, type CoursePatch } from '../human/course.js';
 import { mentionsTask } from '../human/taskFollowUp.js';
 import { boredByHerTalk, conversationLanguage, englishSentences, isEnglish, languageChoice, REFUSES_TOPIC, topicWordsOf } from '../human/userFirst.js';
-import { romanceMomentName, romanceNote, romanceWorkTalk, saysLoveBack } from '../human/romanceMoments.js';
+import { afterSomeoneElseNote, inSomeoneElseMoment, romanceMomentName, romanceNote, romanceWorkTalk, saysLoveBack } from '../human/romanceMoments.js';
 import { checkReply, fixTuForms, hasUrduScript, hindiWords, stripWrongAddress } from '../human/replyChecker.js';
 import type {
   StreamEventType,
@@ -861,7 +861,8 @@ export class StreamingChatService {
       const metToday = Boolean(firstUserMessage && localDate(timeZone, firstUserMessage.createdAt) === localDate(timeZone));
       firstMeeting = metToday && Date.now() - (firstUserMessage?.createdAt.getTime() ?? 0) < 30 * 60_000;
       const clearedAt = (conversation as { clearedAt?: Date | null }).clearedAt;
-      const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday, profileGender: conversation.user.profile?.userGender });
+      const someoneElse = Boolean(pack.romance || pack.flirtyFriend) && inSomeoneElseMoment(pendingText, recentMessages.filter((m) => m.role === 'user').map((m) => m.content));
+      const continuity = applyUserTurn({ state: life, pack, userText: pendingText, situations, userMood: readUserMood(pendingText, situations), metToday, profileGender: conversation.user.profile?.userGender, someoneElse });
       // Worked out from their words ("main ladki hoon", "kar raha hoon") and not chosen yet: every character knows it now.
       allowBro = pack.gender === 'male' && life.userGender === 'male' && !pack.romance && !pack.flirtyFriend;
       if (life.userGender && !conversation.user.profile?.userGender)
@@ -933,6 +934,7 @@ export class StreamingChatService {
       const latest = recentMessages[recentMessages.length - 1];
       const recentlyTalked = Boolean(latest && Date.now() - latest.createdAt.getTime() < 60 * 60_000);
       const plan = planReply(situations, herRecentReplies, pack, {
+        someoneElse,
         stage,
         continuity,
         toldToday: life.day.told,
@@ -973,6 +975,10 @@ export class StreamingChatService {
               projectNote,
               pack.romance || pack.flirtyFriend
                 ? (life.minor ? '' : romanceNote(pendingText, pack.crush && !crushWon ? 'crush' : pack.romance ? 'partner' : 'flirtyFriend', pack.gender, pack.address))
+                : '',
+              // Still hurt a few messages after "I was with someone else" (follow-ups have no trigger words).
+              (pack.romance || pack.flirtyFriend) && !life.minor
+                ? afterSomeoneElseNote(pendingText, recentMessages.filter((m) => m.role === 'user').map((m) => m.content))
                 : '',
 
               boredOfHer ? "they just gave a one-word answer to you talking about yourself — they're not into that topic. Drop it and turn to them: their day, their mood, something fun about them" : '',
