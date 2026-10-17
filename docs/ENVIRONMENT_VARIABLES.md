@@ -35,6 +35,7 @@ secrets or simulated billing. Values here are examples or descriptions, never re
 | `LEGAL_OPERATOR_NAME`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`, `GRIEVANCE_OFFICER_NAME`, `GRIEVANCE_OFFICER_EMAIL` | Shown on the privacy/terms pages | empty (F-17) |
 | `DEFAULT_CHAT_MODEL`, `CHAT_PROVIDER`, `GEMINI_IMPORTANT_ONLY`, `GEMINI_*_MODEL` | AI model routing | see `docs/scaling.md`, `ai-cost` notes |
 | `BACKGROUND_AI_CONCURRENCY` | After-reply AI jobs in the worker | 6 |
+| `PROMPT_SNAPSHOT_SAMPLE` | Share of replies whose full prompt is kept for debugging (0–1) | 0.01 |
 | `LOG_LEVEL` | Logging | `info` |
 
 ## Not used by the product any more
