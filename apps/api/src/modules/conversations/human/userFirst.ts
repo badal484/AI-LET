@@ -54,8 +54,12 @@ export function isEnglish(text: string): boolean {
 
 /** The language of the conversation: English only when they clearly write English (the last two, or most of
  * their recent messages) — one English-looking line in a Hinglish chat doesn't flip it. */
+/** A gift from the app ("[Sent a Gift: 🌹 Red Rose]") — app text, not how they write. */
+export const isGiftMessage = (text: string): boolean => /^\[Sent a Gift: /.test(text.trim());
+
 export function conversationLanguage(recentUserTexts: string[]): 'english' | 'hinglish' {
-  const recent = recentUserTexts.filter((t) => t.trim().split(/\s+/).length >= 2).slice(-5);
+  // Gifts are left out: their English label made Ritika switch to English mid-Hinglish chat (17 Oct).
+  const recent = recentUserTexts.filter((t) => !isGiftMessage(t) && t.trim().split(/\s+/).length >= 2).slice(-5);
   if (!recent.length) return 'hinglish';
   const english = recent.map(isEnglish);
   const lastTwo = english.slice(-2);

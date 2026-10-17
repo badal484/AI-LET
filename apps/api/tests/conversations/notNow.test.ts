@@ -30,5 +30,7 @@ describe('Language follows the conversation', () => {
   it('one English-looking line in a Hinglish chat does not flip it', () => {
     expect(conversationLanguage(['To kal Saturday ko party kiye club gaye the ?', 'Yesab baad mein baat karte h', 'Night shift then day shift how ??'])).toBe('hinglish');
     expect(conversationLanguage(['hey, what do you do?', 'tell me about your family'])).toBe('english');
+    // Gifts are app text, not their language (Ritika switched to English after two gifts, 17 Oct).
+    expect(conversationLanguage(['kya kar rahi ho', '[Sent a Gift: 🌹 Red Rose]', '[Sent a Gift: 🍫 Box of Belgian Chocolates]'])).toBe('hinglish');
   });
 });
