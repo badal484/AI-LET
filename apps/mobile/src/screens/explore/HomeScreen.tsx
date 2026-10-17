@@ -25,6 +25,7 @@ import type {
   HomeFeedSection,
 } from '@ai-companion/types';
 import { PressableScale } from '../../components/common/PressableScale.js';
+import { BottomFade } from '../../components/common/BottomFade.js';
 
 const CARD_WIDTH = 148;
 const CARD_HEIGHT = 210;
@@ -410,7 +411,8 @@ function renderSection(
                 fadeDuration={150}
               />
 
-              {/* Bottom Gradient Overlay with Name & Hashtag Pills */}
+              {/* A real gradient over the photo's lower part, then the name and tags on top of it. */}
+              <BottomFade height={CARD_HEIGHT * 0.55} />
               <View style={styles.cardBottomOverlay}>
                 <View style={styles.nameRow}>
                   <Text style={styles.cardName} numberOfLines={1}>
@@ -630,9 +632,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 10,
-    paddingBottom: 10,
+    paddingBottom: 11,
     paddingTop: 24,
-    backgroundColor: 'rgba(10, 4, 18, 0.78)',
   },
   nameRow: {
     flexDirection: 'row',
@@ -644,6 +645,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     flexShrink: 1,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   onlineDot: {
     width: 6,
@@ -651,12 +655,13 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#10B981',
   },
+  // Tags wrap to a second line instead of being cut ("#posses…"); never more than two.
   tagRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     gap: 4,
-    marginTop: 4,
+    marginTop: 5,
   },
   hashtagPill: {
     backgroundColor: 'rgba(168, 85, 247, 0.22)',
@@ -665,8 +670,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderWidth: 1,
     borderColor: 'rgba(192, 132, 252, 0.35)',
-    maxWidth: 62,
-    flexShrink: 1,
   },
   cardHashtag: {
     fontSize: 10,
