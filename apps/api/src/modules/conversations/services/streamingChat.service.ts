@@ -65,6 +65,12 @@ import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 import { ReminderIntent } from '../../notifications/services/reminderIntent.service.js';
 import { scheduleAfterReply } from './afterReply.service.js';
 
+/** Share of replies whose full prompt is kept (default 1 in 100). */
+const promptSnapshotSample = (): number => {
+  const v = Number(process.env['PROMPT_SNAPSHOT_SAMPLE'] ?? 0.01);
+  return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.01;
+};
+
 /** "can you give me code?", "script likh do" — a code answer needs more room than a chat reply. */
 const ASKS_FOR_CODE = /\b(code|script|program|snippet|function|example code|implement|likh (do|ke do)|bana (do|ke do))\b/i;
 
@@ -207,7 +213,7 @@ export class StreamingChatService {
             replyToMessageId: replyTo?.id ?? null,
             clientRequestId: input.clientRequestId,
             idempotencyKey: input.idempotencyKey,
-            parts: { create: { partType: 'text', content, orderIndex: 0 } },
+            // No message_parts copy: the text lives in `content`, and nothing reads parts (it doubled storage).
           }));
       }
 
@@ -1382,13 +1388,14 @@ export class StreamingChatService {
                   modelClass: modelName,
                   provider: provider.providerName,
                   temperature: characterRuntime.aiConfig.temperature || 0.7,
-                  promptSnapshot: builtContext.systemPrompt,
+                  // The full prompt is ~11 kB and nothing reads it: keep it for 1 reply in 100 (debugging;
+                  // PROMPT_SNAPSHOT_SAMPLE, 0–1) — the one actually sent, not the legacy builder's.
+                  promptSnapshot: Math.random() < promptSnapshotSample() ? (request.systemPrompt ?? builtContext.systemPrompt) : null,
                   finishReason: generated.finishReason === 'length' ? 'length' : 'stop',
                 },
               },
             }
           : {}),
-        parts: { create: { partType: 'text', content: bubble, orderIndex: 0 } },
       });
       delivered.push({ id: stored.id, content: bubble });
       send<StreamMessageBubblePayload>('message.bubble', {
