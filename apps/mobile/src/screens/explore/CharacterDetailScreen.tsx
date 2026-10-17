@@ -37,57 +37,21 @@ import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type DetailRouteProp = RouteProp<RootStackParamList, 'CharacterDetail'>;
 
+// How close you two are, in words a person would use (not "Lvl 1 · 22% Intimacy").
 const getStageDetails = (stage?: string) => {
   switch (stage) {
-    case 'STRANGER':
-      return {
-        label: 'First Spark',
-        icon: '🌱',
-        level: 'Lvl 1',
-        description: 'You are just getting to know each other. Keep chatting to build comfort and familiarity.',
-      };
     case 'ACQUAINTANCE':
-      return {
-        label: 'Casual Friends',
-        icon: '💬',
-        level: 'Lvl 2',
-        description: 'A friendly rapport is developing. You communicate easily with mutual comfort.',
-      };
+      return { label: 'Getting comfortable', icon: '💬', description: 'The awkward part is over — you two talk easily now.' };
     case 'FRIEND':
-      return {
-        label: 'Close Friends',
-        icon: '🌟',
-        level: 'Lvl 3',
-        description: 'Strong trust and warm affinity. Conversations are relaxed, open, and authentic.',
-      };
+      return { label: 'Friends', icon: '🌟', description: 'Real trust. You can tell each other almost anything.' };
     case 'CLOSE_FRIEND':
-      return {
-        label: 'Deep Companions',
-        icon: '✨',
-        level: 'Lvl 4',
-        description: 'A deep emotional connection with high comfort, care, and mutual vulnerability.',
-      };
+      return { label: 'Close', icon: '✨', description: 'They know your world, and you know theirs.' };
     case 'CONFIDANT':
-      return {
-        label: 'Trusted Confidant',
-        icon: '💫',
-        level: 'Lvl 5',
-        description: 'Profound mutual understanding and unconditional emotional support.',
-      };
+      return { label: 'Your person', icon: '💫', description: 'The one you go to first — on good days and bad.' };
     case 'ROMANTIC_PARTNER':
-      return {
-        label: 'Romantic Partner',
-        icon: '💖',
-        level: 'Lvl 6',
-        description: 'A devoted romantic bond with heartfelt closeness and tender affection.',
-      };
+      return { label: 'Together', icon: '💖', description: 'Something special between you two.' };
     default:
-      return {
-        label: 'First Spark',
-        icon: '🌱',
-        level: 'Lvl 1',
-        description: 'Enjoying meaningful conversations and getting to know each other.',
-      };
+      return { label: 'Just getting started', icon: '🌱', description: 'You two are just getting to know each other.' };
   }
 };
 
@@ -110,6 +74,17 @@ export const CharacterDetailScreen: React.FC = () => {
     enabled: Boolean(profile?.id),
     staleTime: 30_000,
   });
+  const closeness = relationshipData
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          Math.round(
+            (relationshipData.familiarity + relationshipData.trust + relationshipData.comfort + relationshipData.affection + relationshipData.engagement) / 5,
+          ),
+        ),
+      )
+    : 0;
 
   // One view per character page open (feeds creator analytics).
   const viewedCharacterId = profile?.id;
@@ -346,16 +321,7 @@ export const CharacterDetailScreen: React.FC = () => {
                 />
               )}
             </TouchableOpacity>
-          ) : (
-            <View style={styles.creatorRow}>
-              <Badge
-                label="Official Platform Character"
-                icon={<Icon name="sparkles" size={10} color={darkThemeColors.accent} />}
-                variant="stage"
-                size="sm"
-              />
-            </View>
-          )}
+          ) : null}
 
           {/* Social: follow (distinct from favorite) + public posts; hidden if social is unavailable */}
 
@@ -367,28 +333,16 @@ export const CharacterDetailScreen: React.FC = () => {
                 <View style={styles.connectionHeader}>
                   <View style={styles.connectionBadge}>
                     <Text style={styles.connectionBadgeText}>
-                      {getStageDetails(relationshipData.stage).icon}{' '}
-                      {getStageDetails(relationshipData.stage).level} ·{' '}
-                      {getStageDetails(relationshipData.stage).label}
+                      {getStageDetails(relationshipData.stage).icon} {getStageDetails(relationshipData.stage).label}
                     </Text>
                   </View>
-                  <Text style={styles.connectionPercent}>
-                    {Math.min(
-                      100,
-                      Math.max(
-                        0,
-                        Math.round(
-                          (relationshipData.familiarity +
-                            relationshipData.trust +
-                            relationshipData.comfort +
-                            relationshipData.affection +
-                            relationshipData.engagement) /
-                            5,
-                        ),
-                      ),
-                    )}
-                    % Intimacy
-                  </Text>
+                </View>
+                {/* Closeness as a bar, not a percentage. */}
+                <View
+                  style={styles.closenessTrack}
+                  accessibilityLabel={`Closeness ${closeness} out of 100`}
+                >
+                  <View style={[styles.closenessFill, { width: `${Math.max(6, closeness)}%` }]} />
                 </View>
                 <Text style={styles.connectionDescription}>
                   {getStageDetails(relationshipData.stage).description}
@@ -411,9 +365,8 @@ export const CharacterDetailScreen: React.FC = () => {
             <View style={styles.quickInfoDivider} />
             <View style={styles.quickInfoItem}>
               <Text style={styles.quickInfoLabel}>LANGUAGE</Text>
-              <Text style={styles.quickInfoValue}>
-                {profile.communication.primaryLanguage.toUpperCase()}
-              </Text>
+              {/* Every character answers in the language you write in. */}
+              <Text style={styles.quickInfoValue}>Hinglish · English</Text>
             </View>
           </View>
 
@@ -950,7 +903,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#C084FC',
   },
+  closenessTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginTop: 12 },
+  closenessFill: { height: 6, borderRadius: 3, backgroundColor: '#C084FC' },
   connectionDescription: {
+    marginTop: 10,
     fontSize: 13,
     color: '#94A3B8',
     lineHeight: 18,
