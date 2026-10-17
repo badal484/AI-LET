@@ -2,7 +2,8 @@
  * The plans this app sells, on Google Play (run once per database; safe to re-run):
  *   PREMIUM — ₹499/month, starting with ₹1 for the first day; fair use 150 messages a day. The only plan:
  *             no weekly or yearly plan, and no free messages (limits.freeDaily = 0; the admin can change it).
- *   Message pack — 100 extra messages for ₹49.
+ *   Coin packs (one-time) — ₹49 = 100, ₹149 = 330, ₹399 = 1,000 coins. Coins pay for gifts and for extra
+ *             messages beyond the daily allowance (1 coin each).
  * The old placeholder plans (PLUS, PRO, ULTRA with MOCK prices) are hidden from the paywall.
  *
  *   npx tsx scripts/billing/setupPlayPlans.ts          (dry run)
@@ -14,7 +15,11 @@ import { PrismaClient } from '@prisma/client';
 const p = new PrismaClient();
 const apply = process.argv.includes('--apply');
 const SUB = process.env['PLAY_SUBSCRIPTION_ID'] || 'companion_premium';
-const PACK = process.env['PLAY_PACK_ID'] || 'messages_100';
+const COIN_PACKS = [
+  { id: 'coins_100', coins: 100, amount: 4900 },
+  { id: 'coins_330', coins: 330, amount: 14900 },
+  { id: 'coins_1000', coins: 1000, amount: 39900 },
+];
 
 const PRICES = [
   { id: `${SUB}:monthly`, amount: 49900, interval: 'MONTH' as const },
@@ -24,7 +29,7 @@ const RETIRED = [`${SUB}:weekly`, `${SUB}:yearly`];
 
 console.log(apply ? 'Applying…' : 'Dry run (add --apply to write):');
 console.log(`- PREMIUM plan: ${PRICES.map((x) => `${x.id} ₹${x.amount / 100}/${x.interval.toLowerCase()}`).join(', ')}; 1-day ₹1 trial on monthly`);
-console.log(`- Message pack: ${PACK} ₹49 → 100 messages`);
+console.log(`- Coin packs: ${COIN_PACKS.map((p) => `${p.id} ₹${p.amount / 100} → ${p.coins} coins`).join(', ')}`);
 console.log(`- Switch off retired prices: ${RETIRED.join(', ')}`);
 console.log('- Hide PLUS, PRO, ULTRA from the paywall (isActive=false); keep FREE (= no subscription)');
 
@@ -58,16 +63,18 @@ if (apply) {
   for (const key of ['chat_basic', 'chat_priority', 'premium_characters', 'advanced_memory', 'proactive_messages']) {
     await p.planEntitlement.upsert({ where: { planId_entitlementKey: { planId: plan.id, entitlementKey: key } }, create: { planId: plan.id, entitlementKey: key }, update: {} });
   }
-  const pack = await p.billingProduct.upsert({
-    where: { slug: 'message-pack-100' },
-    create: { name: '100 extra messages', slug: 'message-pack-100', type: 'CREDIT_PACK' },
+  const coinProduct = await p.billingProduct.upsert({
+    where: { slug: 'coins' },
+    create: { name: 'Coins', slug: 'coins', type: 'CREDIT_PACK', description: 'For gifts and extra messages' },
     update: {},
   });
-  await p.billingPrice.upsert({
-    where: { provider_providerPriceId: { provider: 'GOOGLE', providerPriceId: PACK } },
-    create: { productId: pack.id, currency: 'INR', amountMinorUnits: 4900, billingInterval: 'ONE_TIME', provider: 'GOOGLE', providerPriceId: PACK, country: 'IN' },
-    update: { amountMinorUnits: 4900, active: true },
-  });
+  for (const pack of COIN_PACKS) {
+    await p.billingPrice.upsert({
+      where: { provider_providerPriceId: { provider: 'GOOGLE', providerPriceId: pack.id } },
+      create: { productId: coinProduct.id, currency: 'INR', amountMinorUnits: pack.amount, billingInterval: 'ONE_TIME', provider: 'GOOGLE', providerPriceId: pack.id, country: 'IN' },
+      update: { amountMinorUnits: pack.amount, active: true },
+    });
+  }
   await p.billingPlan.updateMany({ where: { code: { in: ['PLUS', 'PRO', 'ULTRA'] } }, data: { isActive: false } });
   console.log('Done.');
 }

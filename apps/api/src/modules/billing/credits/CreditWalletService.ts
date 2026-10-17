@@ -151,14 +151,20 @@ export class CreditWalletService {
       const promoDeduction = Math.min(wallet.promotionalCredits, params.amount);
       const purchasedDeduction = params.amount - promoDeduction;
 
-      const updatedWallet = await tx.creditWallet.update({
-        where: { id: wallet.id },
+      // Deduct only if the balance is still enough at write time: two spends at the same moment (a double tap,
+      // two gifts) both passed the read above and could take the balance below zero.
+      const deducted = await tx.creditWallet.updateMany({
+        where: { id: wallet.id, availableBalance: { gte: params.amount } },
         data: {
           availableBalance: { decrement: params.amount },
           promotionalCredits: { decrement: promoDeduction },
           purchasedCredits: { decrement: purchasedDeduction },
         },
       });
+      if (deducted.count === 0) {
+        throw new AppError('Insufficient credit balance', 400, ErrorCode.CREDIT_BALANCE_INSUFFICIENT);
+      }
+      const updatedWallet = await tx.creditWallet.findUniqueOrThrow({ where: { id: wallet.id } });
 
       const transaction = await tx.creditTransaction.create({
         data: {

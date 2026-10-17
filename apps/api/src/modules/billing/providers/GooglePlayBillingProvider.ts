@@ -8,8 +8,17 @@ import { acknowledgeSubscription, consumeProduct, getProductPurchase, getSubscri
  * The Play catalog this app sells (create the same IDs in Play Console → Monetize):
  *  - subscription `companion_premium`, base plan `monthly` (₹499) — the only plan sold (weekly/yearly retired);
  *    on `monthly`, an introductory offer of ₹1 for 1 day (offer id `trial`), new customers only.
- *  - one-time consumable `messages_100` (₹49): 100 extra messages.
+ *  - one-time consumable coin packs: `coins_100` (₹49), `coins_330` (₹149), `coins_1000` (₹399). Coins are the one
+ *    currency: gifts and extra messages beyond the daily allowance spend them. The old `messages_100` (₹49) still
+ *    counts as 100 coins. How many coins a pack gives is decided here, never by the app.
  */
+export const COIN_PACKS: Record<string, { coins: number; amountMinorUnits: number }> = {
+  coins_100: { coins: 100, amountMinorUnits: 4900 },
+  coins_330: { coins: 330, amountMinorUnits: 14900 },
+  coins_1000: { coins: 1000, amountMinorUnits: 39900 },
+  [process.env['PLAY_PACK_ID'] || 'messages_100']: { coins: 100, amountMinorUnits: 4900 },
+};
+
 export const PLAY_CATALOG = {
   subscriptionProductId: process.env['PLAY_SUBSCRIPTION_ID'] || 'companion_premium',
   packProductId: process.env['PLAY_PACK_ID'] || 'messages_100',
@@ -56,7 +65,8 @@ export class GooglePlayBillingProvider implements IBillingProvider {
       errorMessage: 'We could not confirm this purchase with Google Play. You have not been charged twice — please try Restore in a minute.',
     });
     try {
-      if (params.productId === PLAY_CATALOG.packProductId) {
+      const pack = COIN_PACKS[params.productId];
+      if (pack) {
         const p = await getProductPurchase(params.productId, token);
         if (p.purchaseState !== 0) return fail(`pack purchaseState ${p.purchaseState}`);
         if (p.consumptionState === 1) return fail('pack already consumed');
@@ -67,9 +77,9 @@ export class GooglePlayBillingProvider implements IBillingProvider {
           providerTransactionId: p.orderId || token,
           productId: params.productId,
           currency: 'INR',
-          amountMinorUnits: 4900,
+          amountMinorUnits: pack.amountMinorUnits,
           paymentStatus: 'SUCCEEDED',
-          rawPayload: { kind: 'pack', obfuscatedAccountId: p.obfuscatedExternalAccountId, test: p.purchaseType === 0 },
+          rawPayload: { kind: 'pack', coins: pack.coins, obfuscatedAccountId: p.obfuscatedExternalAccountId, test: p.purchaseType === 0 },
         };
       }
 

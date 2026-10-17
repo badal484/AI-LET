@@ -96,8 +96,9 @@ export class PurchaseService {
       throw new BadRequestError('This purchase belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
     }
 
-    // A message pack: extra messages, no subscription.
+    // A coin pack (one-time): coins for gifts and extra messages. The amount comes from the server's catalog.
     if ((verified.rawPayload as { kind?: string }).kind === 'pack') {
+      const coins = Number((verified.rawPayload as { coins?: number }).coins) || PLAY_CATALOG.packMessages;
       const transaction = await prisma.purchaseTransaction.create({
         data: {
           userId,
@@ -114,15 +115,15 @@ export class PurchaseService {
       });
       await CreditWalletService.grantCredits({
         userId,
-        amount: PLAY_CATALOG.packMessages,
+        amount: coins,
         type: 'PURCHASE',
         idempotencyKey: `message_pack_${verified.providerTransactionId}`,
-        description: `${PLAY_CATALOG.packMessages} extra messages`,
+        description: `${coins} coins`,
         referenceType: 'PURCHASE',
         referenceId: transaction.id,
       });
       const effective = await EntitlementService.getEffectiveEntitlements(userId);
-      return { success: true, status: 'VERIFIED', subscription: null, entitlements: effective.activeEntitlementsList, creditsGranted: PLAY_CATALOG.packMessages };
+      return { success: true, status: 'VERIFIED', subscription: null, entitlements: effective.activeEntitlementsList, creditsGranted: coins };
     }
 
     // 3. Find matching product / plan

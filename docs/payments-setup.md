@@ -26,11 +26,17 @@ Go to **Monetize → Products → Subscriptions → Create subscription**.
   paywall text always matches what Google charges.
 - Activate the base plans and the offer.
 
-Go to **Monetize → Products → In-app products → Create product**.
-- Product ID: `messages_100`
-- Price: ₹49
-- Name: "100 extra messages"
-- Activate it.
+Go to **Monetize → Products → In-app products → Create product**, three times (consumable coin packs):
+
+| Product ID | Price | Name | Coins |
+|---|---|---|---|
+| `coins_100` | ₹49 | 100 coins | 100 |
+| `coins_330` | ₹149 | 330 coins | 330 |
+| `coins_1000` | ₹399 | 1,000 coins | 1,000 |
+
+Coins pay for gifts (🌹 10, ☕ 25, 🍫 50, 🧸 100, 💋/✨ 200, 💍 500) and for messages beyond the daily allowance
+(1 coin each). How many coins each pack gives is set on the server (`COIN_PACKS`), never by the app. The old
+`messages_100` product, if you already created it, still works as 100 coins.
 
 ## 2. Service account (lets the server check purchases with Google)
 

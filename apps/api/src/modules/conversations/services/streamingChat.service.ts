@@ -1,5 +1,5 @@
 import { recordSafetyMoments } from '../../console/safetyMoments.js';
-import { useMessage } from '../../billing/messageAllowance.js';
+import { limitsEnforced, useMessage } from '../../billing/messageAllowance.js';
 import { setAICostContext } from '../../ai/telemetry/aiCostLedger.js';
 import { Response, Request } from 'express';
 import { prisma } from '../../../infrastructure/database/prisma.js';
@@ -64,6 +64,7 @@ import { NotificationDeliveryEngine } from '../../notifications/services/Notific
 import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 import { ReminderIntent } from '../../notifications/services/reminderIntent.service.js';
 import { scheduleAfterReply } from './afterReply.service.js';
+import { GiftService, isGiftText } from '../../billing/gifts.service.js';
 
 /** Share of replies whose full prompt is kept (default 1 in 100). */
 const promptSnapshotSample = (): number => {
@@ -179,6 +180,19 @@ export class StreamingChatService {
               select: { id: true, sequenceNumber: true, createdAt: true, clientRequestId: true },
             })
           : null;
+
+        // Once coins are charged (payments live), a gift message must have been paid for (POST
+        // /conversations/:id/gifts, same clientRequestId) — typing "[Sent a Gift: 💍 Diamond Ring]" by hand gets no
+        // gift. Before that, gifts are free and older apps that send them directly keep working.
+        if (
+          !existing &&
+          isGiftText(content) &&
+          (await limitsEnforced()) &&
+          !(await GiftService.claimPaid(userId, input.clientRequestId, content))
+        ) {
+          this.sendSingleSseError(res, ErrorCode.BAD_REQUEST, 'Send gifts with the gift button.');
+          return;
+        }
 
         // Today's allowance (free 5 / premium 150 + message packs). A new message only — a resend is free.
         // Crisis and emergency messages always go through. Off until BILLING_ENFORCE_LIMITS=true.
