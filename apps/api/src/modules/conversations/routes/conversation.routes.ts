@@ -3,6 +3,7 @@ import { ConversationController } from '../controllers/conversation.controller.j
 import { ChatStreamController } from '../controllers/chatStream.controller.js';
 import { authenticateUser } from '../../../shared/middleware/auth.middleware.js';
 import { chatSendRateLimiter } from '../../../shared/middleware/rateLimiter.js';
+import { GiftsController } from '../../billing/gifts.controller.js';
 
 export const conversationRouter: Router = Router();
 
@@ -21,6 +22,9 @@ conversationRouter.post('/:conversationId/start-fresh', ConversationController.s
 // 2. Messages & Real-Time Streaming
 conversationRouter.get('/:conversationId/messages', ConversationController.getMessages);
 conversationRouter.post('/:conversationId/messages', chatSendRateLimiter, ChatStreamController.sendMessage);
+// Gifts cost coins: paid here first, then sent as a message with the same clientRequestId (billing/gifts.service.ts).
+conversationRouter.get('/:conversationId/gifts', GiftsController.list);
+conversationRouter.post('/:conversationId/gifts', chatSendRateLimiter, GiftsController.send);
 conversationRouter.post('/:conversationId/generations/:messageId/cancel', ChatStreamController.cancelGeneration);
 conversationRouter.post('/:conversationId/messages/:messageId/retry', chatSendRateLimiter, ChatStreamController.retryMessage);
 

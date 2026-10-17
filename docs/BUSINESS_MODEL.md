@@ -18,7 +18,7 @@ Install → sign up → pick a character → reads their first message → sends
 | Product | Price | You keep (after 18 % GST and Play's 15 %) | What they get |
 |---|---|---|---|
 | **Premium (monthly)** | **₹499**, first day ₹1 (new subscribers) | **~₹359** | Every character, up to 150 messages a day, long memory, courses and health programs |
-| Message pack | ₹49 for 100 messages | ~₹35 | For days they want more than 150 (anyone can buy one) |
+| **Coins** (one currency) | ₹49 = 100 · ₹149 = 330 · ₹399 = 1,000 | ~72 % | Gifts (🌹 10 · ☕ 25 · 🍫 50 · 🧸 100 · 💋 200 for romance characters / ✨ 200 for others · 💍 500) and extra messages beyond 150/day (1 coin each) |
 
 Never advertised as "unlimited" — "up to 150 messages a day".
 
@@ -27,7 +27,8 @@ helplines).
 
 ## 2. Unit economics
 
-AI cost per message: **~₹0.21 today**, ~₹0.06 after the planned optimisations.
+AI cost per message: **~₹0.21 today**, **~₹0.10 realistic** once the paid Gemini tier turns on caching (Phase 1
+shipped), ~₹0.06 after Phase 2. At ₹0.10 a 40-message/day subscriber leaves **≈ ₹240/month** profit.
 
 **One subscriber, 40 messages a day:**
 
@@ -47,10 +48,32 @@ converts, each subscriber costs ~₹50–150 in trials once and earns ~₹359 ev
 left for non-subscribers: the first character message (fixed text, no AI) and "characters text first"
 notifications if they're sent to non-subscribers (an AI call each — limit to subscribers or a few nudges).
 
-## 3. Other income (later)
+## 3. Coins and gifts (decided 17 Oct 2026: paid from launch)
 
-Independent of chat volume: gifts and coins (the 🎁 button exists), astrology reports (₹99–199), Dev's courses
-(₹199–499), relationship story chapters (₹49–99), premium-only characters; later voice and photos.
+- **Coins are the only in-app currency** — no separate message pack. Bought as Google Play one-time products
+  (`coins_100`, `coins_330`, `coins_1000`); how many coins a pack gives is set on the server.
+- **Gifts cost coins**, charged on the server once per gift (a double tap or retry is charged once); the chat only
+  accepts a gift that was paid for. A 💋 is shown for romance characters, a ✨ (same price) for everyone else.
+- A gift's AI reply costs about the same as a normal message, so gifts are almost pure margin
+  (🌹 ≈ ₹3.5 kept, 💍 ≈ ₹176 kept at the ₹49-pack rate).
+- Until payments go live (`BILLING_ENFORCE_LIMITS=false`), gifts are free, like chatting.
+- **Later, paid with the same coins:** relationship story chapters, Sakshi's astrology reports, Dev's full courses,
+  premium-only characters; then voice and photos.
+
+## 3b. Ads
+
+Not decided by the owner yet. Recommendation: **no ads** — they break trust in a private, emotional product and earn
+little in India.
+
+## 3c. Growth (how users are found)
+
+Cheapest first: Instagram Reels / YouTube Shorts of real character chats (funny, emotional) → a "share this
+moment" image with the Lovira logo → referrals (both get 3 Premium days) → Play Store listing (keywords: AI
+girlfriend Hinglish, AI friend) → micro-creators once retention is proven → paid ads only when one paying user
+costs < ₹500.
+
+Funnel: 100 installs → ~60 sign-ups → ~12 start the ₹1 day → ~5 keep paying. A subscriber stays ~6–7 months
+(≈15 % monthly churn) ≈ ₹1,500–1,700 profit. Break-even on servers ≈ 25–35 subscribers; ₹1 lakh profit/month ≈ 450.
 
 ## 4. Targets
 
@@ -76,7 +99,8 @@ Independent of chat volume: gifts and coins (the 🎁 button exists), astrology 
 ## 6. Launch order
 
 1. AI cost optimisations (at least A+B and caching), paid Gemini tier.
-2. Play Console: `companion_premium` monthly ₹499 + offer `trial` ₹1 for 1 day; pack `messages_100` ₹49.
+2. Play Console: `companion_premium` monthly ₹499 + offer `trial` ₹1 for 1 day; coin packs `coins_100` ₹49,
+   `coins_330` ₹149, `coins_1000` ₹399.
 3. Turn on `BILLING_ENFORCE_LIMITS=true` together with payments (until then the app stays free for everyone).
 4. First month: measure the targets above; adjust.
 5. Then one-time purchases (gifts, reports, courses).

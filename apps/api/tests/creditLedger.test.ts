@@ -73,16 +73,19 @@ describe('CreditWalletService & Immutable Ledger', () => {
             purchasedCredits: 70,
             lifetimeConsumed: 0,
           }),
-          update: vi.fn().mockImplementation((args: any) => {
+          // The deduction is conditional (only while the balance still covers it) and atomic.
+          updateMany: vi.fn().mockImplementation((args: any) => {
             updatedWalletData = args.data;
-            return {
-              id: 'wallet_123',
-              userId,
-              availableBalance: 50,
-              promotionalCredits: 0,
-              purchasedCredits: 50,
-              updatedAt: new Date(),
-            };
+            expect(args.where.availableBalance).toEqual({ gte: 50 });
+            return { count: 1 };
+          }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({
+            id: 'wallet_123',
+            userId,
+            availableBalance: 50,
+            promotionalCredits: 0,
+            purchasedCredits: 50,
+            updatedAt: new Date(),
           }),
         },
         creditTransaction: {
