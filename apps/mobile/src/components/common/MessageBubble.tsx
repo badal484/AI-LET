@@ -18,6 +18,7 @@ import { darkThemeColors, radius } from '../../theme/index.js';
 import type { ChatMessageItem } from '@ai-companion/types';
 import { messageTime } from '../../utils/chatDates.js';
 import { withInlineCode } from '../../utils/inlineCode.js';
+import { useReduceMotion } from '../../utils/motion.js';
 
 /** A line that is clearly code (for code people paste without ``` fences). */
 const CODE_LINE = /^\s*(import |from \S+ import |def |class |const |let |var |function |return |if \(|for \(|while \(|async |await |print\(|console\.log\()|[;{}]\s*$|\)\s*:\s*$|^\s*[\w.]+\s*=\s*[\w.]+\(|^\s*(Traceback|File ".+", line \d+|\w+Error:)/;
@@ -39,7 +40,15 @@ export interface MessageBubbleProps {
   onQuotePress?: (messageId: string) => void;
   /** Briefly highlighted after jumping to it from a quote. */
   highlighted?: boolean;
+  /**
+   * Where it sits in a run of messages from the same person (like WhatsApp/iMessage): only the first gets
+   * space above it; only the last shows the avatar, the time and the tail.
+   */
+  group?: { first: boolean; last: boolean };
 }
+
+/** Only messages that just arrived animate in — opening a chat doesn't replay the whole history. */
+const FRESH_MS = 6_000;
 
 const TypingDotsIndicator: React.FC = () => {
   const dot1 = React.useRef(new Animated.Value(0.3)).current;
@@ -94,8 +103,10 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
   onReply,
   onQuotePress,
   highlighted,
+  group = { first: true, last: true },
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const reduceMotion = useReduceMotion();
   const isUser = message.role === 'user' || message.senderType === 'USER';
   const isFailed = message.status === 'FAILED';
   const isCancelled = message.status === 'CANCELLED';
@@ -158,23 +169,42 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
   ).current;
   const replyTo = message.replyTo;
 
+  // Entry: a soft rise + fade + scale for messages that just arrived (yours springs in from the right).
+  const fresh = React.useRef(
+    !reduceMotion && (isStreaming || (message.createdAt ? Date.now() - new Date(message.createdAt).getTime() < FRESH_MS : false)),
+  ).current;
+  const enter = React.useRef(new Animated.Value(fresh ? 0 : 1)).current;
+  React.useEffect(() => {
+    if (!fresh) return;
+    Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: isUser ? 7 : 4 }).start();
+  }, [enter, fresh, isUser]);
+
+  const showAvatar = !isUser && group.last;
+
   return (
     <Animated.View
       {...(canReply ? swipe.panHandlers : {})}
       style={[
-        { transform: [{ translateX: swipeX }] },
+        {
+          opacity: enter,
+          transform: [
+            { translateX: swipeX },
+            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) },
+            { translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [isUser ? 18 : -8, 0] }) },
+            { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+          ],
+        },
         styles.messageRow,
+        { marginTop: group.first ? 10 : 2, marginBottom: group.last ? 2 : 0 },
         isUser ? styles.userRow : styles.assistantRow,
       ]}
     >
-      {!isUser && (
-        <Avatar
-          uri={characterAvatarUrl}
-          name={characterName || 'AI'}
-          size="sm"
-          style={styles.avatar}
-        />
-      )}
+      {!isUser &&
+        (showAvatar ? (
+          <Avatar uri={characterAvatarUrl} name={characterName || 'AI'} size="sm" style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarSpacer} />
+        ))}
 
       <View style={styles.bubbleContainer}>
         {isInitialTyping ? (
@@ -198,6 +228,10 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
                 style={[
                   styles.bubble,
                   isUser ? styles.userBubble : styles.assistantBubble,
+                  // Grouped shape: the side facing the sender is tight between bubbles; the tail is on the last.
+                  isUser
+                    ? { borderTopRightRadius: group.first && pIdx === 0 ? 20 : 6, borderBottomRightRadius: group.last && pIdx === arr.length - 1 ? 4 : 6 }
+                    : { borderTopLeftRadius: group.first && pIdx === 0 ? 20 : 6, borderBottomLeftRadius: group.last && pIdx === arr.length - 1 ? 4 : 6 },
                   isFailed && styles.failedBubble,
                   isStreaming && styles.streamingBubble,
                   highlighted && styles.highlightBubble,
@@ -221,6 +255,18 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
                   </TouchableOpacity>
                 )}
                 {(() => {
+                  // A gift ("[Sent a Gift: 🌹 Red Rose]") shows as a gift, not as its raw text.
+                  const gift = /^\[Sent a Gift: (\S+)\s+(.+)\]$/u.exec(paragraph.trim());
+                  if (gift) {
+                    return (
+                      <View style={styles.giftCard} accessibilityLabel={`${isUser ? 'You sent' : 'Sent you'} a ${gift[2]}`}>
+                        <Text style={styles.giftCardEmoji}>{gift[1]}</Text>
+                        <Text style={styles.giftCardText}>
+                          {isUser ? `You sent ${characterName?.split(' ')[0] || 'them'} a ${gift[2]}` : `${gift[2]} for you`}
+                        </Text>
+                      </View>
+                    );
+                  }
                   const fenced = /^```([\w+#.-]*)\n([\s\S]*?)\n?```$/.exec(paragraph);
                   // Code they paste (no fences) is shown as a code box too.
                   const code = fenced ?? (isUser && looksLikePastedCode(paragraph) ? ['', '', paragraph] : null);
@@ -282,6 +328,7 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
                   </TouchableOpacity>
                 )}
 
+                {(group.last || isFailed) && pIdx === arr.length - 1 && (
                 <View style={styles.bubbleFooter}>
                   <Text
                     style={[
@@ -295,6 +342,7 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
                     <Icon name="check-double" size={13} color="#22C55E" style={{ marginLeft: 2 }} />
                   )}
                 </View>
+                )}
               </TouchableOpacity>
             ))}
 
@@ -398,24 +446,26 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
 export const MessageBubble = React.memo(
   MessageBubbleBase,
   (a, b) =>
-    a.message === b.message ||
-    (a.message.id === b.message.id &&
-      a.message.content === b.message.content &&
-      a.message.status === b.message.status &&
-      a.message.updatedAt === b.message.updatedAt &&
-      a.message.replyTo === b.message.replyTo &&
-      a.isStreaming === b.isStreaming &&
-      a.highlighted === b.highlighted &&
-      a.characterAvatarUrl === b.characterAvatarUrl &&
-      a.characterName === b.characterName &&
-      a.isTypingNext === b.isTypingNext &&
-      a.revealedParagraphs === b.revealedParagraphs),
+    (a.message === b.message ||
+      (a.message.id === b.message.id &&
+        a.message.content === b.message.content &&
+        a.message.status === b.message.status &&
+        a.message.updatedAt === b.message.updatedAt &&
+        a.message.replyTo === b.message.replyTo)) &&
+    // (Before: the same message object returned "unchanged" right away, so a highlight never redrew.)
+    a.isStreaming === b.isStreaming &&
+    a.highlighted === b.highlighted &&
+    a.characterAvatarUrl === b.characterAvatarUrl &&
+    a.characterName === b.characterName &&
+    a.isTypingNext === b.isTypingNext &&
+    a.revealedParagraphs === b.revealedParagraphs &&
+    a.group?.first === b.group?.first &&
+    a.group?.last === b.group?.last,
 );
 
 const styles = StyleSheet.create({
   messageRow: {
     flexDirection: 'row',
-    marginVertical: 6,
     maxWidth: '82%',
   },
   userRow: {
@@ -426,9 +476,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     justifyContent: 'flex-start',
   },
+  // The avatar sits at the bottom of the group, next to the last bubble (like Messenger/iMessage).
   avatar: {
-    alignSelf: 'flex-start',
-    marginTop: 2,
+    alignSelf: 'flex-end',
+    marginRight: 8,
+  },
+  avatarSpacer: {
+    width: 36,
     marginRight: 8,
   },
   bubbleContainer: {
@@ -439,9 +493,9 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   bubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 18,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
   userBubble: {
     backgroundColor: '#5B21A0',
@@ -618,16 +672,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  giftCard: { alignItems: 'center', paddingHorizontal: 6, paddingTop: 2, gap: 2 },
+  giftCardEmoji: { fontSize: 46, lineHeight: 56 },
+  giftCardText: { color: '#F5E9FF', fontSize: 13.5, fontWeight: '600', textAlign: 'center' },
   bubbleFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: 4,
+    marginTop: 1,
+    marginBottom: -3,
     gap: 4,
   },
   timestamp: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '400',
+    letterSpacing: 0.2,
   },
   userTimestamp: {
     color: '#D8B4FE',

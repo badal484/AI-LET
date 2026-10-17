@@ -13,7 +13,6 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Modal,
-  Dimensions,
   StatusBar,
   TouchableWithoutFeedback,
   AppState,
@@ -48,6 +47,10 @@ import { PushPrimer } from '../../components/PushPrimer.js';
 import { PushService } from '../../services/push/PushService.js';
 import { useTypingStore } from '../../stores/typingStore.js';
 import { mergeChatMessages } from '../../utils/mergeChatMessages.js';
+import { tapFeedback } from '../../utils/motion.js';
+import { ComposerActionButton } from '../../components/chat/ComposerActionButton.js';
+import { GiftBurst } from '../../components/chat/GiftBurst.js';
+import { ChatBackdrop } from '../../components/chat/ChatBackdrop.js';
 
 /** The "…" typing bubble's timestamp: fixed, so it doesn't count as a new message every render. */
 const TYPING_AT = new Date(0).toISOString();
@@ -174,6 +177,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [optimisticMessages, setOptimisticMessages] = useState<ChatMessageItem[]>([]);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
+  const [giftBurst, setGiftBurst] = useState({ emoji: '🎁', key: 0 });
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [chatConfirmModal, setChatConfirmModal] = useState<'clear' | 'start_fresh' | null>(null);
   const [isBondModalVisible, setIsBondModalVisible] = useState(false);
@@ -696,9 +700,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   const handleSendGift = (gift: (typeof VIRTUAL_GIFTS)[0]) => {
     setIsGiftModalVisible(false);
+    tapFeedback('medium');
+    // After the sheet has slid away: Android draws a Modal above everything, so a burst started now is hidden.
+    setTimeout(() => setGiftBurst((b) => ({ emoji: gift.icon, key: b.key + 1 })), 380);
     handleSendMessage(gift.prompt);
     ToastService.show({
-      message: `Sent ${gift.name}! +${Math.round(gift.coins / 5)} Intimacy points`,
+      message: `${gift.icon} ${gift.name} sent to ${companionFirstName}`,
       type: 'success',
       duration: 2500,
     });
@@ -796,7 +803,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const onReplyStable = useCallback((m: ChatMessageItem) => handlersRef.current.handleReply(m), []);
   const onQuoteStable = useCallback((id: string) => handlersRef.current.jumpTo(id), []);
 
-  const renderMessageItem = ({ item }: { item: ChatMessageItem | DateDivider }) => {
+  // Runs of messages from the same person within 5 minutes form a group (the list is newest-first).
+  const sameGroup = (a: ChatMessageItem | DateDivider | undefined, b: ChatMessageItem | DateDivider) =>
+    Boolean(a) &&
+    !isDateDivider(a!) &&
+    !isDateDivider(b) &&
+    (a as ChatMessageItem).role === (b as ChatMessageItem).role &&
+    Math.abs(new Date((a as ChatMessageItem).createdAt).getTime() - new Date((b as ChatMessageItem).createdAt).getTime()) < 5 * 60_000;
+
+  const renderMessageItem = ({ item, index }: { item: ChatMessageItem | DateDivider; index: number }) => {
     if (isDateDivider(item)) {
       return (
         <View style={styles.todayPillContainer}>
@@ -823,6 +838,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           onReply={onReplyStable}
           onQuotePress={onQuoteStable}
           highlighted={highlightId === item.id}
+          group={{ first: !sameGroup(listData[index + 1], item), last: !sameGroup(listData[index - 1], item) }}
         />
         {isLatestAnswer && (
           <View style={styles.helpfulRow}>
@@ -998,6 +1014,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           </View>
         </View>
 
+        <ChatBackdrop />
+
         {/* Message Stream */}
         {isHistoryLoading ? (
           <View style={styles.loadingContainer}>
@@ -1149,30 +1167,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               />
             </View>
 
-            {/* Circular Action Button */}
-            {inputText.trim().length > 0 ? (
-              <TouchableOpacity
-                style={styles.circleActionButton}
-                onPress={() => handleSendMessage()}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Send message"
-              >
-                <Icon name="arrow-up" size={22} color="#FFFFFF" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.circleActionButton, styles.giftCircleButton]}
-                onPress={() => setIsGiftModalVisible(true)}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Send gift"
-              >
-                <Text style={styles.giftActionEmoji}>🎁</Text>
-              </TouchableOpacity>
-            )}
+            {/* 🎁 when empty, send once they type (animated swap, haptic tap). */}
+            <ComposerActionButton hasText={inputText.trim().length > 0} onSend={() => handleSendMessage()} onGift={() => setIsGiftModalVisible(true)} />
           </View>
         </View>
+
+        <GiftBurst emoji={giftBurst.emoji} burstKey={giftBurst.key} />
 
         {/* Virtual Gifts Modal */}
         <Modal
@@ -1992,10 +1992,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    rowGap: 12,
   },
   giftItem: {
-    width: (Dimensions.get('window').width - 64) / 3,
+    // Three to a row: the width leaves room for the two gaps (it used to wrap to two, far apart).
+    width: '31.5%',
     backgroundColor: '#201736',
     borderRadius: 18,
     paddingVertical: 16,

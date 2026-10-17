@@ -199,7 +199,7 @@ export const ConversationsScreen: React.FC = () => {
               </Text>
             ) : (
               <Text style={[styles.snippet, hasUnread && styles.snippetUnread]} numberOfLines={1}>
-                {item.lastMessageSnippet || 'Say hi 👋'}
+                {(item.lastMessageSnippet || 'Say hi 👋').replace(/^\[Sent a Gift: (\S+)\s+(.+?)\]?$/u, '$1 Sent a $2')}
               </Text>
             )}
             {hasUnread && (
