@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -18,6 +17,8 @@ import { radius } from '../../theme/radius.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { APP_VERSION } from '../../config/appInfo.js';
 import { LEGAL_URLS } from '../../config/appInfo.js';
+import { AuthHero } from '../../components/auth/AuthHero.js';
+import { AuthField } from '../../components/auth/AuthField.js';
 
 interface RegisterScreenProps {
   navigation: {
@@ -75,10 +76,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Begin building deep connections with AI companions</Text>
-        </View>
+        <AuthHero title="Create your account" subtitle="Takes 20 seconds. Then pick who you want to talk to." />
 
         {displayError ? (
           <View style={styles.errorContainer}>
@@ -87,62 +85,63 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
         ) : null}
 
         <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Your Name / Nickname</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Alex"
-              placeholderTextColor={darkThemeColors.textDisabled}
-              value={displayName}
-              onChangeText={(text) => {
-                setDisplayName(text);
-                if (displayError) {
-                  setLocalError(null);
-                  clearError();
-                }
-              }}
-              autoCapitalize="words"
-            />
-          </View>
+          <AuthField
+            label="What should they call you?"
+            icon="user"
+            placeholder="Your name or nickname"
+            value={displayName}
+            onChangeText={(text) => {
+              setDisplayName(text);
+              if (displayError) {
+                setLocalError(null);
+                clearError();
+              }
+            }}
+            autoCapitalize="words"
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="next"
+          />
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={darkThemeColors.textDisabled}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (displayError) {
-                  setLocalError(null);
-                  clearError();
-                }
-              }}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
-            />
-          </View>
+          <AuthField
+            label="Email"
+            icon="mail"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (displayError) {
+                setLocalError(null);
+                clearError();
+              }
+            }}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password (Min. 8 characters)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={darkThemeColors.textDisabled}
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (displayError) {
-                  setLocalError(null);
-                  clearError();
-                }
-              }}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
+          <AuthField
+            label="Password"
+            icon="lock"
+            password
+            placeholder="At least 8 characters"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (displayError) {
+                setLocalError(null);
+                clearError();
+              }
+            }}
+            autoCapitalize="none"
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="go"
+            onSubmitEditing={handleRegister}
+          />
 
           <TouchableOpacity
             style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
@@ -182,7 +181,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   header: {
     marginBottom: spacing.xxl,
@@ -210,7 +210,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
+    marginTop: spacing.xl,
     marginBottom: spacing.xl,
+    gap: 18,
   },
   inputGroup: {
     marginBottom: spacing.lg,
@@ -231,12 +233,17 @@ const styles = StyleSheet.create({
     ...typography.body,
   },
   primaryButton: {
-    backgroundColor: darkThemeColors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 16,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.6,

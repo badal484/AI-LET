@@ -1,12 +1,15 @@
 <resources>
 
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
+    <!-- Base application theme. Lovira is always dark: a dark (not DayNight) theme keeps the launch window and
+         native dialogs ("Sign out?") dark too, instead of white boxes on a phone in light mode. -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <!-- No white flash while the app starts: Lovira's background with the logo in the middle. -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="colorAccent">@color/brand_violet</item>
     </style>
 
 </resources>

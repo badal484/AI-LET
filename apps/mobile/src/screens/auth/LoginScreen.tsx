@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -16,6 +15,8 @@ import { spacing } from '../../theme/spacing.js';
 import { radius } from '../../theme/radius.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { APP_VERSION } from '../../config/appInfo.js';
+import { AuthHero } from '../../components/auth/AuthHero.js';
+import { AuthField } from '../../components/auth/AuthField.js';
 
 interface LoginScreenProps {
   navigation: {
@@ -85,10 +86,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue chatting with your companions</Text>
-        </View>
+        <AuthHero title="Welcome back" subtitle="Sign in — they've been waiting to hear from you." />
 
         {displayError ? (
           <View style={styles.errorContainer}>
@@ -97,49 +95,50 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         ) : null}
 
         <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={darkThemeColors.textDisabled}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (displayError) {
-                  setLocalError(null);
-                  clearError();
-                }
-              }}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
-            />
-          </View>
+          <AuthField
+            label="Email"
+            icon="mail"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (displayError) {
+                setLocalError(null);
+                clearError();
+              }
+            }}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
 
-          <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Password</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+          <AuthField
+            label="Password"
+            icon="lock"
+            password
+            placeholder="Your password"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (displayError) {
+                setLocalError(null);
+                clearError();
+              }
+            }}
+            autoCapitalize="none"
+            autoComplete="password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+            accessory={
+              <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} hitSlop={8}>
                 <Text style={styles.forgotPasswordText}>Forgot?</Text>
               </TouchableOpacity>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={darkThemeColors.textDisabled}
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (displayError) {
-                  setLocalError(null);
-                  clearError();
-                }
-              }}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
+            }
+          />
 
           <TouchableOpacity
             style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
@@ -185,7 +184,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   header: {
     marginBottom: spacing.xxl,
@@ -213,7 +213,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
+    marginTop: spacing.xl,
     marginBottom: spacing.xl,
+    gap: 18,
   },
   inputGroup: {
     marginBottom: spacing.lg,
@@ -244,12 +246,17 @@ const styles = StyleSheet.create({
     ...typography.body,
   },
   primaryButton: {
-    backgroundColor: darkThemeColors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 16,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 8,
   },
   buttonDisabled: {
     opacity: 0.6,
