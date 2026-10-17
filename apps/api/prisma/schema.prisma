@@ -920,17 +920,17 @@ model Memory {
 }
 
 model MemoryEmbedding {
-  id               String   @id @default(uuid()) @db.Uuid
-  memoryId         String   @map("memory_id") @db.Uuid
-  memory           Memory   @relation(fields: [memoryId], references: [id], onDelete: Cascade)
-  modelName        String   @map("model_name") @db.VarChar(100)
-  embeddingVersion String   @default("v1") @map("embedding_version") @db.VarChar(50)
-  dimension        Int      @default(1536)
+  id               String                       @id @default(uuid()) @db.Uuid
+  memoryId         String                       @map("memory_id") @db.Uuid
+  memory           Memory                       @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  modelName        String                       @map("model_name") @db.VarChar(100)
+  embeddingVersion String                       @default("v1") @map("embedding_version") @db.VarChar(50)
+  dimension        Int                          @default(1536)
   embedding        Json?
   /// pgvector copy of `embedding`, filled by a database trigger (migration 20261011000000); similarity
   /// is computed in Postgres. Absent where pgvector isn't installed.
   embeddingVec     Unsupported("vector(1536)")? @map("embedding_vec")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt        DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([memoryId])
   @@map("memory_embeddings")
@@ -2961,6 +2961,22 @@ model AnalyticsEvent {
   @@index([sessionId])
   @@index([experimentId, experimentVariant])
   @@map("analytics_events")
+}
+
+/// Daily totals of AI usage, kept for good. Raw ai_usage_events older than 90 days are folded in here and
+/// removed by the nightly retention job (jobs/retention.ts), so long-term cost history survives.
+model AIUsageDaily {
+  day          DateTime @db.Date
+  model        String   @db.VarChar(100)
+  task         String   @db.VarChar(50)
+  calls        Int      @default(0)
+  inputTokens  BigInt   @default(0) @map("input_tokens")
+  outputTokens BigInt   @default(0) @map("output_tokens")
+  cachedTokens BigInt   @default(0) @map("cached_tokens")
+  costUsd      Float    @default(0) @map("cost_usd")
+
+  @@id([day, model, task])
+  @@map("ai_usage_daily")
 }
 
 model AIUsageEvent {
@@ -5070,15 +5086,15 @@ model SafetyMoment {
 
 /// A message from a user to the team (Help → Contact us in the app).
 model SupportRequest {
-  id         String    @id @default(uuid()) @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
-  topic      String    @db.VarChar(40) // payment | account | bug | delete_data | feedback | other
-  message    String    @db.Text
-  status     String    @default("open") @db.VarChar(20) // open | answered | closed
-  reply      String?   @db.Text
-  repliedBy  String?   @map("replied_by") @db.Uuid
-  repliedAt  DateTime? @map("replied_at") @db.Timestamptz(6)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  topic     String    @db.VarChar(40) // payment | account | bug | delete_data | feedback | other
+  message   String    @db.Text
+  status    String    @default("open") @db.VarChar(20) // open | answered | closed
+  reply     String?   @db.Text
+  repliedBy String?   @map("replied_by") @db.Uuid
+  repliedAt DateTime? @map("replied_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([status, createdAt(sort: Desc)])
   @@index([userId])

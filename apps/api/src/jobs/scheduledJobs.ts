@@ -4,6 +4,7 @@ import { processDueCampaigns } from '../modules/console/campaigns.service.js';
 import { runProactiveRound } from '../modules/notifications/services/proactiveRound.service.js';
 import { ProactiveSchedulerService } from '../modules/notifications/services/proactiveScheduler.service.js';
 import { recordJobRun } from '../modules/console/health.js';
+import { nightlyRetention } from './retention.js';
 import { logger } from '../config/logger.js';
 import { reportError } from '../infrastructure/monitoring/sentry.js';
 
@@ -57,6 +58,8 @@ export function startScheduledJobs(where: 'worker' | 'api'): void {
   every('text-first', 15 * 60_000, () => runProactiveRound());
   every('reminders', 60_000, () => ProactiveSchedulerService.processDueReminders());
   every('proactive-expire', 60 * 60_000, () => ProactiveSchedulerService.expireStaleActions());
+  // Old log rows, once a night around 3 am IST (docs/DB_OPTIMIZATION_PLAN.md step 2). Never chats or memories.
+  every('retention', 60 * 60_000, () => nightlyRetention());
   logger.info(`⏱️  Scheduled jobs running in the ${where}`);
 }
 
