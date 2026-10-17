@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { AnalyticsApi } from '../api/analyticsApi.js';
 import type { AnalyticsBatchIngestItem, AnalyticsEventName } from '@ai-companion/types';
 
@@ -41,7 +41,9 @@ class AnalyticsService {
     platform: Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web' ? Platform.OS : 'unknown',
     locale: 'en-US',
     timezone: 'UTC',
-    flushIntervalMs: 30000,
+    // Every 3 minutes (was 30 s): each send wakes the phone's radio — battery and data. Events also go out
+    // when the app is backgrounded, and when 50 have queued up.
+    flushIntervalMs: 180_000,
     maxQueueSize: 500,
     batchSize: 50,
   };
@@ -49,6 +51,10 @@ class AnalyticsService {
   private eventQueue: AnalyticsBatchIngestItem[] = [];
   private isFlushing = false;
   private flushTimer: any = null;
+  /** After a failed send (offline, server waking up), wait longer each time: 3 → 6 → 12 … ≤30 minutes. */
+  private failures = 0;
+  private nextTryAt = 0;
+  private appStateHooked = false;
   private storageEngine: AnalyticsStorageEngine | null = null;
   private readonly STORAGE_KEY = 'ai_companion_analytics_offline_queue';
   private readonly ANON_ID_KEY = 'ai_companion_analytics_anon_id';
@@ -234,10 +240,11 @@ class AnalyticsService {
     }
   }
 
-  public async flush(): Promise<void> {
+  public async flush(force = false): Promise<void> {
     if (this.isFlushing || this.eventQueue.length === 0) {
       return;
     }
+    if (!force && Date.now() < this.nextTryAt) return; // backing off after failures
 
     this.isFlushing = true;
     const batch = this.eventQueue.slice(0, this.config.batchSize);
@@ -247,9 +254,12 @@ class AnalyticsService {
       // Remove successfully transmitted events
       this.eventQueue = this.eventQueue.slice(batch.length);
       await this.persistQueue();
-    } catch (error) {
-      // Network failure or offline: keep events in queue for next flush attempt
-      console.warn('AnalyticsSDK: Failed to flush event batch. Will retry on next cycle.', error);
+      this.failures = 0;
+      this.nextTryAt = 0;
+    } catch {
+      // Offline or the server is unreachable: keep the events and try again later, waiting longer each time.
+      this.failures += 1;
+      this.nextTryAt = Date.now() + Math.min(30 * 60_000, this.config.flushIntervalMs * 2 ** (this.failures - 1));
     } finally {
       this.isFlushing = false;
     }
@@ -262,6 +272,13 @@ class AnalyticsService {
     this.flushTimer = setInterval(() => {
       this.flush().catch(() => {});
     }, this.config.flushIntervalMs);
+    // Leaving the app: send what's queued now (one radio wake-up instead of one every few minutes later).
+    if (!this.appStateHooked) {
+      this.appStateHooked = true;
+      AppState.addEventListener('change', (state) => {
+        if (state === 'background') this.flush(true).catch(() => {});
+      });
+    }
   }
 
   private async persistQueue(): Promise<void> {
