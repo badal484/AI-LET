@@ -40,6 +40,20 @@ export interface StoreCatalog {
 }
 
 let catalogIds = { subscription: 'companion_premium', pack: 'messages_100' };
+/** Coin packs (one-time). How many coins each gives comes from our server; the price from Google Play. */
+let coinPackDefs: Array<{ id: string; coins: number }> = [
+  { id: 'coins_100', coins: 100 },
+  { id: 'coins_330', coins: 330 },
+  { id: 'coins_1000', coins: 1000 },
+];
+const isCoinProduct = (productId: string) => productId === catalogIds.pack || coinPackDefs.some((p) => p.id === productId);
+
+export interface CoinPack {
+  id: string;
+  coins: number;
+  /** Localized price from Play, e.g. "₹49.00". */
+  price: string;
+}
 let accountId: string | null = null;
 let connected = false;
 let listening = false;
@@ -53,7 +67,7 @@ const settle = (r: { ok: boolean; kind?: 'subscription' | 'pack'; message?: stri
 async function verifyAndFinish(purchase: Purchase): Promise<boolean> {
   const token = (purchase as { purchaseToken?: string | null }).purchaseToken;
   if (!token) return false;
-  const isPack = purchase.productId === catalogIds.pack;
+  const isPack = isCoinProduct(purchase.productId);
   try {
     await billingApi.verifyPurchase({
       provider: 'google',
@@ -78,7 +92,7 @@ function listen() {
     const ok = await verifyAndFinish(purchase);
     settle({
       ok,
-      kind: purchase.productId === catalogIds.pack ? 'pack' : 'subscription',
+      kind: isCoinProduct(purchase.productId) ? 'pack' : 'subscription',
       message: ok ? undefined : 'Payment received by Google, but we could not confirm it yet. Tap Restore in a minute — you will not be charged twice.',
     });
   });
@@ -99,6 +113,7 @@ export const StoreBilling = {
       const res = await api.get('/billing/play-account');
       accountId = res.data.data.obfuscatedAccountId;
       catalogIds = { subscription: res.data.data.catalog.subscriptionProductId, pack: res.data.data.catalog.packProductId };
+      if (Array.isArray(res.data.data.catalog.coinPacks)) coinPackDefs = res.data.data.catalog.coinPacks;
       connected = Boolean(await initConnection());
       if (connected) listen();
     } catch {
@@ -159,13 +174,33 @@ export const StoreBilling = {
     });
   },
 
-  buyPack(): Promise<{ ok: boolean; message?: string }> {
+  /** The coin packs with their real Google Play prices (empty if Play isn't reachable or they aren't set up yet). */
+  async loadCoinPacks(): Promise<CoinPack[]> {
+    // Without Play billing (emulator, no Play account) connecting can hang: give up after 8 s → "not available".
+    const load = async (): Promise<CoinPack[]> => {
+      if (!(await StoreBilling.connect())) return [];
+      const products = ((await fetchProducts({ skus: coinPackDefs.map((p) => p.id), type: 'in-app' })) ?? []) as Array<{ id: string; displayPrice: string }>;
+      return coinPackDefs.flatMap((def) => {
+        const product = products.find((p) => p.id === def.id);
+        return product ? [{ ...def, price: product.displayPrice }] : [];
+      });
+    };
+    return Promise.race([load(), new Promise<CoinPack[]>((resolve) => setTimeout(() => resolve([]), 8000))]);
+  },
+
+  /** Buys a coin pack; resolves once our server has confirmed it and added the coins. */
+  buyCoins(productId: string): Promise<{ ok: boolean; message?: string }> {
     return new Promise((resolve) => {
       waiting.add(resolve);
-      requestPurchase({ type: 'in-app', request: { google: { skus: [catalogIds.pack], obfuscatedAccountId: accountId } } }).catch(() =>
+      requestPurchase({ type: 'in-app', request: { google: { skus: [productId], obfuscatedAccountId: accountId } } }).catch(() =>
         settle({ ok: false, message: 'Could not open Google Play. Please try again.' }),
       );
     });
+  },
+
+  /** The smallest coin pack (also how "add more messages" works: extra messages cost 1 coin each). */
+  buyPack(): Promise<{ ok: boolean; message?: string }> {
+    return StoreBilling.buyCoins(coinPackDefs[0]?.id ?? catalogIds.pack);
   },
 
   /** Re-sends every purchase Google still holds to our server (safe to repeat). */

@@ -26,6 +26,8 @@ import type {
 } from '@ai-companion/types';
 import { PressableScale } from '../../components/common/PressableScale.js';
 import { BottomFade } from '../../components/common/BottomFade.js';
+import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
+import { useBillingStore } from '../../stores/billingStore.js';
 
 const CARD_WIDTH = 148;
 const CARD_HEIGHT = 210;
@@ -38,6 +40,13 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   // The chip for the section being read (null = "All"); follows the scroll, and a tap jumps there.
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  // The coin pill shows their real balance and opens the coin store.
+  const coins = useBillingStore((st) => st.creditWallet?.availableBalance ?? 0);
+  const loadBilling = useBillingStore((st) => st.loadBillingState);
+  useEffect(() => {
+    void loadBilling().catch(() => undefined);
+  }, [loadBilling]);
+  const [coinStoreOpen, setCoinStoreOpen] = useState(false);
   const feedScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const chipBarRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const sectionY = useRef<Record<string, number>>({});
@@ -64,9 +73,7 @@ export const HomeScreen: React.FC = () => {
     });
   };
 
-  const handleOpenWallet = () => {
-    navigation.navigate('CreditWallet');
-  };
+  const handleOpenWallet = () => setCoinStoreOpen(true);
 
   // Every category row, in order (the chips mirror these).
   const sections = useMemo(() => {
@@ -190,7 +197,7 @@ export const HomeScreen: React.FC = () => {
           onPress={handleOpenWallet}
         >
           <Text style={styles.coinIcon}>🪙</Text>
-          <Text style={styles.coinBalance}>0</Text>
+          <Text style={styles.coinBalance}>{coins.toLocaleString('en-IN')}</Text>
           <Text style={styles.coinPlus}>+</Text>
         </TouchableOpacity>
       </View>
@@ -266,6 +273,7 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+      <CoinStoreSheet visible={coinStoreOpen} onClose={() => setCoinStoreOpen(false)} />
     </View>
   );
 };
