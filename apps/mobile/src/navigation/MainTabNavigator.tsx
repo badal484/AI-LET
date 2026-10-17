@@ -102,6 +102,10 @@ export const MainTabNavigator: React.FC = () => {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
       initialRouteName="Conversations"
+      // Hide inactive tabs completely instead of "detaching" them. Detached tabs could stay touchable under the
+      // visible one (RN 0.87 + Fabric): tapping a chat on Chats hit the Home card in the same spot and opened
+      // the wrong character. Four tabs stay mounted, which also makes switching back instant.
+      detachInactiveScreens={false}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Conversations" component={ConversationsScreen} />
