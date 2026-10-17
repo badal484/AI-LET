@@ -50,6 +50,8 @@ import { mergeChatMessages } from '../../utils/mergeChatMessages.js';
 import { tapFeedback } from '../../utils/motion.js';
 import { ComposerActionButton } from '../../components/chat/ComposerActionButton.js';
 import { GiftBurst } from '../../components/chat/GiftBurst.js';
+import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
+import { GiftsApi, type GiftItem } from '../../services/api/giftsApi.js';
 import { ChatBackdrop } from '../../components/chat/ChatBackdrop.js';
 
 /** The "…" typing bubble's timestamp: fixed, so it doesn't count as a new message every render. */
@@ -178,6 +180,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
   const [giftBurst, setGiftBurst] = useState({ emoji: '🎁', key: 0 });
+  const [coinStore, setCoinStore] = useState<{ visible: boolean; reason?: string }>({ visible: false });
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [chatConfirmModal, setChatConfirmModal] = useState<'clear' | 'start_fresh' | null>(null);
   const [isBondModalVisible, setIsBondModalVisible] = useState(false);
@@ -304,7 +307,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     queryFn: () => billingApi.getMyBillingState(),
   });
 
-  const walletCoins = billingState?.creditWallet?.availableBalance ?? 500;
+  // The gifts for this character (💋 for romance characters), prices, and their coins — fetched when the sheet opens.
+  const { data: giftCatalog, refetch: refetchGifts } = useQuery({
+    queryKey: ['gifts', effectiveConvId],
+    queryFn: () => GiftsApi.list(effectiveConvId!),
+    enabled: Boolean(effectiveConvId) && isGiftModalVisible,
+    staleTime: 30_000,
+  });
+  const walletCoins = giftCatalog?.coins ?? billingState?.creditWallet?.availableBalance ?? 0;
+  const giftsToShow: GiftItem[] = giftCatalog?.gifts ?? VIRTUAL_GIFTS.map(({ id, name, icon, coins }) => ({ id, name, icon, coins }));
 
   // 4. Fetch Messages with Infinite Cursor Pagination
   const {
@@ -624,7 +635,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   };
 
   // 6. Send Message Handler — never blocked: the message shows instantly and is stored at once.
-  const handleSendMessage = async (textToSend?: string) => {
+  // `requestId`: a gift paid on the server is sent with the same id, so the server knows it was paid for.
+  const handleSendMessage = async (textToSend?: string, requestId?: string) => {
     const content = (textToSend || inputText).trim();
     if (!content || !effectiveConvId) return;
     if (!textToSend) setInputText('');
@@ -632,7 +644,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     const replying = replyTarget ?? undefined;
     setReplyTarget(null);
 
-    const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const clientRequestId = requestId ?? `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const now = new Date().toISOString();
     setOptimisticMessages(prev => [
       {
@@ -706,19 +718,41 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   };
 
-  const handleSendGift = (gift: (typeof VIRTUAL_GIFTS)[0]) => {
-    setIsGiftModalVisible(false);
-    tapFeedback('medium');
-    // After the sheet has slid away: Android draws a Modal above everything, so a burst started now is hidden.
-    setTimeout(() => setGiftBurst((b) => ({ emoji: gift.icon, key: b.key + 1 })), 380);
-    handleSendMessage(gift.prompt);
-    ToastService.show({
-      message: `${gift.icon} ${gift.name} sent to ${companionFirstName}`,
-      type: 'success',
-      duration: 2500,
-    });
-    refetchBilling();
-    refetchRelationship();
+  // Gifts cost coins: paid on the server first (once per request id), then sent as a message with that id.
+  const sendingGiftRef = useRef(false);
+  const handleSendGift = async (gift: GiftItem) => {
+    if (!effectiveConvId) return;
+    // One gift at a time: extra taps while the first is being paid for would each buy another gift (seen: three
+    // chocolates in 100 ms). They're ignored until it's done.
+    if (sendingGiftRef.current) return;
+    if (giftCatalog?.charged && giftCatalog.coins < gift.coins) {
+      setIsGiftModalVisible(false);
+      setCoinStore({ visible: true, reason: `${gift.icon} ${gift.name} needs ${gift.coins} coins.` });
+      return;
+    }
+    const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    sendingGiftRef.current = true;
+    try {
+      const paid = await GiftsApi.send(effectiveConvId, gift.id, clientRequestId);
+      setIsGiftModalVisible(false);
+      tapFeedback('medium');
+      // After the sheet has slid away: Android draws a Modal above everything, so a burst started now is hidden.
+      setTimeout(() => setGiftBurst((b) => ({ emoji: gift.icon, key: b.key + 1 })), 380);
+      void handleSendMessage(paid.text, clientRequestId);
+      ToastService.show({ message: `${gift.icon} ${gift.name} sent to ${companionFirstName}`, type: 'success', duration: 2500 });
+      refetchBilling();
+      refetchGifts();
+      refetchRelationship();
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'CREDIT_BALANCE_INSUFFICIENT') {
+        setIsGiftModalVisible(false);
+        setCoinStore({ visible: true, reason: `${gift.icon} ${gift.name} needs ${gift.coins} coins.` });
+      } else {
+        ToastService.show({ message: (err as { message?: string })?.message || 'Could not send the gift. Please try again.', type: 'error', duration: 3000 });
+      }
+    } finally {
+      sendingGiftRef.current = false;
+    }
   };
 
   const executeClearChat = async () => {
@@ -1181,6 +1215,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         </View>
 
         <GiftBurst emoji={giftBurst.emoji} burstKey={giftBurst.key} />
+        <CoinStoreSheet visible={coinStore.visible} reason={coinStore.reason} onClose={() => { setCoinStore({ visible: false }); void refetchGifts(); }} />
 
         {/* Virtual Gifts Modal */}
         <Modal
@@ -1197,25 +1232,45 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             <View style={styles.giftSheetContent}>
               <View style={styles.sheetHandle} />
               <Text style={styles.giftSheetTitle}>Send a Gift to {companionFirstName}</Text>
-              <Text style={styles.giftSheetSubtitle}>
-                🪙 {walletCoins.toLocaleString()} Coins Available
-              </Text>
+              {giftCatalog?.charged === false ? (
+                <Text style={styles.giftSheetSubtitle}>Gifts are free for now 💝</Text>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsGiftModalVisible(false);
+                    setCoinStore({ visible: true });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`You have ${walletCoins} coins. Get more coins`}
+                >
+                  <Text style={styles.giftSheetSubtitle}>
+                    🪙 {walletCoins.toLocaleString('en-IN')} coins · <Text style={styles.getCoinsLink}>Get more</Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <View style={styles.giftGrid}>
-                {VIRTUAL_GIFTS.map(gift => (
-                  <TouchableOpacity
-                    key={gift.id}
-                    style={styles.giftItem}
-                    onPress={() => handleSendGift(gift)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.giftIcon}>{gift.icon}</Text>
-                    <Text style={styles.giftName}>{gift.name}</Text>
-                    <View style={styles.coinBadge}>
-                      <Text style={styles.coinText}>{gift.coins} 🪙</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {giftsToShow.map(gift => {
+                  const short = giftCatalog?.charged !== false && walletCoins < gift.coins;
+                  return (
+                    <TouchableOpacity
+                      key={gift.id}
+                      style={[styles.giftItem, short && styles.giftItemShort]}
+                      onPress={() => void handleSendGift(gift)}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${gift.name}, ${gift.coins} coins${short ? ', not enough coins' : ''}`}
+                    >
+                      <Text style={styles.giftIcon}>{gift.icon}</Text>
+                      <Text style={styles.giftName} numberOfLines={1}>{gift.name.replace('Box of Belgian ', '')}</Text>
+                      {giftCatalog?.charged === false ? null : (
+                        <View style={styles.coinBadge}>
+                          <Text style={styles.coinText}>{gift.coins} 🪙</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </TouchableOpacity>
@@ -2012,6 +2067,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
+  giftItemShort: { opacity: 0.45 },
+  getCoinsLink: { color: '#F0ABFC', fontWeight: '800' },
   giftIcon: {
     fontSize: 34,
     marginBottom: 8,

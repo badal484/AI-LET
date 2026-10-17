@@ -1,5 +1,5 @@
 import { allowanceStatus } from '../messageAllowance.js';
-import { PLAY_CATALOG, playAccountId } from '../providers/GooglePlayBillingProvider.js';
+import { COIN_PACKS, PLAY_CATALOG, playAccountId } from '../providers/GooglePlayBillingProvider.js';
 import { Request, Response, NextFunction } from 'express';
 import { PlanService } from '../services/PlanService.js';
 import { EntitlementService } from '../entitlements/EntitlementService.js';
@@ -52,7 +52,9 @@ export class BillingController {
   /** What the app passes to Google Play as obfuscatedAccountId (ties a purchase to this account). */
   public static async getPlayAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      res.json({ success: true, data: { obfuscatedAccountId: playAccountId(req.user!.userId), catalog: PLAY_CATALOG } });
+      // Coin packs the app may sell, with how many coins each gives (the server's numbers, shown as-is).
+      const coinPacks = ['coins_100', 'coins_330', 'coins_1000'].map((id) => ({ id, coins: COIN_PACKS[id]!.coins }));
+      res.json({ success: true, data: { obfuscatedAccountId: playAccountId(req.user!.userId), catalog: { ...PLAY_CATALOG, coinPacks } } });
     } catch (err) {
       next(err);
     }
