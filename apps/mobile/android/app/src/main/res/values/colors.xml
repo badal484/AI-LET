@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="notification_accent">#EC4899</color>
+    <!-- The app's background (screens use #07050E–#0A0812), so launch → first screen has no colour jump. -->
+    <color name="launch_background">#07050E</color>
+    <color name="brand_violet">#8B5CF6</color>
 </resources>
