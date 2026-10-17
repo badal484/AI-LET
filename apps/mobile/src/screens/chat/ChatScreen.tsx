@@ -396,11 +396,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       leave();
       // The Chats list should show this chat's latest message right away.
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    };
+  }, [effectiveConvId, queryClient]);
+
+  // Only when they really leave the chat (unmount) — not when a first message creates the conversation and its
+  // id changes: that showed "Can she message you?" mid-chat, on top of an open sheet.
+  useEffect(
+    () => () => {
       // However they arrived (live stream, background turn, refetch): her messages during this visit.
       const replies = repliesThisVisit();
       if (!crisisThisVisitRef.current && replies > 0) PushPrimer.noteGoodMoment({ ...whoRef.current, replies });
-    };
-  }, [effectiveConvId, queryClient]);
+    },
+    [], // reads refs at unmount
+  );
 
   // A push for this chat while it is on screen: show the new message instead of a notification.
   useEffect(
