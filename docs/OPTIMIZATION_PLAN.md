@@ -1,10 +1,23 @@
 # Optimisation plan — Lovira (overview)
 
-Status: **planned, not started** (measured 14 October 2026). This is the index of all optimisation work;
+Status: **Phase 1 done 17 Oct 2026 — see the status section; the rest planned** (measured 14 October 2026). This is the index of all optimisation work;
 two areas have their own detailed plans:
 
 - AI cost per message → [`AI_COST_OPTIMIZATION_PLAN.md`](AI_COST_OPTIMIZATION_PLAN.md) (~₹0.21 → ~₹0.08)
 - Database size and growth → [`DB_OPTIMIZATION_PLAN.md`](DB_OPTIMIZATION_PLAN.md) (~10 kB → ~1.3 kB stored per message)
+
+## Status — Phase 1 done (17 Oct 2026)
+
+| Item | Result | Commit |
+|---|---|---|
+| Prompt order for caching | Shared, cacheable part of each character's prompt 5–8 % → **86–94 %** (~1,800–4,200 tokens). Discount starts once the Gemini project is on the **paid tier** (owner). | a9ac784 |
+| Background calls | Profile update also skips filler messages. **Merging** profile + memory into one call was dropped: measured saving ~3 % of total, with real risk to memory quality; both prompts already put fixed text first (profile's ~1,120 tokens can be cached). Relationship analysis uses no paid AI. | af5baca |
+| Database copies | Embeddings stored once (JSON copy cleared by trigger where pgvector runs); full prompt kept for 1 reply in 100; no duplicate message text; nightly retention with `ai_usage_daily` totals. Existing rows untouched (step 3 needs the owner's OK). | 38fa258 |
+| Server memory cache | Not needed: settings already cached in memory (20 s), home feed and categories in Redis; remaining Redis use per request is the one rate limiter. | — |
+| Category pictures | 6 MB → 83 KB (1024 → 160 px). | f267123 |
+| Analytics battery | Sends every 3 min (was 30 s), on backgrounding, backs off when offline. | f267123 |
+
+Verify after the paid tier is on: `cached_tokens` in `ai_usage_events` should be most of `input_tokens` for chat replies; `npx tsx scripts/costReport.ts 7` before/after.
 
 ## Suggested order
 
