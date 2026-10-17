@@ -4,6 +4,7 @@ import { AIOrchestrator } from '../../../infrastructure/ai/AIOrchestrator.js';
 import { logger } from '../../../config/logger.js';
 import { backgroundAIRoute } from '../../ai/routing/aiRoutes.js';
 import type { AIProviderName } from '@ai-companion/types';
+import { nothingToRemember } from './nothingToRemember.js';
 
 /**
  * "Who they are": what a user has told ONE character about themselves, kept as a short card the
@@ -580,8 +581,9 @@ Rules:
   }): Promise<void> {
     try {
       const text = params.userMessage.trim();
-      // Nothing to learn from "ok", "hmm", emojis — unless it answers an open task ("done ✅", "ho gaya").
-      const short = text.split(/\s+/).length < 3 && !/\d/.test(text);
+      // Nothing to learn from "ok", "hmm", emojis or filler ("haha sahi hai yaar") — the same check memory
+      // extraction uses — unless it answers an open task ("done ✅", "ho gaya"). Saves an AI call per such message.
+      const short = (text.split(/\s+/).length < 3 && !/\d/.test(text)) || nothingToRemember(text);
       if (short && !(await this.hasOpenTask(params.userId, params.characterId))) return;
       const settings = await prisma.userMemorySettings.findUnique({ where: { userId: params.userId } });
       if (settings && !settings.memoryEnabled) return;
