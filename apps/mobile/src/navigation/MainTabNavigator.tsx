@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/explore/HomeScreen.js';
@@ -9,6 +9,38 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen.js';
 import type { MainTabParamList } from './types.js';
 import { Icon, IconName } from '../components/common/Icon.js';
 import { useUnreadChats } from '../services/realtime/useUnreadChats.js';
+import { tapFeedback, useReduceMotion } from '../utils/motion.js';
+
+const ACTIVE = '#C4A5FF';
+const INACTIVE = '#6B6680';
+
+/** The tab's icon springs a little when the tab becomes active; the unread badge pops in when it appears. */
+const TabIcon: React.FC<{ name: IconName; focused: boolean; badge: number }> = ({ name, focused, badge }) => {
+  const reduceMotion = useReduceMotion();
+  const pop = useRef(new Animated.Value(1)).current;
+  const badgeScale = useRef(new Animated.Value(badge > 0 ? 1 : 0)).current;
+  useEffect(() => {
+    if (!focused || reduceMotion) return;
+    pop.setValue(0.82);
+    Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 12 }).start();
+  }, [focused, pop, reduceMotion]);
+  useEffect(() => {
+    const to = badge > 0 ? 1 : 0;
+    if (reduceMotion) badgeScale.setValue(to);
+    else Animated.spring(badgeScale, { toValue: to, useNativeDriver: true, speed: 16, bounciness: 10 }).start();
+  }, [badge, badgeScale, reduceMotion]);
+  return (
+    <View style={styles.iconWrapper}>
+      <Animated.View style={{ transform: [{ scale: pop }] }}>
+        <Icon name={name} size={23} color={focused ? ACTIVE : INACTIVE} focused={focused} />
+      </Animated.View>
+      {/* Chats with unread messages (live), like WhatsApp */}
+      <Animated.View style={[styles.unreadBadge, { transform: [{ scale: badgeScale }] }]} pointerEvents="none">
+        {badge > 0 && <Text style={styles.unreadBadgeText}>{badge > 99 ? '99+' : badge}</Text>}
+      </Animated.View>
+    </View>
+  );
+};
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -35,6 +67,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
           });
 
           if (!isFocused && !event.defaultPrevented) {
+            tapFeedback();
             navigation.navigate(route.name);
           }
         };
@@ -50,14 +83,13 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
           label = 'Chats';
         } else if (route.name === 'BuyPro') {
           iconName = 'diamond';
-          label = 'Buy Pro';
+          label = 'Premium';
         } else if (route.name === 'Profile') {
           iconName = 'user';
           label = 'Profile';
         }
 
-        const activeColor = isFocused ? '#FFFFFF' : '#5E5A6E';
-        const activeIconColor = isFocused ? (route.name === 'Conversations' ? '#E11D48' : '#FFFFFF') : '#5E5A6E';
+        const activeColor = isFocused ? '#FFFFFF' : INACTIVE;
 
         return (
           <TouchableOpacity
@@ -69,16 +101,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
             style={styles.tabButton}
             activeOpacity={0.75}
           >
-            <View style={styles.iconWrapper}>
-              <Icon name={iconName} size={22} color={activeIconColor} focused={isFocused} />
-
-              {/* Chats with unread messages (live), like WhatsApp */}
-              {route.name === 'Conversations' && unreadChats > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>{unreadChats > 99 ? '99+' : unreadChats}</Text>
-                </View>
-              )}
-            </View>
+            <TabIcon name={iconName} focused={isFocused} badge={route.name === 'Conversations' ? unreadChats : 0} />
 
             <Text
               style={[
