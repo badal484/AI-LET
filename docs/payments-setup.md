@@ -52,7 +52,7 @@ Coins pay for gifts (🌹 10, ☕ 25, 🍫 50, 🧸 100, 💋/✨ 200, 💍 500)
 ## 3. Real-time notifications (renewals and cancellations)
 
 1. In Google Cloud → **Pub/Sub**, create a topic, for example `play-billing`. Grant `google-play-developer-notifications@system.gserviceaccount.com` the role **Pub/Sub Publisher** on that topic.
-2. Add a **push subscription** to the topic. Endpoint: `https://ai-let.onrender.com/api/v1/billing/webhooks/google`
+2. Add a **push subscription** to the topic. Endpoint: `https://ai-let-fgx6.onrender.com/api/v1/billing/webhooks/google`
 3. In Play Console → **Monetize → Monetization setup**, set the topic name and press **Send test notification**.
 
 The server re-reads every notification from Google, so a fake message can't grant anything.
@@ -78,7 +78,7 @@ This creates the Premium plan (monthly only; it switches off weekly/yearly price
 
 ```
 BILLING_ENFORCE_LIMITS=true      # off by default: nobody is limited until this is set
-FREE_DAILY_MESSAGES=5
+FREE_DAILY_MESSAGES=0           # no free plan (owner's decision); also editable in the admin console
 PREMIUM_DAILY_MESSAGES=150
 ```
 Crisis and emergency messages are never counted or blocked.
