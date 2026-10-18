@@ -1,6 +1,7 @@
 import express, { Express } from 'express';
 import './shared/utils/expressAsyncErrors.js';
 import helmet from 'helmet';
+import { markRomanceForTeens } from './modules/users/ageGate.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
@@ -137,6 +138,10 @@ export const createApp = (): Express => {
   });
 
   // Phase 2 Identity, Auth & Admin Routes
+  // Under-18s: every romance character in any API response is marked ageRestricted (the app blurs it, "18+ only").
+  // One place for all lists — home, bootstrap, discovery, search, chats — so a new screen can't miss it.
+  app.use(env.API_PREFIX, markRomanceForTeens);
+
   app.use(`${env.API_PREFIX}/auth`, authRouter);
   app.use(`${env.API_PREFIX}/users`, usersRouter);
   app.use(`${env.API_PREFIX}/admin`, adminRouter);

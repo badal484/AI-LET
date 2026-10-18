@@ -82,4 +82,19 @@ describe('age rules', () => {
     expect(res.text).toContain('AGE_RESTRICTED');
     expect(await prisma.message.count({ where: { conversationId } })).toBe(0);
   });
+
+  it('every API list marks romance characters for under-18s — not only discovery (here: the chats list)', async () => {
+    const char = await loveCharacter();
+    const teen = await userAged(16);
+    const adult = await userAged(30);
+    await createConversation(teen.id, char.id, []);
+    await createConversation(adult.id, char.id, []);
+    const flag = async (token: string) => {
+      const res = await request(app).get('/api/v1/conversations').set('Authorization', `Bearer ${token}`);
+      const item = (res.body.data as Array<{ character: { id: string; ageRestricted?: boolean } }>).find((c) => c.character.id === char.id);
+      return item?.character.ageRestricted;
+    };
+    expect(await flag(teen.token)).toBe(true);
+    expect(await flag(adult.token)).toBeUndefined();
+  });
 });

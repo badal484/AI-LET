@@ -63,9 +63,8 @@ export function markRomance<T>(value: T): T {
 }
 
 /**
- * For discovery, search and character routes: in an under-18's responses, romance characters carry
- * ageRestricted: true (the app blurs them with "18+ only"). Checked when the response is sent, after the route's
- * own sign-in check has run.
+ * For every API response (app.ts): in an under-18's responses, romance characters carry ageRestricted: true (the
+ * app blurs them with "18+ only"). Checked when the response is sent, after the route's own sign-in check has run.
  */
 export function markRomanceForTeens(req: Request, res: Response, next: NextFunction): void {
   const json = res.json.bind(res);
