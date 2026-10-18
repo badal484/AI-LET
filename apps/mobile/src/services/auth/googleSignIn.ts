@@ -25,7 +25,11 @@ export async function getGoogleIdToken(): Promise<string | null> {
       if (err.code === statusCodes.SIGN_IN_CANCELLED || err.code === statusCodes.IN_PROGRESS) return null;
       if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) throw new Error('Google Play services are needed to sign in with Google.');
     }
-    throw new Error('Could not sign in with Google. Please try again.');
+    // Google's code says why (10 = this app's package/SHA-1 isn't registered in Google Cloud, 12500 = consent
+    // screen / test users, 7 = network): shown so it can be fixed instead of guessed.
+    const code = isErrorWithCode(err) ? String(err.code) : 'unknown';
+    console.warn(`[GoogleSignIn] failed: code=${code} ${(err as Error)?.message ?? ''}`);
+    throw new Error(`Could not sign in with Google (code ${code}). Please try again.`);
   }
 }
 

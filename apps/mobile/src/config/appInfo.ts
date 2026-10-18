@@ -42,8 +42,8 @@ export const LEGAL_URLS = {
 } as const;
 
 /**
- * "Continue with Google": the Web client ID from Google Cloud (project 2qqtt), which Google calls the server
+ * "Continue with Google": the Web client ID of the Firebase project (lovira-67146, Authentication → Google), which Google calls the server
  * client ID — the ID token is issued for it and our API checks it (GOOGLE_WEB_CLIENT_ID on the server). Public.
  * Android sign-in also needs an Android client per signing key (package + SHA-1) in the same project.
  */
-export const GOOGLE_WEB_CLIENT_ID = '1613467594-f0pac0l2gho572sfpvclhdtsg8g20rck.apps.googleusercontent.com';
+export const GOOGLE_WEB_CLIENT_ID = '472698948443-v1cfrbgcpehb8k52uree0hla0im2fqd0.apps.googleusercontent.com';
