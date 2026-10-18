@@ -6,7 +6,7 @@ import { ageFromDob, dobFromAge, forgetAge, isTeen, markRomance, MIN_AGE } from 
 import { createCharacter, createConversation, createUser } from './fixtures.js';
 
 /**
- * Age rules (owner's decision, 18 Oct 2026): 12+; romance characters are 18+ — under-18s see them marked
+ * Age rules (owner's decision, 18 Oct 2026): 13+; romance characters are 18+ — under-18s see them marked
  * ageRestricted (blurred "18+ only" in the app) and can't chat with them.
  */
 describe('age rules', () => {
@@ -37,12 +37,12 @@ describe('age rules', () => {
     return c;
   }
 
-  it('an age becomes a birth date that keeps counting; 12 is the minimum', () => {
+  it('an age becomes a birth date that keeps counting; 13 is the minimum', () => {
     const dob = dobFromAge(16, new Date('2026-10-18T10:00:00Z'));
     expect(ageFromDob(dob, new Date('2026-10-18T10:00:00Z'))).toBe(16);
     expect(ageFromDob(dob, new Date('2027-10-18T10:00:00Z'))).toBe(17);
     expect(ageFromDob(dob, new Date('2028-10-18T10:00:00Z'))).toBe(18);
-    expect(MIN_AGE).toBe(12);
+    expect(MIN_AGE).toBe(13);
   });
 
   it('teen = under 18; adults and accounts without an age (older sign-ups) are not', async () => {

@@ -3,14 +3,14 @@ import { prisma } from '../../infrastructure/database/prisma.js';
 import { isRomancePack } from '../conversations/human/personaPacks/index.js';
 
 /**
- * Age rules (owner's decision, 18 Oct 2026): Loveek is for ages 12 and up; romance characters (partners, crushes,
+ * Age rules (owner's decision, 18 Oct 2026): Loveek is for ages 13 and up; romance characters (partners, crushes,
  * flirty friends — and the "love" category) are 18+ only: under-18s still see them, blurred with "18+ only"
  * (ageRestricted: true in every response), and can't chat with them (refused on the server). Onboarding asks the age; it's stored as an estimated date of
  * birth (age years before that day) so the age goes up by itself. Accounts from before (no age) count as adults —
  * they confirmed 18+ at sign-up. In chat, someone who says they're under 18 is also handled (no flirting).
  */
 
-export const MIN_AGE = 12;
+export const MIN_AGE = 13; // 13, not 12: under-13 users bring Google Play's Families policy (owner, 18 Oct 2026)
 export const ADULT_AGE = 18;
 
 export function dobFromAge(age: number, now = new Date()): Date {

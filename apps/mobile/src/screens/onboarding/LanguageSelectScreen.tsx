@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -9,7 +9,7 @@ import { Icon } from '../../components/common/Icon.js';
 import { tapFeedback } from '../../utils/motion.js';
 
 const LOGO = require('../../assets/brand/logo.png');
-const MIN_AGE = 12;
+const MIN_AGE = 13; // same as the server (users/ageGate.ts)
 
 const LANGUAGES = [
   { code: 'hinglish', name: 'Hinglish' },
@@ -27,15 +27,18 @@ const GENDERS = [
 /**
  * The one onboarding step (owner's decision, 18 Oct 2026), all answers required: the language characters text in
  * (their first messages; then they follow how the person writes), how they address the person (Hinglish/Hindi
- * grammar: "kaise ho" / "kaisi ho") and their age (12+; romance characters are 18+ and shown blurred to younger
+ * grammar: "kaise ho" / "kaisi ho") and their age (13+; romance characters are 18+ and shown blurred to younger
  * people). Then Home.
  */
 export const LanguageSelectScreen: React.FC = () => {
   const { selectedLanguage, setLanguage, selectedGender, setGender, selectedAge, setAge, completeCurrentStep, isSubmitting } = useOnboardingStore();
   const bootstrap = useAuthStore((s) => s.bootstrap);
+  const logout = useAuthStore((s) => s.logout);
   const insets = useSafeAreaInsets();
   const tooYoung = selectedAge !== null && selectedAge < MIN_AGE;
-  const ready = Boolean(selectedLanguage) && Boolean(selectedGender) && selectedAge !== null && !tooYoung;
+  const ready = Boolean(selectedLanguage) && Boolean(selectedGender) && selectedAge !== null;
+  // Under 12: a friendly "see you soon" instead of a dead button.
+  const [tooYoungScreen, setTooYoungScreen] = useState(false);
 
   const step = (by: number) => {
     tapFeedback();
@@ -45,6 +48,10 @@ export const LanguageSelectScreen: React.FC = () => {
   const handleContinue = async () => {
     if (!ready) return;
     tapFeedback('medium');
+    if (tooYoung) {
+      setTooYoungScreen(true);
+      return;
+    }
     try {
       await completeCurrentStep('LANGUAGE');
       await bootstrap(); // the profile is now onboarded → the app opens Home
@@ -52,6 +59,24 @@ export const LanguageSelectScreen: React.FC = () => {
       ToastService.show({ message: (err as Error)?.message || "Couldn't save that — please try again.", type: 'error', duration: 3500 });
     }
   };
+
+  if (tooYoungScreen) {
+    return (
+      <View style={[styles.root, styles.young, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
+        <View style={styles.youngBody}>
+          <Image source={LOGO} style={styles.youngLogo} />
+          <Text style={styles.youngTitle}>See you soon! 💜</Text>
+          <Text style={styles.youngText}>Loveek is for ages {MIN_AGE} and up. Come back when you turn {MIN_AGE}.</Text>
+        </View>
+        <Pressable onPress={() => setTooYoungScreen(false)} style={({ pressed }) => [styles.youngPrimary, pressed && styles.pressed]} accessibilityRole="button">
+          <Text style={styles.ctaText}>I typed my age wrong</Text>
+        </Pressable>
+        <Pressable onPress={() => void logout()} style={({ pressed }) => [styles.youngSecondary, pressed && styles.pressed]} accessibilityRole="button">
+          <Text style={styles.youngSecondaryText}>Sign out</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -149,7 +174,6 @@ export const LanguageSelectScreen: React.FC = () => {
             <Text style={styles.ageStepText}>+</Text>
           </Pressable>
         </View>
-        {tooYoung ? <Text style={styles.ageError}>Loveek is for ages {MIN_AGE} and up.</Text> : null}
 
       </ScrollView>
 
@@ -234,7 +258,14 @@ const styles = StyleSheet.create({
   ageCenter: { flex: 1, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },
   ageInput: { color: '#FFFFFF', fontSize: 30, fontWeight: '900', minWidth: 44, textAlign: 'center', padding: 0 },
   ageUnit: { color: '#9E97B0', fontSize: 15, fontWeight: '600' },
-  ageError: { color: '#F87171', fontSize: 13, marginTop: 8 },
+  young: { paddingHorizontal: 22, justifyContent: 'space-between' },
+  youngBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  youngLogo: { width: 72, height: 72, borderRadius: 36, marginBottom: 20 },
+  youngTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '900', textAlign: 'center' },
+  youngText: { color: '#B9B2CC', fontSize: 16, lineHeight: 23, textAlign: 'center', marginTop: 10 },
+  youngPrimary: { height: 54, borderRadius: 18, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center' },
+  youngSecondary: { height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  youngSecondaryText: { color: '#B9B2CC', fontSize: 15, fontWeight: '700' },
 
 
   footer: { paddingHorizontal: 22, paddingTop: 12, backgroundColor: '#0B0614', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.06)' },

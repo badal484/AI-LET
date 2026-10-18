@@ -13,7 +13,7 @@ interface OnboardingState {
   selectedLanguage: string;
   /** How characters address them: 'male' | 'female' | 'unspecified' (null = not answered). */
   selectedGender: 'male' | 'female' | 'unspecified' | null;
-  /** Their age (asked on the onboarding screen; 12+). */
+  /** Their age (asked on the onboarding screen; 13+). */
   selectedAge: number | null;
   selectedCategories: string[];
   selectedStyle: ConversationStyle;

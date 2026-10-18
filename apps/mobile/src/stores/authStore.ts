@@ -92,6 +92,9 @@ export const useAuthStore = create<AuthState>((set) => {
             return;
           }
 
+          // The server's real onboarding status. (It used to be forced to "completed" here, so closing the app
+          // before finishing setup skipped the language, gender and age questions for good.) Unknown → not blocked.
+          const onboardingStatus: string | undefined = boot.onboarding?.status ?? boot.profile?.onboardingStatus;
           const user: UserData = {
             id: boot.user.id,
             email: boot.user.email,
@@ -99,9 +102,9 @@ export const useAuthStore = create<AuthState>((set) => {
             emailVerified: boot.user.emailVerified,
             profile: {
               ...boot.profile,
-              onboardingStatus: boot.onboarding?.status || 'COMPLETED',
-              onboardingCurrentStep: boot.onboarding?.currentStep || 'COMPLETED',
-              onboardingCompleted: true,
+              onboardingStatus: onboardingStatus ?? 'COMPLETED',
+              onboardingCurrentStep: boot.onboarding?.currentStep ?? boot.profile?.onboardingCurrentStep ?? 'COMPLETED',
+              onboardingCompleted: onboardingStatus ? onboardingStatus === 'COMPLETED' || onboardingStatus === 'SKIPPED' : true,
             },
           };
 
