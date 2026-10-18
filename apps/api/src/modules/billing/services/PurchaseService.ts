@@ -18,8 +18,22 @@ import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 export class PurchaseService {
   /**
    * Server-side receipt verification and subscription entitlement activation.
+   * The same purchase sent twice at the same moment (double tap, app + restore): the database's unique
+   * transaction id stops the second insert, and the second request then answers like a repeat (audit L-6).
    */
   public static async verifyPurchase(
+    userId: string,
+    request: PurchaseVerificationRequest
+  ): Promise<PurchaseVerificationResponse> {
+    try {
+      return await this.verifyPurchaseOnce(userId, request);
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2002') return this.verifyPurchaseOnce(userId, request);
+      throw err;
+    }
+  }
+
+  private static async verifyPurchaseOnce(
     userId: string,
     request: PurchaseVerificationRequest
   ): Promise<PurchaseVerificationResponse> {
@@ -42,6 +56,11 @@ export class PurchaseService {
         },
       },
     });
+
+    // A purchase recorded for another account is never this user's (and its details aren't shown to them).
+    if (existingTransaction && existingTransaction.userId !== userId) {
+      throw new BadRequestError('This purchase belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
+    }
 
     if (existingTransaction) {
       logger.info(`Transaction ${request.transactionId} already processed for user ${userId}`);
@@ -92,8 +111,33 @@ export class PurchaseService {
 
     // Google Play: the purchase must belong to this account (the app sends playAccountId(userId) to Play).
     const claimedBy = (verified.rawPayload as { obfuscatedAccountId?: string }).obfuscatedAccountId;
-    if (request.provider === 'google' && claimedBy && claimedBy !== playAccountId(userId)) {
-      throw new BadRequestError('This purchase belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
+    // Google Play: the purchase must belong to this account (the app sends playAccountId(userId) to Play). A
+    // purchase without that id can't be matched to anyone, so it isn't granted to whoever sends its token (audit M-3).
+    if (request.provider === 'google' && claimedBy !== playAccountId(userId)) {
+      throw new BadRequestError(
+        claimedBy ? 'This purchase belongs to a different account.' : "This purchase can't be matched to your account — contact support with your Google Play order number.",
+        ErrorCode.PURCHASE_VERIFICATION_FAILED,
+      );
+    }
+
+    // Google gives each purchase an order id; that's what is stored. A purchase checked again (restore, retry,
+    // a second tap) was looked up by its token above — look it up by the verified id too before recording it.
+    const recorded = await prisma.purchaseTransaction.findFirst({
+      where: { providerTransactionId: verified.providerTransactionId },
+      include: { subscription: { include: { plan: true } } },
+    });
+    if (recorded) {
+      if (recorded.userId !== userId) {
+        throw new BadRequestError('This purchase belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
+      }
+      const effective = await EntitlementService.getEffectiveEntitlements(userId);
+      return {
+        success: true,
+        status: 'ALREADY_PROCESSED',
+        subscription: recorded.subscription ? this.mapSubscription(recorded.subscription) : null,
+        entitlements: effective.activeEntitlementsList,
+        message: 'Transaction has already been verified and processed.',
+      };
     }
 
     // A coin pack (one-time): coins for gifts and extra messages. The amount comes from the server's catalog.

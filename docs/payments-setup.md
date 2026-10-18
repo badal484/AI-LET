@@ -52,7 +52,10 @@ Coins pay for gifts (🌹 10, ☕ 25, 🍫 50, 🧸 100, 💋/✨ 200, 💍 500)
 ## 3. Real-time notifications (renewals and cancellations)
 
 1. In Google Cloud → **Pub/Sub**, create a topic, for example `play-billing`. Grant `google-play-developer-notifications@system.gserviceaccount.com` the role **Pub/Sub Publisher** on that topic.
-2. Add a **push subscription** to the topic. Endpoint: `https://ai-let-fgx6.onrender.com/api/v1/billing/webhooks/google`
+2. Add a **push subscription** to the topic. Endpoint: `https://ai-let-fgx6.onrender.com/api/v1/billing/webhooks/google`.
+   **Turn on "Enable authentication"** and pick a service account (it can be the one from step 2). Then set on Render:
+   `PUBSUB_PUSH_SERVICE_ACCOUNT=<that service account's email>`. In production the server refuses Play
+   notifications without Google's signed token for that account (a forged notification gets 401).
 3. In Play Console → **Monetize → Monetization setup**, set the topic name and press **Send test notification**.
 
 The server re-reads every notification from Google, so a fake message can't grant anything.

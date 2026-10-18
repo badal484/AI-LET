@@ -102,6 +102,21 @@ function listen() {
   });
 }
 
+/**
+ * The account id Play stores with the purchase, fetched right before each purchase — never a stale one from a
+ * previous sign-in. Without it the server can't match the purchase to this account, so Play isn't opened.
+ */
+async function currentAccountId(): Promise<string | null> {
+  try {
+    const res = await api.get('/billing/play-account');
+    accountId = res.data.data.obfuscatedAccountId ?? null;
+  } catch {
+    accountId = null;
+  }
+  return accountId;
+}
+const NO_ACCOUNT = { ok: false, message: "Couldn't reach Loveek — check your connection and try again." };
+
 export const StoreBilling = {
   isAvailable: (Platform.OS === 'android') as boolean,
   unavailableMessage: 'Subscriptions are available in the Android app from Google Play.',
@@ -158,7 +173,8 @@ export const StoreBilling = {
   },
 
   /** Opens Google Play's purchase sheet; resolves once our server has confirmed it (or it failed/was cancelled). */
-  buySubscription(offer: StoreOffer, withTrial: boolean): Promise<{ ok: boolean; message?: string }> {
+  async buySubscription(offer: StoreOffer, withTrial: boolean): Promise<{ ok: boolean; message?: string }> {
+    if (!(await currentAccountId())) return NO_ACCOUNT;
     return new Promise((resolve) => {
       waiting.add(resolve);
       requestPurchase({
@@ -189,7 +205,8 @@ export const StoreBilling = {
   },
 
   /** Buys a coin pack; resolves once our server has confirmed it and added the coins. */
-  buyCoins(productId: string): Promise<{ ok: boolean; message?: string }> {
+  async buyCoins(productId: string): Promise<{ ok: boolean; message?: string }> {
+    if (!(await currentAccountId())) return NO_ACCOUNT;
     return new Promise((resolve) => {
       waiting.add(resolve);
       requestPurchase({ type: 'in-app', request: { google: { skus: [productId], obfuscatedAccountId: accountId } } }).catch(() =>

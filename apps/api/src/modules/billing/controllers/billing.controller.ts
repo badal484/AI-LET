@@ -1,3 +1,4 @@
+import { pubsubAuthRequired, verifyPubsubPush } from '../webhooks/pubsubAuth.js';
 import { allowanceStatus } from '../messageAllowance.js';
 import { COIN_PACKS, PLAY_CATALOG, playAccountId } from '../providers/GooglePlayBillingProvider.js';
 import { Request, Response, NextFunction } from 'express';
@@ -177,6 +178,11 @@ export class BillingController {
   public static async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const provider = (req.params['provider'] || 'mock') as BillingProviderType;
+      // Google Play notifications must carry Google's signed token for our push subscription (audit M-4).
+      if (provider === 'google' && pubsubAuthRequired() && !(await verifyPubsubPush(req.headers.authorization))) {
+        res.status(401).json({ success: false, error: { code: 'WEBHOOK_UNAUTHORIZED', message: 'Unauthorized notification' } });
+        return;
+      }
       const signature = (req.headers['stripe-signature'] || req.headers['x-apple-signature']) as string;
       const rawBody = req.body;
 

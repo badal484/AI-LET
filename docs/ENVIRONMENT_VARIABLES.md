@@ -31,6 +31,8 @@ secrets or simulated billing. Values here are examples or descriptions, never re
 | `AI_DAILY_HARD_CAP_INR` | Hard daily AI spending cap — replies pause when reached (crisis still answered) | ₹3000 (0 = off); admin → Settings |
 | `ADMIN_REQUIRE_MFA` | Two-step sign-in for the admin console | **on in production unless `false`**; an admin without it can only reach the setup screen |
 | `SECRET_BOX_KEY` (secret, optional) | Key that encrypts admin two-step secrets in the database | derived from `JWT_ACCESS_SECRET` when unset; changing either means admins set up two-step again |
+| `PUBSUB_PUSH_SERVICE_ACCOUNT` | Service account on the Play notifications push subscription (authentication on) | **required in production** — without it Play notifications are refused |
+| `PUBSUB_PUSH_AUDIENCE` (optional) | Audience of the push token | default: this API's `/api/v1/billing/webhooks/google` URL |
 | `FREE_DAILY_MESSAGES`, `PREMIUM_DAILY_MESSAGES` | Limits when enforced | 5 / 150 |
 | `CHAT_RATE_LIMIT_PER_MINUTE` | Messages per account per minute | 20 |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`, `PLAY_SUBSCRIPTION_ID`, `PLAY_PACK_ID` | Google Play purchase verification | off until billing goes live |
