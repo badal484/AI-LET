@@ -28,6 +28,7 @@ import { PressableScale } from '../../components/common/PressableScale.js';
 import { BottomFade } from '../../components/common/BottomFade.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { useBillingStore } from '../../stores/billingStore.js';
+import { FadeIn } from '../../components/common/FadeIn.js';
 import { ContinueChatCard } from '../../components/home/ContinueChatCard.js';
 
 const CARD_WIDTH = 148;
@@ -146,23 +147,52 @@ export const HomeScreen: React.FC = () => {
     feedScrollRef.current?.scrollTo({ y, animated: true });
   };
 
+  // The same header in every state, so nothing jumps when the feed arrives.
+  const topBar = (
+    <View style={styles.topBar}>
+      <View style={styles.logoRow}>
+        <Text style={styles.logoLo}>Lo</Text>
+        <Text style={styles.logoVira}>vira</Text>
+      </View>
+
+      <TouchableOpacity style={styles.walletPill} activeOpacity={0.8} onPress={handleOpenWallet}>
+        <Text style={styles.coinIcon}>🪙</Text>
+        <Text style={styles.coinBalance}>{coins.toLocaleString('en-IN')}</Text>
+        <Text style={styles.coinPlus}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   if (isLoading && !homeFeed) {
+    // Bones in the shape of the real page: chips, greeting, the continue card, then rows of portrait cards.
     return (
-      <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.topBar}>
-          <Text style={styles.logoText}>Lovira</Text>
-          <View style={styles.walletPill}>
-            <Text style={styles.coinText}>🪙 0</Text>
+      <View style={[styles.container, { paddingTop: insets.top + 6 }]}>
+        {topBar}
+        <View style={styles.filterBarContainer}>
+          <View style={[styles.filterChipsScroll, { flexDirection: 'row', gap: 8 }]}>
+            {[88, 104, 132, 112].map((w) => (
+              <Skeleton key={w} width={w} height={44} borderRadius={22} />
+            ))}
           </View>
         </View>
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-          <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
-            <Skeleton.Card height={22} style={{ width: 140, borderRadius: 6, marginBottom: 12 }} />
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Skeleton.Card height={CARD_HEIGHT} style={{ width: CARD_WIDTH, borderRadius: 16 }} />
-              <Skeleton.Card height={CARD_HEIGHT} style={{ width: CARD_WIDTH, borderRadius: 16 }} />
-            </View>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} scrollEnabled={false} showsVerticalScrollIndicator={false}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 14, gap: 12 }}>
+            <Skeleton width={210} height={22} borderRadius={8} />
+            <Skeleton height={76} borderRadius={20} />
           </View>
+          {[0, 1].map((row) => (
+            <View key={row} style={{ paddingHorizontal: 16, marginBottom: 22 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Skeleton width={30} height={30} circle />
+                <Skeleton width={row === 0 ? 170 : 120} height={20} borderRadius={8} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} width={CARD_WIDTH} height={CARD_HEIGHT} borderRadius={16} />
+                ))}
+              </View>
+            </View>
+          ))}
         </ScrollView>
       </View>
     );
@@ -185,23 +215,8 @@ export const HomeScreen: React.FC = () => {
     <View style={[styles.container, { paddingTop: insets.top + 6 }]}>
       <StatusBar barStyle="light-content" />
 
-      {/* 1. Simple Clean Header */}
-      <View style={styles.topBar}>
-        <View style={styles.logoRow}>
-          <Text style={styles.logoLo}>Lo</Text>
-          <Text style={styles.logoVira}>vira</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.walletPill}
-          activeOpacity={0.8}
-          onPress={handleOpenWallet}
-        >
-          <Text style={styles.coinIcon}>🪙</Text>
-          <Text style={styles.coinBalance}>{coins.toLocaleString('en-IN')}</Text>
-          <Text style={styles.coinPlus}>+</Text>
-        </TouchableOpacity>
-      </View>
+      {/* 1. Header */}
+      {topBar}
 
       {/* 2. Simple Clean Filter Chips */}
       <View style={styles.filterBarContainer}>
@@ -258,14 +273,14 @@ export const HomeScreen: React.FC = () => {
       >
         <ContinueChatCard />
 
-        {sections.map((section: HomeFeedSection) => (
+        {sections.map((section: HomeFeedSection, i: number) => (
           <View
             key={section.id}
             onLayout={(e) => {
               sectionY.current[section.id] = e.nativeEvent.layout.y;
             }}
           >
-            {renderSection(section, handleOpenCharacter, handleOpenCategory)}
+            <FadeIn index={i}>{renderSection(section, handleOpenCharacter, handleOpenCategory)}</FadeIn>
           </View>
         ))}
 

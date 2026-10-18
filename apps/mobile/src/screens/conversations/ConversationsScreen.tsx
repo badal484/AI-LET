@@ -26,6 +26,7 @@ import {
   Icon,
   PressableScale,
 } from '../../components/common/index.js';
+import { FadeIn } from '../../components/common/FadeIn.js';
 
 import { ApiClient } from '../../services/api/client.js';
 import { SecureAuthStorage } from '../../services/auth/SecureAuthStorage.js';
@@ -54,7 +55,11 @@ export const ConversationsScreen: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       ToastService.show({ message: 'Chat deleted.', type: 'info', duration: 2000 });
     } catch {
-      ToastService.show({ message: 'Could not delete the chat. Try again.', type: 'error', duration: 2500 });
+      ToastService.show({
+        message: 'Could not delete the chat. Try again.',
+        type: 'error',
+        duration: 2500,
+      });
     }
   };
 
@@ -66,9 +71,17 @@ export const ConversationsScreen: React.FC = () => {
       }
       queryClient.removeQueries({ queryKey: ['messages', item.id] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      ToastService.show({ message: `${name} has forgotten everything.`, type: 'info', duration: 2500 });
+      ToastService.show({
+        message: `${name} has forgotten everything.`,
+        type: 'info',
+        duration: 2500,
+      });
     } catch {
-      ToastService.show({ message: 'Could not start fresh. Try again.', type: 'error', duration: 2500 });
+      ToastService.show({
+        message: 'Could not start fresh. Try again.',
+        type: 'error',
+        duration: 2500,
+      });
     }
   };
 
@@ -102,7 +115,11 @@ export const ConversationsScreen: React.FC = () => {
     queryClient.prefetchInfiniteQuery({
       queryKey: ['messages', conversation.id],
       queryFn: ({ pageParam }) =>
-        ConversationApi.getMessages(conversation.id, { cursor: pageParam as string | undefined, limit: 30, direction: 'before' }),
+        ConversationApi.getMessages(conversation.id, {
+          cursor: pageParam as string | undefined,
+          limit: 30,
+          direction: 'before',
+        }),
       initialPageParam: undefined as string | undefined,
       staleTime: 30_000,
     });
@@ -120,10 +137,12 @@ export const ConversationsScreen: React.FC = () => {
 
   const listItems = data?.items || [];
 
-  const filteredItems = listItems.filter((item) => {
+  const filteredItems = listItems.filter(item => {
     if (!searchQuery.trim()) return true;
     const nameMatch = item.character.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const snippetMatch = (item.lastMessageSnippet || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const snippetMatch = (item.lastMessageSnippet || '')
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return nameMatch || snippetMatch;
   });
 
@@ -136,7 +155,9 @@ export const ConversationsScreen: React.FC = () => {
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
       if (diffDays === 0) {
-        return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+        return date
+          .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+          .toLowerCase();
       }
       if (diffDays === 1) return 'Yesterday';
       if (diffDays < 7) {
@@ -148,10 +169,8 @@ export const ConversationsScreen: React.FC = () => {
     }
   };
 
-
-
   // Live: which characters are typing right now (shown instead of the last message, like WhatsApp).
-  const typingNow = useTypingStore((st) => st.typing);
+  const typingNow = useTypingStore(st => st.typing);
   // The spinner only for a pull-to-refresh; live and on-return updates happen quietly in place.
   const [pulling, setPulling] = useState(false);
   const onPull = async () => {
@@ -160,56 +179,72 @@ export const ConversationsScreen: React.FC = () => {
     setPulling(false);
   };
 
-  const renderConversationItem = ({ item }: { item: ConversationSummary }) => {
+  const renderConversationItem = ({
+    item,
+    index,
+  }: {
+    item: ConversationSummary;
+    index: number;
+  }) => {
     const timeDisplay = formatDisplayTime(item.lastMessageAt);
     const hasUnread = item.unreadCount > 0;
 
     return (
-      <PressableScale
-        style={styles.itemContainer}
-        scaleTo={0.985}
-        onPressIn={() => prefetchConversation(item)}
-        onPress={() => handleOpenConversation(item)}
-        onLongPress={() => handleChatActions(item)}
-        accessibilityRole="button"
-        accessibilityLabel={`Chat with ${item.character.name}${hasUnread ? `, ${item.unreadCount} unread` : ''}: ${item.lastMessageSnippet || ''}`}
-        accessibilityHint="Long press for more options"
-      >
-        <Avatar
-          uri={item.character.avatarUrl}
-          name={item.character.name}
-          size="lg"
-          style={styles.avatarStyle}
-        />
+      <FadeIn index={index}>
+        <PressableScale
+          style={styles.itemContainer}
+          scaleTo={0.985}
+          onPressIn={() => prefetchConversation(item)}
+          onPress={() => handleOpenConversation(item)}
+          onLongPress={() => handleChatActions(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Chat with ${item.character.name}${hasUnread ? `, ${item.unreadCount} unread` : ''}: ${item.lastMessageSnippet || ''}`}
+          accessibilityHint="Long press for more options"
+        >
+          <Avatar
+            uri={item.character.avatarUrl}
+            name={item.character.name}
+            size="lg"
+            style={styles.avatarStyle}
+          />
 
-        <View style={styles.contentContainer}>
-          <View style={styles.topRow}>
-            <Text style={[styles.characterName, hasUnread && styles.characterNameUnread]} numberOfLines={1}>
-              {item.character.name}
-            </Text>
-            <Text style={[styles.timestamp, hasUnread && styles.timestampUnread]}>
-              {timeDisplay}
-            </Text>
-          </View>
+          <View style={styles.contentContainer}>
+            <View style={styles.topRow}>
+              <Text
+                style={[styles.characterName, hasUnread && styles.characterNameUnread]}
+                numberOfLines={1}
+              >
+                {item.character.name}
+              </Text>
+              <Text style={[styles.timestamp, hasUnread && styles.timestampUnread]}>
+                {timeDisplay}
+              </Text>
+            </View>
 
-          <View style={styles.bottomRow}>
-            {typingNow[item.id] ? (
-              <Text style={[styles.snippet, styles.snippetTyping]} numberOfLines={1}>
-                typing…
-              </Text>
-            ) : (
-              <Text style={[styles.snippet, hasUnread && styles.snippetUnread]} numberOfLines={1}>
-                {(item.lastMessageSnippet || 'Say hi 👋').replace(/^\[Sent a Gift: (\S+)\s+(.+?)\]?$/u, '$1 Sent a $2')}
-              </Text>
-            )}
-            {hasUnread && (
-              <View style={styles.badgeCircle}>
-                <Text style={styles.badgeText}>{item.unreadCount > 99 ? '99+' : item.unreadCount}</Text>
-              </View>
-            )}
+            <View style={styles.bottomRow}>
+              {typingNow[item.id] ? (
+                <Text style={[styles.snippet, styles.snippetTyping]} numberOfLines={1}>
+                  typing…
+                </Text>
+              ) : (
+                <Text style={[styles.snippet, hasUnread && styles.snippetUnread]} numberOfLines={1}>
+                  {(item.lastMessageSnippet || 'Say hi 👋').replace(
+                    /^\[Sent a Gift: (\S+)\s+(.+?)\]?$/u,
+                    '$1 Sent a $2',
+                  )}
+                </Text>
+              )}
+              {hasUnread && (
+                <View style={styles.badgeCircle}>
+                  <Text style={styles.badgeText}>
+                    {item.unreadCount > 99 ? '99+' : item.unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-      </PressableScale>
+        </PressableScale>
+      </FadeIn>
     );
   };
 
@@ -276,7 +311,7 @@ export const ConversationsScreen: React.FC = () => {
       ) : (
         <FlatList
           data={filteredItems}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={renderConversationItem}
           extraData={typingNow}
           initialNumToRender={12}
@@ -318,9 +353,7 @@ export const ConversationsScreen: React.FC = () => {
               <View style={styles.simpleCard}>
                 {actionSheetItem && (
                   <>
-                    <Text style={styles.simpleTitle}>
-                      {actionSheetItem.character.name}
-                    </Text>
+                    <Text style={styles.simpleTitle}>{actionSheetItem.character.name}</Text>
 
                     <TouchableOpacity
                       style={styles.simpleRow}
@@ -347,9 +380,7 @@ export const ConversationsScreen: React.FC = () => {
                         executeDeleteChat(item);
                       }}
                     >
-                      <Text style={[styles.simpleRowText, { color: '#F87171' }]}>
-                        Delete chat
-                      </Text>
+                      <Text style={[styles.simpleRowText, { color: '#F87171' }]}>Delete chat</Text>
                     </TouchableOpacity>
 
                     <View style={styles.simpleDivider} />
@@ -558,4 +589,3 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
 });
-
