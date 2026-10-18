@@ -29,7 +29,8 @@ secrets or simulated billing. Values here are examples or descriptions, never re
 | `FREE_DAILY_MESSAGES`, `PREMIUM_DAILY_MESSAGES` | Limits when enforced | 5 / 150 |
 | `CHAT_RATE_LIMIT_PER_MINUTE` | Messages per account per minute | 20 |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`, `PLAY_SUBSCRIPTION_ID`, `PLAY_PACK_ID` | Google Play purchase verification | off until billing goes live |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_URL` | Character photo storage (Cloudflare R2/S3) | off → server disk, lost on deploy (F-13) |
+| `IMAGEKIT_PRIVATE_KEY` (secret), `IMAGEKIT_FOLDER` (default `/lovira`) | Character photo storage in ImageKit (chosen 18 Oct 2026) — **required in production** | off → R2/S3 if set, else server disk, lost on deploy (F-13) |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `MEDIA_PUBLIC_URL` | Alternative photo storage (Cloudflare R2/S3), used only without ImageKit | off → server disk, lost on deploy (F-13) |
 | `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE` | Server error reporting | off (F-06) |
 | `KEEP_AWAKE` | Self-ping on Render's free plan | on; `false` on a paid plan |
 | `LEGAL_OPERATOR_NAME`, `LEGAL_CONTACT_EMAIL`, `LEGAL_ADDRESS`, `GRIEVANCE_OFFICER_NAME`, `GRIEVANCE_OFFICER_EMAIL` | Shown on the privacy/terms pages | empty (F-17) |

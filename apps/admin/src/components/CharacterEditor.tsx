@@ -205,7 +205,7 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
     onSuccess: (d, v) => {
       if (v.kind === 'avatar') setAvatar(d.url);
       else setCover(d.url);
-      setNote(d.storage === 'local' ? 'Saved on this computer (local storage). Set up Cloudflare R2 before launch so photos survive deploys.' : 'Saved to cloud storage.');
+      setNote(d.storage === 'local' ? 'Saved on the server's disk only — it is wiped on every deploy. Set IMAGEKIT_PRIVATE_KEY on the server so photos are kept.' : 'Saved to cloud storage.');
       void qc.invalidateQueries({ queryKey: ['characters'] });
     },
   });
