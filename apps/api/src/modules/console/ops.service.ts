@@ -1,3 +1,5 @@
+import { spendCapReached } from '../ai/telemetry/spendGuard.js';
+import { configWarnings } from '../../config/readiness.js';
 import { randomBytes } from 'node:crypto';
 import { prisma } from '../../infrastructure/database/prisma.js';
 import { redis } from '../../infrastructure/redis/redis.js';
@@ -214,6 +216,8 @@ export async function getSystem() {
   if (openSupport > 0) alerts.push({ level: 'warn', text: `${openSupport} support request(s) waiting for a reply.`, href: '/support' });
   if (errors.lastHour >= 5) alerts.push({ level: 'warn', text: `${errors.lastHour} server errors in the last hour — see Recent errors below.` });
   if (attention.aiOverBudget) alerts.push({ level: 'warn', text: "Today's AI spend is over your daily budget.", href: '/ai-cost' });
+  if (await spendCapReached()) alerts.push({ level: 'bad', text: "Today's AI spending cap is reached: new replies are paused until midnight (India time). Raise it in Settings if this is real use.", href: '/settings' });
+  if (process.env['NODE_ENV'] === 'production') for (const text of configWarnings()) alerts.push({ level: 'warn', text });
   const lateJobs = jobs.filter((j) => j.late || !j.ok);
   if (!jobs.length) alerts.push({ level: 'warn', text: 'The background worker has never run (start it on the server with: pnpm --filter api start:worker). Without it, account deletions never happen.' });
   if (lateJobs.length) alerts.push({ level: 'warn', text: `Background job${lateJobs.length > 1 ? 's' : ''} not running: ${lateJobs.map((j) => j.name).join(', ')}. Account deletions wait until the worker runs.` });

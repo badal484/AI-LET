@@ -33,6 +33,9 @@ secrets or simulated billing. Values here are examples or descriptions, never re
 | `SECRET_BOX_KEY` (secret, optional) | Key that encrypts admin two-step secrets in the database | derived from `JWT_ACCESS_SECRET` when unset; changing either means admins set up two-step again |
 | `PUBSUB_PUSH_SERVICE_ACCOUNT` | Service account on the Play notifications push subscription (authentication on) | **required in production** — without it Play notifications are refused |
 | `PUBSUB_PUSH_AUDIENCE` (optional) | Audience of the push token | default: this API's `/api/v1/billing/webhooks/google` URL |
+| `RUN_SCHEDULED_JOBS_IN_API` | Account deletions, reminders, campaigns in the API process | **on unless `false`** (set `false` only when a worker runs them) |
+| `DB_CONNECTION_LIMIT` | Database connections per API process | 10 (added to `DATABASE_URL` unless it sets `connection_limit`); `pgbouncer=true` is added for a Neon `-pooler` host |
+| `AFTER_REPLY_CONCURRENCY`, `AFTER_REPLY_MAX_WAITING` | Memory/profile updates run in the API when no worker runs | 4 at a time, 200 waiting (more are skipped and logged) |
 | `FREE_DAILY_MESSAGES`, `PREMIUM_DAILY_MESSAGES` | Limits when enforced | 5 / 150 |
 | `CHAT_RATE_LIMIT_PER_MINUTE` | Messages per account per minute | 20 |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`, `PLAY_SUBSCRIPTION_ID`, `PLAY_PACK_ID` | Google Play purchase verification | off until billing goes live |

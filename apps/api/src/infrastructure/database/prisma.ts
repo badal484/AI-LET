@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../../config/logger.js';
+import { tunedDatabaseUrl } from './poolUrl.js';
 
 class DatabaseConnection {
   private static instance: PrismaClient | null = null;
@@ -7,7 +8,9 @@ class DatabaseConnection {
 
   public static getInstance(): PrismaClient {
     if (!DatabaseConnection.instance) {
+      const url = tunedDatabaseUrl(process.env['DATABASE_URL']);
       DatabaseConnection.instance = new PrismaClient({
+        ...(url ? { datasources: { db: { url } } } : {}),
         log: [
           { emit: 'event', level: 'query' },
           { emit: 'event', level: 'error' },

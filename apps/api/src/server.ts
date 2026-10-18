@@ -1,3 +1,4 @@
+import { configWarnings } from './config/readiness.js';
 import { createApp } from './app.js';
 import { Realtime } from './infrastructure/realtime/realtime.js';
 import { env } from './config/env.js';
@@ -26,7 +27,12 @@ Realtime.attach(server);
 // still sleep. KEEP_AWAKE=false turns it off — not needed on a paid Render plan.
 // No worker (e.g. Render's free plan): the API runs the periodic jobs itself — account deletions,
 // reminders, text-first, campaigns. Safe alongside a worker too (each run takes a Redis lock).
-if (process.env['RUN_SCHEDULED_JOBS_IN_API'] === 'true') startScheduledJobs('api');
+// On by default (audit H-7: without it accounts are never deleted); RUN_SCHEDULED_JOBS_IN_API=false only when a
+// worker runs them. Running in both is safe: each run takes a Redis lock.
+if (process.env['RUN_SCHEDULED_JOBS_IN_API'] !== 'false') startScheduledJobs('api');
+
+// Missing production settings, so they're noticed (also on the admin's System screen).
+if (process.env['NODE_ENV'] === 'production') for (const w of configWarnings()) logger.warn(`⚠️  ${w}`);
 
 const publicUrl = process.env['RENDER_EXTERNAL_URL'];
 if (publicUrl && process.env['KEEP_AWAKE'] !== 'false') {

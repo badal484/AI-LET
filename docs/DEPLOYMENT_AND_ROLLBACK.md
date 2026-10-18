@@ -44,9 +44,20 @@ the live service was created by hand, so **env changes are made in the Render da
 
 - Neon keeps history for point-in-time restore; the free plan's window is short (check the Neon
   dashboard → Settings → History retention). A paid plan extends it.
-- **Restore drill (do once before launch, then quarterly):** Neon → Branches → create a branch from a
-  time a few hours ago → connect with `psql` → check row counts of `users`, `conversations`, `messages`,
-  `characters` → delete the branch. Write the date and result here.
+- **Restore drill (do once before launch, then quarterly) — about 15 minutes:**
+  1. Neon → Branches → **Create branch** → "From a point in time" → a time a few hours ago. Copy the new
+     branch's connection string (direct, not pooler).
+  2. Compare it with the live database (read-only, only `SELECT count(*)`):
+     ```
+     cd apps/api
+     SOURCE_URL='<live direct URL>' RESTORED_URL='<branch URL>' npx tsx scripts/maintenance/compareDatabases.ts
+     ```
+     It prints each table's rows on both sides and ends with ✓ (every table present with data) or ✗.
+  3. Write the date, the restore point, how long it took and the result in the table below.
+  4. Delete the branch (it holds a copy of users' chats).
+- **Real restore (data lost or damaged):** create the branch from just before the incident (as above), check it
+  with the same script, then point `DATABASE_URL` (pooler) on Render at the branch's pooler URL and redeploy.
+  Users' sign-ins keep working (sessions are in the database copy). Afterwards, rotate the old branch's password.
 - Extra safety copy before risky changes:
   `pg_dump "$DATABASE_URL_DIRECT" -Fc -f lovira-$(date +%F).dump` (store encrypted, delete after 30 days —
   it contains users' chats).

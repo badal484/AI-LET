@@ -1,3 +1,4 @@
+import { createConcurrencyLimit } from '../../../shared/utils/concurrencyLimit.js';
 import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
 import { redis } from '../../../infrastructure/redis/redis.js';
 import { QueueManager } from '../../../infrastructure/queues/QueueManager.js';
@@ -111,6 +112,14 @@ export function scheduleAfterReply(j: AfterReplyJob): void {
         logger.warn('Could not queue after-reply work; running it now', { error: err instanceof Error ? err.message : err });
       }
     }
-    await runAfterReply(j).catch((err) => logger.warn('After-reply work failed', { error: err instanceof Error ? err.message : err }));
+    // Without the worker it runs here — a few at a time, so a busy evening's memory/profile updates can't crowd
+    // out live replies (audit M-5). Past a full waiting line the update is skipped (best effort, logged).
+    const ran = await inlineLimit.run(() =>
+      runAfterReply(j).catch((err) => logger.warn('After-reply work failed', { error: err instanceof Error ? err.message : err })),
+    );
+    if (!ran) logger.warn('After-reply work skipped: too much waiting (start the worker for busy hours)', { conversationId: j.conversationId });
   })();
 }
+
+const inlineLimit = createConcurrencyLimit(Number(process.env['AFTER_REPLY_CONCURRENCY'] ?? 4), Number(process.env['AFTER_REPLY_MAX_WAITING'] ?? 200));
+export const afterReplyInlineStats = () => inlineLimit.stats();
