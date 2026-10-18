@@ -160,8 +160,8 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.planText}>
                 {/* No free plan by default (limits.freeDaily = 0); if the admin sets a free allowance, it shows here. */}
                 {allowance && allowance.enforced && allowance.limit > 0
-                  ? `${left} of ${allowance.limit} free messages left today${allowance.credits ? ` · +${allowance.credits} extra` : ''}`
-                  : `Every character, up to 150 messages a day${allowance?.credits ? ` · ${allowance.credits} extra messages` : ''}`}
+                  ? `${left} of ${allowance.limit} free messages left today${allowance.credits ? ` · 🪙 ${allowance.credits} coins` : ''}`
+                  : `Every character, up to 150 messages a day${allowance?.credits ? ` · 🪙 ${allowance.credits} coins` : ''}`}
               </Text>
               <View style={styles.planCta}>
                 <Text style={styles.planCtaText}>Start for ₹1</Text>
