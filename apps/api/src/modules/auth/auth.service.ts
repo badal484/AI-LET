@@ -166,7 +166,7 @@ export class AuthService {
       action: 'USER_REGISTERED',
       resourceType: 'User',
       resourceId: result.user.id,
-      metadata: { email: normalizedEmail, ageConfirmed18Plus: true },
+      metadata: { email: normalizedEmail },
       ipAddress,
       userAgent,
     });
@@ -264,7 +264,7 @@ export class AuthService {
    * client id as audience, a Google-verified email). Then:
    *  - a Google account seen before → its user;
    *  - an existing account with that email → linked to Google (Google has verified the address) and signed in;
-   *  - otherwise a new account (the "I am 18 or older" confirmation is required), email already verified.
+   *  - otherwise a new account, email already verified (age is asked on the onboarding screen, as for everyone).
    */
   static async googleSignIn(input: GoogleSignInRequestInput, ipAddress?: string, userAgent?: string) {
     const audience = (process.env['GOOGLE_WEB_CLIENT_ID'] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -299,9 +299,6 @@ export class AuthService {
     }
 
     if (!user) {
-      if (input.ageConfirmed !== true) {
-        throw new AppError('Please confirm you are 18 or older to create your account', 400, ErrorCode.AGE_CONFIRMATION_REQUIRED);
-      }
       const displayName = (claims.name ?? email.split('@')[0] ?? 'Friend').slice(0, 50);
       user = await prisma.$transaction(async (tx) => {
         const created = await tx.user.create({
@@ -317,7 +314,7 @@ export class AuthService {
       action = 'USER_REGISTERED_GOOGLE';
     }
 
-    return AuthService.startSession(user, input.device, ipAddress, userAgent, action, { via: 'google', ...(action === 'USER_REGISTERED_GOOGLE' ? { ageConfirmed18Plus: true } : {}) });
+    return AuthService.startSession(user, input.device, ipAddress, userAgent, action, { via: 'google' });
   }
 
   /**

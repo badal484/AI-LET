@@ -427,19 +427,24 @@ describe('Phase 13: Production Onboarding, Preferences, First Session & Activati
   });
 
   describe('OnboardingService — one required step: language + gender (18 Oct 2026)', () => {
-    it('the language step needs both a language and how to address them', async () => {
+    it('the language step needs a language, how to address them and their age (12+)', async () => {
       (prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile);
-      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish' } as any)).rejects.toThrow(/language and how characters/);
-      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', userGender: 'female' } as any)).rejects.toThrow(/language and how characters/);
-      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', skipped: true } as any)).rejects.toThrow(/language and how characters/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish', age: 20 } as any)).rejects.toThrow(/your age/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', userGender: 'female', age: 20 } as any)).rejects.toThrow(/your age/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish', userGender: 'female' } as any)).rejects.toThrow(/your age/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', skipped: true } as any)).rejects.toThrow(/your age/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'en', userGender: 'male', age: 11 } as any)).rejects.toThrow(/12 and up/);
     });
 
     it('after the language step onboarding is finished (no interests, style or starter character)', async () => {
       (prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile);
       (prisma.userProfile.update as any).mockResolvedValue({ ...mockUserProfile, onboardingStatus: 'COMPLETED', onboardingCompleted: true, onboardingCurrentStep: 'COMPLETED' });
-      const result = await OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish', userGender: 'female' } as any);
+      const result = await OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish', userGender: 'female', age: 16 } as any);
       expect(result.nextStep).toBe('COMPLETED');
       expect(prisma.userProfile.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ onboardingCompleted: true, onboardingCurrentStep: 'COMPLETED' }) }));
+      // The age is saved as an estimated birth date (16 years ago).
+      const dobCall = (prisma.userProfile.update as any).mock.calls.find((c: any[]) => c[0]?.data?.dateOfBirth);
+      expect(new Date().getUTCFullYear() - dobCall[0].data.dateOfBirth.getUTCFullYear()).toBe(16);
     });
 
     it('skipping or completing without the language step is refused', async () => {

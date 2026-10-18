@@ -1,3 +1,4 @@
+import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import React, { useState } from 'react';
 import {
   View,
@@ -53,9 +54,12 @@ export const CategoryBrowserScreen: React.FC = () => {
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.85}
-      onPress={() => handleOpenCharacter(item)}
+      onPress={() => openIfAllowed(item, handleOpenCharacter)}
     >
-      <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+      <View>
+        <Image source={{ uri: item.avatarUrl }} style={styles.avatar} blurRadius={ageRestricted(item) ? AGE_BLUR_RADIUS : 0} />
+        {ageRestricted(item) && <AgeRestrictedBadge compact />}
+      </View>
       <View style={styles.info}>
         <View style={styles.titleRow}>
           <Text style={styles.name} numberOfLines={1}>

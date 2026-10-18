@@ -1,3 +1,5 @@
+import { AppError } from '../../../shared/errors/AppError.js';
+import { isRomanceCharacter, isTeen } from '../../users/ageGate.js';
 import { redis } from '../../../infrastructure/redis/redis.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
@@ -40,6 +42,11 @@ export class ConversationService {
         'Character is not available for conversations',
         ErrorCode.CHARACTER_NOT_FOUND,
       );
+    }
+
+    // 1a. Romance characters are 18+ (users/ageGate.ts).
+    if (isRomanceCharacter(character) && (await isTeen(userId))) {
+      throw new AppError('This character is for 18+', 403, ErrorCode.AGE_RESTRICTED);
     }
 
     // 1b. Check Character Access Monetization Gating (Phase 11)

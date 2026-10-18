@@ -1,3 +1,4 @@
+import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, explainAgeRestricted } from '../../components/common/AgeRestricted.js';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -129,6 +130,11 @@ export const CharacterDetailScreen: React.FC = () => {
 
   const handleStartChat = async (initialPrompt?: string) => {
     if (!profile) return;
+    // Romance character and they're under 18: no chat (the server refuses it too).
+    if (ageRestricted(profile)) {
+      explainAgeRestricted(profile.name);
+      return;
+    }
 
     if (profile.isLockedForUser) {
       navigation.navigate('Paywall', { feature: 'premium_characters' });
@@ -244,8 +250,10 @@ export const CharacterDetailScreen: React.FC = () => {
           <Image
             source={{ uri: profile.coverImageUrl || profile.avatarUrl }}
             style={styles.coverImage}
+            blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
           />
           <View style={styles.heroGradientOverlay} />
+          {ageRestricted(profile) && <AgeRestrictedBadge />}
 
           {/* Navigation Bar Actions */}
           <View style={styles.topActionsRow}>
@@ -534,7 +542,9 @@ export const CharacterDetailScreen: React.FC = () => {
           activeOpacity={0.88}
         >
           <Text style={styles.startChattingBtnText}>
-            {profile.isLockedForUser
+            {ageRestricted(profile)
+              ? '18+ only'
+              : profile.isLockedForUser
               ? 'Unlock Companion with PRO'
               : profile.existingConversationId
               ? 'Continue Chatting'

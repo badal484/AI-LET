@@ -351,6 +351,8 @@ export interface CharacterVersionSnapshot {
 // Character Entities
 export interface CharacterSummary {
   id: string;
+  /** Romance character shown to someone under 18 (blurred, "18+ only"). */
+  ageRestricted?: boolean;
   slug: string;
   name: string;
   tagline: string;
@@ -2760,6 +2762,8 @@ export interface CharacterDiscoveryMetadata {
 export interface CharacterCatalogItem {
   id: string;
   slug: string;
+  /** Romance character shown to someone under 18: the app blurs it with "18+ only" and the chat is refused. */
+  ageRestricted?: boolean;
   name: string;
   tagline: string;
   shortDescription: string;
@@ -2848,6 +2852,8 @@ export interface SearchCharacterResult {
 }
 
 export interface PublicCharacterDetailedProfile {
+  /** Romance character shown to someone under 18 (blurred, "18+ only"; chat refused). */
+  ageRestricted?: boolean;
   id: string;
   slug: string;
   name: string;

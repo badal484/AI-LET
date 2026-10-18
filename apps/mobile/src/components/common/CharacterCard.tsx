@@ -1,3 +1,4 @@
+import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from './AgeRestricted.js';
 import React from 'react';
 import {
   View,
@@ -40,13 +41,14 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
       <TouchableOpacity
         style={[styles.compactContainer, style]}
         activeOpacity={0.8}
-        onPress={() => onPress(character)}
+        onPress={() => openIfAllowed(character, onPress)}
         accessibilityRole="button"
         accessibilityLabel={`${character.name}, ${character.categoryDisplayName || character.category}`}
       >
         <Avatar
           uri={character.avatarUrl}
           name={character.name}
+          blurRadius={ageRestricted(character) ? AGE_BLUR_RADIUS : undefined}
           size="lg"
           presence={character.voiceAvailable ? 'online' : undefined}
         />
@@ -65,11 +67,14 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
       <TouchableOpacity
         style={[styles.horizontalContainer, style]}
         activeOpacity={0.85}
-        onPress={() => onPress(character)}
+        onPress={() => openIfAllowed(character, onPress)}
         accessibilityRole="button"
         accessibilityLabel={`${character.name}: ${character.tagline}`}
       >
-        <Avatar uri={character.avatarUrl} name={character.name} size="md" />
+        <View>
+          <Avatar uri={character.avatarUrl} name={character.name} size="md" blurRadius={ageRestricted(character) ? AGE_BLUR_RADIUS : undefined} />
+          {ageRestricted(character) && <AgeRestrictedBadge compact />}
+        </View>
         <View style={styles.horizontalInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.horizontalName} numberOfLines={1}>
@@ -97,7 +102,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
       <TouchableOpacity
         style={[styles.featuredContainer, style]}
         activeOpacity={0.9}
-        onPress={() => onPress(character)}
+        onPress={() => openIfAllowed(character, onPress)}
         accessibilityRole="button"
         accessibilityLabel={`Featured companion ${character.name}: ${character.tagline}`}
       >
@@ -148,7 +153,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
     <TouchableOpacity
       style={[styles.gridContainer, style]}
       activeOpacity={0.85}
-      onPress={() => onPress(character)}
+      onPress={() => openIfAllowed(character, onPress)}
       accessibilityRole="button"
       accessibilityLabel={`${character.name}, ${character.tagline}`}
     >

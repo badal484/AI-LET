@@ -1,9 +1,12 @@
+import { markRomanceForTeens } from '../../users/ageGate.js';
 import { Router } from 'express';
 import { DiscoveryController } from '../controllers/discovery.controller.js';
 import { SearchController } from '../controllers/search.controller.js';
 import { authenticateUser, optionalAuth } from '../../../shared/middleware/auth.middleware.js';
 
 export const discoveryRouter: Router = Router();
+// Under-18s see romance characters marked ageRestricted (blurred, "18+ only") — users/ageGate.ts.
+discoveryRouter.use(markRomanceForTeens);
 
 // 1. Home Feed & Lists
 discoveryRouter.get('/home', optionalAuth, DiscoveryController.getHomeFeed);

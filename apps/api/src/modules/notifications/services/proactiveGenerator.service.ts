@@ -1,3 +1,4 @@
+import { isRomanceCharacter, isTeen } from '../../users/ageGate.js';
 import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
@@ -89,6 +90,12 @@ export class ProactiveGeneratorService {
         decision: 'SKIP',
         reason: eligibility.reason,
       };
+    }
+
+    // Romance characters never text a teen first (users/ageGate.ts).
+    if (await isTeen(userId)) {
+      const ch = await prisma.character.findUnique({ where: { id: characterId }, select: { slug: true, category: true } });
+      if (ch && isRomanceCharacter(ch)) return { isExecuted: false, decision: 'SKIP', reason: 'Romance character, user under 18' };
     }
 
     // The daily AI spending cap (audit H-1): no new AI-written outreach once reached; a reminder they asked for still goes.

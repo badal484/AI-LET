@@ -29,6 +29,7 @@ import { BottomFade } from '../../components/common/BottomFade.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { FadeIn } from '../../components/common/FadeIn.js';
+import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import { ContinueChatCard } from '../../components/home/ContinueChatCard.js';
 
 const CARD_WIDTH = 148;
@@ -425,17 +426,19 @@ function renderSection(
             <PressableScale
               key={char.id}
               style={styles.cardContainer}
-              onPress={() => onOpen(char)}
+              onPress={() => openIfAllowed(char, onOpen)}
               accessibilityRole="button"
-              accessibilityLabel={`Open ${char.name}`}
+              accessibilityLabel={ageRestricted(char) ? `${char.name}, 18+ only` : `Open ${char.name}`}
             >
-              {/* Full Bleed Image */}
+              {/* Full Bleed Image (blurred for a romance character when they're under 18) */}
               <Image
                 source={{ uri: char.coverImageUrl || char.avatarUrl }}
                 style={styles.cardImage}
                 resizeMode="cover"
                 fadeDuration={150}
+                blurRadius={ageRestricted(char) ? AGE_BLUR_RADIUS : 0}
               />
+              {ageRestricted(char) && <AgeRestrictedBadge />}
 
               {/* A real gradient over the photo's lower part, then the name and tags on top of it. */}
               <BottomFade height={CARD_HEIGHT * 0.55} />

@@ -68,13 +68,9 @@ describe('Authentication & Identity Integration Tests', () => {
       expect(secondRes.body.error.code).toBe('AUTH_EMAIL_ALREADY_EXISTS');
     });
 
-    it('refuses sign-up without the 18+ confirmation (audit M-6)', async () => {
-      const base = { email: 'young@example.com', password: 'SecurePassword123!', displayName: 'Young' };
-      const missing = await request(app).post('/api/v1/auth/register').send(base);
-      expect(missing.status).toBe(400);
-      expect(JSON.stringify(missing.body)).toContain('18 or older');
-      expect((await request(app).post('/api/v1/auth/register').send({ ...base, ageConfirmed: false })).status).toBe(400);
-      expect(await prisma.user.count({ where: { normalizedEmail: 'young@example.com' } })).toBe(0);
+    it('sign-up no longer needs an 18+ box — age is asked on the onboarding screen (13+, romance 18+)', async () => {
+      const res = await request(app).post('/api/v1/auth/register').send({ email: 'noagebox@example.com', password: 'SecurePassword123!', displayName: 'No Box' });
+      expect(res.status).toBe(201);
     });
 
     it('rejects passwords shorter than 8 characters', async () => {

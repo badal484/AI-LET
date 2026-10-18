@@ -50,8 +50,9 @@ export type DeviceMetadataInput = z.infer<typeof deviceMetadataSchema>;
 
 export const registerRequestSchema = z.object({
   email: z.string().email('Invalid email address').max(255),
-  // Loveek is for adults only: the sign-up form's "I am 18 or older" box (audit M-6). Recorded in the audit log.
-  ageConfirmed: z.literal(true, { errorMap: () => ({ message: 'You must be 18 or older to use Loveek' }) }),
+  // Age is asked on the onboarding screen now (13+, romance 18+ — owner's decision 18 Oct 2026). Older apps still
+  // send this; it's accepted and ignored.
+  ageConfirmed: z.boolean().optional(),
   password: passwordSchema,
   displayName: z.string().min(1, 'Display name is required').max(50),
   username: z
@@ -1659,6 +1660,8 @@ export const onboardingStepCompleteSchema = z.object({
   conversationStyle: conversationStyleSchema.optional(),
   /** How characters address them (grammar): 'male' | 'female' | 'unspecified'. */
   userGender: z.enum(['male', 'female', 'unspecified']).optional(),
+  /** Their age (asked on the onboarding screen, required there): 13+; romance characters are 18+. */
+  age: z.number().int().min(1).max(120).optional(),
   selectedCharacterId: z.string().uuid().optional(),
   skipped: z.boolean().default(false),
   metadata: z.record(z.string(), z.unknown()).optional(),

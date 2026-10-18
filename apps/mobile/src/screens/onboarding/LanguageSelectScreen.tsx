@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboardingStore } from '../../stores/onboardingStore.js';
 import { useAuthStore } from '../../stores/authStore.js';
@@ -29,14 +29,17 @@ const GENDERS = [
 ] as const;
 
 /**
- * The one onboarding step (owner's decision, 18 Oct 2026), both answers required: the language characters text in
+ * The one onboarding step (owner's decision, 18 Oct 2026), all answers required: their age (12+; romance characters
+ * are 18+ and shown blurred to younger people), the language characters text in
  * (their first messages; then they follow how the person writes — any language later added here works the same
  * way) and how they address the person (Hinglish grammar: "thak gaye ho?" / "thak gayi ho?"). Then Home.
  */
 export const LanguageSelectScreen: React.FC = () => {
-  const { selectedLanguage, setLanguage, selectedGender, setGender, completeCurrentStep, isSubmitting } = useOnboardingStore();
+  const { selectedLanguage, setLanguage, selectedGender, setGender, selectedAge, setAge, completeCurrentStep, isSubmitting } = useOnboardingStore();
   const bootstrap = useAuthStore((s) => s.bootstrap);
-  const ready = Boolean(selectedLanguage) && Boolean(selectedGender);
+  const MIN_AGE = 12;
+  const tooYoung = selectedAge !== null && selectedAge < MIN_AGE;
+  const ready = Boolean(selectedLanguage) && Boolean(selectedGender) && selectedAge !== null && !tooYoung;
   const insets = useSafeAreaInsets();
 
   const handleContinue = async () => {
@@ -53,7 +56,7 @@ export const LanguageSelectScreen: React.FC = () => {
     <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.lg }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Before we start</Text>
-        <Text style={styles.subtitle}>Two quick choices so your characters talk to you the right way. You can change them later in Profile.</Text>
+        <Text style={styles.subtitle}>Three quick answers so your characters talk to you the right way.</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}>
@@ -100,6 +103,22 @@ export const LanguageSelectScreen: React.FC = () => {
             );
           })}
         </View>
+
+        <Text style={styles.sectionLabel}>Your age</Text>
+        <TextInput
+          style={[styles.ageInput, tooYoung && styles.ageInputError]}
+          value={selectedAge === null ? '' : String(selectedAge)}
+          onChangeText={(t) => {
+            const digits = t.replace(/[^0-9]/g, '').slice(0, 3);
+            setAge(digits ? Number(digits) : null);
+          }}
+          placeholder="e.g. 21"
+          placeholderTextColor={darkThemeColors.textMuted}
+          keyboardType="number-pad"
+          maxLength={3}
+          accessibilityLabel="Your age"
+        />
+        {tooYoung && <Text style={styles.ageError}>Loveek is for ages {MIN_AGE} and up.</Text>}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -112,7 +131,7 @@ export const LanguageSelectScreen: React.FC = () => {
         >
           <Text style={styles.primaryButtonText}>{isSubmitting ? 'Saving…' : 'Start chatting'}</Text>
         </TouchableOpacity>
-        {!ready && <Text style={styles.hint}>Choose both to continue</Text>}
+        {!ready && !tooYoung && <Text style={styles.hint}>Answer all three to continue</Text>}
       </View>
     </View>
   );
@@ -253,6 +272,20 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.45,
   },
+  ageInput: {
+    backgroundColor: darkThemeColors.surface,
+    borderWidth: 1,
+    borderColor: darkThemeColors.borderSubtle,
+    borderRadius: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    color: darkThemeColors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
+    width: 140,
+  },
+  ageInputError: { borderColor: '#F87171' },
+  ageError: { ...typography.bodySmall, color: '#F87171', marginTop: spacing.xs },
   hint: {
     ...typography.bodySmall,
     color: darkThemeColors.textMuted,

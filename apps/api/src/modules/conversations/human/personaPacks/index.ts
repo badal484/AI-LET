@@ -81,3 +81,9 @@ export function personaPackFor(slug: string | null | undefined): PersonaPack | n
   if (!slug || process.env['HUMAN_ENGINE_DISABLED'] === 'true') return null;
   return PACKS[slug] ?? null;
 }
+
+/** Characters with romance (partner, crush, flirty friend): 18+ only. Teens never see or chat with them. */
+export function isRomancePack(slug: string | null | undefined): boolean {
+  const pack = slug ? PACKS[slug] : undefined;
+  return Boolean(pack?.romance || pack?.crush || pack?.flirtyFriend);
+}

@@ -1,3 +1,4 @@
+import { dobFromAge, forgetAge, MIN_AGE } from '../../users/ageGate.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
 import { AppError } from '../../../shared/errors/AppError.js';
@@ -132,8 +133,16 @@ export class OnboardingService {
       throw new AppError('User profile not found', 404, ErrorCode.NOT_FOUND);
     }
 
-    if (input.stepKey === 'LANGUAGE' && (input.skipped || !input.language || !input.userGender)) {
-      throw new AppError('Choose your language and how characters should talk to you', 400, ErrorCode.VALIDATION_ERROR);
+    if (input.stepKey === 'LANGUAGE' && (input.skipped || !input.language || !input.userGender || !input.age)) {
+      throw new AppError('Choose your language, how characters should talk to you, and your age', 400, ErrorCode.VALIDATION_ERROR);
+    }
+    if (input.stepKey === 'LANGUAGE' && input.age! < MIN_AGE) {
+      throw new AppError(`Loveek is for ages ${MIN_AGE} and up`, 400, ErrorCode.AGE_RESTRICTED);
+    }
+    if (input.stepKey === 'LANGUAGE') {
+      // Stored as an estimated birth date, so the age keeps up by itself (users/ageGate.ts).
+      await prisma.userProfile.update({ where: { userId }, data: { dateOfBirth: dobFromAge(input.age!) } });
+      forgetAge(userId);
     }
 
     const currentCompleted = Array.isArray(profile.onboardingCompletedSteps)
@@ -230,7 +239,7 @@ export class OnboardingService {
   private static async requireLanguageStep(userId: string): Promise<void> {
     const profile = await prisma.userProfile.findUnique({ where: { userId }, select: { onboardingCompletedSteps: true } });
     if (!profile || !OnboardingService.languageDone(profile)) {
-      throw new AppError('Choose your language and how characters should talk to you first', 400, ErrorCode.VALIDATION_ERROR);
+      throw new AppError('Choose your language, how characters should talk to you, and your age first', 400, ErrorCode.VALIDATION_ERROR);
     }
   }
 

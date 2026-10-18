@@ -20,7 +20,6 @@ import { LEGAL_URLS } from '../../config/appInfo.js';
 import { AuthHero } from '../../components/auth/AuthHero.js';
 import { AuthField } from '../../components/auth/AuthField.js';
 import { GoogleButton } from '../../components/auth/GoogleButton.js';
-import { Icon } from '../../components/common/Icon.js';
 
 interface RegisterScreenProps {
   navigation: {
@@ -32,8 +31,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Loveek is for adults: an explicit "I am 18 or older" box (audit M-6); the server refuses sign-up without it.
-  const [isAdult, setIsAdult] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const { register, isLoading, errorMessage, clearError } = useAuthStore();
@@ -51,10 +48,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
       setLocalError('Password must be at least 8 characters long.');
       return;
     }
-    if (!isAdult) {
-      setLocalError('Loveek is only for people 18 or older — please confirm your age.');
-      return;
-    }
 
     setLocalError(null);
     clearError();
@@ -64,7 +57,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
         displayName: displayName.trim(),
         email: email.trim(),
         password,
-        ageConfirmed: true,
         device: {
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
           deviceName: `${Platform.OS.toUpperCase()} Mobile Client`,
@@ -152,17 +144,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
             onSubmitEditing={handleRegister}
           />
 
-          <TouchableOpacity
-            style={styles.ageRow}
-            onPress={() => setIsAdult((v) => !v)}
-            activeOpacity={0.8}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: isAdult }}
-            accessibilityLabel="I am 18 or older"
-          >
-            <View style={[styles.ageBox, isAdult && styles.ageBoxOn]}>{isAdult ? <Icon name="check" size={14} color="#FFFFFF" /> : null}</View>
-            <Text style={styles.ageText}>I am 18 or older</Text>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
@@ -182,7 +163,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
             <Text style={styles.orText}>or</Text>
             <View style={styles.orLine} />
           </View>
-          <GoogleButton ageConfirmed={isAdult} />
+          <GoogleButton />
           <Text style={styles.legalText}>
             By creating an account you agree to the{' '}
             <Text style={styles.legalLink} onPress={() => Linking.openURL(LEGAL_URLS.terms).catch(() => undefined)}>Terms</Text> and{' '}
@@ -205,18 +186,6 @@ const styles = StyleSheet.create({
   orRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
   orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.18)' },
   orText: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600' },
-  ageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, marginBottom: 12 },
-  ageBox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: darkThemeColors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ageBoxOn: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
-  ageText: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
   container: {
     flex: 1,
     backgroundColor: darkThemeColors.background,

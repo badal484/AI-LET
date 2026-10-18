@@ -9,6 +9,8 @@ export interface AvatarProps {
   presence?: 'online' | 'offline' | 'speaking' | 'user_speaking';
   onPress?: () => void;
   style?: ViewStyle;
+  /** Blur the photo (an 18+ character shown to someone under 18). */
+  blurRadius?: number;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -17,6 +19,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'md',
   presence,
   onPress,
+  blurRadius,
   style,
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -72,6 +75,7 @@ export const Avatar: React.FC<AvatarProps> = ({
           source={{ uri }}
           style={[styles.image, { width: dim, height: dim, borderRadius }]}
           onError={() => setImageError(true)}
+          blurRadius={blurRadius}
           accessibilityLabel={`${name}'s avatar`}
         />
       ) : (

@@ -36,21 +36,16 @@ describe('Google sign-in', () => {
     resetGoogleCertsForTests();
   });
 
-  it('a new Google user must confirm 18+, then gets an account with the email already verified', async () => {
+  it('a new Google user gets an account with the email already verified (age comes next, on the onboarding screen)', async () => {
     const email = `g_${rid()}@gmail.test`;
     const sub = `g-${rid()}`;
-    const first = await google({ idToken: idToken({ email, sub }) });
-    expect(first.status).toBe(400);
-    expect(first.body.error.code).toBe('AGE_CONFIRMATION_REQUIRED');
-    expect(await prisma.user.count({ where: { normalizedEmail: email } })).toBe(0);
-
-    const ok = await google({ idToken: idToken({ email, sub }), ageConfirmed: true });
+    const ok = await google({ idToken: idToken({ email, sub }) });
     expect(ok.status).toBe(200);
     expect(ok.body.data.tokens.accessToken).toBeTruthy();
     expect(ok.body.data.user.emailVerified).toBe(true);
     expect(ok.body.data.user.profile.displayName).toBe('Asha Test');
 
-    // Next time: the same Google account signs straight in (no 18+ question), same user.
+    // Next time: the same Google account signs straight in, same user.
     const again = await google({ idToken: idToken({ email, sub }) });
     expect(again.status).toBe(200);
     expect(again.body.data.user.id).toBe(ok.body.data.user.id);

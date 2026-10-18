@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuthStore } from '../../stores/authStore.js';
 import { getGoogleIdToken } from '../../services/auth/googleSignIn.js';
@@ -16,21 +16,10 @@ const GoogleG = () => (
   </Svg>
 );
 
-/**
- * "Continue with Google" for sign-in and sign-up. A Google account new to Loveek must confirm 18+: on the
- * sign-up screen that's the checkbox (ageConfirmed); anywhere else the server asks and we confirm here.
- */
-export const GoogleButton: React.FC<{ ageConfirmed?: boolean }> = ({ ageConfirmed }) => {
+/** "Continue with Google" for sign-in and sign-up (age is asked on the onboarding screen, like for everyone). */
+export const GoogleButton: React.FC = () => {
   const googleSignIn = useAuthStore((s) => s.googleSignIn);
   const [busy, setBusy] = useState(false);
-
-  const confirmAge = () =>
-    new Promise<boolean>((resolve) =>
-      Alert.alert('Welcome to Loveek', 'Loveek is only for people 18 or older. Please confirm your age to create your account.', [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: "I'm 18 or older", onPress: () => resolve(true) },
-      ]),
-    );
 
   const start = async () => {
     tapFeedback();
@@ -38,12 +27,7 @@ export const GoogleButton: React.FC<{ ageConfirmed?: boolean }> = ({ ageConfirme
     try {
       const idToken = await getGoogleIdToken();
       if (!idToken) return; // closed the picker
-      try {
-        await googleSignIn(idToken, ageConfirmed);
-      } catch (err) {
-        if ((err as { code?: string })?.code !== 'AGE_CONFIRMATION_REQUIRED') throw err;
-        if (await confirmAge()) await googleSignIn(idToken, true);
-      }
+      await googleSignIn(idToken);
     } catch (err) {
       ToastService.show({ message: (err as Error)?.message || 'Google sign-in failed. Please try again.', type: 'error', duration: 3500 });
     } finally {

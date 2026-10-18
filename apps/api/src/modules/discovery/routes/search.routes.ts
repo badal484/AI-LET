@@ -1,8 +1,11 @@
+import { markRomanceForTeens } from '../../users/ageGate.js';
 import { Router } from 'express';
 import { SearchController } from '../controllers/search.controller.js';
 import { authenticateUser, optionalAuth } from '../../../shared/middleware/auth.middleware.js';
 
 export const searchRouter: Router = Router();
+// Under-18s see romance characters marked ageRestricted (blurred, "18+ only") — users/ageGate.ts.
+searchRouter.use(markRomanceForTeens);
 
 // Public / Guest / Optional Auth Search & Autocomplete
 searchRouter.get('/characters', optionalAuth, SearchController.search);

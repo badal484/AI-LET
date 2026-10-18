@@ -1,3 +1,4 @@
+import { isRomanceCharacter, isTeen } from '../../users/ageGate.js';
 import { recordSafetyMoments } from '../../console/safetyMoments.js';
 import { limitsEnforced, useMessage } from '../../billing/messageAllowance.js';
 import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
@@ -147,6 +148,11 @@ export class StreamingChatService {
     try {
       const conversation = await this.loadOwnedConversation(conversationId, userId);
       await EnforcementService.assertUserNotRestricted(userId, 'CANNOT_SEND_MESSAGES');
+      // Romance characters are 18+ (users/ageGate.ts).
+      if (isRomanceCharacter(conversation.character) && (await isTeen(userId))) {
+        this.sendSingleSseError(res, ErrorCode.AGE_RESTRICTED, 'This character is for 18+.');
+        return;
+      }
 
       let saved: { id: string; sequenceNumber: number; createdAt: Date; clientRequestId: string | null } | null = null;
 

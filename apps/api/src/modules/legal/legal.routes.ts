@@ -143,7 +143,7 @@ require, without your chats.</li>
 </ul>
 
 <h2>Age</h2>
-<p>Loveek is only for people aged 18 or older. If we learn that an account belongs to someone younger, we delete it.</p>
+<p>Loveek is for people aged <b>12 or older</b>. People under 18 should use it with a parent's or guardian's permission. <b>Romance characters are for adults (18+) only</b>: we ask your age when you start, and people under 18 can't chat with them. If we learn that an account belongs to someone under 12, we delete it.</p>
 
 <h2>Security</h2>
 <p>Data is encrypted in transit, passwords are hashed, and access inside our team is limited and logged. No system
@@ -177,7 +177,7 @@ Don't use them instead of a qualified doctor, therapist, lawyer or financial adv
 </ul>
 
 <h2>Who can use it</h2>
-<p>You must be <b>18 or older</b> and able to agree to these terms. One account per person; keep your password safe —
+<p>You must be <b>12 or older</b>; if you're under 18, a parent or guardian must agree to these terms for you. Romance characters are for adults (18+) only. One account per person; keep your password safe —
 you're responsible for what happens on your account.</p>
 
 <h2>Using Loveek well</h2>
