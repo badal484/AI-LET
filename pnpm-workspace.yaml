@@ -23,3 +23,6 @@ overrides:
   'source-map-js@<1.2.2': ^1.2.2
   '@grpc/grpc-js@<1.13.6': ^1.13.6
   'sharp@<0.35.5': ^0.35.5
+  # Audit L-1 (2026-10-18): deepmerge-ts via the Prisma CLI's config loader. (braces has no fixed release yet:
+  # the advisory names 3.0.4, which isn't published; it's only used by Metro at build time.)
+  'deepmerge-ts@<8.0.0': ^8.0.0

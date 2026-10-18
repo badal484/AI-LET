@@ -13,6 +13,7 @@ export function configWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
   if (!env['LEGAL_OPERATOR_NAME'] || !env['LEGAL_CONTACT_EMAIL']) out.push('Legal details are missing (LEGAL_OPERATOR_NAME, LEGAL_CONTACT_EMAIL): the privacy policy and terms are incomplete.');
   if (!env['PUBSUB_PUSH_SERVICE_ACCOUNT']) out.push('PUBSUB_PUSH_SERVICE_ACCOUNT is not set: Google Play renewal and cancellation notifications are refused.');
   if (!usesPooler(env['DATABASE_URL'])) out.push('The database URL is not the pooler URL: use the Neon "-pooler" address for the app (migrations use the direct one).');
+  if ((env['JWT_ACCESS_SECRET']?.length ?? 0) < 32 || (env['JWT_REFRESH_SECRET']?.length ?? 0) < 32) out.push('JWT_ACCESS_SECRET / JWT_REFRESH_SECRET are shorter than 32 characters: use long random values (changing them signs everyone out).');
   if (!env['SENTRY_DSN']) out.push('SENTRY_DSN is not set: server errors are not reported.');
   if (env['RUN_SCHEDULED_JOBS_IN_API'] === 'false') out.push('RUN_SCHEDULED_JOBS_IN_API=false: account deletions and reminders need a running worker.');
   return out;

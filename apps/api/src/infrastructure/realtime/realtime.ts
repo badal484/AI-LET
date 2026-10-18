@@ -148,10 +148,10 @@ export const Realtime = {
         socket.destroy();
       };
       if (url.pathname === '/api/v1/realtime') {
-        // The app sends its token in the Authorization header (kept out of URLs and proxy logs); the
-        // ?token= form still works for older app builds.
+        // The app sends its token in the Authorization header only — never in the URL, where proxies and logs
+        // would keep it (audit L-4; the old ?token= form is gone).
         const header = req.headers['authorization'];
-        const token = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : url.searchParams.get('token');
+        const token = typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : null;
         void authenticateUser(token)
           .then((userId) => (userId ? wss.handleUpgrade(req, socket, head, (ws) => onUser(ws, userId)) : reject()))
           .catch(() => socket.destroy());

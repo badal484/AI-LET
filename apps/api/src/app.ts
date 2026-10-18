@@ -101,17 +101,8 @@ export const createApp = (): Express => {
 
   // Root and Health Routes
   app.get('/', (_req, res) => {
-    res.json({
-      success: true,
-      message: 'AI Companion Platform API',
-      version: '0.1.0',
-      status: 'online',
-      endpoints: {
-        health: '/api/v1/health',
-        apiPrefix: env.API_PREFIX,
-        adminStudio: 'http://localhost:3001',
-      },
-    });
+    // Nothing about internals here (audit L-2): no versions, addresses or admin locations.
+    res.json({ success: true, status: 'online' });
   });
   // Uploaded media when no object storage is configured (see console/media.ts).
   app.use(

@@ -15,7 +15,6 @@ export const FadeIn: React.FC<{ index?: number; style?: StyleProp<ViewStyle>; ch
     if (still) return;
     Animated.timing(progress, { toValue: 1, duration: 280, delay: index * 40, useNativeDriver: true }).start();
     // Only on mount: a re-render must not replay it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
