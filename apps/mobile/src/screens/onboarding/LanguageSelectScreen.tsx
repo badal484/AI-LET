@@ -12,9 +12,9 @@ const LOGO = require('../../assets/brand/logo.png');
 const MIN_AGE = 12;
 
 const LANGUAGES = [
-  { code: 'hinglish', name: 'Hinglish', sample: 'kya scene hai aaj? 😄' },
-  { code: 'en', name: 'English', sample: "hey, how's your day going?" },
-  { code: 'hi', name: 'हिंदी', sample: 'आज दिन कैसा रहा?' },
+  { code: 'hinglish', name: 'Hinglish' },
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'हिंदी (Hindi)' },
 ] as const;
 
 // So characters say "thak gaye ho?" or "thak gayi ho?" the right way — never guessed from a name.
@@ -23,13 +23,6 @@ const GENDERS = [
   { code: 'female', label: 'Woman' },
   { code: 'unspecified', label: 'Skip' },
 ] as const;
-
-/** What a character's first message would look like with these choices (why we ask). */
-function previewLine(lang: string, gender: string | null): string {
-  if (lang === 'en') return 'Hii! How are you doing today? 😊';
-  if (lang === 'hi') return gender === 'female' ? 'नमस्ते! आप कैसी हैं? 😊' : gender === 'male' ? 'नमस्ते! आप कैसे हैं? 😊' : 'नमस्ते! आज का दिन कैसा रहा? 😊';
-  return gender === 'female' ? 'Hii! Kaisi ho aaj? 😊' : gender === 'male' ? 'Hii! Kaise ho aaj? 😊' : 'Hii! Aaj ka din kaisa raha? 😊';
-}
 
 /**
  * The one onboarding step (owner's decision, 18 Oct 2026), all answers required: the language characters text in
@@ -81,11 +74,10 @@ export const LanguageSelectScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <Image source={LOGO} style={styles.logo} />
-        <Text style={styles.title}>Let’s get to know you</Text>
-        <Text style={styles.subtitle}>Three quick answers, so your characters talk to you the right way.</Text>
+        <Text style={styles.title}>Quick setup</Text>
 
         {/* 1. Language */}
-        <Text style={styles.label}>Characters text you in</Text>
+        <Text style={styles.label}>Language</Text>
         <View style={styles.langList}>
           {LANGUAGES.map((l) => {
             const on = selectedLanguage === l.code;
@@ -99,12 +91,9 @@ export const LanguageSelectScreen: React.FC = () => {
                 style={({ pressed }) => [styles.langCard, on && styles.langCardOn, pressed && styles.pressed]}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={`${l.name}: ${l.sample}`}
+                accessibilityLabel={l.name}
               >
-                <View style={styles.flex}>
-                  <Text style={[styles.langName, on && styles.langNameOn]}>{l.name}</Text>
-                  <Text style={styles.langSample}>“{l.sample}”</Text>
-                </View>
+                <Text style={[styles.langName, styles.flex, on && styles.langNameOn]}>{l.name}</Text>
                 <View style={[styles.tick, on && styles.tickOn]}>{on ? <Icon name="check" size={14} color="#FFFFFF" /> : null}</View>
               </Pressable>
             );
@@ -112,7 +101,7 @@ export const LanguageSelectScreen: React.FC = () => {
         </View>
 
         {/* 2. How to address them */}
-        <Text style={styles.label}>Characters talk to you as</Text>
+        <Text style={styles.label}>You are</Text>
         <View style={styles.segment}>
           {GENDERS.map((g) => {
             const on = selectedGender === g.code;
@@ -135,7 +124,7 @@ export const LanguageSelectScreen: React.FC = () => {
         </View>
 
         {/* 3. Age */}
-        <Text style={styles.label}>Your age</Text>
+        <Text style={styles.label}>Age</Text>
         <View style={[styles.ageRow, tooYoung && styles.ageRowError]}>
           <Pressable onPress={() => step(-1)} style={styles.ageStep} accessibilityLabel="One year less" hitSlop={8}>
             <Text style={styles.ageStepText}>−</Text>
@@ -165,15 +154,6 @@ export const LanguageSelectScreen: React.FC = () => {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-        {/* Why we ask: the first message they'd get — always in view, above the button. */}
-        {selectedLanguage ? (
-          <View style={styles.preview}>
-            <Text style={styles.previewLabel}>Your characters will say</Text>
-            <View style={styles.bubble}>
-              <Text style={styles.bubbleText}>{previewLine(selectedLanguage, selectedGender)}</Text>
-            </View>
-          </View>
-        ) : null}
         <Pressable
           onPress={handleContinue}
           disabled={!ready || isSubmitting}
@@ -190,9 +170,8 @@ export const LanguageSelectScreen: React.FC = () => {
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" rx="18" fill="url(#cta)" />
           </Svg>
-          <Text style={styles.ctaText}>{isSubmitting ? 'Saving…' : 'Start chatting'}</Text>
+          <Text style={styles.ctaText}>{isSubmitting ? 'Saving…' : 'Continue'}</Text>
         </Pressable>
-        {!ready && !tooYoung ? <Text style={styles.hint}>Answer all three to continue</Text> : null}
       </View>
     </KeyboardAvoidingView>
   );
@@ -205,8 +184,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22, paddingBottom: 24 },
   logo: { width: 40, height: 40, borderRadius: 20, marginBottom: 10 },
   title: { color: '#FFFFFF', fontSize: 26, fontWeight: '900', letterSpacing: -0.4 },
-  subtitle: { color: '#B9B2CC', fontSize: 15, lineHeight: 21, marginTop: 6 },
-  label: { color: '#E6E0F2', fontSize: 15, fontWeight: '800', marginTop: 20, marginBottom: 8 },
+  label: { color: '#E6E0F2', fontSize: 15, fontWeight: '800', marginTop: 24, marginBottom: 10 },
 
   langList: { gap: 8 },
   langCard: {
@@ -214,7 +192,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingVertical: 15,
     borderRadius: 18,
     backgroundColor: '#150F22',
     borderWidth: 1.5,
@@ -223,7 +201,6 @@ const styles = StyleSheet.create({
   langCardOn: { borderColor: '#A78BFA', backgroundColor: '#1D1430' },
   langName: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   langNameOn: { color: '#D8B4FE' },
-  langSample: { color: '#9E97B0', fontSize: 13.5, marginTop: 3 },
   tick: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   tickOn: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
 
@@ -259,23 +236,10 @@ const styles = StyleSheet.create({
   ageUnit: { color: '#9E97B0', fontSize: 15, fontWeight: '600' },
   ageError: { color: '#F87171', fontSize: 13, marginTop: 8 },
 
-  preview: { marginBottom: 12 },
-  previewLabel: { color: '#7E778F', fontSize: 12.5, fontWeight: '700', marginBottom: 8 },
-  bubble: {
-    alignSelf: 'flex-start',
-    maxWidth: '85%',
-    backgroundColor: '#251B38',
-    borderRadius: 20,
-    borderTopLeftRadius: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-  },
-  bubbleText: { color: '#FFFFFF', fontSize: 15.5 },
 
   footer: { paddingHorizontal: 22, paddingTop: 12, backgroundColor: '#0B0614', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.06)' },
   cta: { height: 56, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   ctaOff: { opacity: 0.4 },
   ctaText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   pressed: { opacity: 0.88, transform: [{ scale: 0.99 }] },
-  hint: { color: '#7E778F', fontSize: 12.5, textAlign: 'center', marginTop: 8 },
 });
