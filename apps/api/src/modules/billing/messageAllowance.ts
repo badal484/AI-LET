@@ -5,6 +5,7 @@ import { logger } from '../../config/logger.js';
 import { CreditWalletService } from './credits/CreditWalletService.js';
 import { isCrisisMessage } from '../conversations/human/crisisSupport.js';
 import { classifySituations } from '../conversations/human/situation.js';
+import { emailConfigured } from '../../infrastructure/email/email.js';
 
 /**
  * How many messages a user may send today. Without Premium: limits.freeDaily (default 0 — no free plan; the
@@ -12,6 +13,11 @@ import { classifySituations } from '../conversations/human/situation.js';
  * PREMIUM_DAILY_MESSAGES (150, fair use). Past the limit, one message-pack credit per message.
  * Crisis and emergency messages are never counted or blocked.
  * Off until BILLING_ENFORCE_LIMITS=true (turn on together with payments at launch).
+ *
+ * Abuse guards that apply even while limits are off (audit H-1), so free use is never unlimited:
+ *  - limits.openDaily per account per day (default 150) while limits are off;
+ *  - limits.unverifiedDaily (default 30) until the email is verified — only when email sending is set up,
+ *    so nobody is asked to verify an email that can't arrive. Premium accounts aren't held to it.
  */
 
 export interface AllowanceResult {
@@ -20,8 +26,11 @@ export interface AllowanceResult {
   used: number;
   limit: number;
   credits?: number;
-  /** Why it was blocked: 'free_limit' → offer the trial; 'fair_use' → offer a message pack. */
-  reason?: 'free_limit' | 'fair_use';
+  /**
+   * Why it was blocked: 'free_limit' → offer the trial; 'fair_use' → offer a message pack;
+   * 'verify_email' → verify the email to keep going; 'daily_cap' → today's cap while limits are off.
+   */
+  reason?: 'free_limit' | 'fair_use' | 'verify_email' | 'daily_cap';
   resetsAt: string;
 }
 
@@ -52,38 +61,59 @@ export async function hasPremium(userId: string): Promise<boolean> {
   return Boolean(sub);
 }
 
-/** Counts one message (call once per message they send). Never throws: on any error it lets the message through. */
+/** True when this account hasn't verified its email and verification emails can actually be sent. */
+async function needsVerification(userId: string): Promise<boolean> {
+  if (!emailConfigured()) return false;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true } });
+  return Boolean(user && !user.emailVerifiedAt);
+}
+
+/** Counts one message (call once per message they send). On an unexpected error it lets the message through (the daily AI spending cap is the backstop). */
 export async function useMessage(userId: string, text: string): Promise<AllowanceResult> {
   const { key, resetsAt } = istDay();
   const base = { resetsAt: resetsAt.toISOString() };
   try {
     const premium = await hasPremium(userId);
     const lim = await limits();
-    const limit = premium ? lim.premium : lim.free;
+    const enforced = await limitsEnforced();
     const situations = classifySituations(text, null);
-    if (!(await limitsEnforced()) || isCrisisMessage(text) || situations.includes('emergency')) {
-      return { allowed: true, premium, used: 0, limit, ...base };
+    if (isCrisisMessage(text) || situations.includes('emergency')) {
+      return { allowed: true, premium, used: 0, limit: premium ? lim.premium : lim.free, ...base };
     }
+
+    // The limit that applies today, and which rule set it (for the message the app shows).
+    let limit = enforced ? (premium ? lim.premium : lim.free) : Number(await getSetting('limits.openDaily')) || Infinity;
+    let rule: 'plan' | 'open' | 'verify' = enforced ? 'plan' : 'open';
+    const unverifiedCap = Number(await getSetting('limits.unverifiedDaily'));
+    if (!premium && unverifiedCap > 0 && unverifiedCap < limit && (await needsVerification(userId))) {
+      limit = unverifiedCap;
+      rule = 'verify';
+    }
+    if (limit === Infinity) return { allowed: true, premium, used: 0, limit: 0, ...base };
+
     const counterKey = `msgs:${userId}:${key}`;
     const used = await redis.incr(counterKey);
     if (used === 1) await redis.expire(counterKey, 2 * 86_400);
     if (used <= limit) return { allowed: true, premium, used, limit, ...base };
 
-    // Over today's limit: a message-pack credit, if they have one.
-    const wallet = await CreditWalletService.getWalletSummary(userId).catch(() => null);
-    const credits = wallet?.availableBalance ?? 0;
-    if (credits > 0) {
-      await CreditWalletService.consumeCredits({
-        userId,
-        amount: 1,
-        idempotencyKey: `msg_${userId}_${key}_${used}`,
-        description: 'Extra message (message pack)',
-        referenceType: 'MESSAGE',
-      });
-      return { allowed: true, premium, used, limit, credits: credits - 1, ...base };
+    // Over today's plan limit with payments on: a coin pays for one more message.
+    if (rule === 'plan') {
+      const wallet = await CreditWalletService.getWalletSummary(userId).catch(() => null);
+      const credits = wallet?.availableBalance ?? 0;
+      if (credits > 0) {
+        await CreditWalletService.consumeCredits({
+          userId,
+          amount: 1,
+          idempotencyKey: `msg_${userId}_${key}_${used}`,
+          description: 'Extra message (message pack)',
+          referenceType: 'MESSAGE',
+        });
+        return { allowed: true, premium, used, limit, credits: credits - 1, ...base };
+      }
     }
     await redis.decr(counterKey); // a blocked message doesn't use up tomorrow's room
-    return { allowed: false, premium, used: limit, limit, credits: 0, reason: premium ? 'fair_use' : 'free_limit', ...base };
+    const reason = rule === 'verify' ? 'verify_email' : rule === 'open' ? 'daily_cap' : premium ? 'fair_use' : 'free_limit';
+    return { allowed: false, premium, used: limit, limit, credits: 0, reason, ...base };
   } catch (err) {
     logger.warn(`Message allowance check failed (allowing): ${err instanceof Error ? err.message : 'Unknown'}`);
     return { allowed: true, premium: false, used: 0, limit: (await limits().catch(() => ({ free: 0 }))).free, ...base };

@@ -1,5 +1,12 @@
 import { recordSafetyMoments } from '../../console/safetyMoments.js';
 import { limitsEnforced, useMessage } from '../../billing/messageAllowance.js';
+import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
+
+/** Midnight in India (when the daily caps reset), as an ISO time. */
+const nextIstMidnight = (): string => {
+  const ist = new Date(Date.now() + 330 * 60_000);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + 1) - 330 * 60_000).toISOString();
+};
 import { setAICostContext } from '../../ai/telemetry/aiCostLedger.js';
 import { Response, Request } from 'express';
 import { prisma } from '../../../infrastructure/database/prisma.js';
@@ -191,6 +198,22 @@ export class StreamingChatService {
           !(await GiftService.claimPaid(userId, input.clientRequestId, content))
         ) {
           this.sendSingleSseError(res, ErrorCode.BAD_REQUEST, 'Send gifts with the gift button.');
+          return;
+        }
+
+        // The daily AI spending cap (audit H-1): once reached, new replies pause until midnight IST. Crisis
+        // and emergency messages are always answered.
+        if (!existing && !isCrisisMessage(content) && !classifySituations(content, null).includes('emergency') && (await spendCapReached())) {
+          this.initSseResponse(res);
+          this.emitSseEvent<StreamLimitReachedPayload>(res, 'limit.reached', {
+            conversationId,
+            reason: 'service_busy',
+            used: 0,
+            limit: 0,
+            premium: false,
+            resetsAt: nextIstMidnight(),
+          });
+          res.end();
           return;
         }
 

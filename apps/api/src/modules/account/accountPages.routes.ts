@@ -8,6 +8,9 @@ import { esc, page } from '../legal/legal.routes.js';
 /**
  * Account pages opened from emails, served by the API so the link works on any phone (no app update needed):
  *   /account/reset-password?token=…   set a new password (link from the "forgot password" email)
+ *   /account/verify-email?token=…     confirm the email address (link from the sign-up email). The link opens a
+ *                                     page with a button; only pressing it verifies, so email scanners that open
+ *                                     links can't use up the one-time token.
  * The token is checked by AuthService.resetPassword (one use, 1 hour); success signs out every device.
  */
 export const accountPagesRouter: Router = Router();
@@ -77,6 +80,39 @@ accountPagesRouter.post(
         return;
       }
       res.status(500).type('html').send(message('Something went wrong', 'We couldn\'t change your password just now. Please try again in a few minutes.'));
+    }
+  },
+);
+
+accountPagesRouter.get('/verify-email', (req: Request, res: Response) => {
+  const token = String(req.query['token'] ?? '').slice(0, 200);
+  if (!token) {
+    res.status(400).type('html').send(message('Link not complete', 'This link is missing a part. Open the newest verification email again.'));
+    return;
+  }
+  res.type('html').send(
+    page(
+      'Verify your email',
+      `<form method="post" action="/account/verify-email" class="box">
+<input type="hidden" name="token" value="${esc(token)}">
+<p>One tap to confirm this is your email.</p>
+<button type="submit">Verify my email</button>
+</form>`,
+    ),
+  );
+});
+
+accountPagesRouter.post(
+  '/verify-email',
+  express.urlencoded({ extended: false, limit: '8kb' }),
+  rateLimit({ windowMs: 15 * 60_000, max: 10, store: rateLimitStore('account-verify'), standardHeaders: true, legacyHeaders: false }),
+  async (req: Request, res: Response) => {
+    const token = String(req.body?.token ?? '').slice(0, 200);
+    try {
+      await AuthService.verifyEmail(token, req.ip, req.headers['user-agent']);
+      res.type('html').send(message('Email verified', '<b>Done — your email is verified.</b> Open Loveek and keep chatting.'));
+    } catch {
+      res.status(400).type('html').send(message('Link expired', 'This link has expired or was already used. Open Loveek → Profile and ask for a new verification email.'));
     }
   },
 );

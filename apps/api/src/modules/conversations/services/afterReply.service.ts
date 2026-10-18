@@ -1,3 +1,4 @@
+import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
 import { redis } from '../../../infrastructure/redis/redis.js';
 import { QueueManager } from '../../../infrastructure/queues/QueueManager.js';
 import { logger } from '../../../config/logger.js';
@@ -52,6 +53,8 @@ async function workerAlive(): Promise<boolean> {
 
 /** Runs the work (in the worker, or inline). Each part fails on its own without stopping the others. */
 export async function runAfterReply(j: AfterReplyJob): Promise<void> {
+  // Memory and profile updates are extra AI calls: skipped once the daily spending cap is reached (audit H-1).
+  if (await spendCapReached()) return;
   setAICostContext({ userId: j.userId, characterId: j.characterId, conversationId: j.conversationId, task: 'chat' });
   const warn = (what: string) => (err: unknown) => logger.warn(`Background ${what} failed: ${err instanceof Error ? err.message : 'Unknown'}`);
   await Promise.all([

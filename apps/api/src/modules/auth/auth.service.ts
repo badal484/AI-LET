@@ -153,6 +153,9 @@ export class AuthService {
       emailVerified: false,
     });
 
+    // Verification link by email (when email is set up). Never blocks or fails the sign-up.
+    void AuthService.sendVerificationEmail(result.user.email, result.rawVerificationToken).catch(() => undefined);
+
     // 6. Security Audit Event
     await AuditService.logEvent({
       actorType: 'USER',
@@ -676,6 +679,32 @@ export class AuthService {
     });
 
     return { message: 'Password has been successfully reset. Please log in with your new credentials.' };
+  }
+
+  /** The "verify your email" link; it opens a small page on this server (account/accountPages.routes.ts). */
+  static async sendVerificationEmail(email: string, rawToken: string): Promise<boolean> {
+    const link = `${publicOrigin()}/account/verify-email?token=${rawToken}`;
+    return sendEmail({
+      to: email,
+      subject: 'Verify your Loveek email',
+      text: `Welcome to Loveek! Tap to verify your email (the link works once):\n${link}\n\nDidn't sign up? Ignore this email.`,
+      html: `<p>Welcome to Loveek!</p><p><a href="${link}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#ec4899;color:#fff;font-weight:700;text-decoration:none">Verify my email</a></p><p style="color:#6b6577;font-size:14px">The link works once. Didn't sign up? Ignore this email.</p>`,
+    });
+  }
+
+  /** A fresh verification link (older ones stop working). False if already verified or email isn't set up. */
+  static async resendVerification(userId: string): Promise<{ sent: boolean; alreadyVerified: boolean }> {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailVerifiedAt: true, deletedAt: true } });
+    if (!user || user.deletedAt) throw new AppError('Account not found', 404, ErrorCode.NOT_FOUND);
+    if (user.emailVerifiedAt) return { sent: false, alreadyVerified: true };
+    const rawToken = generateRandomToken(32);
+    await prisma.$transaction([
+      prisma.emailVerificationToken.updateMany({ where: { userId, usedAt: null }, data: { usedAt: new Date() } }),
+      prisma.emailVerificationToken.create({
+        data: { userId, tokenHash: hashToken(rawToken), expiresAt: new Date(Date.now() + SYSTEM_CONSTANTS.AUTH.EMAIL_VERIFICATION_TOKEN_LIFETIME_SECONDS * 1000) },
+      }),
+    ]);
+    return { sent: await AuthService.sendVerificationEmail(user.email, rawToken), alreadyVerified: false };
   }
 
   /**

@@ -1,3 +1,4 @@
+import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
 import { getSetting } from '../../console/appSettings.js';
@@ -210,6 +211,8 @@ export async function decideFor(userId: string, opts: { dryRun?: boolean; now?: 
 export async function runProactiveRound(opts: { dryRun?: boolean } = {}): Promise<{ users: number; sent: number; skipped: Partial<Record<RoundSkip, number>> }> {
   const skipped: Partial<Record<RoundSkip, number>> = {};
   if (!(await getSetting('proactive.enabled'))) return { users: 0, sent: 0, skipped: { off: 1 } };
+  // The daily AI spending cap pauses characters texting first too (audit H-1).
+  if (await spendCapReached()) return { users: 0, sent: 0, skipped: { off: 1 } };
   // People who chatted in the last 30 days and have a phone that takes notifications; least recently texted first.
   const users = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
     `SELECT u.id::text id FROM users u

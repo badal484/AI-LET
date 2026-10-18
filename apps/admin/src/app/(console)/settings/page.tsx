@@ -26,7 +26,10 @@ const GROUPS = [
   { prefix: 'maintenance.', title: 'Maintenance' },
 ];
 const HINT: Record<string, string> = {
-  'limits.enforce': 'Off = everyone unlimited. Turn on at launch. Crisis messages are never limited.',
+  'limits.enforce': 'Off = no payments needed (the caps below still apply). Turn on at launch. Crisis messages are never limited.',
+  'limits.openDaily': 'While limits are off, each account can send this many messages a day — so free use is never unlimited.',
+  'limits.unverifiedDaily': 'Until someone taps the link in their sign-up email. Only applies when email sending (Resend) is set up.',
+  'ai.dailyHardCap': 'Hard stop: when today\'s AI cost reaches this, new replies pause until midnight (India time). Crisis messages are still answered.',
   'maintenance.enabled': 'Every open app switches to the screen below at once, and back when you turn it off. The admin panel keeps working.',
   'maintenance.emoji': 'Shown when there is no picture.',
   'maintenance.until': 'Users see “Back by 6:30 pm · about 20 min”. Leave empty if you don’t know.',

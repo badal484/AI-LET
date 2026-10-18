@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
 import { Realtime } from '../../../infrastructure/realtime/realtime.js';
+import { noteSpendUsd } from './spendGuard.js';
 
 /**
  * The real cost of every Gemini call — the reply, rewrites, translations, profile and memory updates,
@@ -64,6 +65,7 @@ export function recordGeminiCall(params: {
   const output = (u.candidatesTokenCount ?? 0) + thoughts;
   if (!input && !output) return;
   const cost = geminiCostUsd(params.model, { input, cached, output });
+  noteSpendUsd(cost); // the daily spending cap sees it at once
   void prisma.aIUsageEvent
     .create({
       data: {

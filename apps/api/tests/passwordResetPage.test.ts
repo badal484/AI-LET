@@ -75,7 +75,8 @@ describe('password reset by email link', () => {
 
     const email = await newUser();
     await request(app).post('/api/v1/auth/forgot-password').send({ email });
-    const call = fetchMock.mock.calls.find(([url]) => String(url).includes('api.resend.com'));
+    // Sign-up also emails a verification link; pick the reset email.
+    const call = fetchMock.mock.calls.find(([url, init]) => String(url).includes('api.resend.com') && String((init as RequestInit | undefined)?.body).includes('reset-password'));
     expect(call).toBeTruthy();
     const body = JSON.parse(String((call![1] as RequestInit).body)) as { to: string[]; text: string };
     expect(body.to).toEqual([email]);

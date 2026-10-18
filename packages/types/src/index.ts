@@ -673,7 +673,11 @@ export type StreamEventType =
 /** The message wasn't sent: today's allowance is used up. 'free_limit' → offer the trial; 'fair_use' → a pack. */
 export interface StreamLimitReachedPayload {
   conversationId: string;
-  reason: 'free_limit' | 'fair_use';
+  /**
+   * free_limit → offer the trial; fair_use → offer coins; verify_email → verify the email to keep going;
+   * daily_cap → today's cap while limits are off; service_busy → the daily AI spending cap was reached.
+   */
+  reason: 'free_limit' | 'fair_use' | 'verify_email' | 'daily_cap' | 'service_busy';
   used: number;
   limit: number;
   premium: boolean;

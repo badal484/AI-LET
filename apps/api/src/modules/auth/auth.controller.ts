@@ -123,6 +123,14 @@ export class AuthController {
     }
   }
 
+  static async resendVerification(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      ApiResponse.success(res, await AuthService.resendVerification(req.user!.userId), 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const ip = req.ip || req.socket.remoteAddress;

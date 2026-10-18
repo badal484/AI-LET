@@ -64,6 +64,7 @@ router.post(
 
 // Authenticated Endpoints
 router.get('/me', authenticateUser, AuthController.getMe);
+router.post('/resend-verification', authenticateUser, passwordResetRateLimiter, AuthController.resendVerification);
 router.post('/logout', authenticateUser, validateRequest(logoutRequestSchema), AuthController.logout);
 router.post('/logout-all', authenticateUser, AuthController.logoutAll);
 router.get('/sessions', authenticateUser, AuthController.getSessions);

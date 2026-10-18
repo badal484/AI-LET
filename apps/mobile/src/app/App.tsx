@@ -1,6 +1,6 @@
 import { LimitReached } from '../services/limitReached.js';
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, StatusBar, Alert } from 'react-native';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -108,6 +108,33 @@ export const AppContent: React.FC = () => {
   useEffect(
     () =>
       LimitReached.on((payload) => {
+        // Abuse guards and the daily AI spending cap (not about paying): explain, and offer to resend the email.
+        if (payload.reason === 'verify_email') {
+          Alert.alert(
+            'Verify your email to keep chatting',
+            `You've sent ${payload.limit} messages today. Tap the link we emailed you when you signed up to keep going — or get a new one.`,
+            [
+              { text: 'Later', style: 'cancel' },
+              {
+                text: 'Resend email',
+                onPress: () =>
+                  void api
+                    .post('/auth/resend-verification')
+                    .then(() => Alert.alert('Email sent', 'Check your inbox (and spam) for the link from Loveek.'))
+                    .catch(() => Alert.alert('Could not send it', 'Please try again in a little while.')),
+              },
+            ],
+          );
+          return;
+        }
+        if (payload.reason === 'daily_cap') {
+          Alert.alert("That's today's messages", `You've sent ${payload.limit} messages today. You can chat again after midnight.`);
+          return;
+        }
+        if (payload.reason === 'service_busy') {
+          Alert.alert('Loveek is very busy right now', 'Replies are paused for a little while. Please try again later — your message is saved.');
+          return;
+        }
         if (navigationRef.isReady()) navigationRef.navigate('Paywall', { reason: payload.reason, resetsAt: payload.resetsAt });
       }),
     [navigationRef],

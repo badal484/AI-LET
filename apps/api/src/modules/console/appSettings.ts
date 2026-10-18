@@ -18,6 +18,9 @@ export const SETTINGS = {
   // emergency messages always go through. Set a number here to bring back a free daily allowance.
   'limits.freeDaily': { label: 'Free messages per day (0 = no free plan)', type: 'number', default: () => Number(process.env['FREE_DAILY_MESSAGES'] ?? 0) },
   'limits.premiumDaily': { label: 'Premium messages per day (fair use)', type: 'number', default: () => Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150) },
+  // Abuse guards (audit H-1). They apply even while limits.enforce is off, so free use is never unlimited.
+  'limits.openDaily': { label: 'Messages per account per day while limits are off (0 = no cap)', type: 'number', default: () => Number(process.env['OPEN_DAILY_MESSAGES'] ?? 150) },
+  'limits.unverifiedDaily': { label: 'Messages per day before the email is verified (0 = no cap; only when email sending is set up)', type: 'number', default: () => Number(process.env['UNVERIFIED_DAILY_MESSAGES'] ?? 30) },
   'maintenance.enabled': { label: 'Maintenance mode (app shows a message, chat paused)', type: 'boolean', default: () => false },
   'maintenance.title': { label: 'Title', type: 'string', default: () => 'Loveek is getting better' },
   'maintenance.message': { label: 'Message', type: 'string', default: () => 'We are making Loveek better. Back in a few minutes 💜' },
@@ -29,6 +32,9 @@ export const SETTINGS = {
   'announcement.enabled': { label: 'Show an announcement in the app', type: 'boolean', default: () => false },
   'announcement.text': { label: 'Announcement', type: 'string', default: () => '' },
   'app.minVersion': { label: 'Minimum app version (older apps must update)', type: 'string', default: () => '' },
+  // Hard stop (audit H-1): once today's AI cost reaches this, new replies pause until midnight IST (crisis
+  // messages are still answered). The budget below only alerts.
+  'ai.dailyHardCap': { label: 'AI spending cap per day (₹) — replies pause when reached (0 = off)', type: 'number', default: () => Number(process.env['AI_DAILY_HARD_CAP_INR'] ?? 3000) },
   'ai.dailyBudget': { label: 'AI budget per day (₹, 0 = no alert)', type: 'number', default: () => 0 },
   // Characters texting first (notifications/services/proactiveRound.service.ts). Off until the admin turns it on.
   'proactive.enabled': { label: 'Characters text first', type: 'boolean', default: () => false },

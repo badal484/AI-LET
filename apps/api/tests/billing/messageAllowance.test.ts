@@ -17,6 +17,9 @@ describe('Daily message allowance', () => {
   });
 
   it('free users get their daily messages, then a clear stop — crisis messages always go through', async () => {
+    // Messages sent while limits were off count towards the same day (the open daily cap counts them too).
+    const counted = await redis.keys(`msgs:${userId}:*`);
+    if (counted.length) await redis.del(...counted);
     process.env['BILLING_ENFORCE_LIMITS'] = 'true';
     process.env['FREE_DAILY_MESSAGES'] = '2';
     expect((await useMessage(userId, 'hii')).allowed).toBe(true);

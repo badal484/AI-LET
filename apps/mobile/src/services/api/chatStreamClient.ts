@@ -186,7 +186,14 @@ export class ChatStreamClient {
               callbacks.onFailed?.({
                 conversationId: parsed.conversationId,
                 errorCode: 'LIMIT_REACHED',
-                errorMessage: parsed.reason === 'fair_use' ? "You've reached today's 150 messages." : 'Start Premium to keep chatting — your first day is ₹1.',
+                errorMessage:
+                  parsed.reason === 'fair_use' || parsed.reason === 'daily_cap'
+                    ? `You've reached today's ${parsed.limit} messages.`
+                    : parsed.reason === 'verify_email'
+                      ? 'Verify your email to keep chatting today.'
+                      : parsed.reason === 'service_busy'
+                        ? 'Replies are paused for a little while. Please try again later.'
+                        : 'Start Premium to keep chatting — your first day is ₹1.',
                 retryable: true,
               });
               break;

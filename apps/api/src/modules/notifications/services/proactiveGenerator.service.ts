@@ -1,3 +1,4 @@
+import { spendCapReached } from '../../ai/telemetry/spendGuard.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import { logger } from '../../../config/logger.js';
 import { AIOrchestrator } from '../../../infrastructure/ai/AIOrchestrator.js';
@@ -88,6 +89,11 @@ export class ProactiveGeneratorService {
         decision: 'SKIP',
         reason: eligibility.reason,
       };
+    }
+
+    // The daily AI spending cap (audit H-1): no new AI-written outreach once reached; a reminder they asked for still goes.
+    if (!isReminder && !dryRun && (await spendCapReached())) {
+      return { isExecuted: false, decision: 'SKIP', reason: 'Daily AI spending cap reached' };
     }
 
     // 2. Fetch Character Details & Runtime
