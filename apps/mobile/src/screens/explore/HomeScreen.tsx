@@ -85,6 +85,10 @@ export const HomeScreen: React.FC = () => {
       (section: HomeFeedSection) =>
         section.sectionKey !== 'CATEGORIES' && section.sectionKey !== 'CONTINUE' && (section.items?.length ?? 0) > 0,
     );
+    // Under 18 (the server marks romance characters ageRestricted): Learn & Earn first, Love & Romance third —
+    // still shown (blurred, "18+ only"), just not the first thing (owner's decision, 19 Oct 2026).
+    const isTeen = list.some((section) => (section.items ?? []).some((item: { ageRestricted?: boolean }) => item.ageRestricted));
+    const TEEN_ORDER: Record<string, number> = { 'learn-earn': 1, astrology: 2, love: 3 };
     const ORDER: Record<string, number> = {
       love: 1,
       astrology: 2,
@@ -99,8 +103,8 @@ export const HomeScreen: React.FC = () => {
     return list.sort((a, b) => {
       const slugA = (a.id || '').replace('section_cat_', '').toLowerCase();
       const slugB = (b.id || '').replace('section_cat_', '').toLowerCase();
-      const orderA = ORDER[slugA] ?? 99;
-      const orderB = ORDER[slugB] ?? 99;
+      const orderA = (isTeen ? TEEN_ORDER[slugA] : undefined) ?? ORDER[slugA] ?? 99;
+      const orderB = (isTeen ? TEEN_ORDER[slugB] : undefined) ?? ORDER[slugB] ?? 99;
       return orderA - orderB;
     });
   }, [homeFeed]);
