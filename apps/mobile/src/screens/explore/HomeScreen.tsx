@@ -28,6 +28,7 @@ import { PressableScale } from '../../components/common/PressableScale.js';
 import { BottomFade } from '../../components/common/BottomFade.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { useBillingStore } from '../../stores/billingStore.js';
+import { ContinueChatCard } from '../../components/home/ContinueChatCard.js';
 
 const CARD_WIDTH = 148;
 const CARD_HEIGHT = 210;
@@ -255,6 +256,8 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
+        <ContinueChatCard />
+
         {sections.map((section: HomeFeedSection) => (
           <View
             key={section.id}
