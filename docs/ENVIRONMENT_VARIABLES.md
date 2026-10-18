@@ -26,6 +26,11 @@ secrets or simulated billing. Values here are examples or descriptions, never re
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Push notifications (the **service account** JSON, not `google-services.json`) | off → pushes disabled, logged |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Password-reset email | off → no email sent, logged |
 | `BILLING_ENFORCE_LIMITS` | Daily message limits | **on in production unless set to `false`** (currently `false` by owner decision) |
+| `OPEN_DAILY_MESSAGES` | Messages per account per day while limits are off | 150 (0 = no cap); also in admin → Settings |
+| `UNVERIFIED_DAILY_MESSAGES` | Messages per day until the email is verified | 30; only when Resend email is set up; admin → Settings |
+| `AI_DAILY_HARD_CAP_INR` | Hard daily AI spending cap — replies pause when reached (crisis still answered) | ₹3000 (0 = off); admin → Settings |
+| `ADMIN_REQUIRE_MFA` | Two-step sign-in for the admin console | **on in production unless `false`**; an admin without it can only reach the setup screen |
+| `SECRET_BOX_KEY` (secret, optional) | Key that encrypts admin two-step secrets in the database | derived from `JWT_ACCESS_SECRET` when unset; changing either means admins set up two-step again |
 | `FREE_DAILY_MESSAGES`, `PREMIUM_DAILY_MESSAGES` | Limits when enforced | 5 / 150 |
 | `CHAT_RATE_LIMIT_PER_MINUTE` | Messages per account per minute | 20 |
 | `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`, `PLAY_SUBSCRIPTION_ID`, `PLAY_PACK_ID` | Google Play purchase verification | off until billing goes live |

@@ -27,6 +27,8 @@ router.post(
 router.use(authenticateAdmin);
 
 router.post('/logout', AdminController.logout);
+router.post('/mfa/setup', AdminController.mfaSetup);
+router.post('/mfa/enable', AdminController.mfaEnable);
 router.get('/me', AdminController.getMe);
 
 // User Moderation & Management

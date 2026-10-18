@@ -91,6 +91,10 @@ export interface AdminPrincipal {
   role?: string;
   permissions: string[];
   sessionId?: string;
+  /** Two-step sign-in is on for this admin. */
+  mfaEnabled?: boolean;
+  /** Two-step is required but not set up yet: only the setup screen is reachable. */
+  mfaSetupOnly?: boolean;
 }
 
 export interface AdminSummary {

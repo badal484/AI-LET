@@ -16,8 +16,9 @@ const createRateLimiter = (options: {
     standardHeaders: true,
     legacyHeaders: false,
     store: rateLimitStore(options.name),
-    passOnStoreError: true,
-    skip: () => process.env['NODE_ENV'] === 'test',
+    passOnStoreError: false, // the store never fails: it falls back to memory (rateLimitStore.ts)
+    // Off in tests, except a test that checks the limits themselves (RATE_LIMIT_IN_TESTS=true).
+    skip: () => process.env['NODE_ENV'] === 'test' && process.env['RATE_LIMIT_IN_TESTS'] !== 'true',
     handler: (_req: Request, res: Response) => {
       ApiResponse.error(
         res,

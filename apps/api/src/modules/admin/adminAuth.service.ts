@@ -5,6 +5,8 @@ import { AuditService } from '../audit/audit.service.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { ErrorCode, ADMIN_PERMISSIONS, ADMIN_ROLES } from '@ai-companion/config';
 import { AdminLoginRequestInput } from '@ai-companion/validation';
+import { AdminMfaService } from './adminMfa.service.js';
+import { clearLoginFailures, isLockedOut, LockoutUnavailableError, recordLoginFailure } from '../../security/loginLockout.js';
 
 export class AdminAuthService {
   /**
@@ -16,6 +18,16 @@ export class AdminAuthService {
     userAgent?: string,
   ) {
     const normalizedEmail = input.email.trim().toLowerCase();
+
+    // Too many wrong tries for this account (from any IP): locked for 15 minutes (audit H-2). Fails closed.
+    try {
+      if (await isLockedOut('admin', normalizedEmail)) {
+        throw new AppError('Too many wrong tries — this account is locked for 15 minutes', 429, ErrorCode.RATE_LIMIT_EXCEEDED);
+      }
+    } catch (err) {
+      if (err instanceof LockoutUnavailableError) throw new AppError('Admin sign-in is unavailable right now — try again shortly', 503, ErrorCode.SERVICE_UNAVAILABLE);
+      throw err;
+    }
 
     const admin = await prisma.adminUser.findFirst({
       where: { normalizedEmail, deletedAt: null },
@@ -45,6 +57,7 @@ export class AdminAuthService {
         ipAddress,
         userAgent,
       });
+      await recordLoginFailure('admin', normalizedEmail);
       throw new AppError('Invalid admin credentials', 401, ErrorCode.ADMIN_UNAUTHORIZED);
     }
 
@@ -60,18 +73,22 @@ export class AdminAuthService {
         ipAddress,
         userAgent,
       });
+      await recordLoginFailure('admin', normalizedEmail);
       throw new AppError('Invalid admin credentials', 401, ErrorCode.ADMIN_UNAUTHORIZED);
     }
 
-    // MFA Verification check if enabled
+    // Two-step sign-in (audit H-2): with it set up, the 6-digit code from the authenticator app is required.
     if (admin.isMfaEnabled && admin.mfaSecret) {
       if (!input.mfaCode) {
-        throw new AppError('MFA verification code required', 403, ErrorCode.AUTH_MFA_REQUIRED);
+        throw new AppError('Enter the 6-digit code from your authenticator app', 403, ErrorCode.AUTH_MFA_REQUIRED);
       }
-      // Codes can't be checked yet (no TOTP verifier or enrolment exists), so refuse rather than accept any
-      // code: a "2-step" login that lets every code through is worse than none.
-      throw new AppError('Two-step sign-in is not available yet — ask a super admin to turn it off for this account', 403, ErrorCode.AUTH_MFA_REQUIRED);
+      if (!(await AdminMfaService.verifyLogin(admin, input.mfaCode))) {
+        await recordLoginFailure('admin', normalizedEmail);
+        await AuditService.logEvent({ actorType: 'ADMIN', actorId: admin.id, action: 'ADMIN_LOGIN_FAILED', resourceType: 'AdminUser', resourceId: admin.id, metadata: { email: normalizedEmail, reason: 'invalid_mfa_code' }, ipAddress, userAgent });
+        throw new AppError('That code is not right — try the newest one', 401, ErrorCode.AUTH_MFA_INVALID);
+      }
     }
+    await clearLoginFailures('admin', normalizedEmail);
 
     // Create Admin Session
     const rawSessionToken = generateRandomToken(48);

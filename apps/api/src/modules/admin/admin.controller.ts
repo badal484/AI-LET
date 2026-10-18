@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AdminMfaService } from './adminMfa.service.js';
 import { AdminAuthService } from './adminAuth.service.js';
 import { AdminUsersService } from './adminUsers.service.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -39,6 +40,27 @@ export class AdminController {
 
       res.clearCookie('admin_session_token');
       ApiResponse.success(res, result, 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** Two-step sign-in setup: a new secret for the authenticator app (QR / key). */
+  static async mfaSetup(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (req.admin!.mfaEnabled) throw new AppError('Two-step sign-in is already on', 400, ErrorCode.BAD_REQUEST);
+      res.setHeader('Cache-Control', 'no-store');
+      ApiResponse.success(res, await AdminMfaService.setup(req.admin!.adminId, req.admin!.email), 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** Confirms setup with the first code. */
+  static async mfaEnable(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await AdminMfaService.enable(req.admin!.adminId, String(req.body?.code ?? ''), { ip: req.ip, userAgent: req.headers['user-agent'] });
+      ApiResponse.success(res, { enabled: true }, 200);
     } catch (err) {
       next(err);
     }

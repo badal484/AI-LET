@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [needsCode, setNeedsCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -17,12 +19,26 @@ export default function LoginPage() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(needsCode ? { email, password, mfaCode: mfaCode.replace(/\s/g, '') } : { email, password }),
     }).catch(() => null);
     const body = await res?.json().catch(() => ({}));
     setBusy(false);
     if (!res?.ok || body?.success === false) {
-      setError(res?.status === 429 ? 'Too many tries. Wait a few minutes and try again.' : 'Email or password is wrong.');
+      const code = body?.error?.code;
+      if (code === 'AUTH_MFA_REQUIRED') {
+        setNeedsCode(true);
+        setError(needsCode ? 'Enter the 6-digit code from your authenticator app.' : null);
+        return;
+      }
+      setError(
+        res?.status === 429
+          ? body?.error?.message ?? 'Too many tries. Wait a few minutes and try again.'
+          : code === 'AUTH_MFA_INVALID'
+            ? 'That code is not right — try the newest one.'
+            : res?.status === 503
+              ? 'Sign-in is unavailable right now. Try again shortly.'
+              : 'Email or password is wrong.',
+      );
       return;
     }
     const next = new URLSearchParams(window.location.search).get('next');
@@ -45,6 +61,12 @@ export default function LoginPage() {
             <span className="text-sm text-muted">Password</span>
             <Input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
+          {needsCode && (
+            <label className="block space-y-1.5">
+              <span className="text-sm text-muted">6-digit code from your authenticator app</span>
+              <Input inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={7} required value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} />
+            </label>
+          )}
         </div>
         {error && <p className="text-sm text-bad">{error}</p>}
         <Button type="submit" className="w-full" disabled={busy}>

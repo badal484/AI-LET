@@ -1,5 +1,5 @@
 'use client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LogOut, Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -9,10 +9,12 @@ import { LiveAdmin } from '@/components/shell/LiveAdmin';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { NAV, type AdminMe } from '@/lib/nav';
+import { TwoStepSetup } from '@/components/TwoStepSetup';
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['me'], queryFn: () => api<{ admin: AdminMe }>('/me') });
   const me = data?.admin;
   const page = NAV.find((n) => (n.href === '/' ? path === '/' : path.startsWith(n.href)));
@@ -23,6 +25,8 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
   };
 
   if (isLoading || !me) return <div className="min-h-screen" />;
+  // Two-step sign-in required and not set up yet: nothing else until it is.
+  if (me.mfaSetupOnly) return <TwoStepSetup email={me.email} onDone={() => void qc.invalidateQueries()} onSignOut={() => void logout()} />;
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">

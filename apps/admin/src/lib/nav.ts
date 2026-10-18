@@ -27,6 +27,9 @@ export interface AdminMe {
   email: string;
   roles: string[];
   permissions: string[];
+  mfaEnabled?: boolean;
+  /** Two-step sign-in is required but not set up: show the setup screen only. */
+  mfaSetupOnly?: boolean;
 }
 
 export const can = (me: AdminMe | undefined, permission: string) =>

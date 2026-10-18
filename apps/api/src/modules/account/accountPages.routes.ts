@@ -51,7 +51,7 @@ accountPagesRouter.get('/reset-password', (req: Request, res: Response) => {
 accountPagesRouter.post(
   '/reset-password',
   express.urlencoded({ extended: false, limit: '8kb' }),
-  rateLimit({ windowMs: 15 * 60_000, max: 10, store: rateLimitStore('account-reset'), passOnStoreError: true, standardHeaders: true, legacyHeaders: false }),
+  rateLimit({ windowMs: 15 * 60_000, max: 10, store: rateLimitStore('account-reset'), standardHeaders: true, legacyHeaders: false }),
   async (req: Request, res: Response) => {
     const token = String(req.body?.token ?? '').slice(0, 200);
     const newPassword = String(req.body?.newPassword ?? '');

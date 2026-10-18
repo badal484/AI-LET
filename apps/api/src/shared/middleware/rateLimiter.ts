@@ -23,7 +23,7 @@ export const standardRateLimiter = rateLimit({
     return `ip:${req.ip ?? 'unknown'}`;
   },
   // If Redis is unavailable, let requests through rather than failing every call.
-  passOnStoreError: true,
+  passOnStoreError: false, // the store never fails: it falls back to memory (rateLimitStore.ts)
   handler: (_req, _res, next) => {
     next(new RateLimitError());
   },
@@ -39,7 +39,7 @@ export const chatSendRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: rateLimitStore('chat'),
-  passOnStoreError: true,
+  passOnStoreError: false, // the store never fails: it falls back to memory (rateLimitStore.ts)
   skip: () => process.env['NODE_ENV'] === 'test',
   keyGenerator: (req) => `u:${(req as { user?: { userId?: string } }).user?.userId ?? req.ip ?? 'unknown'}`,
   handler: (_req, _res, next) => {

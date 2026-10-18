@@ -3,6 +3,10 @@ import { verifyAdminToken, hashToken } from '../../security/tokens.js';
 import { prisma } from '../../infrastructure/database/prisma.js';
 import { AppError } from '../errors/AppError.js';
 import { ErrorCode, AdminPermissionType, ADMIN_PERMISSIONS, ADMIN_ROLES } from '@ai-companion/config';
+import { adminMfaRequired } from '../../modules/admin/adminMfa.service.js';
+
+/** What an admin who still has to set up two-step sign-in may reach (audit H-2). */
+const MFA_SETUP_PATHS = new Set(['/api/v1/admin/me', '/api/v1/admin/logout', '/api/v1/admin/mfa/setup', '/api/v1/admin/mfa/enable']);
 
 /**
  * Authenticates privileged administrators from Bearer tokens or admin session cookies.
@@ -117,13 +121,22 @@ export async function authenticateAdmin(
       Object.values(ADMIN_PERMISSIONS).forEach(p => permissionsSet.add(p));
     }
 
+    const mfaEnabled = Boolean(admin.isMfaEnabled && admin.mfaSecret);
+    const mfaSetupOnly = adminMfaRequired() && !mfaEnabled;
     req.admin = {
       adminId: admin.id,
       email: admin.email,
       roles,
       permissions: Array.from(permissionsSet),
       sessionId,
+      mfaEnabled,
+      mfaSetupOnly,
     };
+
+    // Two-step sign-in required but not set up: nothing but the setup screen until it is.
+    if (mfaSetupOnly && !MFA_SETUP_PATHS.has(req.originalUrl.split('?')[0]!.replace(/\/$/, ''))) {
+      return next(new AppError('Set up two-step sign-in first', 403, ErrorCode.AUTH_MFA_REQUIRED));
+    }
 
     next();
   } catch (err) {

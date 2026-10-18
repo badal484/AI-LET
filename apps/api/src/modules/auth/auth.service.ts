@@ -18,6 +18,7 @@ import crypto from 'crypto';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
 import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
 import { publicOrigin, sendEmail } from '../../infrastructure/email/email.js';
+import { clearLoginFailures, isLockedOut, recordLoginFailure } from '../../security/loginLockout.js';
 
 export class AuthService {
   /**
@@ -204,6 +205,11 @@ export class AuthService {
   ) {
     const normalizedEmail = input.email.trim().toLowerCase();
 
+    // Too many wrong passwords for this account (from any IP): 15 minutes off (audit H-2).
+    if (await isLockedOut('user', normalizedEmail)) {
+      throw new AppError('Too many wrong tries — please wait 15 minutes, or reset your password', 429, ErrorCode.RATE_LIMIT_EXCEEDED);
+    }
+
     const user = await prisma.user.findFirst({
       where: { normalizedEmail },
       include: { profile: true },
@@ -219,6 +225,7 @@ export class AuthService {
         ipAddress,
         userAgent,
       });
+      await recordLoginFailure('user', normalizedEmail);
       throw new AppError(
         'Invalid email or password',
         401,
@@ -238,12 +245,15 @@ export class AuthService {
         ipAddress,
         userAgent,
       });
+      await recordLoginFailure('user', normalizedEmail);
       throw new AppError(
         'Invalid email or password',
         401,
         ErrorCode.AUTH_INVALID_CREDENTIALS,
       );
     }
+
+    await clearLoginFailures('user', normalizedEmail);
 
     // Check account status
     if (user.deletedAt || user.status === UserStatus.DELETED) {

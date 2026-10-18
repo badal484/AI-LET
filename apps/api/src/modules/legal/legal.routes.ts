@@ -257,7 +257,7 @@ legalRouter.get('/delete-account', (_req: Request, res: Response) => {
 legalRouter.post(
   '/delete-account',
   express.urlencoded({ extended: false, limit: '8kb' }),
-  rateLimit({ windowMs: 60 * 60_000, max: 5, store: rateLimitStore('legal-delete'), passOnStoreError: true, standardHeaders: true, legacyHeaders: false }),
+  rateLimit({ windowMs: 60 * 60_000, max: 5, store: rateLimitStore('legal-delete'), standardHeaders: true, legacyHeaders: false }),
   async (req: Request, res: Response) => {
     const email = String(req.body?.email ?? '').trim().toLowerCase().slice(0, 255);
     const note = String(req.body?.note ?? '').trim().slice(0, 1000);
