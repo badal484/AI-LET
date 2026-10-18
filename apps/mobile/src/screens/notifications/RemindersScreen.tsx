@@ -1,20 +1,20 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { darkThemeColors } from '../../theme/colors.js';
-import { spacing } from '../../theme/spacing.js';
-import { typography } from '../../theme/typography.js';
+import { darkThemeColors, spacing } from '../../theme/index.js';
 import { NotificationApi } from '../../services/api/notificationApi.js';
 import type { UserReminderData } from '@ai-companion/types';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { Icon, IconButton, Skeleton } from '../../components/common/index.js';
+
+/** Reminders characters set when you asked them to ("remind me tomorrow…"): upcoming first, cancel any of them. */
+
+const STATUS_LABEL: Record<string, string> = { PENDING: 'Upcoming', CANCELLED: 'Cancelled' };
+const fmtWhen = (d: Date) =>
+  `${d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} · ${d
+    .toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
+    .toLowerCase()}`;
 
 export const RemindersScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -27,7 +27,7 @@ export const RemindersScreen: React.FC = () => {
       const data = await NotificationApi.listReminders();
       setReminders(data);
     } catch (err: any) {
-      AppAlert.alert('Error', err.message || 'Failed to load reminders');
+      AppAlert.alert('Couldn’t load reminders', err.message || 'Please try again in a moment.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -43,231 +43,137 @@ export const RemindersScreen: React.FC = () => {
     fetchReminders();
   };
 
-  const handleCancelReminder = async (id: string) => {
-    AppAlert.alert('Cancel Reminder', 'Are you sure you want to cancel this scheduled reminder?', [
+  const handleCancelReminder = (id: string) => {
+    AppAlert.alert('Cancel this reminder?', 'You won’t get it.', [
       { text: 'Keep', style: 'cancel' },
       {
-        text: 'Cancel Reminder',
+        text: 'Cancel reminder',
         style: 'destructive',
         onPress: async () => {
           try {
             await NotificationApi.cancelReminder(id);
-            setReminders(prev => prev.map(r => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
+            setReminders((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
           } catch (err: any) {
-            AppAlert.alert('Error', err.message || 'Failed to cancel reminder');
+            AppAlert.alert('Couldn’t cancel', err.message || 'Please try again in a moment.');
           }
         },
       },
     ]);
   };
 
+  const sorted = [...reminders].sort((a, b) => {
+    const ap = a.status === 'PENDING' ? 0 : 1;
+    const bp = b.status === 'PENDING' ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    const at = new Date(a.targetTime).getTime();
+    const bt = new Date(b.targetTime).getTime();
+    return ap === 0 ? at - bt : bt - at;
+  });
+
   const renderReminderItem = ({ item }: { item: UserReminderData }) => {
     const isPending = item.status === 'PENDING';
-    const targetDate = new Date(item.targetTime);
-
     return (
-      <View style={[styles.reminderCard, !isPending && styles.inactiveCard]}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              isPending ? styles.pendingBadge : styles.triggeredBadge,
-            ]}
-          >
-            <Text style={styles.statusText}>{item.status}</Text>
+      <View style={[styles.card, !isPending && styles.cardDone]}>
+        <View style={[styles.icon, !isPending && styles.iconDone]}>
+          <Icon name="bell" size={18} color={isPending ? darkThemeColors.accent : darkThemeColors.textMuted} />
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {item.content ? (
+            <Text style={styles.cardContent} numberOfLines={2}>
+              {item.content}
+            </Text>
+          ) : null}
+          <View style={styles.metaRow}>
+            <Text style={styles.when}>{fmtWhen(new Date(item.targetTime))}</Text>
+            <Text style={[styles.status, isPending && styles.statusUpcoming]}>{STATUS_LABEL[item.status] ?? 'Sent'}</Text>
           </View>
         </View>
-
-        <Text style={styles.cardContent} numberOfLines={2}>
-          {item.content}
-        </Text>
-
-        <View style={styles.cardFooter}>
-          <Text style={styles.scheduledTimeText}>
-            ⏰ {targetDate.toLocaleDateString()} at{' '}
-            {targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-
-          {isPending && (
-            <TouchableOpacity
-              onPress={() => handleCancelReminder(item.id)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.cancelActionText}>Cancel</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {isPending && (
+          <TouchableOpacity
+            onPress={() => handleCancelReminder(item.id)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={`Cancel reminder: ${item.title}`}
+          >
+            <Icon name="close" size={18} color={darkThemeColors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.backText}>‹</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Companion Reminders</Text>
-        <View style={{ width: 40 }} />
+        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
+        <Text style={styles.title}>Your reminders</Text>
       </View>
 
       {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={darkThemeColors.accent} />
-          <Text style={styles.loadingText}>Loading reminders...</Text>
+        <View style={styles.listContent}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={84} borderRadius={16} />
+          ))}
         </View>
       ) : reminders.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyIcon}>⏰</Text>
-          <Text style={styles.emptyTitle}>No Reminders Scheduled</Text>
-          <Text style={styles.emptySubtitle}>
-            When you ask your companion to follow up on a topic, your scheduled reminders will appear here.
-          </Text>
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Icon name="bell" size={26} color={darkThemeColors.accent} />
+          </View>
+          <Text style={styles.emptyTitle}>No reminders yet</Text>
+          <Text style={styles.emptySubtitle}>Ask any character to remind you of something — it shows up here.</Text>
         </View>
       ) : (
         <FlatList
-          data={reminders}
-          keyExtractor={item => item.id}
+          data={sorted}
+          keyExtractor={(item) => item.id}
           renderItem={renderReminderItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={darkThemeColors.accent}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={darkThemeColors.accent} />}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: darkThemeColors.background,
-  },
-  header: {
+  container: { flex: 1, backgroundColor: darkThemeColors.background },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
+  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
+  card: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: darkThemeColors.border,
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  backText: {
-    color: darkThemeColors.textPrimary,
-    fontSize: 28,
-    fontWeight: '300',
-  },
-  title: {
-    ...typography.h3,
-    color: darkThemeColors.textPrimary,
-  },
-  listContent: {
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  reminderCard: {
+    alignItems: 'flex-start',
+    gap: spacing.md,
     backgroundColor: darkThemeColors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: darkThemeColors.border,
   },
-  inactiveCard: {
-    opacity: 0.6,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: darkThemeColors.textPrimary,
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  pendingBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-  },
-  triggeredBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: darkThemeColors.textPrimary,
-  },
-  cardContent: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: darkThemeColors.textSecondary,
-    marginBottom: 10,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
-    paddingTop: 8,
-  },
-  scheduledTimeText: {
-    fontSize: 12,
-    color: darkThemeColors.textMuted,
-  },
-  cancelActionText: {
-    fontSize: 12,
-    color: '#EF4444',
-    fontWeight: '600',
-  },
-  centerContainer: {
-    flex: 1,
+  cardDone: { opacity: 0.55 },
+  icon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139,92,246,0.14)' },
+  iconDone: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  cardBody: { flex: 1 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: darkThemeColors.textPrimary },
+  cardContent: { fontSize: 13, lineHeight: 18, color: darkThemeColors.textSecondary, marginTop: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 8 },
+  when: { fontSize: 12, color: darkThemeColors.textMuted },
+  status: { fontSize: 11, fontWeight: '700', color: darkThemeColors.textMuted },
+  statusUpcoming: { color: '#C4B5FD' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, paddingBottom: 80 },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xl,
+    backgroundColor: 'rgba(139,92,246,0.14)',
+    marginBottom: spacing.md,
   },
-  loadingText: {
-    color: darkThemeColors.textSecondary,
-    marginTop: spacing.md,
-    fontSize: 14,
-  },
-  emptyIcon: {
-    fontSize: 44,
-    marginBottom: spacing.sm,
-  },
-  emptyTitle: {
-    ...typography.h3,
-    color: darkThemeColors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: darkThemeColors.textMuted,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: darkThemeColors.textPrimary, marginBottom: 6 },
+  emptySubtitle: { fontSize: 14, lineHeight: 20, color: darkThemeColors.textMuted, textAlign: 'center', maxWidth: 280 },
 });
