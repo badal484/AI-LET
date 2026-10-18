@@ -124,7 +124,9 @@ export const MainTabNavigator: React.FC = () => {
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
-      initialRouteName="Conversations"
+      // Open on Home: a new user sees the characters (not an empty Chats), and Home's "Continue with X" card
+      // takes a returning user back to their latest chat in one tap.
+      initialRouteName="Home"
       // Hide inactive tabs completely instead of "detaching" them. Detached tabs could stay touchable under the
       // visible one (RN 0.87 + Fabric): tapping a chat on Chats hit the Home card in the same spot and opened
       // the wrong character. Four tabs stay mounted, which also makes switching back instant.
