@@ -434,8 +434,8 @@ type Sender = { id: string; name: string; avatarUrl: string | null } | null;
 /** Delivers one campaign to one person (also used for test sends). Returns phones reached. */
 async function deliver(c: Campaign, userId: string, sender: Sender, opts: { test?: boolean } = {}) {
   const profile = await prisma.userProfile.findUnique({ where: { userId }, select: { displayName: true } });
-  const vars = { name: profile?.displayName?.split(' ')[0] || 'there', character: sender?.name.split(' ')[0] ?? 'Lovira' };
-  const title = personalize(c.messageTitle || sender?.name || 'Lovira', vars);
+  const vars = { name: profile?.displayName?.split(' ')[0] || 'there', character: sender?.name.split(' ')[0] ?? 'Loveek' };
+  const title = personalize(c.messageTitle || sender?.name || 'Loveek', vars);
   const body = personalize(c.messageBody, vars);
   const surfaces = c.surfaces as unknown as Surface[];
   const link = c.deepLink || (sender ? appLink({ characterId: sender.id }) : undefined);
@@ -637,12 +637,12 @@ export async function inAppMessagesFor(userId: string) {
   );
   const profile = await prisma.userProfile.findUnique({ where: { userId }, select: { displayName: true } });
   return rows.map((r) => {
-    const vars = { name: profile?.displayName?.split(' ')[0] || 'there', character: r.senderName?.split(' ')[0] ?? 'Lovira' };
+    const vars = { name: profile?.displayName?.split(' ')[0] || 'there', character: r.senderName?.split(' ')[0] ?? 'Loveek' };
     return {
       id: r.id,
       campaignId: r.campaignId,
       kind: r.surfaces.includes('popup') ? 'popup' : 'banner',
-      title: personalize(r.title || r.senderName || 'Lovira', vars),
+      title: personalize(r.title || r.senderName || 'Loveek', vars),
       body: personalize(r.body, vars),
       imageUrl: r.imageUrl,
       link: r.link || (r.senderId ? appLink({ characterId: r.senderId }) : null),

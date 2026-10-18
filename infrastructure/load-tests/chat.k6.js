@@ -1,5 +1,5 @@
 /**
- * Lovira load test (k6): evening traffic at 10k users/day — open apps (live connections), people browsing
+ * Loveek load test (k6): evening traffic at 10k users/day — open apps (live connections), people browsing
  * Home / Chats, and people chatting. Run against STAGING.
  *
  *   cd apps/api && npx tsx scripts/loadtest/createUsers.ts 300 > /tmp/lt-users.json
@@ -59,7 +59,7 @@ export const options = {
 const pick = () => USERS[Math.floor(Math.random() * USERS.length)];
 const auth = (u) => ({ headers: { Authorization: `Bearer ${u.token}`, 'Content-Type': 'application/json' } });
 
-/** An open app: holds a live connection for a few minutes, like someone with Lovira on screen. */
+/** An open app: holds a live connection for a few minutes, like someone with Loveek on screen. */
 export function openApp() {
   const u = USERS[(__VU - 1) % USERS.length];
   const res = ws.connect(`${WS_BASE}/realtime?token=${encodeURIComponent(u.token)}`, {}, (socket) => {

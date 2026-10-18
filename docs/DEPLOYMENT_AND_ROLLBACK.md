@@ -1,4 +1,4 @@
-# Deployment and rollback — Lovira
+# Deployment and rollback — Loveek
 
 ## Today's production (13 October 2026)
 

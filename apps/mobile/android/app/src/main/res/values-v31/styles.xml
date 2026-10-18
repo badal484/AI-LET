@@ -1,6 +1,6 @@
 <resources>
 
-    <!-- Android 12+ draws its own launch screen from these: Lovira's dark background and icon. -->
+    <!-- Android 12+ draws its own launch screen from these: Loveek's dark background and icon. -->
     <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

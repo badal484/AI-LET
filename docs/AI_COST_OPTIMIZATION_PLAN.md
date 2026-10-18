@@ -1,4 +1,4 @@
-# AI cost optimisation plan — Lovira
+# AI cost optimisation plan — Loveek
 
 Status: **Phase 1 done 17 Oct 2026 — see the status section; the rest planned** (analysis 14 October 2026). Steps 1 and 3 are safe and quick; steps 2 and 4
 change what characters see, so they need before/after evals on all 32 characters first (and an A/B test on

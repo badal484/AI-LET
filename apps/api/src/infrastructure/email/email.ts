@@ -3,7 +3,7 @@ import { logger } from '../../config/logger.js';
 /**
  * Transactional email (password reset) through Resend's HTTP API — no SDK.
  *   RESEND_API_KEY  from resend.com (free plan: 3,000 emails a month)
- *   EMAIL_FROM      a sender on a domain verified in Resend, e.g. "Lovira <no-reply@yourdomain.in>"
+ *   EMAIL_FROM      a sender on a domain verified in Resend, e.g. "Loveek <no-reply@yourdomain.in>"
  * Without them nothing is sent and a warning is logged, so a reset can't silently "succeed".
  * Never log the message body: it carries one-time links.
  */

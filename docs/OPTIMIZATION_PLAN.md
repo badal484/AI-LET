@@ -1,4 +1,4 @@
-# Optimisation plan — Lovira (overview)
+# Optimisation plan — Loveek (overview)
 
 Status: **Phase 1 done 17 Oct 2026 — see the status section; the rest planned** (measured 14 October 2026). This is the index of all optimisation work;
 two areas have their own detailed plans:

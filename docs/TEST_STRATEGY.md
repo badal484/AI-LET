@@ -1,4 +1,4 @@
-# Test strategy — Lovira
+# Test strategy — Loveek
 
 ## 1. What exists
 

@@ -1,4 +1,4 @@
-# Running Lovira for 10,000+ users a day
+# Running Loveek for 10,000+ users a day
 
 What 10k daily users means (≈90% free at 5 messages/day, Premium ≈40): ~85k messages/day, ~8k in the
 busiest evening hour (3–5/s at peaks), ~50 replies being written at once, 1–2k apps open, ~3–4 AI calls

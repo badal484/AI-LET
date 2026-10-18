@@ -127,7 +127,7 @@ export async function replySupport(adminId: string, id: string, reply: string, c
     void NotificationDeliveryEngine.dispatchNotification({
       userId: s.userId,
       category: 'system',
-      title: 'The Lovira team replied 💜',
+      title: 'The Loveek team replied 💜',
       body: reply.trim().slice(0, 140),
       deepLink: 'companion://help',
       idempotencyKey: `support_${id}_${Date.now()}`,

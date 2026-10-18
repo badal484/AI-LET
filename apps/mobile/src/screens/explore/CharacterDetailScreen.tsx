@@ -120,7 +120,7 @@ export const CharacterDetailScreen: React.FC = () => {
     try {
       await Share.share({
         title: `Chat with ${profile.name}`,
-        message: `Meet ${profile.name} on Lovira: ${profile.tagline}\ncompanion://character/${profile.slug}`,
+        message: `Meet ${profile.name} on Loveek: ${profile.tagline}\ncompanion://character/${profile.slug}`,
       });
     } catch {
       // Ignore share cancel

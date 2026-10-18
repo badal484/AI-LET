@@ -21,7 +21,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'How do I cancel Premium?',
-    a: 'Open the Play Store → your profile photo → Payments & subscriptions → Subscriptions → Lovira → Cancel. Premium stays on until the end of the period you paid for.',
+    a: 'Open the Play Store → your profile photo → Payments & subscriptions → Subscriptions → Loveek → Cancel. Premium stays on until the end of the period you paid for.',
   },
   {
     q: 'Are the characters real people?',
@@ -155,7 +155,7 @@ export const HelpScreen: React.FC = () => {
             <Text style={styles.msgWhen}>{when(m.createdAt)}</Text>
             {m.reply && (
               <View style={styles.reply}>
-                <Text style={styles.replyFrom}>Lovira team{m.repliedAt ? ` · ${when(m.repliedAt)}` : ''}</Text>
+                <Text style={styles.replyFrom}>Loveek team{m.repliedAt ? ` · ${when(m.repliedAt)}` : ''}</Text>
                 <Text style={styles.replyText}>{m.reply}</Text>
               </View>
             )}

@@ -66,7 +66,7 @@ function MaintenancePreview({ v }: { v: (key: string) => string }) {
         ) : v('maintenance.emoji') ? (
           <span className="text-5xl">{v('maintenance.emoji')}</span>
         ) : null}
-        <p className="text-lg font-bold leading-tight">{v('maintenance.title') || 'Lovira is getting better'}</p>
+        <p className="text-lg font-bold leading-tight">{v('maintenance.title') || 'Loveek is getting better'}</p>
         {v('maintenance.message') && <p className="text-sm text-white/70">{v('maintenance.message')}</p>}
         {back && (
           <span className="rounded-full bg-pink-500/15 px-3 py-1 text-xs font-semibold text-pink-400">

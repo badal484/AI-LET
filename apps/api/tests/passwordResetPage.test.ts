@@ -68,7 +68,7 @@ describe('password reset by email link', () => {
     expect(await sendEmail({ to: 'a@test.local', subject: 's', text: 't', html: 'h' })).toBe(false);
 
     vi.stubEnv('RESEND_API_KEY', 're_test');
-    vi.stubEnv('EMAIL_FROM', 'Lovira <no-reply@example.com>');
+    vi.stubEnv('EMAIL_FROM', 'Loveek <no-reply@example.com>');
     vi.stubEnv('PUBLIC_API_URL', 'https://api.example.com');
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);

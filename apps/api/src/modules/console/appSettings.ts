@@ -19,8 +19,8 @@ export const SETTINGS = {
   'limits.freeDaily': { label: 'Free messages per day (0 = no free plan)', type: 'number', default: () => Number(process.env['FREE_DAILY_MESSAGES'] ?? 0) },
   'limits.premiumDaily': { label: 'Premium messages per day (fair use)', type: 'number', default: () => Number(process.env['PREMIUM_DAILY_MESSAGES'] ?? 150) },
   'maintenance.enabled': { label: 'Maintenance mode (app shows a message, chat paused)', type: 'boolean', default: () => false },
-  'maintenance.title': { label: 'Title', type: 'string', default: () => 'Lovira is getting better' },
-  'maintenance.message': { label: 'Message', type: 'string', default: () => 'We are making Lovira better. Back in a few minutes 💜' },
+  'maintenance.title': { label: 'Title', type: 'string', default: () => 'Loveek is getting better' },
+  'maintenance.message': { label: 'Message', type: 'string', default: () => 'We are making Loveek better. Back in a few minutes 💜' },
   'maintenance.emoji': { label: 'Emoji at the top', type: 'string', default: () => '💜' },
   'maintenance.imageUrl': { label: 'Picture (optional, https link)', type: 'string', default: () => '' },
   'maintenance.until': { label: 'Back by (optional)', type: 'string', default: () => '' },
@@ -100,7 +100,7 @@ export async function maintenanceInfo() {
   ]);
   const back = until && Date.parse(until) > Date.now() ? new Date(until).toISOString() : null;
   return {
-    title: title.trim() || 'Lovira is getting better',
+    title: title.trim() || 'Loveek is getting better',
     message: message.trim(),
     emoji: emoji.trim() || null,
     imageUrl: imageUrl.trim() || null,

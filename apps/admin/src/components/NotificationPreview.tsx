@@ -20,7 +20,7 @@ export function NotificationPreview({ draft, options }: { draft: CampaignDraft; 
   const [picked, setPicked] = useState<View>('closed');
   const view = available.find((v) => v.id === picked)?.id ?? available[0]?.id;
 
-  const title = personalize(draft.title || sender?.name || 'Lovira', sender?.name);
+  const title = personalize(draft.title || sender?.name || 'Loveek', sender?.name);
   const body = personalize(draft.body, sender?.name);
   const buttons = draft.buttons.filter((b) => b.label.trim());
 
@@ -52,7 +52,7 @@ export function NotificationPreview({ draft, options }: { draft: CampaignDraft; 
           <div className="rounded-2xl bg-[#2a2433] p-3 text-white">
             <div className="flex items-center gap-1.5 text-[11px] text-white/70">
               <Heart size={11} className="fill-pink-500 text-pink-500" />
-              <span>Lovira</span>
+              <span>Loveek</span>
               <span>· now</span>
               <ChevronDown size={12} className={cn('ml-auto transition-transform', view === 'open' && 'rotate-180')} />
             </div>

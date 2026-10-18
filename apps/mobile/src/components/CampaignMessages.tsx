@@ -83,7 +83,7 @@ export const CampaignMessages: React.FC<{ navigationRef: NavigationContainerRefW
                 <Image source={{ uri: popup.imageUrl }} style={styles.image} resizeMode="cover" />
               ) : popup.sender ? (
                 <View style={styles.avatarWrap}>
-                  <Avatar uri={popup.sender.avatarUrl} name={popup.sender.name ?? 'Lovira'} size="xl" />
+                  <Avatar uri={popup.sender.avatarUrl} name={popup.sender.name ?? 'Loveek'} size="xl" />
                 </View>
               ) : null}
               <Pressable onPress={() => close(popup)} style={styles.close} hitSlop={12} accessibilityLabel="Close">

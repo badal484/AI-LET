@@ -209,7 +209,7 @@ export function CampaignComposer({ initial, id }: { initial: CampaignDraft; id?:
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="From" hint={d.senderCharacterId ? 'Shows their photo; tapping opens their chat unless you pick another link.' : 'From the app itself.'}>
                 <select className={select} value={d.senderCharacterId ?? ''} onChange={(e) => set('senderCharacterId', e.target.value || null)}>
-                  <option value="">Lovira</option>
+                  <option value="">Loveek</option>
                   {options?.characters.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}

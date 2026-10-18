@@ -19,5 +19,5 @@ export const useMaintenanceStore = create<{ info: MaintenanceInfo | null; set: (
 /** From a blocked request's error body ({ code: 'MAINTENANCE', maintenance }). */
 export function noteMaintenanceError(error: unknown): void {
   const e = error as { code?: string; maintenance?: MaintenanceInfo } | null;
-  if (e?.code === 'MAINTENANCE') useMaintenanceStore.getState().set(e.maintenance ?? { title: 'Lovira is getting better', message: '', emoji: '💜', imageUrl: null, until: null, link: null });
+  if (e?.code === 'MAINTENANCE') useMaintenanceStore.getState().set(e.maintenance ?? { title: 'Loveek is getting better', message: '', emoji: '💜', imageUrl: null, until: null, link: null });
 }

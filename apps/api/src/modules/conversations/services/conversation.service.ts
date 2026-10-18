@@ -99,11 +99,11 @@ export class ConversationService {
         : [];
     const firstName = character.name.replace(/^Dr\.?\s*/i, '').split(' ')[0] || character.name;
     const fallbackGreetings = [
-      `Hi! Main ${firstName} 🙂 Lovira pe milke achha laga. Aaj kaisa din ja raha hai?`,
+      `Hi! Main ${firstName} 🙂 Loveek pe milke achha laga. Aaj kaisa din ja raha hai?`,
       `Hey, main ${firstName}. Pehli baar baat ho rahi hai — apne baare mein thoda batao?`,
     ];
     const greetingPool = ownGreetings.length > 0 ? ownGreetings : fallbackGreetings;
-    const initialGreeting = greetingPool[Math.floor(Math.random() * greetingPool.length)]!.replace(/\bLovish\b/g, 'Lovira');
+    const initialGreeting = greetingPool[Math.floor(Math.random() * greetingPool.length)]!.replace(/\bLovish\b/g, 'Loveek');
 
     await prisma.message.create({
       data: {

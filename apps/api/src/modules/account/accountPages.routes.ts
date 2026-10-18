@@ -31,7 +31,7 @@ const resetForm = (token: string, notice = '') =>
 <input id="pw2" name="confirm" type="password" required minlength="8" maxlength="128" autocomplete="new-password">
 <button type="submit">Save new password</button>
 </form>
-<p class="muted">After saving, you're signed out on every phone. Open Lovira and sign in with the new password.</p>`,
+<p class="muted">After saving, you're signed out on every phone. Open Loveek and sign in with the new password.</p>`,
   );
 
 const message = (title: string, text: string) => page(title, `<div class="box">${text}</div>`);
@@ -64,7 +64,7 @@ accountPagesRouter.post(
     }
     try {
       await AuthService.resetPassword(parsed.data, req.ip, req.headers['user-agent']);
-      res.type('html').send(message('Password changed', '<b>Done — your password is changed.</b> Open Lovira and sign in with your new password.'));
+      res.type('html').send(message('Password changed', '<b>Done — your password is changed.</b> Open Loveek and sign in with your new password.'));
     } catch (err) {
       const status = (err as { statusCode?: number }).statusCode;
       if (status && status < 500) {

@@ -142,7 +142,7 @@ export const ProfileScreen: React.FC = () => {
         >
           <View style={styles.planHead}>
             <Icon name={premium ? 'diamond' : 'sparkles'} size={18} color={premium ? '#F472B6' : darkThemeColors.accent} />
-            <Text style={styles.planTitle}>{premium ? (trial ? 'Premium trial' : 'Premium') : 'Lovira Premium'}</Text>
+            <Text style={styles.planTitle}>{premium ? (trial ? 'Premium trial' : 'Premium') : 'Loveek Premium'}</Text>
           </View>
           {premium ? (
             <Text style={styles.planText}>
@@ -194,7 +194,7 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         <Button label="Sign out" variant="secondary" size="md" fullWidth onPress={signOut} accessibilityLabel="Sign out" />
-        <Text style={styles.version}>Lovira v{APP_VERSION}</Text>
+        <Text style={styles.version}>Loveek v{APP_VERSION}</Text>
       </ScrollView>
 
       {/* Edit name */}

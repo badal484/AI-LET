@@ -1,4 +1,4 @@
-# Security remediation log — Lovira
+# Security remediation log — Loveek
 
 Newest first. Each entry: finding, change, how it was verified.
 

@@ -1,4 +1,4 @@
-# Known limitations — Lovira (13 October 2026)
+# Known limitations — Loveek (13 October 2026)
 
 Things that are true of the product today and that users, reviewers or the team should know.
 

@@ -1,4 +1,4 @@
-# Render Blueprint — creates Lovira's whole backend in one go (Dashboard → New → Blueprint → this repo).
+# Render Blueprint — creates Loveek's whole backend in one go (Dashboard → New → Blueprint → this repo).
 # Everything in Singapore (closest to India). You'll be asked for the values marked `sync: false`.
 # After the first deploy, copy characters + create the admin: apps/api/scripts/maintenance/copyCatalog.sh
 

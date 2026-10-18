@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Lovira admin — dark by default, light available. Every colour is a token, defined once. */
+/* Loveek admin — dark by default, light available. Every colour is a token, defined once. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

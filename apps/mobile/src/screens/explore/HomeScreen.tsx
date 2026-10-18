@@ -151,8 +151,8 @@ export const HomeScreen: React.FC = () => {
   const topBar = (
     <View style={styles.topBar}>
       <View style={styles.logoRow}>
-        <Text style={styles.logoLo}>Lo</Text>
-        <Text style={styles.logoVira}>vira</Text>
+        <Text style={styles.logoLo}>Love</Text>
+        <Text style={styles.logoVira}>ek</Text>
       </View>
 
       <TouchableOpacity style={styles.walletPill} activeOpacity={0.8} onPress={handleOpenWallet}>

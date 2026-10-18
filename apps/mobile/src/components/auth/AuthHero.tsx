@@ -8,7 +8,7 @@ import { useReduceMotion } from '../../utils/motion.js';
 const LOGO = require('../../assets/brand/logo.png');
 
 /**
- * The top of sign-in / sign-up: the logo, what Lovira is, and a row of real character faces — the first thing a
+ * The top of sign-in / sign-up: the logo, what Loveek is, and a row of real character faces — the first thing a
  * new user sees should be the people they can talk to, not an empty form. Fades in; nothing moves when the phone
  * asks for reduced motion. Faces come from the public character list (no sign-in needed); without it the row hides.
  */
@@ -48,7 +48,7 @@ export const AuthHero: React.FC<{ title: string; subtitle: string }> = ({ title,
         <View style={styles.logoGlow}>
           <Image source={LOGO} style={styles.logo} accessibilityIgnoresInvertColors />
         </View>
-        <Text style={styles.wordmark}>Lovira</Text>
+        <Text style={styles.wordmark}>Loveek</Text>
 
         {faces.length > 0 && (
           <View style={styles.facesRow} accessibilityLabel={`${total ?? faces.length} AI characters to talk to`}>

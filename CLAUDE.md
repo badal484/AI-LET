@@ -1,6 +1,6 @@
-# Lovira — notes for working in this repo
+# Loveek — notes for working in this repo
 
-Lovira is an Android app for chatting with AI characters (India; English and Hinglish). pnpm monorepo.
+Loveek is an Android app for chatting with AI characters (India; English and Hinglish). pnpm monorepo.
 
 ## Layout
 

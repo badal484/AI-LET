@@ -1,4 +1,4 @@
-# Google Play release checklist — Lovira
+# Google Play release checklist — Loveek
 
 Requirements checked against Google's official pages on 13 October 2026:
 [target API level](https://support.google.com/googleplay/android-developer/answer/11926878),
@@ -46,7 +46,7 @@ reset, `LEGAL_*` env, rotated secrets, crash reporting, DB in Singapore (recomme
 
 ## 4. Store listing
 
-- [ ] App name: **Lovira** (check the name isn't someone's trademark in your category).
+- [ ] App name: **Loveek** (check the name isn't someone's trademark in your category).
 - [ ] Short description (≤80 chars) — suggestion: "Chat with AI characters who remember you — friends, love, health & more."
 - [ ] Full description: say clearly the characters are **AI, not real people**; list what's real (chat,
       memory, reminders, notifications). No claims of therapy or medical advice.

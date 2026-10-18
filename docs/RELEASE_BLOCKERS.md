@@ -1,4 +1,4 @@
-# Release blockers — Lovira (13 October 2026)
+# Release blockers — Loveek (13 October 2026)
 
 Everything that must be done before the app goes to Play testers (closed test) and before production.
 **OWNER** = needs the owner (account, money, facts or a decision). Finding IDs refer to

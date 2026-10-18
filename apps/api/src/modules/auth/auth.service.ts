@@ -579,9 +579,9 @@ export class AuthService {
       const minutes = Math.round(SYSTEM_CONSTANTS.AUTH.PASSWORD_RESET_TOKEN_LIFETIME_SECONDS / 60);
       await sendEmail({
         to: user.email,
-        subject: 'Reset your Lovira password',
-        text: `Someone (hopefully you) asked to reset the password of your Lovira account.\n\nSet a new password here (the link works once, for ${minutes} minutes):\n${link}\n\nDidn't ask? Ignore this email — your password stays the same.`,
-        html: `<p>Someone (hopefully you) asked to reset the password of your Lovira account.</p><p><a href="${link}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#ec4899;color:#fff;font-weight:700;text-decoration:none">Set a new password</a></p><p style="color:#6b6577;font-size:14px">The link works once, for ${minutes} minutes. Didn't ask? Ignore this email — your password stays the same.</p>`,
+        subject: 'Reset your Loveek password',
+        text: `Someone (hopefully you) asked to reset the password of your Loveek account.\n\nSet a new password here (the link works once, for ${minutes} minutes):\n${link}\n\nDidn't ask? Ignore this email — your password stays the same.`,
+        html: `<p>Someone (hopefully you) asked to reset the password of your Loveek account.</p><p><a href="${link}" style="display:inline-block;padding:10px 18px;border-radius:10px;background:#ec4899;color:#fff;font-weight:700;text-decoration:none">Set a new password</a></p><p style="color:#6b6577;font-size:14px">The link works once, for ${minutes} minutes. Didn't ask? Ignore this email — your password stays the same.</p>`,
       });
 
       await AuditService.logEvent({

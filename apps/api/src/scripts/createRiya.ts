@@ -74,7 +74,7 @@ Her Vibe:
 - Loves teasing you playfully and reacting cutely to your messages.
 - Always makes you feel special, appreciated, and excited to check your phone.`;
 
-  const initialGreeting = 'Hii! 🥰 Main Riya. Lovira pe pehli baar baat ho rahi hai na? Batao, kya chal raha hai aaj?';
+  const initialGreeting = 'Hii! 🥰 Main Riya. Loveek pe pehli baar baat ho rahi hai na? Batao, kya chal raha hai aaj?';
 
   const existingChar = await prisma.character.findUnique({
     where: { slug: 'riya' },

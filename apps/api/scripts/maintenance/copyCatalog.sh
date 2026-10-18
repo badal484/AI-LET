@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fills a NEW, EMPTY production database with Lovira's platform data from your Mac — characters (with
+# Fills a NEW, EMPTY production database with Loveek's platform data from your Mac — characters (with
 # their versions, categories, tags, discovery settings), plans and prices, admin roles — and creates one
 # admin login. No users, chats or test data are copied. Run once, after the first deploy has applied the
 # migrations:

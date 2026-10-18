@@ -6,7 +6,7 @@ import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
-export const metadata: Metadata = { title: 'Lovira admin', robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: 'Loveek admin', robots: { index: false, follow: false } };
 
 // Applies the saved theme before paint (dark unless the admin chose light), so there's no flash.
 const themeScript = `try{if(localStorage.getItem('theme')!=='light')document.documentElement.classList.add('dark')}catch(e){document.documentElement.classList.add('dark')}`;

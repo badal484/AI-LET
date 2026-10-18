@@ -31,7 +31,7 @@ const TEMPLATES: Array<{ label: string; topics: string[]; text: (name: string) =
   {
     label: 'Cancel subscription',
     topics: ['payment', 'account'],
-    text: (n) => `Hi ${n}, you can cancel any time: Play Store → your profile photo → Payments & subscriptions → Subscriptions → Lovira → Cancel. Premium stays on until the end of the period you paid for.`,
+    text: (n) => `Hi ${n}, you can cancel any time: Play Store → your profile photo → Payments & subscriptions → Subscriptions → Loveek → Cancel. Premium stays on until the end of the period you paid for.`,
   },
   {
     label: 'Copy of my data',
@@ -51,7 +51,7 @@ const TEMPLATES: Array<{ label: string; topics: string[]; text: (name: string) =
   {
     label: 'Thanks for feedback',
     topics: ['feedback', 'other'],
-    text: (n) => `Hi ${n}, thank you so much for writing to us — we read every message and this really helps us make Lovira better 💜`,
+    text: (n) => `Hi ${n}, thank you so much for writing to us — we read every message and this really helps us make Loveek better 💜`,
   },
 ];
 

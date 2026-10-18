@@ -345,7 +345,7 @@ const LOVIRA_CHARACTERS = [
 ];
 
 export async function seedLovira() {
-  console.log('🌸 Seeding Lovira Categories and Characters...');
+  console.log('🌸 Seeding Loveek Categories and Characters...');
 
   const devUser = await prisma.user.findFirst();
   const userId = devUser?.id || '00000000-0000-0000-0000-000000000001';
@@ -469,7 +469,7 @@ export async function seedLovira() {
       status: 'PUBLISHED' as const,
       publishedAt: new Date(),
       createdById: userId,
-      changeSummary: 'Lovira canonical baseline v1',
+      changeSummary: 'Loveek canonical baseline v1',
       identityData: {
         name: def.name,
         role: def.tagline,
@@ -554,7 +554,7 @@ export async function seedLovira() {
     });
   }
 
-  console.log('✅ Lovira Categories & Characters Seeded Successfully!');
+  console.log('✅ Loveek Categories & Characters Seeded Successfully!');
 }
 
 if (process.argv[1] && process.argv[1].includes('seedLoviraCatalog')) {

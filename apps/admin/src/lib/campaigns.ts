@@ -134,4 +134,4 @@ export const LINKS: Array<{ label: string; value: string }> = [
 
 /** Fills {name} and {character} the way the server does, for the preview. */
 export const personalize = (text: string, character: string | undefined) =>
-  text.replace(/\{name\}/gi, 'Priya').replace(/\{character\}/gi, character?.split(' ')[0] ?? 'Lovira');
+  text.replace(/\{name\}/gi, 'Priya').replace(/\{character\}/gi, character?.split(' ')[0] ?? 'Loveek');

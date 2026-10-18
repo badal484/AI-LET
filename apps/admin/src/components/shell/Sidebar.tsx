@@ -11,7 +11,7 @@ export function Sidebar({ me, onNavigate }: { me?: AdminMe; onNavigate?: () => v
       <Link href="/" onClick={onNavigate} className="mb-4 flex items-center gap-2 px-2 pt-2">
         <span className="h-7 w-7 rounded-lg bg-gradient-to-br from-accent to-accent-2" />
         <span className="text-lg font-bold tracking-tight">
-          Lovira <span className="font-medium text-muted">admin</span>
+          Loveek <span className="font-medium text-muted">admin</span>
         </span>
       </Link>
       {NAV.filter((n) => can(me, n.permission)).map((n) => {

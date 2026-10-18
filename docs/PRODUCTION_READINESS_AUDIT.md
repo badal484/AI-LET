@@ -1,4 +1,4 @@
-# Production readiness audit — Lovira
+# Production readiness audit — Loveek
 
 Audit date: 13 October 2026 · Branch `feat/happiness-engine-gemini-chat` (main is kept equal to it) ·
 Auditor: Claude Code, working in the repository.

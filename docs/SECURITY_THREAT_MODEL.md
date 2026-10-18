@@ -1,4 +1,4 @@
-# Security threat model — Lovira
+# Security threat model — Loveek
 
 Last reviewed: 13 October 2026. Finding IDs (F-xx) refer to `PRODUCTION_READINESS_AUDIT.md`.
 
@@ -18,7 +18,7 @@ Last reviewed: 13 October 2026. Finding IDs (F-xx) refer to `PRODUCTION_READINES
 ```
  Phone (untrusted)                     Render (trusted)                      Third parties
  ┌─────────────────┐   HTTPS + JWT   ┌──────────────────────────┐   TLS   ┌────────────────────┐
- │ Lovira app      │ ──────────────▶ │ API (Express)            │ ──────▶ │ Neon Postgres      │
+ │ Loveek app      │ ──────────────▶ │ API (Express)            │ ──────▶ │ Neon Postgres      │
  │ tokens in       │ ◀── WebSocket ─ │  auth, zod validation,   │ ──────▶ │ Upstash Redis      │
  │ Android Keystore│                 │  rate limits, jobs       │ ──────▶ │ Gemini API         │
  └─────────────────┘                 └──────────────────────────┘ ──────▶ │ FCM, Play API,     │

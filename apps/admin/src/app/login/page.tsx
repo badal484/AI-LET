@@ -34,7 +34,7 @@ export default function LoginPage() {
       <form onSubmit={submit} className="w-full max-w-sm space-y-5 rounded-2xl border border-border bg-surface p-7">
         <div className="flex items-center gap-2">
           <span className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent to-accent-2" />
-          <h1 className="text-xl font-bold tracking-tight">Lovira admin</h1>
+          <h1 className="text-xl font-bold tracking-tight">Loveek admin</h1>
         </div>
         <div className="space-y-3">
           <label className="block space-y-1.5">

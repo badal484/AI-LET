@@ -1,4 +1,4 @@
-# Database optimisation plan — Lovira
+# Database optimisation plan — Loveek
 
 Status: **Phase 1 done 17 Oct 2026 — see the status section; the rest planned** (analysis 14 October 2026). Do Steps 1–2 before real traffic; Step 3 needs
 the owner's OK (it deletes data copies for good); Step 4 at roughly 100k daily users.

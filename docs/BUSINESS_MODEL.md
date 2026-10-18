@@ -1,4 +1,4 @@
-# Business model — Lovira
+# Business model — Loveek
 
 Decided by the owner on 15 October 2026. Numbers are estimates from measured AI cost (see
 `AI_COST_OPTIMIZATION_PLAN.md`); revisit after the first month of real data.
@@ -68,7 +68,7 @@ little in India.
 ## 3c. Growth (how users are found)
 
 Cheapest first: Instagram Reels / YouTube Shorts of real character chats (funny, emotional) → a "share this
-moment" image with the Lovira logo → referrals (both get 3 Premium days) → Play Store listing (keywords: AI
+moment" image with the Loveek logo → referrals (both get 3 Premium days) → Play Store listing (keywords: AI
 girlfriend Hinglish, AI friend) → micro-creators once retention is proven → paid ads only when one paying user
 costs < ₹500.
 
