@@ -76,6 +76,15 @@ export const loginRequestSchema = z.object({
 
 export type LoginRequestInput = z.infer<typeof loginRequestSchema>;
 
+/** "Continue with Google": the ID token from Google's account picker. A new account also needs the 18+ box. */
+export const googleSignInRequestSchema = z.object({
+  idToken: z.string().min(20).max(8192),
+  ageConfirmed: z.boolean().optional(),
+  device: deviceMetadataSchema.optional(),
+});
+
+export type GoogleSignInRequestInput = z.infer<typeof googleSignInRequestSchema>;
+
 export const refreshTokenRequestSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 });

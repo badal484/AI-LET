@@ -19,6 +19,7 @@ import { APP_VERSION } from '../../config/appInfo.js';
 import { LEGAL_URLS } from '../../config/appInfo.js';
 import { AuthHero } from '../../components/auth/AuthHero.js';
 import { AuthField } from '../../components/auth/AuthField.js';
+import { GoogleButton } from '../../components/auth/GoogleButton.js';
 import { Icon } from '../../components/common/Icon.js';
 
 interface RegisterScreenProps {
@@ -175,6 +176,13 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
               <Text style={styles.primaryButtonText}>Create Account</Text>
             )}
           </TouchableOpacity>
+
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>or</Text>
+            <View style={styles.orLine} />
+          </View>
+          <GoogleButton ageConfirmed={isAdult} />
           <Text style={styles.legalText}>
             By creating an account you agree to the{' '}
             <Text style={styles.legalLink} onPress={() => Linking.openURL(LEGAL_URLS.terms).catch(() => undefined)}>Terms</Text> and{' '}
@@ -194,6 +202,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 };
 
 const styles = StyleSheet.create({
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.18)' },
+  orText: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600' },
   ageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4, marginBottom: 12 },
   ageBox: {
     width: 22,

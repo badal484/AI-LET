@@ -40,3 +40,10 @@ export const LEGAL_URLS = {
   privacy: `${API_ORIGIN}/legal/privacy`,
   terms: `${API_ORIGIN}/legal/terms`,
 } as const;
+
+/**
+ * "Continue with Google": the Web client ID from Google Cloud (project 2qqtt), which Google calls the server
+ * client ID — the ID token is issued for it and our API checks it (GOOGLE_WEB_CLIENT_ID on the server). Public.
+ * Android sign-in also needs an Android client per signing key (package + SHA-1) in the same project.
+ */
+export const GOOGLE_WEB_CLIENT_ID = '1613467594-f0pac0l2gho572sfpvclhdtsg8g20rck.apps.googleusercontent.com';

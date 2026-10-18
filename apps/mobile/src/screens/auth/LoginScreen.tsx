@@ -17,6 +17,7 @@ import { useAuthStore } from '../../stores/authStore.js';
 import { APP_VERSION } from '../../config/appInfo.js';
 import { AuthHero } from '../../components/auth/AuthHero.js';
 import { AuthField } from '../../components/auth/AuthField.js';
+import { GoogleButton } from '../../components/auth/GoogleButton.js';
 
 interface LoginScreenProps {
   navigation: {
@@ -153,6 +154,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>or</Text>
+            <View style={styles.orLine} />
+          </View>
+          <GoogleButton />
+
           {__DEV__ && (
             <TouchableOpacity
               style={styles.demoButton}
@@ -177,6 +185,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.18)' },
+  orText: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600' },
   container: {
     flex: 1,
     backgroundColor: darkThemeColors.background,

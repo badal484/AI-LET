@@ -10,6 +10,7 @@ import {
 import {
   registerRequestSchema,
   loginRequestSchema,
+  googleSignInRequestSchema,
   refreshTokenRequestSchema,
   logoutRequestSchema,
   verifyEmailRequestSchema,
@@ -33,6 +34,9 @@ router.post(
   validateRequest(loginRequestSchema),
   AuthController.login,
 );
+
+// "Continue with Google" (sign in or sign up).
+router.post('/google', authRateLimiter, validateRequest(googleSignInRequestSchema), AuthController.googleSignIn);
 
 router.post(
   '/refresh',

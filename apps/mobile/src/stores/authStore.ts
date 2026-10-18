@@ -4,6 +4,9 @@ import { SecureAuthStorage } from '../services/auth/SecureAuthStorage.js';
 import { RegisterRequestInput, LoginRequestInput } from '@ai-companion/validation';
 import { PushService } from '../services/push/PushService.js';
 import { ToastService } from '../components/common/Toast.js';
+import { Platform } from 'react-native';
+import { APP_VERSION } from '../config/appInfo.js';
+import { signOutOfGoogle } from '../services/auth/googleSignIn.js';
 
 export type AuthStateStatus =
   | 'initializing'
@@ -44,6 +47,8 @@ interface AuthState {
   bootstrap: () => Promise<void>;
   login: (input: LoginRequestInput) => Promise<void>;
   register: (input: RegisterRequestInput) => Promise<void>;
+  /** "Continue with Google" with the ID token from Google's picker. Rejects with code AGE_CONFIRMATION_REQUIRED for a new account without the 18+ confirmation. */
+  googleSignIn: (idToken: string, ageConfirmed?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -151,6 +156,38 @@ export const useAuthStore = create<AuthState>((set) => {
       }
     },
 
+    googleSignIn: async (idToken: string, ageConfirmed?: boolean) => {
+      set({ isLoading: true, errorMessage: null });
+      try {
+        const response = await api.post('/auth/google', {
+          idToken,
+          ...(ageConfirmed ? { ageConfirmed: true } : {}),
+          device: {
+            platform: Platform.OS === 'ios' ? 'ios' : 'android',
+            deviceName: `${Platform.OS.toUpperCase()} Mobile Client`,
+            appVersion: APP_VERSION,
+            osVersion: String(Platform.Version),
+          },
+        });
+        const { user, tokens, deletionCancelled } = response.data.data;
+        await SecureAuthStorage.saveSession({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: Date.now() + tokens.expiresIn * 1000,
+          userId: user.id,
+          email: user.email,
+        });
+        setApiAuthToken(tokens.accessToken);
+        set({ status: 'authenticated', user, isLoading: false, errorMessage: null });
+        if (deletionCancelled) ToastService.show({ message: 'Welcome back! Your account will not be deleted.', type: 'success', duration: 4000 });
+      } catch (err: unknown) {
+        // A new account needs the 18+ confirmation: the button asks, so no error banner for that.
+        const code = (err as { code?: string })?.code;
+        set({ isLoading: false, errorMessage: code === 'AGE_CONFIRMATION_REQUIRED' ? null : (err as { message?: string })?.message || 'Google sign-in failed. Please try again.' });
+        throw err;
+      }
+    },
+
     register: async (input: RegisterRequestInput) => {
       set({ isLoading: true, errorMessage: null });
       try {
@@ -186,6 +223,7 @@ export const useAuthStore = create<AuthState>((set) => {
       } finally {
         await SecureAuthStorage.clearSession();
         setApiAuthToken(null);
+        void signOutOfGoogle(); // the Google account picker shows again next time
         set({ status: 'unauthenticated', user: null, isLoading: false, errorMessage: null });
       }
     },

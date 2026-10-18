@@ -11,9 +11,11 @@ import { ErrorCode, SYSTEM_CONSTANTS } from '@ai-companion/config';
 import {
   RegisterRequestInput,
   LoginRequestInput,
+  GoogleSignInRequestInput,
   ResetPasswordRequestInput,
 } from '@ai-companion/validation';
-import { UserStatus } from '@prisma/client';
+import { Prisma, UserStatus } from '@prisma/client';
+import { verifyGoogleJwt } from '../../security/googleIdToken.js';
 import crypto from 'crypto';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
 import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
@@ -254,7 +256,83 @@ export class AuthService {
     }
 
     await clearLoginFailures('user', normalizedEmail);
+    return AuthService.startSession(user, input.device, ipAddress, userAgent, 'USER_LOGIN_SUCCESS');
+  }
 
+  /**
+   * "Continue with Google". The ID token from Google's account picker is checked against Google's keys (our Web
+   * client id as audience, a Google-verified email). Then:
+   *  - a Google account seen before → its user;
+   *  - an existing account with that email → linked to Google (Google has verified the address) and signed in;
+   *  - otherwise a new account (the "I am 18 or older" confirmation is required), email already verified.
+   */
+  static async googleSignIn(input: GoogleSignInRequestInput, ipAddress?: string, userAgent?: string) {
+    const audience = (process.env['GOOGLE_WEB_CLIENT_ID'] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (!audience.length) throw new AppError('Google sign-in is not set up yet', 503, ErrorCode.SERVICE_UNAVAILABLE);
+
+    let claims: { sub?: string; email?: string; email_verified?: boolean; name?: string; picture?: string };
+    try {
+      claims = await verifyGoogleJwt(input.idToken, audience);
+    } catch {
+      throw new AppError('Google sign-in failed — please try again', 401, ErrorCode.AUTH_INVALID_CREDENTIALS);
+    }
+    if (!claims.sub || !claims.email || claims.email_verified !== true) {
+      throw new AppError('Your Google account email is not verified', 401, ErrorCode.AUTH_INVALID_CREDENTIALS);
+    }
+    const sub = claims.sub;
+    const email = claims.email.trim().toLowerCase();
+
+    const identity = await prisma.authIdentity.findUnique({ where: { provider_providerSubject: { provider: 'google', providerSubject: sub } }, select: { userId: true } });
+    let user = identity
+      ? await prisma.user.findUnique({ where: { id: identity.userId }, include: { profile: true } })
+      : await prisma.user.findFirst({ where: { normalizedEmail: email }, include: { profile: true } });
+
+    let action = 'USER_LOGIN_SUCCESS';
+    if (user && !identity) {
+      // Same email, first time with Google: link it (Google confirms they own this address).
+      await prisma.$transaction([
+        prisma.authIdentity.create({ data: { userId: user.id, provider: 'google', providerSubject: sub, providerEmail: email } }),
+        ...(user.emailVerifiedAt ? [] : [prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } })]),
+      ]);
+      user = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, include: { profile: true } });
+      action = 'USER_LOGIN_GOOGLE_LINKED';
+    }
+
+    if (!user) {
+      if (input.ageConfirmed !== true) {
+        throw new AppError('Please confirm you are 18 or older to create your account', 400, ErrorCode.AGE_CONFIRMATION_REQUIRED);
+      }
+      const displayName = (claims.name ?? email.split('@')[0] ?? 'Friend').slice(0, 50);
+      user = await prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: { email, normalizedEmail: email, emailVerifiedAt: new Date(), status: UserStatus.ACTIVE },
+        });
+        await tx.userProfile.create({
+          data: { userId: created.id, displayName, avatarUrl: claims.picture ?? null, locale: 'en-US', timezone: 'UTC', preferredLanguage: 'en' },
+        });
+        await tx.authIdentity.create({ data: { userId: created.id, provider: 'google', providerSubject: sub, providerEmail: email } });
+        return tx.user.findUniqueOrThrow({ where: { id: created.id }, include: { profile: true } });
+      });
+      Realtime.admin({ kind: 'signup' });
+      action = 'USER_REGISTERED_GOOGLE';
+    }
+
+    return AuthService.startSession(user, input.device, ipAddress, userAgent, action, { via: 'google', ...(action === 'USER_REGISTERED_GOOGLE' ? { ageConfirmed18Plus: true } : {}) });
+  }
+
+  /**
+   * After the identity is confirmed (password or Google): account status checks, a new session and token family,
+   * the tokens. Shared by every way of signing in, so they all behave the same.
+   */
+  private static async startSession(
+    user: Prisma.UserGetPayload<{ include: { profile: true } }>,
+    device: LoginRequestInput['device'],
+    ipAddress: string | undefined,
+    userAgent: string | undefined,
+    action: string,
+    metadata: Record<string, unknown> = {},
+  ) {
+    const input = { device };
     // Check account status
     if (user.deletedAt || user.status === UserStatus.DELETED) {
       throw new AppError(
@@ -334,10 +412,10 @@ export class AuthService {
     await AuditService.logEvent({
       actorType: 'USER',
       actorId: user.id,
-      action: 'USER_LOGIN_SUCCESS',
+      action,
       resourceType: 'User',
       resourceId: user.id,
-      metadata: { sessionId: session.id },
+      metadata: { sessionId: session.id, ...metadata },
       ipAddress,
       userAgent,
     });

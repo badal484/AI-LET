@@ -123,6 +123,15 @@ export class AuthController {
     }
   }
 
+  static async googleSignIn(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.googleSignIn(req.body, req.ip || req.socket.remoteAddress, req.headers['user-agent']);
+      ApiResponse.success(res, result, 200);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async resendVerification(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       ApiResponse.success(res, await AuthService.resendVerification(req.user!.userId), 200);
