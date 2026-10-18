@@ -1,32 +1,31 @@
 import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import type { RootStackParamList } from '../../navigation/types.js';
-import { darkThemeColors } from '../../theme/colors.js';
-import { spacing } from '../../theme/spacing.js';
-import { typography } from '../../theme/typography.js';
 import type { CharacterCatalogItem } from '@ai-companion/types';
-import { IconButton } from '../../components/common/index.js';
+import { IconButton, Skeleton } from '../../components/common/index.js';
+import { BottomFade } from '../../components/common/BottomFade.js';
+import { PressableScale } from '../../components/common/PressableScale.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CategoryRouteProp = RouteProp<RootStackParamList, 'CategoryBrowser'>;
 
+const GUTTER = 16;
+const GAP = 10;
+
+/** "See all" for one category: the same photo cards as Home, two to a row, with tag filters on top. */
 export const CategoryBrowserScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<CategoryRouteProp>();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.floor((width - GUTTER * 2 - GAP) / 2);
+  const cardHeight = Math.round(cardWidth * 1.38);
   const slug = route.params.categorySlug;
 
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -37,115 +36,97 @@ export const CategoryBrowserScreen: React.FC = () => {
   });
 
   const handleOpenCharacter = (char: CharacterCatalogItem) => {
-    navigation.navigate('CharacterDetail', {
-      characterId: char.id,
-      characterSlug: char.slug,
-    });
+    navigation.navigate('CharacterDetail', { characterId: char.id, characterSlug: char.slug });
   };
 
   const category = data?.category;
   const allCharacters = data?.characters || [];
+  const filteredCharacters = selectedTag ? allCharacters.filter((c) => c.tags.some((t) => t.slug === selectedTag)) : allCharacters;
+  const title = category?.displayName || route.params.categoryName || 'Category';
+  const count = allCharacters.length;
 
-  const filteredCharacters = selectedTag
-    ? allCharacters.filter(c => c.tags.some(t => t.slug === selectedTag))
-    : allCharacters;
-
-  const renderCharacterCard = ({ item }: { item: CharacterCatalogItem }) => (
-    <TouchableOpacity
-      style={styles.card}
-      activeOpacity={0.85}
+  const renderCard = ({ item }: { item: CharacterCatalogItem }) => (
+    <PressableScale
+      style={[styles.card, { width: cardWidth, height: cardHeight }]}
       onPress={() => openIfAllowed(item, handleOpenCharacter)}
+      accessibilityRole="button"
+      accessibilityLabel={ageRestricted(item) ? `${item.name}, 18+ only` : `Open ${item.name}`}
     >
-      <View>
-        <Image source={{ uri: item.avatarUrl }} style={styles.avatar} blurRadius={ageRestricted(item) ? AGE_BLUR_RADIUS : 0} />
-        {ageRestricted(item) && <AgeRestrictedBadge compact />}
-      </View>
-      <View style={styles.info}>
-        <View style={styles.titleRow}>
-          <Text style={styles.name} numberOfLines={1}>
+      <Image
+        source={{ uri: item.coverImageUrl || item.avatarUrl }}
+        style={styles.cardImage}
+        resizeMode="cover"
+        fadeDuration={150}
+        blurRadius={ageRestricted(item) ? AGE_BLUR_RADIUS : 0}
+      />
+      {ageRestricted(item) && <AgeRestrictedBadge />}
+      <BottomFade height={cardHeight * 0.55} />
+      <View style={styles.cardBottom}>
+        <View style={styles.nameRow}>
+          <Text style={styles.cardName} numberOfLines={1} maxFontSizeMultiplier={1.1}>
             {item.name}
           </Text>
-          {item.accessType !== 'free' && (
-            <View style={styles.proBadge}>
-              <Text style={styles.proBadgeText}>PRO</Text>
-            </View>
-          )}
+          <View style={styles.onlineDot} />
         </View>
-        <Text style={styles.tagline} numberOfLines={2}>
-          {item.tagline}
-        </Text>
-        <View style={styles.tagRow}>
-          {item.tags.slice(0, 2).map(tag => (
-            <View key={tag.id} style={styles.tagPill}>
-              <Text style={styles.tagPillText}>#{tag.displayName}</Text>
-            </View>
-          ))}
-        </View>
+        {item.tagline ? (
+          <Text style={styles.cardTagline} numberOfLines={2} maxFontSizeMultiplier={1.1}>
+            {item.tagline}
+          </Text>
+        ) : null}
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size="sm"
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>{category?.displayName || route.params.categoryName || 'Category'}</Text>
-          <Text style={styles.headerSubtitle}>{category?.description || 'Browse companions'}</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          {count > 0 && <Text style={styles.headerSubtitle}>{count === 1 ? '1 character' : `${count} characters`}</Text>}
         </View>
       </View>
 
-      {/* Tag Filters */}
       {category?.tags && category.tags.length > 0 && (
-        <View style={styles.tagsBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsScroll}>
-            <TouchableOpacity
-              style={[styles.tagFilterPill, selectedTag === null && styles.tagFilterActive]}
-              onPress={() => setSelectedTag(null)}
-            >
-              <Text style={[styles.tagFilterText, selectedTag === null && styles.tagFilterTextActive]}>
-                All
-              </Text>
-            </TouchableOpacity>
-            {category.tags.map(tag => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsScroll} style={styles.tagsBar}>
+          {[{ id: 'all', slug: null as string | null, displayName: 'All' }, ...category.tags].map((tag) => {
+            const active = selectedTag === tag.slug;
+            return (
               <TouchableOpacity
                 key={tag.id}
-                style={[styles.tagFilterPill, selectedTag === tag.slug && styles.tagFilterActive]}
-                onPress={() => setSelectedTag(selectedTag === tag.slug ? null : tag.slug)}
+                style={[styles.filterPill, active && styles.filterPillActive]}
+                onPress={() => setSelectedTag(tag.slug === null || active ? null : tag.slug)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.tagFilterText, selectedTag === tag.slug && styles.tagFilterTextActive]}>
-                  {tag.displayName}
-                </Text>
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>{tag.displayName}</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+            );
+          })}
+        </ScrollView>
       )}
 
-      {/* List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={darkThemeColors.accent} />
-          <Text style={styles.loadingText}>Loading category...</Text>
+        <View style={styles.skeletonGrid}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} width={cardWidth} height={cardHeight} borderRadius={16} />
+          ))}
         </View>
       ) : (
         <FlatList
           data={filteredCharacters}
-          keyExtractor={item => item.id}
-          renderItem={renderCharacterCard}
-          contentContainerStyle={styles.listContent}
+          keyExtractor={(item) => item.id}
+          renderItem={renderCard}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No companions in this category</Text>
-              <Text style={styles.emptySubtitle}>Check back soon for new arrivals.</Text>
+              <Text style={styles.emptyTitle}>{selectedTag ? 'No one with this tag yet' : 'No one here yet'}</Text>
+              <Text style={styles.emptySubtitle}>New characters are on the way.</Text>
             </View>
           }
         />
@@ -155,160 +136,43 @@ export const CategoryBrowserScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: darkThemeColors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: darkThemeColors.borderSubtle,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: darkThemeColors.surfaceElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  backButtonText: {
-    color: darkThemeColors.textPrimary,
-    fontSize: 22,
-  },
-  headerTitleWrap: {
-    flex: 1,
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: darkThemeColors.textPrimary,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    color: darkThemeColors.textMuted,
-    marginTop: 2,
-  },
-  tagsBar: {
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: darkThemeColors.borderSubtle,
-  },
-  tagsScroll: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.xs,
-  },
-  tagFilterPill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 5,
-    borderRadius: 16,
-    backgroundColor: darkThemeColors.surfaceElevated,
+  container: { flex: 1, backgroundColor: '#0B0614' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: GUTTER, paddingBottom: 12 },
+  headerTitleWrap: { flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3 },
+  headerSubtitle: { fontSize: 13, color: '#9CA3AF', marginTop: 1 },
+  tagsBar: { flexGrow: 0, marginBottom: 6 },
+  tagsScroll: { paddingHorizontal: GUTTER, gap: 8, paddingVertical: 4 },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  tagFilterActive: {
-    backgroundColor: darkThemeColors.accent,
-    borderColor: darkThemeColors.accent,
-  },
-  tagFilterText: {
-    ...typography.caption,
-    color: darkThemeColors.textSecondary,
-    fontWeight: '600',
-  },
-  tagFilterTextActive: {
-    color: darkThemeColors.accentText,
-  },
-  listContent: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: darkThemeColors.surfaceElevated,
-    borderRadius: 14,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: darkThemeColors.surface,
-  },
-  info: {
-    flex: 1,
-    marginLeft: spacing.md,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  name: {
-    ...typography.subtitle1,
-    color: darkThemeColors.textPrimary,
-    fontWeight: '700',
-    flex: 1,
-  },
-  proBadge: {
-    backgroundColor: 'rgba(234, 179, 8, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  proBadgeText: {
-    fontSize: 9,
+  filterPillActive: { backgroundColor: 'rgba(168,85,247,0.22)', borderColor: '#A855F7' },
+  filterText: { fontSize: 13, fontWeight: '600', color: '#C9C2D9' },
+  filterTextActive: { color: '#FFFFFF' },
+  listContent: { paddingHorizontal: GUTTER, paddingTop: 8, gap: GAP },
+  row: { gap: GAP },
+  skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: GUTTER, paddingTop: 8 },
+  card: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#160E25' },
+  cardImage: { width: '100%', height: '100%' },
+  cardBottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 10, paddingBottom: 11 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  cardName: {
+    fontSize: 15,
     fontWeight: '800',
-    color: '#EAB308',
+    color: '#FFFFFF',
+    flexShrink: 1,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  tagline: {
-    ...typography.caption,
-    color: darkThemeColors.textMuted,
-    marginTop: 2,
-    marginBottom: spacing.xs,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    alignItems: 'center',
-  },
-  tagPill: {
-    backgroundColor: darkThemeColors.surfaceHover,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  tagPillText: {
-    fontSize: 10,
-    color: darkThemeColors.textMuted,
-  },
-  loadingContainer: {
-    padding: spacing.xxl,
-    alignItems: 'center',
-  },
-  loadingText: {
-    ...typography.caption,
-    color: darkThemeColors.textMuted,
-    marginTop: spacing.sm,
-  },
-  emptyContainer: {
-    padding: spacing.xxl,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    ...typography.h3,
-    color: darkThemeColors.textPrimary,
-  },
-  emptySubtitle: {
-    ...typography.body2,
-    color: darkThemeColors.textMuted,
-    marginTop: 4,
-  },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+  cardTagline: { fontSize: 11, lineHeight: 15, color: 'rgba(255,255,255,0.82)', marginTop: 3 },
+  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: '#FFFFFF', marginBottom: 6 },
+  emptySubtitle: { fontSize: 13, color: '#9CA3AF' },
 });

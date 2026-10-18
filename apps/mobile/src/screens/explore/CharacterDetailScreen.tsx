@@ -35,6 +35,16 @@ import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
+
+const REPORT_REASON_LABEL: Record<ReportReasonCode, string> = {
+  UNSAFE: 'Unsafe',
+  HARASSMENT: 'Harassment',
+  IMPERSONATION: 'Pretends to be someone',
+  COPYRIGHT: 'Copyright',
+  SEXUAL_CONTENT: 'Sexual content',
+  SPAM: 'Spam',
+  OTHER: 'Something else',
+} as Record<ReportReasonCode, string>;
 type DetailRouteProp = RouteProp<RootStackParamList, 'CharacterDetail'>;
 
 // How close you two are, in words a person would use (not "Lvl 1 · 22% Intimacy").
@@ -475,7 +485,7 @@ export const CharacterDetailScreen: React.FC = () => {
               onPress={() => setReportReason(reason)}
             >
               <Text style={[styles.reasonChipText, reportReason === reason && styles.reasonChipTextActive]}>
-                {reason.replace('_', ' ')}
+                {REPORT_REASON_LABEL[reason]}
               </Text>
             </TouchableOpacity>
           ))}
