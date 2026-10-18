@@ -7,6 +7,7 @@ import { Icon, IconButton, ToastService } from '../../components/common/index.js
 import { NotificationApi } from '../../services/api/notificationApi.js';
 import { PushService } from '../../services/push/PushService.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 
 /**
  * Notifications, kept simple: is this phone getting them, three choices, lock-screen text, quiet hours,
@@ -71,6 +72,9 @@ export const NotificationPreferencesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.glow} pointerEvents="none">
+        <GradientFill radial colors={[['#A855F7', 0.2], ['#EC4899', 0.05], ['#0B0614', 0]]} />
+      </View>
       <View style={styles.header}>
         <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
         <Text style={styles.title}>Notifications</Text>
@@ -131,6 +135,7 @@ export const NotificationPreferencesScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },

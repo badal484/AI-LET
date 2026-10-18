@@ -8,6 +8,7 @@ import { useBillingStore } from '../../stores/billingStore.js';
 import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from '../../services/storeBilling.js';
 import { IconButton, Button, Badge, ToastService, Icon } from '../../components/common/index.js';
 import type { IconName } from '../../components/common/Icon.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 
@@ -26,11 +27,11 @@ const PLAN_LABEL: Record<BasePlan, { title: string; per: string; note?: string }
 // the type so a catalog that still has them doesn't break, but they aren't offered.
 const ORDER: BasePlan[] = ['monthly'];
 
-const BENEFITS: Array<{ icon: IconName; title: string; sub: string }> = [
-  { icon: 'chat', title: 'Every character', sub: 'Up to 150 messages a day' },
-  { icon: 'book', title: 'Full courses and programs', sub: 'Step by step, at your pace' },
-  { icon: 'brain', title: 'They remember you', sub: 'Your days, your people, your goals' },
-  { icon: 'shield', title: 'Crisis help is always free', sub: 'With or without Premium' },
+const BENEFITS: Array<{ icon: IconName; title: string; sub: string; color: string; tint: string }> = [
+  { icon: 'chat', title: 'Every character', sub: 'Up to 150 messages a day', color: '#C4B5FD', tint: 'rgba(139,92,246,0.18)' },
+  { icon: 'book', title: 'Full courses and programs', sub: 'Step by step, at your pace', color: '#93C5FD', tint: 'rgba(59,130,246,0.16)' },
+  { icon: 'brain', title: 'They remember you', sub: 'Your days, your people, your goals', color: '#F9A8D4', tint: 'rgba(236,72,153,0.16)' },
+  { icon: 'shield', title: 'Crisis help is always free', sub: 'With or without Premium', color: '#6EE7B7', tint: 'rgba(16,185,129,0.16)' },
 ];
 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -128,6 +129,9 @@ export const PaywallScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.glow} pointerEvents="none">
+        <GradientFill radial colors={[['#A855F7', 0.34], ['#EC4899', 0.1], ['#0B0614', 0]]} />
+      </View>
       <View style={styles.topBar}>
         {isTab ? <View /> : <IconButton icon="close" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Close" />}
         <Button label="Restore" variant="ghost" size="sm" onPress={restore} disabled={busy !== null} accessibilityLabel="Restore purchases" />
@@ -137,7 +141,8 @@ export const PaywallScreen: React.FC = () => {
         <View style={styles.hero}>
           <View style={styles.crownHalo}>
             <View style={styles.crown}>
-              <Icon name="diamond" size={30} color="#F5D0FE" />
+              <GradientFill colors={['#7C3AED', '#DB2777']} />
+              <Icon name="diamond" size={30} color="#FFFFFF" />
             </View>
           </View>
           <Text style={styles.title}>{title}</Text>
@@ -149,8 +154,8 @@ export const PaywallScreen: React.FC = () => {
           <View style={styles.benefits}>
             {BENEFITS.map((b) => (
               <View key={b.title} style={styles.benefitRow}>
-                <View style={styles.benefitIcon}>
-                  <Icon name={b.icon} size={18} color={darkThemeColors.accent} />
+                <View style={[styles.benefitIcon, { backgroundColor: b.tint }]}>
+                  <Icon name={b.icon} size={18} color={b.color} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.benefitTitle}>{b.title}</Text>
@@ -247,26 +252,27 @@ export const PaywallScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   ctaWrap: { borderRadius: radius.md, overflow: 'hidden' },
-  container: { flex: 1, backgroundColor: darkThemeColors.background },
+  container: { flex: 1, backgroundColor: '#0B0614' },
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 360 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   hero: { alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg, gap: spacing.sm },
-  title: { color: darkThemeColors.textPrimary, fontSize: 24, fontWeight: '800', textAlign: 'center' },
+  title: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', textAlign: 'center', letterSpacing: -0.4 },
   subtitle: { color: darkThemeColors.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 21 },
   notice: { color: darkThemeColors.textSecondary, textAlign: 'center', lineHeight: 21 },
-  crownHalo: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(168,85,247,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  crown: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#3B1D6E', borderWidth: 1, borderColor: 'rgba(240,171,252,0.45)', alignItems: 'center', justifyContent: 'center' },
+  crownHalo: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(236,72,153,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  crown: { width: 66, height: 66, borderRadius: 33, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   benefits: {
     marginBottom: spacing.lg,
     padding: spacing.md,
     gap: spacing.md,
     borderRadius: radius.lg,
-    backgroundColor: darkThemeColors.surface,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
+    borderColor: 'rgba(255,255,255,0.07)',
   },
   benefitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  benefitIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: darkThemeColors.accentMuted, alignItems: 'center', justifyContent: 'center' },
+  benefitIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   benefitTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '700' },
   benefitSub: { color: darkThemeColors.textMuted, fontSize: 13, marginTop: 1 },
   noticeBox: { alignItems: 'center', gap: spacing.sm, marginVertical: spacing.md },

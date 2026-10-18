@@ -31,6 +31,7 @@ import { FadeIn } from '../../components/common/FadeIn.js';
 import { ApiClient } from '../../services/api/client.js';
 import { SecureAuthStorage } from '../../services/auth/SecureAuthStorage.js';
 import { chatListTime } from '../../utils/chatDates.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 import { ToastService } from '../../components/common/Toast.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -250,6 +251,9 @@ export const ConversationsScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.glow} pointerEvents="none">
+        <GradientFill radial colors={[['#A855F7', 0.22], ['#EC4899', 0.05], ['#0B0614', 0]]} />
+      </View>
       <StatusBar barStyle="light-content" />
 
       <View style={styles.header}>
@@ -404,6 +408,7 @@ export const ConversationsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: {
     flex: 1,
     backgroundColor: '#07060B',
@@ -416,7 +421,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     minHeight: 60,
-    backgroundColor: '#07060B',
   },
   title: {
     fontSize: 30,

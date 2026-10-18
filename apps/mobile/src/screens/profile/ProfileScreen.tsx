@@ -175,7 +175,7 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.planTitle}>{premium ? (trial ? 'Premium · first day' : 'Premium') : 'Loveek Premium'}</Text>
-              <Text style={styles.planText}>
+              <Text style={styles.planText} numberOfLines={1}>
                 {premium
                   ? subscription?.currentPeriodEnd
                     ? cancelling
@@ -183,8 +183,8 @@ export const ProfileScreen: React.FC = () => {
                       : trial
                         ? `₹499/month from ${date(subscription.currentPeriodEnd)}`
                         : `Renews on ${date(subscription.currentPeriodEnd)}`
-                    : 'Every character, 150 messages a day'
-                  : 'Every character, 150 messages a day'}
+                    : 'Every character, 150 a day'
+                  : 'Every character, 150 a day'}
               </Text>
             </View>
             {premium ? (

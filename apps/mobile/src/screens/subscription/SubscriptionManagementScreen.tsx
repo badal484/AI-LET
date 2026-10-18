@@ -10,6 +10,7 @@ import { Button, Icon, IconButton, Skeleton, ToastService, type IconName } from 
 import { PromoCodeBox } from '../../components/PromoCodeBox.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 
 /**
  * "Your Premium": one plan (₹1 first day, then monthly), so this is just its status, the renewal date, your coins,
@@ -94,6 +95,9 @@ export const SubscriptionManagementScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.glow} pointerEvents="none">
+        <GradientFill radial colors={[['#A855F7', 0.2], ['#EC4899', 0.05], ['#0B0614', 0]]} />
+      </View>
       <View style={styles.header}>
         <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
         <Text style={styles.title}>Your Premium</Text>
@@ -144,6 +148,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },

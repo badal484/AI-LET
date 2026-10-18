@@ -8,6 +8,7 @@ import { api } from '../../services/api/client.js';
 import { Realtime } from '../../services/realtime/RealtimeClient.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import { LEGAL_URLS } from '../../config/appInfo.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 
 /**
  * Help & contact us: quick answers, a message to the team, and their replies (admin console → Support).
@@ -91,6 +92,9 @@ export const HelpScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.glow} pointerEvents="none">
+        <GradientFill radial colors={[['#A855F7', 0.2], ['#EC4899', 0.05], ['#0B0614', 0]]} />
+      </View>
       <View style={styles.header}>
         <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
         <Text style={styles.headerTitle}>Help & contact us</Text>
@@ -172,6 +176,7 @@ export const HelpScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   headerTitle: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
