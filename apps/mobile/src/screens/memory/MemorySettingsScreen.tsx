@@ -6,7 +6,6 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   TextInput,
 } from 'react-native';
@@ -25,6 +24,7 @@ import {
 } from '../../components/common/index.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { MemoryDetail, UserMemorySettingsData } from '@ai-companion/types';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const MemorySettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -49,7 +49,7 @@ export const MemorySettingsScreen: React.FC = () => {
       setSettings(settingsRes);
       setMemories(memoriesRes.items);
     } catch {
-      Alert.alert('Error', 'Failed to load memory settings. Please try again.');
+      AppAlert.alert('Error', 'Failed to load memory settings. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -80,12 +80,12 @@ export const MemorySettingsScreen: React.FC = () => {
       });
     } catch {
       setSettings({ ...settings, memoryEnabled: prev });
-      Alert.alert('Error', 'Failed to update memory preference.');
+      AppAlert.alert('Error', 'Failed to update memory preference.');
     }
   };
 
   const handleDeleteSingle = (memory: MemoryDetail) => {
-    Alert.alert(
+    AppAlert.alert(
       'Forget this fact?',
       `Are you sure you want to remove "${memory.content}"?`,
       [
@@ -99,7 +99,7 @@ export const MemorySettingsScreen: React.FC = () => {
               setMemories((prev) => prev.filter((m) => m.id !== memory.id));
               ToastService.show({ message: 'Fact forgotten', type: 'info', duration: 1500 });
             } catch {
-              Alert.alert('Error', 'Failed to delete memory.');
+              AppAlert.alert('Error', 'Failed to delete memory.');
             }
           },
         },
@@ -118,7 +118,7 @@ export const MemorySettingsScreen: React.FC = () => {
         type: 'success',
       });
     } catch {
-      Alert.alert('Error', 'Failed to wipe memories.');
+      AppAlert.alert('Error', 'Failed to wipe memories.');
     } finally {
       setIsWiping(false);
     }
@@ -142,7 +142,7 @@ export const MemorySettingsScreen: React.FC = () => {
       setEditingMemory(null);
       ToastService.show({ message: 'Memory updated', type: 'success', duration: 1500 });
     } catch {
-      Alert.alert('Error', 'Failed to update memory.');
+      AppAlert.alert('Error', 'Failed to update memory.');
     } finally {
       setIsSavingEdit(false);
     }

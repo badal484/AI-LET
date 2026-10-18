@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -12,6 +12,7 @@ import { ConversationApi } from '../../services/api/conversationApi.js';
 import { APP_VERSION } from '../../config/appInfo.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import type { RootStackParamList } from '../../navigation/types.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 /**
  * Profile: who you are, your plan, and four settings — nothing else.
@@ -95,7 +96,7 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const signOut = () =>
-    Alert.alert('Sign out?', 'Your chats and memories stay safe — sign in again any time.', [
+    AppAlert.alert('Sign out?', 'Your chats and memories stay safe — sign in again any time.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: () => void logout() },
     ]);

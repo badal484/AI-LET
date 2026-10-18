@@ -1,6 +1,7 @@
 import React from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Icon } from './Icon.js';
+import { AppAlert } from './AppDialog.js';
 
 /**
  * Romance characters for someone under 18 (the server marks them ageRestricted): still shown, but blurred with
@@ -11,7 +12,7 @@ export const AGE_BLUR_RADIUS = 28;
 export const ageRestricted = (c: { ageRestricted?: boolean } | null | undefined): boolean => Boolean(c?.ageRestricted);
 
 export function explainAgeRestricted(name?: string): void {
-  Alert.alert('18+ only', `${name ? `${name} is` : 'This character is'} for people 18 and older. Explore the other characters — friends, mentors, astrology and more.`);
+  AppAlert.alert('18+ only', `${name ? `${name} is` : 'This character is'} for people 18 and older. Explore the other characters — friends, mentors, astrology and more.`);
 }
 
 /** Opens the character, or explains why not. */

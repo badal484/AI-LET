@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   TextInput,
 } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
@@ -17,6 +16,7 @@ import { spacing } from '../../theme/spacing.js';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { CreditTransactionItem } from '@ai-companion/types';
 import { IconButton } from '../../components/common/index.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 interface PackOption {
   id: string;
@@ -54,7 +54,7 @@ export const CreditWalletScreen: React.FC = () => {
 
   const handleRedeem = async () => {
     if (!promoInput.trim()) {
-      Alert.alert('Promo Code Required', 'Please enter a valid promotional code.');
+      AppAlert.alert('Promo Code Required', 'Please enter a valid promotional code.');
       return;
     }
 
@@ -63,10 +63,10 @@ export const CreditWalletScreen: React.FC = () => {
     setIsRedeeming(false);
 
     if (result.success) {
-      Alert.alert('Success', result.message);
+      AppAlert.alert('Success', result.message);
       setPromoInput('');
     } else {
-      Alert.alert('Invalid Code', result.message);
+      AppAlert.alert('Invalid Code', result.message);
     }
   };
 
@@ -74,12 +74,12 @@ export const CreditWalletScreen: React.FC = () => {
     try {
       const success = await purchaseCreditPack(pack.id);
       if (success) {
-        Alert.alert('Credits Added!', `Successfully added ${pack.credits.toLocaleString()} AI credits to your wallet.`);
+        AppAlert.alert('Credits Added!', `Successfully added ${pack.credits.toLocaleString()} AI credits to your wallet.`);
       } else {
-        Alert.alert('Purchase unavailable', useBillingStore.getState().errorMessage ?? 'Could not complete credit purchase.');
+        AppAlert.alert('Purchase unavailable', useBillingStore.getState().errorMessage ?? 'Could not complete credit purchase.');
       }
     } catch (err: any) {
-      Alert.alert('Purchase Failed', err?.message || 'Could not complete credit purchase.');
+      AppAlert.alert('Purchase Failed', err?.message || 'Could not complete credit purchase.');
     }
   };
 

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   TextInput,
   ActivityIndicator,
@@ -25,6 +24,7 @@ import type {
   GroundedAnswerResult,
   WebResearchTaskItem,
 } from '@ai-companion/types';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const KnowledgeDocumentsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -58,7 +58,7 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
       setDocuments(docs);
       setCollections(cols);
     } catch {
-      Alert.alert('Notice', 'Unable to fetch knowledge documents. Please check connection.');
+      AppAlert.alert('Notice', 'Unable to fetch knowledge documents. Please check connection.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -71,7 +71,7 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
 
   const handleUpload = async () => {
     if (!newTitle.trim() || !newContent.trim()) {
-      Alert.alert('Validation Error', 'Document title and content are required.');
+      AppAlert.alert('Validation Error', 'Document title and content are required.');
       return;
     }
     setIsUploading(true);
@@ -88,16 +88,16 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
       setNewFilename('');
       setNewContent('');
       await loadData();
-      Alert.alert('Success', 'Document uploaded and indexed successfully.');
+      AppAlert.alert('Success', 'Document uploaded and indexed successfully.');
     } catch (err: any) {
-      Alert.alert('Upload Failed', err?.message || 'Failed to process document.');
+      AppAlert.alert('Upload Failed', err?.message || 'Failed to process document.');
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleDeleteDoc = async (id: string, title: string) => {
-    Alert.alert('Delete Document', `Are you sure you want to delete "${title}"? Embeddings and chunks will be purged.`, [
+    AppAlert.alert('Delete Document', `Are you sure you want to delete "${title}"? Embeddings and chunks will be purged.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -107,7 +107,7 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
             await knowledgeApi.deleteDocument(id);
             setDocuments((prev) => prev.filter((d) => d.id !== id));
           } catch {
-            Alert.alert('Error', 'Failed to delete document.');
+            AppAlert.alert('Error', 'Failed to delete document.');
           }
         },
       },
@@ -122,7 +122,7 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
       const res = await knowledgeApi.answerGrounded(qaQuery.trim());
       setQaResult(res);
     } catch (err: any) {
-      Alert.alert('Q&A Error', err?.message || 'Failed to generate grounded answer.');
+      AppAlert.alert('Q&A Error', err?.message || 'Failed to generate grounded answer.');
     } finally {
       setIsQaLoading(false);
     }
@@ -136,7 +136,7 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
       const res = await knowledgeApi.runWebResearch(qaQuery.trim());
       setResearchTask(res);
     } catch (err: any) {
-      Alert.alert('Research Error', err?.message || 'Failed to run web research.');
+      AppAlert.alert('Research Error', err?.message || 'Failed to run web research.');
     } finally {
       setIsResearchLoading(false);
     }

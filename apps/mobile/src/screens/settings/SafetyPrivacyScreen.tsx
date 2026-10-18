@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, Linking } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Icon, IconButton, type IconName } from '../../components/common/index.js';
@@ -7,6 +7,7 @@ import { privacyApi, type BlockedItem } from '../../services/api/privacyApi.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import { LEGAL_URLS } from '../../config/appInfo.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 /**
  * Privacy & account, kept to what people actually need: making the characters forget them, characters
@@ -24,7 +25,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
   }, []);
 
   const forget = () =>
-    Alert.alert('Make every character forget you?', 'They will forget everything they remembered about you — your name, your life, your goals. Your chats stay. This can’t be undone.', [
+    AppAlert.alert('Make every character forget you?', 'They will forget everything they remembered about you — your name, your life, your goals. Your chats stay. This can’t be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Forget me',
@@ -33,9 +34,9 @@ export const SafetyPrivacyScreen: React.FC = () => {
           setBusy('forget');
           try {
             const r = await privacyApi.purgeMemories();
-            Alert.alert('Done', r.deletedCount ? `${r.deletedCount} memories deleted.` : 'There was nothing to forget.');
+            AppAlert.alert('Done', r.deletedCount ? `${r.deletedCount} memories deleted.` : 'There was nothing to forget.');
           } catch {
-            Alert.alert('Could not delete', 'Please try again later.');
+            AppAlert.alert('Could not delete', 'Please try again later.');
           } finally {
             setBusy(null);
           }
@@ -44,7 +45,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
     ]);
 
   const deleteAccount = () =>
-    Alert.alert(
+    AppAlert.alert(
       'Delete your account?',
       'You will be signed out. Your account, chats and memories are deleted after 14 days — sign in again before then to keep everything. Premium bought on Google Play must be cancelled in the Play Store.',
       [
@@ -58,11 +59,11 @@ export const SafetyPrivacyScreen: React.FC = () => {
               const r = await privacyApi.requestAccountDeletion('User-initiated from app');
               const on = new Date(r.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' });
               // Signed out now; signing in again before that date cancels the deletion.
-              Alert.alert('Your account will be deleted', `On ${on}. Changed your mind? Just sign in again before then.`, [
+              AppAlert.alert('Your account will be deleted', `On ${on}. Changed your mind? Just sign in again before then.`, [
                 { text: 'OK', onPress: () => void useAuthStore.getState().logout() },
               ]);
             } catch {
-              Alert.alert('Could not delete', 'Please write to us from Help & contact us.');
+              AppAlert.alert('Could not delete', 'Please write to us from Help & contact us.');
             } finally {
               setBusy(null);
             }
@@ -72,7 +73,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
     );
 
   const unblock = (b: BlockedItem) =>
-    Alert.alert(`Unblock ${b.targetDisplayName || 'this character'}?`, 'They will show up again.', [
+    AppAlert.alert(`Unblock ${b.targetDisplayName || 'this character'}?`, 'They will show up again.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Unblock',
@@ -81,7 +82,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
             await privacyApi.removeBlock(b.id);
             setBlocks((all) => all.filter((x) => x.id !== b.id));
           } catch {
-            Alert.alert('Could not unblock', 'Please try again.');
+            AppAlert.alert('Could not unblock', 'Please try again.');
           }
         },
       },

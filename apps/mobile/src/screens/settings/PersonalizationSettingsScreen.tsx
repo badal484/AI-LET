@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Switch,
   FlatList,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +14,7 @@ import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
 import { RelationshipApi } from '../../services/api/relationshipApi.js';
 import type { UserRelationshipSettingsData } from '@ai-companion/types';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const PersonalizationSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -40,7 +40,7 @@ export const PersonalizationSettingsScreen: React.FC = () => {
       setSettings(settingsData);
       setRelationships(relsData.items || []);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to load personalization settings');
+      AppAlert.alert('Error', err.message || 'Failed to load personalization settings');
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export const PersonalizationSettingsScreen: React.FC = () => {
       const updated = await RelationshipApi.updateSettings({ personalizationEnabled: val });
       setSettings(updated);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update personalization setting');
+      AppAlert.alert('Error', err.message || 'Failed to update personalization setting');
     } finally {
       setSavingSettings(false);
     }
@@ -68,14 +68,14 @@ export const PersonalizationSettingsScreen: React.FC = () => {
       const updated = await RelationshipApi.updateSettings({ relationshipProgressionEnabled: val });
       setSettings(updated);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update progression setting');
+      AppAlert.alert('Error', err.message || 'Failed to update progression setting');
     } finally {
       setSavingSettings(false);
     }
   };
 
   const handleResetRelationship = (characterId: string, characterName: string) => {
-    Alert.alert(
+    AppAlert.alert(
       'Reset Dynamic State',
       `Are you sure you want to reset your conversational rapport with ${characterName} back to the initial baseline? Conversation history and saved facts will be retained.`,
       [
@@ -88,9 +88,9 @@ export const PersonalizationSettingsScreen: React.FC = () => {
             try {
               await RelationshipApi.resetRelationship(characterId);
               await loadData();
-              Alert.alert('Reset Complete', `Your connection with ${characterName} was reset to baseline.`);
+              AppAlert.alert('Reset Complete', `Your connection with ${characterName} was reset to baseline.`);
             } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to reset relationship state');
+              AppAlert.alert('Error', err.message || 'Failed to reset relationship state');
             } finally {
               setResettingId(null);
             }

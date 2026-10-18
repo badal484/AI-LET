@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { useBillingStore } from '../../stores/billingStore.js';
 import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from '../../services/storeBilling.js';
 import { IconButton, Button, Badge, ToastService } from '../../components/common/index.js';
 import { Shine } from '../../components/common/Shine.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 /**
  * Premium: ₹1 for the first day, then ₹499/month — the only plan (no free plan) — plus ₹49 message packs.
@@ -81,7 +82,7 @@ export const PaywallScreen: React.FC = () => {
       void loadBillingState();
       navigation.goBack();
     } else if (r.message) {
-      Alert.alert('Purchase', r.message);
+      AppAlert.alert('Purchase', r.message);
     }
   };
 
@@ -105,7 +106,7 @@ export const PaywallScreen: React.FC = () => {
     const n = await StoreBilling.restore().catch(() => 0);
     setBusy(null);
     if (n > 0) finish({ ok: true }, 'Purchases restored');
-    else Alert.alert('Nothing to restore', 'No active purchase was found on this Google account.');
+    else AppAlert.alert('Nothing to restore', 'No active purchase was found on this Google account.');
   };
 
   const loading = catalog === null;

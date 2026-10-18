@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Share,
   TextInput,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +33,7 @@ import {
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem, ReportReasonCode } from '@ai-companion/types';
 import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type DetailRouteProp = RouteProp<RootStackParamList, 'CharacterDetail'>;
@@ -182,7 +182,7 @@ export const CharacterDetailScreen: React.FC = () => {
   const handleSubmitReport = async () => {
     if (!profile) return;
     if (reportDetails.trim().length < 10) {
-      Alert.alert('Details Required', 'Please provide at least 10 characters explaining your report.');
+      AppAlert.alert('Details Required', 'Please provide at least 10 characters explaining your report.');
       return;
     }
 
@@ -200,7 +200,7 @@ export const CharacterDetailScreen: React.FC = () => {
         type: 'success',
       });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to submit report.');
+      AppAlert.alert('Error', err.message || 'Failed to submit report.');
     } finally {
       setReportSubmitting(false);
     }

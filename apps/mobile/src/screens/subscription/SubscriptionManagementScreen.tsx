@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { StoreBilling } from '../../services/storeBilling.js';
 import { UsageMeterItem } from '@ai-companion/types';
 import { Icon, IconButton, IconName } from '../../components/common/index.js';
 import { PromoCodeBox } from '../../components/PromoCodeBox.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const SubscriptionManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -48,7 +48,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
       StoreBilling.openManageSubscription();
       return;
     }
-    Alert.alert(
+    AppAlert.alert(
       'Cancel Subscription',
       'Are you sure you want to cancel? You will keep your benefits until the end of the current billing cycle.',
       [
@@ -61,7 +61,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
             const success = await cancelSubscription(false, 'User requested from mobile app');
             setIsProcessing(false);
             if (success) {
-              Alert.alert('Subscription Cancelled', 'Your subscription will not renew after this period.');
+              AppAlert.alert('Subscription Cancelled', 'Your subscription will not renew after this period.');
             }
           },
         },
@@ -74,7 +74,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
     const success = await resumeSubscription();
     setIsProcessing(false);
     if (success) {
-      Alert.alert('Subscription Resumed', 'Your subscription has been renewed and will continue normally.');
+      AppAlert.alert('Subscription Resumed', 'Your subscription has been renewed and will continue normally.');
     }
   };
 
@@ -307,7 +307,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
             style={styles.linkButton}
             onPress={async () => {
               await restorePurchases();
-              if (!StoreBilling.isAvailable) Alert.alert('Restore unavailable', StoreBilling.unavailableMessage);
+              if (!StoreBilling.isAvailable) AppAlert.alert('Restore unavailable', StoreBilling.unavailableMessage);
             }}
           >
             <Text style={styles.linkButtonText}>Restore Purchases</Text>

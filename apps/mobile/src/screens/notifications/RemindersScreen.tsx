@@ -7,7 +7,6 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { darkThemeColors } from '../../theme/colors.js';
@@ -15,6 +14,7 @@ import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
 import { NotificationApi } from '../../services/api/notificationApi.js';
 import type { UserReminderData } from '@ai-companion/types';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const RemindersScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -27,7 +27,7 @@ export const RemindersScreen: React.FC = () => {
       const data = await NotificationApi.listReminders();
       setReminders(data);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to load reminders');
+      AppAlert.alert('Error', err.message || 'Failed to load reminders');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -44,7 +44,7 @@ export const RemindersScreen: React.FC = () => {
   };
 
   const handleCancelReminder = async (id: string) => {
-    Alert.alert('Cancel Reminder', 'Are you sure you want to cancel this scheduled reminder?', [
+    AppAlert.alert('Cancel Reminder', 'Are you sure you want to cancel this scheduled reminder?', [
       { text: 'Keep', style: 'cancel' },
       {
         text: 'Cancel Reminder',
@@ -54,7 +54,7 @@ export const RemindersScreen: React.FC = () => {
             await NotificationApi.cancelReminder(id);
             setReminders(prev => prev.map(r => (r.id === id ? { ...r, status: 'CANCELLED' } : r)));
           } catch (err: any) {
-            Alert.alert('Error', err.message || 'Failed to cancel reminder');
+            AppAlert.alert('Error', err.message || 'Failed to cancel reminder');
           }
         },
       },

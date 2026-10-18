@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { onboardingApi } from '../../services/api/onboardingApi.js';
@@ -15,6 +14,7 @@ import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
 import type { UserPreferenceProfile } from '@ai-companion/types';
 import { IconButton } from '../../components/common/index.js';
+import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const PreferencesSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -48,7 +48,7 @@ export const PreferencesSettingsScreen: React.FC = () => {
       setProfile(updated);
     } catch {
       setProfile(profile);
-      Alert.alert('Error', 'Failed to update preferences. Please try again.');
+      AppAlert.alert('Error', 'Failed to update preferences. Please try again.');
     } finally {
       setIsSaving(false);
     }
