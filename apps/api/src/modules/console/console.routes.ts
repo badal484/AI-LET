@@ -6,7 +6,7 @@ import {
   addMessages, cancelDeletion, deleteMemory, getMemories, getUser, grantPremium, listUsers, removePremium, requestDeletion, resetToday,
   setBlocked, signOutEverywhere, usersCsv, type ListParams,
 } from './users.service.js';
-import { addGalleryImage, getAiCost, getCharacter, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
+import { addGalleryImage, getAiCost, getCharacter, getGallery, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
 import express from 'express';
 import { allSettings, setSetting } from './appSettings.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -101,6 +101,7 @@ consoleRouter.post(
   express.raw({ type: 'image/*', limit: '10mb' }),
   handle((req) => addGalleryImage(adminId(req), idOf(req), req.body as Buffer)),
 );
+consoleRouter.get('/characters/:id/gallery', requirePermission(P.CHARACTERS_READ), handle((req) => getGallery(idOf(req))));
 consoleRouter.put('/characters/:id/gallery', requirePermission(P.CHARACTERS_UPDATE), handle((req) => setGallery(adminId(req), idOf(req), req.body?.images)));
 
 // Money

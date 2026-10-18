@@ -1,5 +1,5 @@
 'use client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -81,8 +81,20 @@ function PhotoPicker({ label, hint, url, round, busy, onPick }: { label: string;
 const MAX_GALLERY = 12;
 
 /** The photo grid on the character's profile in the app: add several at once, reorder, remove. */
-function Gallery({ characterId, images, onChange }: { characterId: string; images: string[]; onChange: (g: string[]) => void }) {
+/**
+ * The gallery is read fresh from the server for this character (cached per character), so the photos shown are
+ * always the ones stored — even if you switch to another character while an upload is still running (its result
+ * goes to the character it was uploaded for, not the one open now).
+ */
+function Gallery({ characterId, initial }: { characterId: string; initial: string[] }) {
   const qc = useQueryClient();
+  const key = ['gallery', characterId];
+  const { data } = useQuery({
+    queryKey: key,
+    queryFn: () => api<{ gallery: string[] }>(`/console/characters/${characterId}/gallery`).then((d) => d.gallery),
+    staleTime: 0,
+  });
+  const images = data ?? initial;
   const input = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +108,7 @@ function Gallery({ characterId, images, onChange }: { characterId: string; image
     const small = (await Promise.all(list.map((f) => sizeWarning(f, 'gallery')))).filter(Boolean);
     if (small.length && !window.confirm(`${small.length} photo(s) are smaller than recommended and may look blurry:\n${small.slice(0, 4).join('\n')}\n\nUpload anyway?`)) return;
     setProgress({ done: 0, total: list.length });
+    const uploadingFor = characterId;
     let latest = images;
     for (const [i, file] of list.entries()) {
       try {
@@ -104,7 +117,7 @@ function Gallery({ characterId, images, onChange }: { characterId: string; image
         const body = await res.json().catch(() => ({}));
         if (!res.ok || body.success === false) throw new Error(body?.error?.message ?? `Upload failed (${file.name})`);
         latest = body.data.gallery;
-        onChange(latest);
+        qc.setQueryData(['gallery', uploadingFor], latest);
       } catch (err) {
         setError((err as Error).message);
       }
@@ -116,8 +129,9 @@ function Gallery({ characterId, images, onChange }: { characterId: string; image
 
   const save = useMutation({
     mutationFn: (next: string[]) => api<{ gallery: string[] }>(`/console/characters/${characterId}/gallery`, { method: 'PUT', body: JSON.stringify({ images: next }) }),
-    onSuccess: (d) => { onChange(d.gallery); void qc.invalidateQueries({ queryKey: ['characters'] }); },
-    onError: (e) => setError((e as Error).message),
+    onSuccess: (d) => { qc.setQueryData(key, d.gallery); setError(null); void qc.invalidateQueries({ queryKey: ['characters'] }); },
+    // Out of date (changed elsewhere): show what's stored now, so the next try works.
+    onError: (e) => { setError(`${(e as Error).message} Showing the latest photos — try again.`); void qc.invalidateQueries({ queryKey: key }); },
   });
   const move = (i: number, by: number) => {
     const next = [...images];
@@ -138,7 +152,7 @@ function Gallery({ characterId, images, onChange }: { characterId: string; image
       <p className="-mt-1 text-[11px] leading-snug text-muted">{SIZE_GUIDE.gallery.text}</p>
       <div className="grid grid-cols-4 gap-2">
         {images.map((url, i) => (
-          <div key={url} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-2">
+          <div key={`${i}-${url}`} className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-2">
             <img src={url} alt="" className="h-full w-full object-cover" />
             {i < 6 && <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white">{i + 1}</span>}
             <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/60 p-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -172,7 +186,6 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
   const qc = useQueryClient();
   const [avatar, setAvatar] = useState('');
   const [cover, setCover] = useState('');
-  const [gallery, setGallery] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [tagline, setTagline] = useState('');
   const [note, setNote] = useState<string | null>(null);
@@ -182,7 +195,6 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
     setOpened(character.id);
     setAvatar(character.avatarUrl);
     setCover(character.coverImageUrl);
-    setGallery(character.gallery ?? []);
     setName(character.name);
     setTagline(character.tagline);
     setNote(null);
@@ -218,7 +230,7 @@ export function CharacterEditor({ character, onClose }: { character: EditableCha
             <PhotoPicker label="Cover photo" hint={SIZE_GUIDE.cover.text} url={cover} busy={upload.isPending && upload.variables?.kind === 'cover'} onPick={pick('cover')} />
           </div>
         </div>
-        {character && <Gallery characterId={character.id} images={gallery} onChange={setGallery} />}
+        {character && <Gallery key={character.id} characterId={character.id} initial={character.gallery ?? []} />}
         <p className="-mt-2 text-[11px] leading-snug text-muted">Drag a photo onto a box or click it. JPG, PNG, WebP or HEIC, up to 10 MB each. Bigger is fine — every photo is cropped and compressed automatically. Photos change in the app right away.</p>
         <label className="block space-y-1.5"><span className="text-sm text-muted">Name</span><Input required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} /></label>
         <label className="block space-y-1.5"><span className="text-sm text-muted">Tagline (shown under the name)</span><Input required minLength={2} maxLength={255} value={tagline} onChange={(e) => setTagline(e.target.value)} /></label>

@@ -420,6 +420,13 @@ async function writeGallery(characterId: string, profiles: Record<string, unknow
   await prisma.characterDiscoveryConfig.upsert({ where: { characterId }, create: { characterId, localizedProfiles }, update: { localizedProfiles } });
 }
 
+/** The gallery as stored right now (the editor reads this, not the 15-second character list). */
+export async function getGallery(id: string) {
+  const ch = await prisma.character.findUnique({ where: { id }, select: { id: true } });
+  if (!ch) throw new NotFoundError('Character not found');
+  return { gallery: (await readGallery(id)).images };
+}
+
 /** Adds one photo to the end of the gallery. */
 export async function addGalleryImage(adminId: string, id: string, body: Buffer) {
   const ch = await prisma.character.findUnique({ where: { id }, select: { slug: true } });
