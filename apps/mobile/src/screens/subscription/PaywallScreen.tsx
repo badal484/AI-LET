@@ -7,6 +7,7 @@ import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from '../../services/storeBilling.js';
 import { IconButton, Button, Badge, ToastService } from '../../components/common/index.js';
+import { Shine } from '../../components/common/Shine.js';
 
 /**
  * Premium: ₹1 for the first day, then ₹499/month — the only plan (no free plan) — plus ₹49 message packs.
@@ -191,12 +192,15 @@ export const PaywallScreen: React.FC = () => {
                 })}
 
                 <Text style={styles.disclosure}>{disclosure}</Text>
-                <Button
-                  label={busy === 'subscribe' ? 'Opening Google Play…' : trial ? `Start for ${trial.price}` : 'Subscribe'}
-                  onPress={subscribe}
-                  disabled={busy !== null || !offer}
-                  accessibilityLabel={disclosure}
-                />
+                <View style={styles.ctaWrap}>
+                  <Button
+                    label={busy === 'subscribe' ? 'Opening Google Play…' : trial ? `Start for ${trial.price}` : 'Subscribe'}
+                    onPress={subscribe}
+                    disabled={busy !== null || !offer}
+                    accessibilityLabel={disclosure}
+                  />
+                  <Shine active={busy === null && Boolean(offer)} />
+                </View>
               </>
             )}
 
@@ -217,6 +221,7 @@ export const PaywallScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  ctaWrap: { borderRadius: radius.md, overflow: 'hidden' },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
