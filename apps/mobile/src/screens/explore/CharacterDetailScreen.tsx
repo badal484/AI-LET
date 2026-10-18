@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Share,
   TextInput,
-  Dimensions,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -178,11 +177,12 @@ export const CharacterDetailScreen: React.FC = () => {
   const [reportReason, setReportReason] = useState<ReportReasonCode>('UNSAFE');
   const [reportDetails, setReportDetails] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const handleSubmitReport = async () => {
     if (!profile) return;
     if (reportDetails.trim().length < 10) {
-      AppAlert.alert('Details Required', 'Please provide at least 10 characters explaining your report.');
+      AppAlert.alert('A little more detail', 'Please write at least 10 characters about what happened.');
       return;
     }
 
@@ -196,11 +196,11 @@ export const CharacterDetailScreen: React.FC = () => {
       setReportModalVisible(false);
       setReportDetails('');
       ToastService.show({
-        message: 'Report submitted. Our team will review this character.',
+        message: 'Thanks — our team will look into it.',
         type: 'success',
       });
     } catch (err: any) {
-      AppAlert.alert('Error', err.message || 'Failed to submit report.');
+      AppAlert.alert('Couldn’t send the report', err.message || 'Please try again in a moment.');
     } finally {
       setReportSubmitting(false);
     }
@@ -233,14 +233,24 @@ export const CharacterDetailScreen: React.FC = () => {
       <View style={styles.container}>
         <ErrorState
           type="general"
-          title="Companion Not Found"
-          message="This companion may have been updated or retired."
+          title="Character not found"
+          message="This character may have been updated or removed."
           onRetry={() => navigation.goBack()}
-          retryLabel="Go Back"
+          retryLabel="Go back"
         />
       </View>
     );
   }
+
+  const stage = getStageDetails(relationshipData?.stage);
+  const aboutRaw = (profile.longDescription || profile.shortDescription || '').trim();
+  const about = aboutRaw && aboutRaw !== profile.tagline?.trim() ? aboutRaw : '';
+  const starters = profile.conversationStarters.slice(0, 2);
+  const tags = profile.tags.slice(0, 4);
+  const galleryImages: unknown = (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages;
+  const gallery = Array.isArray(galleryImages)
+    ? galleryImages.filter((u): u is string => typeof u === 'string' && u.startsWith('http')).slice(0, 6)
+    : [];
 
   return (
     <View style={styles.container}>
@@ -304,10 +314,22 @@ export const CharacterDetailScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Content Body */}
+        {/* Content Body: who they are, how to start, their photos — nothing else. */}
         <View style={styles.bodyContent}>
           <Text style={styles.name}>{profile.name}</Text>
-          <Text style={styles.tagline}>{profile.tagline}</Text>
+          {profile.tagline ? <Text style={styles.tagline}>{profile.tagline}</Text> : null}
+
+          {/* How close you two are: a small chip, only once you've talked. */}
+          {relationshipData && profile.existingConversationId ? (
+            <View style={styles.connectionChip} accessibilityLabel={`${stage.label}, closeness ${closeness} out of 100`}>
+              <Text style={styles.connectionChipText}>
+                {stage.icon} {stage.label}
+              </Text>
+              <View style={styles.closenessTrack}>
+                <View style={[styles.closenessFill, { width: `${Math.max(6, closeness)}%` }]} />
+              </View>
+            </View>
+          ) : null}
 
           {/* Creator Attribution */}
           {profile.creator ? (
@@ -331,144 +353,75 @@ export const CharacterDetailScreen: React.FC = () => {
             </TouchableOpacity>
           ) : null}
 
-          {/* Social: follow (distinct from favorite) + public posts; hidden if social is unavailable */}
-
-          {/* Relationship Connection Card (if existing interaction) */}
-          {relationshipData && (
+          {/* About: three lines, the rest on tap. */}
+          {about ? (
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionHeading}>Your Connection</Text>
-              <View style={styles.connectionCard}>
-                <View style={styles.connectionHeader}>
-                  <View style={styles.connectionBadge}>
-                    <Text style={styles.connectionBadgeText}>
-                      {getStageDetails(relationshipData.stage).icon} {getStageDetails(relationshipData.stage).label}
-                    </Text>
-                  </View>
-                </View>
-                {/* Closeness as a bar, not a percentage. */}
-                <View
-                  style={styles.closenessTrack}
-                  accessibilityLabel={`Closeness ${closeness} out of 100`}
-                >
-                  <View style={[styles.closenessFill, { width: `${Math.max(6, closeness)}%` }]} />
-                </View>
-                <Text style={styles.connectionDescription}>
-                  {getStageDetails(relationshipData.stage).description}
-                </Text>
-              </View>
+              <Text style={styles.sectionHeading}>About</Text>
+              <Text style={styles.descriptionText} numberOfLines={aboutOpen ? undefined : 3}>
+                {about}
+              </Text>
+              {about.length > 140 ? (
+                <TouchableOpacity onPress={() => setAboutOpen((o) => !o)} hitSlop={8} accessibilityRole="button">
+                  <Text style={styles.moreText}>{aboutOpen ? 'Less' : 'More'}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
-          )}
+          ) : null}
 
-          {/* Quick Info Bar */}
-          <View style={styles.quickInfoBar}>
-            <View style={styles.quickInfoItem}>
-              <Text style={styles.quickInfoLabel}>VIBE</Text>
-              <Text style={styles.quickInfoValue}>{profile.traits.humorStyle || 'Witty'}</Text>
-            </View>
-            <View style={styles.quickInfoDivider} />
-            <View style={styles.quickInfoItem}>
-              <Text style={styles.quickInfoLabel}>PACE</Text>
-              <Text style={styles.quickInfoValue}>{profile.communication.pacing}</Text>
-            </View>
-            <View style={styles.quickInfoDivider} />
-            <View style={styles.quickInfoItem}>
-              <Text style={styles.quickInfoLabel}>LANGUAGE</Text>
-              {/* Every character answers in the language you write in. */}
-              <Text style={styles.quickInfoValue}>Hinglish · English</Text>
-            </View>
-          </View>
-
-          {/* Conversation Starters */}
-          {profile.conversationStarters.length > 0 && (
+          {/* Two ways to say hi. */}
+          {starters.length > 0 && (
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionHeading}>Try Starting With</Text>
+              <Text style={styles.sectionHeading}>Say hi</Text>
               <View style={styles.startersWrap}>
-                {profile.conversationStarters.map((prompt, idx) => (
+                {starters.map((prompt, idx) => (
                   <TouchableOpacity
                     key={idx}
                     style={styles.starterPill}
                     activeOpacity={0.8}
                     onPress={() => handleStartChat(prompt)}
                   >
-                    <Text style={styles.starterPromptText}>"{prompt}"</Text>
-                    <Text style={styles.starterArrow}>→</Text>
+                    <Text style={styles.starterPromptText} numberOfLines={2}>{prompt}</Text>
+                    <Icon name="arrow-right" size={16} color={darkThemeColors.accent} />
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
           )}
 
-          {/* Personality Breakdown */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sectionHeading}>Personality & Traits</Text>
-            <View style={styles.traitsCard}>
-              <View style={styles.traitRow}>
-                <Text style={styles.traitName}>Warmth</Text>
-                <View style={styles.traitMeter}>
-                  <View style={[styles.traitFill, { width: `${profile.traits.warmth}%` }]} />
-                </View>
-                <Text style={styles.traitValue}>{profile.traits.warmth}%</Text>
-              </View>
-              <View style={styles.traitRow}>
-                <Text style={styles.traitName}>Playfulness</Text>
-                <View style={styles.traitMeter}>
-                  <View style={[styles.traitFill, { width: `${profile.traits.playfulness}%` }]} />
-                </View>
-                <Text style={styles.traitValue}>{profile.traits.playfulness}%</Text>
-              </View>
-              <View style={styles.traitRow}>
-                <Text style={styles.traitName}>Curiosity</Text>
-                <View style={styles.traitMeter}>
-                  <View style={[styles.traitFill, { width: `${profile.traits.curiosity}%` }]} />
-                </View>
-                <Text style={styles.traitValue}>{profile.traits.curiosity}%</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* About / Lore */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.descriptionText}>
-              {profile.longDescription || profile.shortDescription}
-            </Text>
-          </View>
-
-          {/* A Sneak Peek into My Life */}
-          <View style={styles.sectionBlock}>
-            <Text style={styles.sneakPeekHeading}>A Sneak Peek into My Life</Text>
-            <View style={styles.galleryGrid}>
-              {[
-                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[0] || profile.coverImageUrl || profile.avatarUrl,
-                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[1] || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80',
-                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[2] || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=600&q=80',
-                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[3] || 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=600&q=80',
-                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[4] || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
-                (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages?.[5] || 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
-              ].map((imgUrl, idx) => (
-                <View key={idx} style={styles.galleryCard}>
-                  <Image source={{ uri: imgUrl }} style={styles.galleryImage} resizeMode="cover" />
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Tags */}
-          {profile.tags.length > 0 && (
+          {/* Their own photos only — never stock fillers. */}
+          {gallery.length > 0 && (
             <View style={styles.sectionBlock}>
-              <View style={styles.tagsContainer}>
-                {profile.tags.map((tag) => (
-                  <View key={tag.id} style={styles.tagChip}>
-                    <Text style={styles.tagChipText}>#{tag.displayName}</Text>
+              <Text style={styles.sectionHeading}>Photos</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
+                {gallery.map((imgUrl, idx) => (
+                  <View key={idx} style={styles.galleryCard}>
+                    <Image
+                      source={{ uri: imgUrl }}
+                      style={styles.galleryImage}
+                      resizeMode="cover"
+                      blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
+                    />
                   </View>
                 ))}
-              </View>
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <View style={styles.tagsContainer}>
+              {tags.map((tag) => (
+                <View key={tag.id} style={styles.tagChip}>
+                  <Text style={styles.tagChipText}>#{tag.displayName}</Text>
+                </View>
+              ))}
             </View>
           )}
 
           {/* Similar Companions */}
           {profile.similarCharacters.length > 0 && (
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionHeading}>Similar Companions</Text>
+              <Text style={styles.sectionHeading}>You might also like</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -481,7 +434,12 @@ export const CharacterDetailScreen: React.FC = () => {
                     activeOpacity={0.8}
                     onPress={() => handleOpenSimilar(sim)}
                   >
-                    <Avatar uri={sim.avatarUrl} name={sim.name} size="lg" />
+                    <Avatar
+                      uri={sim.avatarUrl}
+                      name={sim.name}
+                      size="lg"
+                      blurRadius={ageRestricted(sim) ? AGE_BLUR_RADIUS : 0}
+                    />
                     <Text style={styles.similarName} numberOfLines={1}>
                       {sim.name}
                     </Text>
@@ -499,9 +457,9 @@ export const CharacterDetailScreen: React.FC = () => {
       {/* Report Modal Dialog */}
       <ModalDialog
         visible={reportModalVisible}
-        title="Report Character"
-        description="Help keep our community safe. Select a reason and explain what happened:"
-        primaryLabel="Submit Report"
+        title="Report character"
+        description="Pick a reason and tell us what happened."
+        primaryLabel="Send report"
         primaryVariant="danger"
         isPrimaryLoading={reportSubmitting}
         onPrimaryAction={handleSubmitReport}
@@ -525,7 +483,7 @@ export const CharacterDetailScreen: React.FC = () => {
 
         <TextInput
           style={styles.modalTextInput}
-          placeholder="Describe what went wrong (min 10 characters)..."
+          placeholder="What went wrong? (at least 10 characters)"
           placeholderTextColor={darkThemeColors.textMuted}
           multiline
           numberOfLines={4}
@@ -545,10 +503,10 @@ export const CharacterDetailScreen: React.FC = () => {
             {ageRestricted(profile)
               ? '18+ only'
               : profile.isLockedForUser
-              ? 'Unlock Companion with PRO'
+              ? 'Unlock with Premium'
               : profile.existingConversationId
-              ? 'Continue Chatting'
-              : 'Start Chatting'}
+              ? 'Continue chat'
+              : 'Start chat'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -623,8 +581,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   tagline: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 21,
     color: darkThemeColors.textMuted,
     marginTop: spacing.xs,
   },
@@ -643,38 +601,6 @@ const styles = StyleSheet.create({
     color: darkThemeColors.accent,
     fontWeight: '700',
   },
-  quickInfoBar: {
-    flexDirection: 'row',
-    backgroundColor: darkThemeColors.surfaceElevated,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    marginTop: spacing.lg,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-    alignItems: 'center',
-  },
-  quickInfoItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  quickInfoLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: darkThemeColors.textMuted,
-    letterSpacing: 0.5,
-  },
-  quickInfoValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: darkThemeColors.textPrimary,
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-  quickInfoDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: darkThemeColors.borderSubtle,
-  },
   sectionBlock: {
     marginTop: spacing.xl,
   },
@@ -690,6 +616,7 @@ const styles = StyleSheet.create({
   starterPill: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: spacing.sm,
     alignItems: 'center',
     backgroundColor: darkThemeColors.surfaceElevated,
     padding: spacing.md,
@@ -702,58 +629,32 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: darkThemeColors.textSecondary,
     flex: 1,
-    fontStyle: 'italic',
-  },
-  starterArrow: {
-    color: darkThemeColors.accent,
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: spacing.sm,
-  },
-  traitsCard: {
-    backgroundColor: darkThemeColors.surfaceElevated,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-    gap: spacing.md,
-  },
-  traitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  traitName: {
-    fontSize: 12,
-    color: darkThemeColors.textSecondary,
-    width: 80,
-    fontWeight: '500',
-  },
-  traitMeter: {
-    flex: 1,
-    height: 6,
-    backgroundColor: darkThemeColors.surface,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginHorizontal: spacing.md,
-  },
-  traitFill: {
-    height: '100%',
-    backgroundColor: darkThemeColors.accent,
-    borderRadius: 3,
-  },
-  traitValue: {
-    fontSize: 12,
-    color: darkThemeColors.textMuted,
-    width: 35,
-    textAlign: 'right',
   },
   descriptionText: {
     fontSize: 14,
-    lineHeight: 22,
+    lineHeight: 21,
     color: darkThemeColors.textSecondary,
   },
+  moreText: { marginTop: 6, fontSize: 13, fontWeight: '700', color: darkThemeColors.accent },
+  connectionChip: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(168, 85, 247, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(168, 85, 247, 0.32)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  connectionChipText: { fontSize: 12, fontWeight: '700', color: '#E9D5FF' },
+  closenessTrack: { width: 56, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
+  closenessFill: { height: 4, borderRadius: 2, backgroundColor: '#C084FC' },
+  galleryRow: { gap: 10 },
   tagsContainer: {
+    marginTop: spacing.lg,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
@@ -856,22 +757,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.2,
   },
-  sneakPeekHeading: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 14,
-    letterSpacing: -0.3,
-  },
-  galleryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
   galleryCard: {
-    width: (Dimensions.get('window').width - 44) / 2,
-    height: 220,
+    width: 130,
+    height: 170,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#160E26',
@@ -881,44 +769,5 @@ const styles = StyleSheet.create({
   galleryImage: {
     width: '100%',
     height: '100%',
-  },
-  connectionCard: {
-    backgroundColor: '#160E26',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.25)',
-  },
-  connectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  connectionBadge: {
-    backgroundColor: 'rgba(168, 85, 247, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.4)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
-  },
-  connectionBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#E9D5FF',
-  },
-  connectionPercent: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#C084FC',
-  },
-  closenessTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginTop: 12 },
-  closenessFill: { height: 6, borderRadius: 3, backgroundColor: '#C084FC' },
-  connectionDescription: {
-    marginTop: 10,
-    fontSize: 13,
-    color: '#94A3B8',
-    lineHeight: 18,
   },
 });
