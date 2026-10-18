@@ -22,8 +22,9 @@ pnpm install                                  # always pnpm (lockfile), never np
 pnpm -r run typecheck
 cd apps/api && npx vitest run                 # needs local Postgres + Redis; migrates the test DB
 cd apps/api && npx tsx src/server.ts          # API on :4000 (dev)
-cd apps/mobile/android && ./gradlew assembleRelease     # test APK (debug key)
-cd apps/mobile/android && ./gradlew bundleRelease -PloviraVersionCode=N   # Play AAB (needs upload key)
+cd apps/mobile/android && ./gradlew assembleRelease -PallowDebugSignedRelease   # local test APK (debug key, opt-in)
+cd apps/mobile/android && ./gradlew bundleRelease -PloviraVersionCode=N   # Play AAB: upload key only, signature checked
+cd apps/mobile/android && ./scripts/verify-release-signing.sh               # signing regression check (also in CI)
 ```
 
 ## Production

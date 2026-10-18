@@ -89,6 +89,10 @@ android {
         versionCode((project.findProperty('loviraVersionCode') ?: '1') as Integer)
         versionName((project.findProperty('loviraVersionName') ?: '1.0') as String)
     }
+    // Release signing (audit C-1): the upload key when it's configured; otherwise a release build refuses to
+    // run — except a local test APK asked for explicitly with -PallowDebugSignedRelease (never a Play bundle).
+    def hasUploadKey = project.hasProperty('LOVIRA_UPLOAD_STORE_FILE')
+    def allowDebugSignedRelease = project.hasProperty('allowDebugSignedRelease')
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -101,7 +105,7 @@ android {
         //   LOVIRA_UPLOAD_STORE_FILE=/absolute/path/lovira-upload.jks
         //   LOVIRA_UPLOAD_STORE_PASSWORD=…   LOVIRA_UPLOAD_KEY_ALIAS=lovira-upload   LOVIRA_UPLOAD_KEY_PASSWORD=…
         // See docs/PLAY_STORE_RELEASE_CHECKLIST.md (keep a backup: a lost upload key means a reset request to Google).
-        if (project.hasProperty('LOVIRA_UPLOAD_STORE_FILE')) {
+        if (hasUploadKey) {
             release {
                 storeFile file(LOVIRA_UPLOAD_STORE_FILE)
                 storePassword LOVIRA_UPLOAD_STORE_PASSWORD
@@ -115,9 +119,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Never silently the debug key: upload key, or (local test APK only, opted in) the debug key, or none —
+            // and with none the release tasks stop with an explanation (see the checks at the end of this file).
+            signingConfig hasUploadKey ? signingConfigs.release : (allowDebugSignedRelease ? signingConfigs.debug : null)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
@@ -135,11 +139,39 @@ dependencies {
     }
 }
 
-// A Play bundle must be signed with the upload key — never the public debug key.
+// ── Release signing checks (audit C-1) ─────────────────────────────────────────────────────────────────────
+def uploadKeyConfigured = project.hasProperty('LOVIRA_UPLOAD_STORE_FILE')
+
+// Any release build: the upload key must be configured, or a debug-signed test APK explicitly requested.
+gradle.taskGraph.whenReady { graph ->
+    def releaseTasks = graph.allTasks.findAll { it.project == project && it.name ==~ /(assemble|bundle|package|install)Release/ }
+    if (releaseTasks.isEmpty()) return
+    def isBundle = releaseTasks.any { it.name == 'bundleRelease' }
+    if (isBundle && project.hasProperty('allowDebugSignedRelease')) {
+        throw new GradleException('bundleRelease is for Google Play and is never signed with the debug key — remove -PallowDebugSignedRelease.')
+    }
+    if (!uploadKeyConfigured && (isBundle || !project.hasProperty('allowDebugSignedRelease'))) {
+        throw new GradleException('Release builds need the upload key: set LOVIRA_UPLOAD_STORE_FILE and the passwords in ~/.gradle/gradle.properties (docs/PLAY_STORE_RELEASE_CHECKLIST.md). For a local test APK only: ./gradlew assembleRelease -PallowDebugSignedRelease')
+    }
+    if (uploadKeyConfigured && !file(LOVIRA_UPLOAD_STORE_FILE).exists()) {
+        throw new GradleException("The upload keystore was not found at LOVIRA_UPLOAD_STORE_FILE (${LOVIRA_UPLOAD_STORE_FILE}).")
+    }
+}
+
+// After building the Play bundle, check who actually signed it: never the public Android debug certificate.
 tasks.matching { it.name == 'bundleRelease' }.configureEach {
-    doFirst {
-        if (!project.hasProperty('LOVIRA_UPLOAD_STORE_FILE')) {
-            throw new GradleException('bundleRelease needs the upload key: set LOVIRA_UPLOAD_STORE_FILE (and the passwords) in ~/.gradle/gradle.properties — see docs/PLAY_STORE_RELEASE_CHECKLIST.md')
+    doLast {
+        def aab = file("${buildDir}/outputs/bundle/release/app-release.aab")
+        if (!aab.exists()) throw new GradleException("Expected ${aab} after bundleRelease")
+        def proc = ['keytool', '-printcert', '-jarfile', aab.absolutePath].execute()
+        def stdout = new StringBuilder(), stderr = new StringBuilder()
+        proc.waitForProcessOutput(stdout, stderr)
+        def certs = stdout.toString() + stderr.toString()
+        if (!certs.contains('Owner:')) throw new GradleException("Could not read the signature of ${aab.name}:\n${certs}")
+        if (certs.contains('CN=Android Debug')) {
+            aab.delete()
+            throw new GradleException('The Play bundle was signed with the Android debug key — deleted it. Check the upload-key settings.')
         }
+        logger.lifecycle("✓ ${aab.name} is signed with the upload key (not the debug key).")
     }
 }

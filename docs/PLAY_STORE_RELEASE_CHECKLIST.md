@@ -34,6 +34,9 @@ Items marked **OWNER** need facts, money or a decision from the owner. Nothing h
 - [x] Release talks only to the production API over HTTPS; no demo credentials in the bundle (F-09).
 - [x] `bundleRelease` refuses to build without the upload key.
 - [ ] Build: `cd apps/mobile/android && ./gradlew bundleRelease -PloviraVersionCode=1 -PloviraVersionName=1.0.0`
+  The build stops without the upload key, and after building it checks the bundle's signature and refuses the
+  Android debug certificate (`✓ app-release.aab is signed with the upload key` in the output). A local test APK
+  signed with the debug key needs `./gradlew assembleRelease -PallowDebugSignedRelease` and can't go to Play.
       → `app/build/outputs/bundle/release/app-release.aab`. Raise `loviraVersionCode` for every upload.
 - [ ] Record the AAB's SHA-256 (`shasum -a 256 app-release.aab`) in the release notes.
 - [ ] Install the release on at least one 64-bit and one 32-bit phone (internal testing track) and run the

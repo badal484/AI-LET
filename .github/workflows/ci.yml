@@ -74,3 +74,24 @@ jobs:
 
       - name: Verify Build
         run: pnpm build
+
+  # Audit C-1: release builds never silently use the Android debug key (throwaway keystore, never the real one).
+  android-release-signing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: pnpm install --frozen-lockfile
+      - name: Release signing checks
+        working-directory: apps/mobile/android
+        run: ./scripts/verify-release-signing.sh
