@@ -441,7 +441,8 @@ function renderSection(
               <BottomFade height={CARD_HEIGHT * 0.55} />
               <View style={styles.cardBottomOverlay}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.cardName} numberOfLines={1}>
+                  {/* The card is a fixed size: big phone fonts grow this text only a little, and a long name shrinks to fit. */}
+                  <Text style={styles.cardName} numberOfLines={1} maxFontSizeMultiplier={1.1} adjustsFontSizeToFit minimumFontScale={0.85}>
                     {char.name}
                   </Text>
                   <View style={styles.onlineDot} />
@@ -450,7 +451,7 @@ function renderSection(
                 <View style={styles.tagRow}>
                   {hashtags.map((tag, idx) => (
                     <View key={idx} style={styles.hashtagPill}>
-                      <Text style={styles.cardHashtag} numberOfLines={1} ellipsizeMode="tail">
+                      <Text style={styles.cardHashtag} numberOfLines={1} ellipsizeMode="tail" maxFontSizeMultiplier={1.1}>
                         {tag}
                       </Text>
                     </View>
