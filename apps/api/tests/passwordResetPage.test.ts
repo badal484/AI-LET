@@ -17,7 +17,7 @@ describe('password reset by email link', () => {
     const email = `reset_${rid()}@test.local`;
     const res = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email, password: 'OldPassword123!', displayName: 'Reset Test', device: { platform: 'android', deviceName: 'Test' } });
+      .send({ ageConfirmed: true, email, password: 'OldPassword123!', displayName: 'Reset Test', device: { platform: 'android', deviceName: 'Test' } });
     expect(res.status).toBe(201);
     return email;
   }

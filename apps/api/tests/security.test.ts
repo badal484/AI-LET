@@ -64,7 +64,7 @@ describe('Security Controls & Boundary Enforcement Tests', () => {
   describe('IDOR & Principal Ownership Enforcement', () => {
     it('prevents User A from revoking User B device', async () => {
       // 1. Create User A
-      const userAReg = await request(app).post('/api/v1/auth/register').send({
+      const userAReg = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'userA@example.com',
         password: 'PasswordA123!',
         displayName: 'User A',
@@ -72,7 +72,7 @@ describe('Security Controls & Boundary Enforcement Tests', () => {
       const tokenA = userAReg.body.data.tokens.accessToken;
 
       // 2. Create User B with a device
-      const userBReg = await request(app).post('/api/v1/auth/register').send({
+      const userBReg = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'userB@example.com',
         password: 'PasswordB123!',
         displayName: 'User B',
@@ -103,7 +103,7 @@ describe('Security Controls & Boundary Enforcement Tests', () => {
     });
 
     it('derives user identity strictly from authenticated principal, ignoring spoofed body userId', async () => {
-      const userReg = await request(app).post('/api/v1/auth/register').send({
+      const userReg = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'principal@example.com',
         password: 'Password123!',
         displayName: 'Legit User',

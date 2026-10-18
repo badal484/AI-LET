@@ -1,3 +1,4 @@
+import { reportScreenError } from '../../services/monitoring/crashReporting.js';
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Button } from './Button.js';
@@ -27,6 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    reportScreenError(error, (errorInfo.componentStack ?? '').trim().split('\n')[0] ?? 'unknown');
     if (__DEV__) {
       console.error('[ErrorBoundary caught error]:', error.message, errorInfo.componentStack);
     }

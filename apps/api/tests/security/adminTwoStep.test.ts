@@ -113,7 +113,7 @@ describe('per-account sign-in lockout', () => {
 
   it('a user account locks after 10 wrong passwords', async () => {
     const email = `ulock_${rid()}@test.local`;
-    const reg = await request(app).post('/api/v1/auth/register').send({ email, password: 'RightPassword123!', displayName: 'Lock', device: { platform: 'android', deviceName: 'Test' } });
+    const reg = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true, email, password: 'RightPassword123!', displayName: 'Lock', device: { platform: 'android', deviceName: 'Test' } });
     expect(reg.status).toBe(201);
     for (let i = 0; i < 10; i++) {
       expect((await request(app).post('/api/v1/auth/login').send({ email, password: `Wrong${i}Password!` })).status).toBe(401);

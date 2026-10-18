@@ -146,7 +146,7 @@ describe('Admin RBAC & Privilege Escalation Defense Tests', () => {
 
     it('rejects regular consumer users from accessing admin routes', async () => {
       // Register regular consumer user
-      const userReg = await request(app).post('/api/v1/auth/register').send({
+      const userReg = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'consumer@example.com',
         password: 'UserPassword123!',
         displayName: 'Consumer User',
@@ -172,7 +172,7 @@ describe('Admin RBAC & Privilege Escalation Defense Tests', () => {
       });
       const adminToken = adminLogin.body.data.token;
 
-      const userReg = await request(app).post('/api/v1/auth/register').send({
+      const userReg = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'badactor@example.com',
         password: 'UserPass123!',
         displayName: 'Bad Actor',

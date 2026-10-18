@@ -22,6 +22,7 @@ describe('Authentication & Identity Integration Tests', () => {
   describe('POST /api/v1/auth/register', () => {
     it('successfully registers a user, profile, device and returns tokens', async () => {
       const payload = {
+        ageConfirmed: true,
         email: 'Test.User@Example.com',
         password: 'SecurePassword123!',
         displayName: 'Test User',
@@ -50,13 +51,14 @@ describe('Authentication & Identity Integration Tests', () => {
 
     it('rejects duplicate registration with 409 conflict', async () => {
       const payload = {
+        ageConfirmed: true,
         email: 'duplicate@example.com',
         password: 'SecurePassword123!',
         displayName: 'Duplicate User',
       };
 
       await request(app).post('/api/v1/auth/register').send(payload);
-      const secondRes = await request(app).post('/api/v1/auth/register').send({
+      const secondRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         ...payload,
         email: 'DUPLICATE@EXAMPLE.COM', // Case insensitive collision
       });
@@ -66,8 +68,18 @@ describe('Authentication & Identity Integration Tests', () => {
       expect(secondRes.body.error.code).toBe('AUTH_EMAIL_ALREADY_EXISTS');
     });
 
+    it('refuses sign-up without the 18+ confirmation (audit M-6)', async () => {
+      const base = { email: 'young@example.com', password: 'SecurePassword123!', displayName: 'Young' };
+      const missing = await request(app).post('/api/v1/auth/register').send(base);
+      expect(missing.status).toBe(400);
+      expect(JSON.stringify(missing.body)).toContain('18 or older');
+      expect((await request(app).post('/api/v1/auth/register').send({ ...base, ageConfirmed: false })).status).toBe(400);
+      expect(await prisma.user.count({ where: { normalizedEmail: 'young@example.com' } })).toBe(0);
+    });
+
     it('rejects passwords shorter than 8 characters', async () => {
       const payload = {
+        ageConfirmed: true,
         email: 'short@example.com',
         password: 'short',
         displayName: 'Short Password User',
@@ -83,7 +95,7 @@ describe('Authentication & Identity Integration Tests', () => {
   describe('POST /api/v1/auth/login', () => {
     it('authenticates valid credentials and creates new session', async () => {
       // Register initial account
-      await request(app).post('/api/v1/auth/register').send({
+      await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'login.test@example.com',
         password: 'Password123!',
         displayName: 'Login User',
@@ -101,7 +113,7 @@ describe('Authentication & Identity Integration Tests', () => {
     });
 
     it('rejects invalid password with 401 without revealing account details', async () => {
-      await request(app).post('/api/v1/auth/register').send({
+      await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'wrongpass@example.com',
         password: 'Password123!',
         displayName: 'Wrong Pass User',
@@ -118,7 +130,7 @@ describe('Authentication & Identity Integration Tests', () => {
     });
 
     it('rejects suspended accounts with 403', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'suspended@example.com',
         password: 'Password123!',
         displayName: 'Suspended User',
@@ -143,7 +155,7 @@ describe('Authentication & Identity Integration Tests', () => {
 
   describe('POST /api/v1/auth/refresh (Token Family Rotation & Reuse Detection)', () => {
     it('rotates refresh token on valid refresh request', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'rotate@example.com',
         password: 'Password123!',
         displayName: 'Rotate User',
@@ -162,7 +174,7 @@ describe('Authentication & Identity Integration Tests', () => {
     });
 
     it('detects token reuse and immediately invalidates entire token family', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'reuse@example.com',
         password: 'Password123!',
         displayName: 'Reuse User',
@@ -197,7 +209,7 @@ describe('Authentication & Identity Integration Tests', () => {
 
   describe('Password Reset & Email Verification Flows', () => {
     it('completes password reset and invalidates all active sessions', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'resetme@example.com',
         password: 'OldPassword123!',
         displayName: 'Reset Me',
@@ -239,7 +251,7 @@ describe('Authentication & Identity Integration Tests', () => {
     });
 
     it('verifies email address with valid single-use token', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'verify@example.com',
         password: 'Password123!',
         displayName: 'Verify User',
@@ -266,7 +278,7 @@ describe('Authentication & Identity Integration Tests', () => {
 
   describe('Session Management & Logout', () => {
     it('lists active sessions and revokes specific session', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'sessions@example.com',
         password: 'Password123!',
         displayName: 'Sessions User',
@@ -298,7 +310,7 @@ describe('Authentication & Identity Integration Tests', () => {
     });
 
     it('logout-all revokes all sessions across multiple devices', async () => {
-      const regRes = await request(app).post('/api/v1/auth/register').send({
+      const regRes = await request(app).post('/api/v1/auth/register').send({ ageConfirmed: true,
         email: 'multidevice@example.com',
         password: 'Password123!',
         displayName: 'Multi Device User',

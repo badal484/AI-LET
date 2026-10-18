@@ -2,6 +2,7 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
+apply plugin: "com.google.firebase.crashlytics"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -123,6 +124,9 @@ android {
             // and with none the release tasks stop with an explanation (see the checks at the end of this file).
             signingConfig hasUploadKey ? signingConfigs.release : (allowDebugSignedRelease ? signingConfigs.debug : null)
             minifyEnabled enableProguardInReleaseBuilds
+            // Crashlytics turns obfuscated stack traces back into readable ones with this mapping file; CI (no real
+            // Firebase project) builds with -PnoCrashlyticsUpload.
+            firebaseCrashlytics { mappingFileUploadEnabled !project.hasProperty('noCrashlyticsUpload') }
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }

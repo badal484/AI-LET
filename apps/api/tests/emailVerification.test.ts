@@ -36,7 +36,7 @@ describe('email verification', () => {
   async function register(email: string) {
     const res = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email, password: 'Password123!', displayName: 'Verify Test', device: { platform: 'android', deviceName: 'Test' } });
+      .send({ ageConfirmed: true, email, password: 'Password123!', displayName: 'Verify Test', device: { platform: 'android', deviceName: 'Test' } });
     expect(res.status).toBe(201);
     return res.body.data.tokens.accessToken as string;
   }

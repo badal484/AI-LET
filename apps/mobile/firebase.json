@@ -1,6 +1,10 @@
 {
   "react-native": {
     "messaging_android_notification_channel_id": "messages",
-    "messaging_android_headless_task_timeout": 30000
+    "messaging_android_headless_task_timeout": 30000,
+    "crashlytics_debug_enabled": false,
+    "crashlytics_auto_collection_enabled": true,
+    "crashlytics_is_error_generation_on_js_crash_enabled": true,
+    "crashlytics_javascript_exception_handler_chaining_enabled": true
   }
 }

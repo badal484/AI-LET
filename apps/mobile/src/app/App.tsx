@@ -22,6 +22,7 @@ import { OnboardingNavigator } from '../navigation/OnboardingNavigator.js';
 import { RootNavigator } from '../navigation/RootNavigator.js';
 import type { RootStackParamList } from '../navigation/types.js';
 import { installStorageEngines } from '../services/storage/storageEngines.js';
+import { initCrashReporting, setCrashUser } from '../services/monitoring/crashReporting.js';
 import { Analytics } from '../services/analytics/AnalyticsSDK.js';
 import { APP_VERSION } from '../config/appInfo.js';
 import { api } from '../services/api/client.js';
@@ -37,6 +38,7 @@ import { CampaignMessages } from '../components/CampaignMessages.js';
 
 // Persistent storage must be attached before anything reads a session, draft or queued event.
 installStorageEngines();
+initCrashReporting();
 Analytics.initialize({ appVersion: APP_VERSION }).catch(() => undefined);
 
 const queryClient = new QueryClient({
@@ -145,6 +147,7 @@ export const AppContent: React.FC = () => {
   useEffect(() => {
     if (status === 'authenticated' && userId) {
       Analytics.identify(userId);
+      setCrashUser(userId);
       // Keep the profile's timezone in sync with the phone: quiet hours, "good morning" and
       // "today" on the server all depend on it.
       const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -153,6 +156,7 @@ export const AppContent: React.FC = () => {
       }
     } else if (status === 'unauthenticated' || status === 'session-expired') {
       Analytics.reset().catch(() => undefined);
+      setCrashUser(null);
     }
   }, [status, userId]);
 

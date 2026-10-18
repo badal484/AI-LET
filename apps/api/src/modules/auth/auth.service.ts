@@ -164,7 +164,7 @@ export class AuthService {
       action: 'USER_REGISTERED',
       resourceType: 'User',
       resourceId: result.user.id,
-      metadata: { email: normalizedEmail },
+      metadata: { email: normalizedEmail, ageConfirmed18Plus: true },
       ipAddress,
       userAgent,
     });

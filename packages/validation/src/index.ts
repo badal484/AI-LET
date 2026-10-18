@@ -50,6 +50,8 @@ export type DeviceMetadataInput = z.infer<typeof deviceMetadataSchema>;
 
 export const registerRequestSchema = z.object({
   email: z.string().email('Invalid email address').max(255),
+  // Loveek is for adults only: the sign-up form's "I am 18 or older" box (audit M-6). Recorded in the audit log.
+  ageConfirmed: z.literal(true, { errorMap: () => ({ message: 'You must be 18 or older to use Loveek' }) }),
   password: passwordSchema,
   displayName: z.string().min(1, 'Display name is required').max(50),
   username: z
