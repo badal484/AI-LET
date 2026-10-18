@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboardingStore } from '../../stores/onboardingStore.js';
+import { useAuthStore } from '../../stores/authStore.js';
+import { ToastService } from '../../components/common/Toast.js';
 import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
-import type { OnboardingStackParamList } from '../../navigation/OnboardingNavigator.js';
 
 interface LanguageOption {
   code: string;
@@ -28,30 +28,36 @@ const GENDERS = [
   { code: 'unspecified', label: 'Prefer not to say' },
 ] as const;
 
+/**
+ * The one onboarding step (owner's decision, 18 Oct 2026), both answers required: the language characters text in
+ * (their first messages; then they follow how the person writes — any language later added here works the same
+ * way) and how they address the person (Hinglish grammar: "thak gaye ho?" / "thak gayi ho?"). Then Home.
+ */
 export const LanguageSelectScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<OnboardingStackParamList>>();
   const { selectedLanguage, setLanguage, selectedGender, setGender, completeCurrentStep, isSubmitting } = useOnboardingStore();
+  const bootstrap = useAuthStore((s) => s.bootstrap);
+  const ready = Boolean(selectedLanguage) && Boolean(selectedGender);
+  const insets = useSafeAreaInsets();
 
   const handleContinue = async () => {
+    if (!ready) return;
     try {
       await completeCurrentStep('LANGUAGE');
-      navigation.navigate('InterestsSelect');
-    } catch {
-      navigation.navigate('InterestsSelect');
+      await bootstrap(); // the profile is now onboarded → the app opens Home
+    } catch (err) {
+      ToastService.show({ message: (err as Error)?.message || "Couldn't save that — please try again.", type: 'error', duration: 3500 });
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.lg }]}>
       <View style={styles.header}>
-        <Text style={styles.stepIndicator}>STEP 1 OF 4</Text>
-        <Text style={styles.title}>How should we talk?</Text>
-        <Text style={styles.subtitle}>
-          Pick the language your characters text you in. You can change this anytime in settings.
-        </Text>
+        <Text style={styles.title}>Before we start</Text>
+        <Text style={styles.subtitle}>Two quick choices so your characters talk to you the right way. You can change them later in Profile.</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}>
+        <Text style={styles.sectionLabel}>Characters text you in</Text>
         {LANGUAGES.map(lang => {
           const isSelected = selectedLanguage === lang.code;
           return (
@@ -78,7 +84,7 @@ export const LanguageSelectScreen: React.FC = () => {
           );
         })}
 
-        <Text style={styles.sectionLabel}>Talk to me as (optional)</Text>
+        <Text style={styles.sectionLabel}>Characters talk to you as</Text>
         <View style={styles.genderRow}>
           {GENDERS.map(g => {
             const isSelected = selectedGender === g.code;
@@ -98,13 +104,15 @@ export const LanguageSelectScreen: React.FC = () => {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryButton, isSubmitting && styles.buttonDisabled]}
+          style={[styles.primaryButton, (!ready || isSubmitting) && styles.buttonDisabled]}
           activeOpacity={0.8}
-          disabled={isSubmitting}
+          disabled={!ready || isSubmitting}
           onPress={handleContinue}
+          accessibilityState={{ disabled: !ready || isSubmitting }}
         >
-          <Text style={styles.primaryButtonText}>Continue →</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Saving…' : 'Start chatting'}</Text>
         </TouchableOpacity>
+        {!ready && <Text style={styles.hint}>Choose both to continue</Text>}
       </View>
     </View>
   );
@@ -243,6 +251,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.45,
+  },
+  hint: {
+    ...typography.bodySmall,
+    color: darkThemeColors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
 });

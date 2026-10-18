@@ -18,14 +18,18 @@ import type {
 } from '@ai-companion/validation';
 
 export class OnboardingService {
-  private static readonly STEP_ORDER: OnboardingStepKey[] = [
-    'WELCOME',
-    'LANGUAGE',
-    'INTERESTS',
-    'STYLE',
-    'CHARACTER_SELECTION',
-    'COMPLETED',
-  ];
+  /**
+   * One required step (owner's decision, 18 Oct 2026): the language characters write in and how they address
+   * the person (Hinglish grammar: "kaise ho" / "kaisi ho"). Interests, style and a starter character were dropped —
+   * characters follow how people actually write, and Home shows every character. Older steps sent by older apps
+   * are still accepted and lead straight to the end.
+   */
+  private static readonly STEP_ORDER: OnboardingStepKey[] = ['WELCOME', 'LANGUAGE', 'COMPLETED'];
+
+  /** Language and gender are required before the app opens (the LANGUAGE step must be done). */
+  private static languageDone(profile: { onboardingCompletedSteps: unknown }): boolean {
+    return Array.isArray(profile.onboardingCompletedSteps) && (profile.onboardingCompletedSteps as string[]).includes('LANGUAGE');
+  }
 
   /**
    * Retrieves the user's current durable onboarding state and starter options.
@@ -128,6 +132,10 @@ export class OnboardingService {
       throw new AppError('User profile not found', 404, ErrorCode.NOT_FOUND);
     }
 
+    if (input.stepKey === 'LANGUAGE' && (input.skipped || !input.language || !input.userGender)) {
+      throw new AppError('Choose your language and how characters should talk to you', 400, ErrorCode.VALIDATION_ERROR);
+    }
+
     const currentCompleted = Array.isArray(profile.onboardingCompletedSteps)
       ? (profile.onboardingCompletedSteps as string[])
       : [];
@@ -219,7 +227,15 @@ export class OnboardingService {
   /**
    * Skips onboarding and unlocks full default experience.
    */
+  private static async requireLanguageStep(userId: string): Promise<void> {
+    const profile = await prisma.userProfile.findUnique({ where: { userId }, select: { onboardingCompletedSteps: true } });
+    if (!profile || !OnboardingService.languageDone(profile)) {
+      throw new AppError('Choose your language and how characters should talk to you first', 400, ErrorCode.VALIDATION_ERROR);
+    }
+  }
+
   public static async skipOnboarding(userId: string): Promise<OnboardingProgress> {
+    await OnboardingService.requireLanguageStep(userId);
     const now = new Date();
     const updated = await prisma.userProfile.update({
       where: { userId },
@@ -262,6 +278,7 @@ export class OnboardingService {
     conversationId?: string;
     character?: OnboardingStarterCharacterItem | null;
   }> {
+    await OnboardingService.requireLanguageStep(userId);
     const now = new Date();
 
     // 1. Update preferences if supplied

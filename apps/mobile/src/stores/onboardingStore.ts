@@ -35,7 +35,7 @@ interface OnboardingState {
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   currentStep: 'WELCOME',
   progress: null,
-  selectedLanguage: 'hinglish',
+  selectedLanguage: '', // chosen on the onboarding screen (required)
   selectedGender: null,
   selectedCategories: [],
   selectedStyle: 'CASUAL',

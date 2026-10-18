@@ -384,7 +384,8 @@ describe('Phase 13: Production Onboarding, Preferences, First Session & Activati
     });
 
     it('completes onboarding flow and persists completion timestamp', async () => {
-      (prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile);
+      // Language and gender were chosen first (the one required step).
+      (prisma.userProfile.findUnique as any).mockResolvedValue({ ...mockUserProfile, onboardingCompletedSteps: ['LANGUAGE'] });
       (prisma.userProfile.update as any).mockResolvedValue({
         ...mockUserProfile,
         onboardingStatus: 'COMPLETED',
@@ -411,7 +412,7 @@ describe('Phase 13: Production Onboarding, Preferences, First Session & Activati
     });
 
     it('skips onboarding flow safely without corrupting profile preferences', async () => {
-      (prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile);
+      (prisma.userProfile.findUnique as any).mockResolvedValue({ ...mockUserProfile, onboardingCompletedSteps: ['LANGUAGE'] });
       (prisma.userProfile.update as any).mockResolvedValue({
         ...mockUserProfile,
         onboardingStatus: 'SKIPPED',
@@ -422,6 +423,29 @@ describe('Phase 13: Production Onboarding, Preferences, First Session & Activati
 
       const result = await OnboardingService.skipOnboarding(mockUserId);
       expect(result.status).toBe('SKIPPED');
+    });
+  });
+
+  describe('OnboardingService — one required step: language + gender (18 Oct 2026)', () => {
+    it('the language step needs both a language and how to address them', async () => {
+      (prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish' } as any)).rejects.toThrow(/language and how characters/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', userGender: 'female' } as any)).rejects.toThrow(/language and how characters/);
+      await expect(OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', skipped: true } as any)).rejects.toThrow(/language and how characters/);
+    });
+
+    it('after the language step onboarding is finished (no interests, style or starter character)', async () => {
+      (prisma.userProfile.findUnique as any).mockResolvedValue(mockUserProfile);
+      (prisma.userProfile.update as any).mockResolvedValue({ ...mockUserProfile, onboardingStatus: 'COMPLETED', onboardingCompleted: true, onboardingCurrentStep: 'COMPLETED' });
+      const result = await OnboardingService.completeStep(mockUserId, { stepKey: 'LANGUAGE', language: 'hinglish', userGender: 'female' } as any);
+      expect(result.nextStep).toBe('COMPLETED');
+      expect(prisma.userProfile.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ onboardingCompleted: true, onboardingCurrentStep: 'COMPLETED' }) }));
+    });
+
+    it('skipping or completing without the language step is refused', async () => {
+      (prisma.userProfile.findUnique as any).mockResolvedValue({ ...mockUserProfile, onboardingCompletedSteps: ['WELCOME'] });
+      await expect(OnboardingService.skipOnboarding(mockUserId)).rejects.toThrow(/language/);
+      await expect(OnboardingService.completeOnboarding(mockUserId, {} as any)).rejects.toThrow(/language/);
     });
   });
 
