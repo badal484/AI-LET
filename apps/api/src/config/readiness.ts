@@ -1,4 +1,4 @@
-import { emailConfigured } from '../infrastructure/email/email.js';
+import { emailConfigured, emailTestMode } from '../infrastructure/email/email.js';
 import { usesPooler } from '../infrastructure/database/poolUrl.js';
 
 /**
@@ -9,6 +9,7 @@ import { usesPooler } from '../infrastructure/database/poolUrl.js';
 export function configWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
   const out: string[] = [];
   if (!emailConfigured()) out.push('Email is not set up (RESEND_API_KEY, EMAIL_FROM): password-reset and verification emails cannot be sent.');
+  else if (emailTestMode()) out.push("Email is in Resend's test mode (onboarding@resend.dev): only the Resend account owner receives emails — users get no password-reset or verify emails until a domain is verified and EMAIL_FROM uses it.");
   if (!env['PUBLIC_API_URL'] && !env['RENDER_EXTERNAL_URL']) out.push('PUBLIC_API_URL is not set: links in emails would point to localhost.');
   if (!env['LEGAL_OPERATOR_NAME'] || !env['LEGAL_CONTACT_EMAIL']) out.push('Legal details are missing (LEGAL_OPERATOR_NAME, LEGAL_CONTACT_EMAIL): the privacy policy and terms are incomplete.');
   if (!env['PUBSUB_PUSH_SERVICE_ACCOUNT']) out.push('PUBSUB_PUSH_SERVICE_ACCOUNT is not set: Google Play renewal and cancellation notifications are refused.');

@@ -9,6 +9,15 @@ import { logger } from '../../config/logger.js';
  */
 export const emailConfigured = (): boolean => Boolean(process.env['RESEND_API_KEY'] && process.env['EMAIL_FROM']);
 
+/**
+ * Resend's test sender (onboarding@resend.dev, before a domain is verified) only delivers to the Resend account
+ * owner's own address — real users never get their emails. Used until the owner buys and verifies a domain.
+ */
+export const emailTestMode = (): boolean => /@resend\.dev\b/i.test(process.env['EMAIL_FROM'] ?? '');
+
+/** Emails actually reach users (set up, and not in test mode). Features that depend on users receiving mail use this. */
+export const emailReachesUsers = (): boolean => emailConfigured() && !emailTestMode();
+
 export async function sendEmail(msg: { to: string; subject: string; text: string; html: string }): Promise<boolean> {
   const key = process.env['RESEND_API_KEY'];
   const from = process.env['EMAIL_FROM'];

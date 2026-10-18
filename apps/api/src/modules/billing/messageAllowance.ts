@@ -5,7 +5,7 @@ import { logger } from '../../config/logger.js';
 import { CreditWalletService } from './credits/CreditWalletService.js';
 import { isCrisisMessage } from '../conversations/human/crisisSupport.js';
 import { classifySituations } from '../conversations/human/situation.js';
-import { emailConfigured } from '../../infrastructure/email/email.js';
+import { emailReachesUsers } from '../../infrastructure/email/email.js';
 
 /**
  * How many messages a user may send today. Without Premium: limits.freeDaily (default 0 — no free plan; the
@@ -63,7 +63,8 @@ export async function hasPremium(userId: string): Promise<boolean> {
 
 /** True when this account hasn't verified its email and verification emails can actually be sent. */
 async function needsVerification(userId: string): Promise<boolean> {
-  if (!emailConfigured()) return false;
+  // Only when verification emails can actually reach people (not Resend's test sender, which only mails the owner).
+  if (!emailReachesUsers()) return false;
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { emailVerifiedAt: true } });
   return Boolean(user && !user.emailVerifiedAt);
 }

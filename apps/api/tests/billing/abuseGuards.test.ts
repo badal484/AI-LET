@@ -66,6 +66,16 @@ describe('daily caps while payment limits are off', () => {
     expect((await useMessage(verified.id, 'two')).allowed).toBe(true);
   });
 
+  it("Resend's test sender (only mails the owner) doesn't hold unverified users to the smaller cap", async () => {
+    process.env['UNVERIFIED_DAILY_MESSAGES'] = '1';
+    process.env['RESEND_API_KEY'] = 'test_key';
+    process.env['EMAIL_FROM'] = 'Loveek <onboarding@resend.dev>';
+    const unverified = await createUser({ verified: false });
+    users.push(unverified.id);
+    expect((await useMessage(unverified.id, 'one')).allowed).toBe(true);
+    expect((await useMessage(unverified.id, 'two')).allowed).toBe(true); // no verify_email: they couldn't get the link
+  });
+
   it('0 turns the open cap off', async () => {
     process.env['OPEN_DAILY_MESSAGES'] = '0';
     const user = await createUser({ verified: true });

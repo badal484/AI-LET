@@ -55,6 +55,17 @@ describe('production settings check (H-7)', () => {
   });
 });
 
+describe('email test mode', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  it("says when email only reaches the owner (Resend's test sender)", () => {
+    vi.stubEnv('RESEND_API_KEY', 'test_key');
+    vi.stubEnv('EMAIL_FROM', 'Loveek <onboarding@resend.dev>');
+    expect(configWarnings().join('\n')).toMatch(/test mode/);
+    vi.stubEnv('EMAIL_FROM', 'Loveek <no-reply@loveek.in>');
+    expect(configWarnings().join('\n')).not.toMatch(/test mode|Email is not set up/);
+  });
+});
+
 describe('background work concurrency (M-5)', () => {
   it('never runs more than the limit at once, and drops work past a full waiting line', async () => {
     const limit = createConcurrencyLimit(2, 1);
