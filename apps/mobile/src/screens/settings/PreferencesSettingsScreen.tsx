@@ -1,318 +1,157 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { onboardingApi } from '../../services/api/onboardingApi.js';
-import { darkThemeColors } from '../../theme/colors.js';
-import { spacing } from '../../theme/spacing.js';
-import { typography } from '../../theme/typography.js';
+import { darkThemeColors, spacing } from '../../theme/index.js';
 import type { UserPreferenceProfile } from '@ai-companion/types';
-import { IconButton } from '../../components/common/index.js';
+import { Icon, IconButton, Skeleton } from '../../components/common/index.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { tapFeedback } from '../../utils/motion.js';
+
+/** Chat preferences: the language characters start in, and how Hindi words address you. Saved on tap. */
+
+const LANGUAGES = [
+  { value: 'hinglish', label: 'Hinglish', sub: 'Hindi in English letters' },
+  { value: 'en', label: 'English', sub: 'Plain English' },
+  { value: 'hi', label: 'हिंदी (Hindi)', sub: 'देवनागरी में' },
+];
+const ADDRESS = [
+  { value: 'male', label: 'Man', sub: '“thak gaye?”' },
+  { value: 'female', label: 'Woman', sub: '“thak gayi?”' },
+  { value: 'unspecified', label: 'Prefer not to say', sub: 'Neutral words' },
+] as const;
 
 export const PreferencesSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const [profile, setProfile] = useState<UserPreferenceProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    loadPreferences();
+    onboardingApi
+      .getPreferences()
+      .then(setProfile)
+      .catch(() => undefined)
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const loadPreferences = async () => {
-    setIsLoading(true);
-    try {
-      const data = await onboardingApi.getPreferences();
-      setProfile(data);
-    } catch {
-      // Graceful fallback
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(false), 1800);
+    return () => clearTimeout(t);
+  }, [saved]);
 
   const updateField = async (fields: Partial<UserPreferenceProfile>) => {
     if (!profile) return;
-    const optimistic = { ...profile, ...fields };
-    setProfile(optimistic);
-    setIsSaving(true);
+    tapFeedback();
+    const before = profile;
+    setProfile({ ...profile, ...fields });
     try {
       const updated = await onboardingApi.updatePreferences(fields as any);
       setProfile(updated);
+      setSaved(true);
     } catch {
-      setProfile(profile);
-      AppAlert.alert('Error', 'Failed to update preferences. Please try again.');
-    } finally {
-      setIsSaving(false);
+      setProfile(before);
+      AppAlert.alert('Couldn’t save', 'Please check your connection and try again.');
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={darkThemeColors.accent} />
+  const Option = ({ label, sub, selected, onPress, first }: { label: string; sub: string; selected: boolean; onPress: () => void; first: boolean }) => (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.option, !first && styles.optionBorder, pressed && styles.pressed]}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{label}</Text>
+        <Text style={styles.optionSub}>{sub}</Text>
       </View>
-    );
-  }
-
+      <View style={[styles.radio, selected && styles.radioSelected]}>
+        {selected && <Icon name="check" size={14} color="#FFFFFF" />}
+      </View>
+    </Pressable>
+  );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size="sm"
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-          style={{ alignSelf: 'flex-start', marginBottom: 6 }}
-        />
+        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
         <Text style={styles.title}>Chat preferences</Text>
-        <Text style={styles.subtitle}>Language and how characters talk to you</Text>
+        {saved && <Text style={styles.saved}>Saved</Text>}
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Section 2: Preferred Language */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Primary Language</Text>
-          <Text style={styles.sectionDescription}>
-            Language used for companion greetings and default responses.
-          </Text>
-
-          <View style={styles.languageRow}>
-            {['hinglish', 'en', 'hi'].map(lang => {
-              const isSelected = profile?.preferredLanguage === lang;
-              const labels: Record<string, string> = {
-                hinglish: 'Hinglish',
-                en: 'English',
-                hi: 'हिंदी',
-              };
-              return (
-                <TouchableOpacity
-                  key={lang}
-                  style={[styles.langChip, isSelected && styles.langChipSelected]}
-                  onPress={() => updateField({ preferredLanguage: lang })}
-                >
-                  <Text style={[styles.langText, isSelected && styles.langTextSelected]}>
-                    {labels[lang]}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+      {isLoading ? (
+        <View style={styles.content}>
+          <Skeleton height={190} borderRadius={16} />
+          <Skeleton height={190} borderRadius={16} />
         </View>
-
-        {/* Section 2b: How characters address them (Hindi verb forms) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Talk to me as</Text>
-          <Text style={styles.sectionDescription}>
-            So characters say "kaise ho, thak gaye?" or "thak gayi?" the right way. Only used for how they talk to you.
-          </Text>
-
-          <View style={styles.languageRow}>
-            {(['male', 'female', 'unspecified'] as const).map(g => {
-              const isSelected = profile?.userGender === g;
-              const labels = { male: 'Man', female: 'Woman', unspecified: 'Prefer not to say' };
-              return (
-                <TouchableOpacity
-                  key={g}
-                  style={[styles.langChip, isSelected && styles.langChipSelected]}
-                  onPress={() => updateField({ userGender: g })}
-                >
-                  <Text style={[styles.langText, isSelected && styles.langTextSelected]}>{labels[g]}</Text>
-                </TouchableOpacity>
-              );
-            })}
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View>
+            <Text style={styles.sectionTitle}>Language</Text>
+            <Text style={styles.sectionNote}>Characters start in this, then follow the way you write.</Text>
+            <View style={styles.card}>
+              {LANGUAGES.map((l, i) => (
+                <Option
+                  key={l.value}
+                  label={l.label}
+                  sub={l.sub}
+                  first={i === 0}
+                  selected={profile?.preferredLanguage === l.value}
+                  onPress={() => updateField({ preferredLanguage: l.value })}
+                />
+              ))}
+            </View>
           </View>
-        </View>
 
-        {isSaving && (
-          <View style={styles.savingIndicator}>
-            <ActivityIndicator size="small" color={darkThemeColors.accent} />
-            <Text style={styles.savingText}>Saving...</Text>
+          <View>
+            <Text style={styles.sectionTitle}>Talk to me as</Text>
+            <Text style={styles.sectionNote}>Only changes how Hindi words address you.</Text>
+            <View style={styles.card}>
+              {ADDRESS.map((g, i) => (
+                <Option
+                  key={g.value}
+                  label={g.label}
+                  sub={g.sub}
+                  first={i === 0}
+                  selected={profile?.userGender === g.value}
+                  onPress={() => updateField({ userGender: g.value })}
+                />
+              ))}
+            </View>
           </View>
-        )}
-      </ScrollView>
-    </View>
+        </ScrollView>
+      )}
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: darkThemeColors.background,
-  },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: darkThemeColors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    paddingTop: spacing.xxl + spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    backgroundColor: darkThemeColors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: darkThemeColors.borderSubtle,
-  },
-  backButton: {
-    marginBottom: spacing.xs,
-  },
-  backText: {
-    ...typography.bodyMedium,
-    color: darkThemeColors.accent,
-    fontWeight: '600',
-  },
-  title: {
-    ...typography.headlineMedium,
-    color: darkThemeColors.textPrimary,
-    fontWeight: '700',
-  },
-  subtitle: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textSecondary,
-    marginTop: 2,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.xl,
-  },
-  section: {
-    backgroundColor: darkThemeColors.surface,
-    borderRadius: 16,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-  },
-  sectionTitle: {
-    ...typography.titleMedium,
-    color: darkThemeColors.textPrimary,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  sectionDescription: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textSecondary,
-    marginBottom: spacing.md,
-    lineHeight: 18,
-  },
-  styleGrid: {
-    gap: spacing.sm,
-  },
-  styleChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: darkThemeColors.surfaceSubtle,
+  container: { flex: 1, backgroundColor: darkThemeColors.background },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  title: { flex: 1, color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
+  saved: { color: '#34D399', fontSize: 13, fontWeight: '700' },
+  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.xl, paddingBottom: 48 },
+  sectionTitle: { color: darkThemeColors.textPrimary, fontSize: 16, fontWeight: '700' },
+  sectionNote: { color: darkThemeColors.textMuted, fontSize: 13, lineHeight: 18, marginTop: 2, marginBottom: spacing.sm },
+  card: { backgroundColor: darkThemeColors.surface, borderRadius: 16, borderWidth: 1, borderColor: darkThemeColors.border, paddingHorizontal: spacing.md },
+  option: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 14 },
+  optionBorder: { borderTopWidth: 1, borderTopColor: darkThemeColors.border },
+  pressed: { opacity: 0.7 },
+  optionLabel: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
+  optionLabelSelected: { color: '#FFFFFF', fontWeight: '700' },
+  optionSub: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 2 },
+  radio: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-  },
-  styleChipSelected: {
-    borderColor: darkThemeColors.accent,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-  },
-  chipIcon: {
-    fontSize: 18,
-    marginRight: spacing.sm,
-  },
-  chipLabel: {
-    ...typography.bodyMedium,
-    color: darkThemeColors.textPrimary,
-    fontWeight: '600',
-  },
-  chipLabelSelected: {
-    color: darkThemeColors.accent,
-  },
-  languageRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  langChip: {
-    backgroundColor: darkThemeColors.surfaceSubtle,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: darkThemeColors.borderSubtle,
-  },
-  langChipSelected: {
-    borderColor: darkThemeColors.accent,
-    backgroundColor: 'rgba(99, 102, 241, 0.12)',
-  },
-  langText: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textSecondary,
-    fontWeight: '600',
-  },
-  langTextSelected: {
-    color: darkThemeColors.accent,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: darkThemeColors.borderSubtle,
-  },
-  switchTextGroup: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  switchTitle: {
-    ...typography.titleSmall,
-    color: darkThemeColors.textPrimary,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  switchSubtitle: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textSecondary,
-    fontSize: 12,
-  },
-  resetSection: {
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-  },
-  resetButton: {
-    backgroundColor: darkThemeColors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    ...typography.labelLarge,
-    color: darkThemeColors.danger,
-    fontWeight: '600',
-  },
-  resetNote: {
-    ...typography.bodySmall,
-    color: darkThemeColors.textMuted,
-    fontSize: 11,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  savingIndicator: {
-    flexDirection: 'row',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
   },
-  savingText: {
-    ...typography.bodySmall,
-    color: darkThemeColors.accent,
-  },
+  radioSelected: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
 });
