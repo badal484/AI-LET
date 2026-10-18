@@ -6,7 +6,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from '../../services/storeBilling.js';
-import { IconButton, Button, Badge, ToastService } from '../../components/common/index.js';
+import { IconButton, Button, Badge, ToastService, Icon } from '../../components/common/index.js';
+import type { IconName } from '../../components/common/Icon.js';
 import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 
@@ -25,11 +26,11 @@ const PLAN_LABEL: Record<BasePlan, { title: string; per: string; note?: string }
 // the type so a catalog that still has them doesn't break, but they aren't offered.
 const ORDER: BasePlan[] = ['monthly'];
 
-const BENEFITS = [
-  'Chat with all 32 characters — 150 messages a day',
-  'Full courses and step-by-step health programs',
-  'They remember your life, your days and your goals',
-  'Help in a crisis is always free, with or without Premium',
+const BENEFITS: Array<{ icon: IconName; title: string; sub: string }> = [
+  { icon: 'chat', title: 'Every character', sub: 'Up to 150 messages a day' },
+  { icon: 'book', title: 'Full courses and programs', sub: 'Step by step, at your pace' },
+  { icon: 'brain', title: 'They remember you', sub: 'Your days, your people, your goals' },
+  { icon: 'shield', title: 'Crisis help is always free', sub: 'With or without Premium' },
 ];
 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -47,6 +48,7 @@ export const PaywallScreen: React.FC = () => {
 
   const isPremium = Boolean(subscription && ['active', 'trialing', 'grace_period'].includes(String(subscription.status).toLowerCase()));
 
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     StoreBilling.loadCatalog()
@@ -55,7 +57,13 @@ export const PaywallScreen: React.FC = () => {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [attempt]);
+  const retry = () => {
+    setCatalog(null);
+    setAttempt((n) => n + 1);
+  };
+  // As the Premium tab there's nowhere to close to; opened from a limit or a locked character, there is.
+  const isTab = route.name === 'BuyPro';
 
   const offer: StoreOffer | undefined = catalog?.offers[selected];
   const trial = selected === 'monthly' ? offer?.trial : undefined;
@@ -121,27 +129,51 @@ export const PaywallScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <IconButton icon="close" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Close" />
+        {isTab ? <View /> : <IconButton icon="close" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Close" />}
         <Button label="Restore" variant="ghost" size="sm" onPress={restore} disabled={busy !== null} accessibilityLabel="Restore purchases" />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Badge label="PREMIUM" variant="stage" size="sm" />
+          <View style={styles.crownHalo}>
+            <View style={styles.crown}>
+              <Icon name="diamond" size={30} color="#F5D0FE" />
+            </View>
+          </View>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
+
+        {/* What Premium gives — shown right away, even before Google Play answers. */}
+        {!isPremium && reason !== 'fair_use' && (
+          <View style={styles.benefits}>
+            {BENEFITS.map((b) => (
+              <View key={b.title} style={styles.benefitRow}>
+                <View style={styles.benefitIcon}>
+                  <Icon name={b.icon} size={18} color={darkThemeColors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.benefitTitle}>{b.title}</Text>
+                  <Text style={styles.benefitSub}>{b.sub}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {!StoreBilling.isAvailable ? (
           <Text style={styles.notice}>{StoreBilling.unavailableMessage}</Text>
         ) : loading ? (
           <ActivityIndicator color={darkThemeColors.accent} style={{ marginVertical: spacing.xl }} />
         ) : !storeReady ? (
-          <Text style={styles.notice}>
-            {catalog?.connected
-              ? 'Premium plans are not available on this version of the app yet. Please update the app from Google Play.'
-              : "Google Play isn't responding right now. Please check your connection and try again."}
-          </Text>
+          <View style={styles.noticeBox}>
+            <Text style={styles.notice}>
+              {catalog?.connected
+                ? 'Premium plans are not available on this version of the app yet. Please update the app from Google Play.'
+                : "Couldn't reach Google Play. Check your connection and try again."}
+            </Text>
+            {!catalog?.connected && <Button label="Try again" variant="secondary" size="sm" onPress={retry} accessibilityLabel="Try again" />}
+          </View>
         ) : (
           <>
             {(reason === 'fair_use' || isPremium) && catalog?.pack && (
@@ -156,14 +188,6 @@ export const PaywallScreen: React.FC = () => {
 
             {!isPremium && (
               <>
-                <View style={styles.benefits}>
-                  {BENEFITS.map((b) => (
-                    <Text key={b} style={styles.benefit}>
-                      ✓ {b}
-                    </Text>
-                  ))}
-                </View>
-
                 {ORDER.filter((p) => catalog?.offers[p]).map((p) => {
                   const o = catalog!.offers[p]!;
                   const isSel = selected === p;
@@ -229,9 +253,23 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg, gap: spacing.sm },
   title: { color: darkThemeColors.textPrimary, fontSize: 24, fontWeight: '800', textAlign: 'center' },
   subtitle: { color: darkThemeColors.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 21 },
-  notice: { color: darkThemeColors.textSecondary, textAlign: 'center', marginVertical: spacing.xl, lineHeight: 21 },
-  benefits: { marginBottom: spacing.lg, gap: spacing.xs },
-  benefit: { color: darkThemeColors.textSecondary, fontSize: 14, lineHeight: 21 },
+  notice: { color: darkThemeColors.textSecondary, textAlign: 'center', lineHeight: 21 },
+  crownHalo: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(168,85,247,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  crown: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#3B1D6E', borderWidth: 1, borderColor: 'rgba(240,171,252,0.45)', alignItems: 'center', justifyContent: 'center' },
+  benefits: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    gap: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: darkThemeColors.surface,
+    borderWidth: 1,
+    borderColor: darkThemeColors.borderSubtle,
+  },
+  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  benefitIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: darkThemeColors.accentMuted, alignItems: 'center', justifyContent: 'center' },
+  benefitTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '700' },
+  benefitSub: { color: darkThemeColors.textMuted, fontSize: 13, marginTop: 1 },
+  noticeBox: { alignItems: 'center', gap: spacing.sm, marginVertical: spacing.md },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
