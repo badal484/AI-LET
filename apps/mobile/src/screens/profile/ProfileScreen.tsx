@@ -13,6 +13,8 @@ import { APP_VERSION } from '../../config/appInfo.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import type { RootStackParamList } from '../../navigation/types.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
+import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 
 /**
  * Profile: who you are, your plan, and four settings — nothing else.
@@ -21,16 +23,18 @@ import { AppAlert } from '../../components/common/AppDialog.js';
 
 interface Row {
   icon: IconName;
+  color: string;
+  tint: string;
   title: string;
   subtitle: string;
   route: keyof RootStackParamList;
 }
 
 const ROWS: Row[] = [
-  { icon: 'palette', title: 'Chat preferences', subtitle: 'Language and how characters talk to you', route: 'PreferencesSettings' },
-  { icon: 'bell', title: 'Notifications', subtitle: 'What reaches you, quiet hours, reminders', route: 'NotificationSettings' },
-  { icon: 'shield', title: 'Privacy & account', subtitle: 'Your data, blocked characters, delete account', route: 'SafetyPrivacySettings' },
-  { icon: 'chat', title: 'Help & contact us', subtitle: 'Quick answers, or write to the team', route: 'Help' },
+  { icon: 'palette', color: '#C4B5FD', tint: 'rgba(139,92,246,0.16)', title: 'Chat preferences', subtitle: 'Language, how they address you', route: 'PreferencesSettings' },
+  { icon: 'bell', color: '#F9A8D4', tint: 'rgba(236,72,153,0.14)', title: 'Notifications', subtitle: 'Messages, reminders, quiet hours', route: 'NotificationSettings' },
+  { icon: 'shield', color: '#6EE7B7', tint: 'rgba(16,185,129,0.14)', title: 'Privacy & account', subtitle: 'Your data, delete account', route: 'SafetyPrivacySettings' },
+  { icon: 'chat', color: '#93C5FD', tint: 'rgba(59,130,246,0.14)', title: 'Help & contact us', subtitle: 'Quick answers, write to us', route: 'Help' },
 ];
 
 interface Allowance {
@@ -50,6 +54,8 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { user, logout } = useAuthStore();
   const { subscription, loadBillingState } = useBillingStore();
+  const coins = useBillingStore((st) => st.creditWallet?.availableBalance ?? 0);
+  const [coinStoreOpen, setCoinStoreOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -102,77 +108,97 @@ export const ProfileScreen: React.FC = () => {
     ]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Profile</Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top }]} showsVerticalScrollIndicator={false}>
+        {/* A soft glow behind the top, then you: big avatar with a ring, your name, your email. */}
+        <View style={styles.glow} pointerEvents="none">
+          <GradientFill radial colors={[['#A855F7', 0.32], ['#EC4899', 0.08], ['#0B0614', 0]]} />
+        </View>
 
-        {/* You */}
         <View style={styles.me}>
-          <Avatar name={displayName} size="lg" />
-          <View style={styles.meText}>
-            <Text style={styles.name} numberOfLines={1}>
-              {displayName}
-            </Text>
-            <Text style={styles.email} numberOfLines={1}>
-              {user?.email}
-            </Text>
-            {characters > 0 && (
-              <Text style={styles.stat}>
-                Chatting with {characters} {characters === 1 ? 'character' : 'characters'}
-              </Text>
-            )}
+          <View style={styles.ring}>
+            <GradientFill colors={['#A855F7', '#EC4899']} />
+            <View style={styles.ringInner}>
+              <Avatar name={displayName} size="xl" />
+            </View>
           </View>
           <Pressable
             onPress={() => {
               setName(displayName);
               setEditing(true);
             }}
-            style={styles.editBtn}
+            style={styles.nameRow}
+            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Edit your name"
           >
-            <Text style={styles.editText}>Edit</Text>
+            <Text style={styles.name} numberOfLines={1}>
+              {displayName}
+            </Text>
+            <View style={styles.editDot}>
+              <Icon name="pencil" size={12} color="#E9D5FF" />
+            </View>
           </Pressable>
+          <Text style={styles.email} numberOfLines={1}>
+            {user?.email}
+          </Text>
+        </View>
+
+        {/* Three numbers that matter. */}
+        <View style={styles.stats}>
+          <Pressable style={styles.stat} onPress={() => navigation.navigate('Conversations' as never)} accessibilityRole="button">
+            <Text style={styles.statValue}>{characters}</Text>
+            <Text style={styles.statLabel}>{characters === 1 ? 'Chat' : 'Chats'}</Text>
+          </Pressable>
+          <View style={styles.statDivider} />
+          <Pressable style={styles.stat} onPress={() => setCoinStoreOpen(true)} accessibilityRole="button" accessibilityLabel={`${coins} coins, get more`}>
+            <Text style={styles.statValue}>🪙 {coins.toLocaleString('en-IN')}</Text>
+            <Text style={styles.statLabel}>Coins</Text>
+          </Pressable>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{allowance?.enforced && left !== null ? left : premium ? '150' : '—'}</Text>
+            <Text style={styles.statLabel}>Left today</Text>
+          </View>
         </View>
 
         {/* Plan */}
         <Pressable
-          style={[styles.plan, premium && styles.planPremium]}
+          style={({ pressed }) => [styles.plan, pressed && styles.pressed]}
           onPress={() => navigation.navigate(premium ? 'SubscriptionManagement' : ('Paywall' as never), {} as never)}
           accessibilityRole="button"
         >
+          <GradientFill colors={premium ? ['#4C1D95', '#831843'] : ['#6D28D9', '#DB2777']} />
           <View style={styles.planHead}>
-            <Icon name={premium ? 'diamond' : 'sparkles'} size={18} color={premium ? '#F472B6' : darkThemeColors.accent} />
-            <Text style={styles.planTitle}>{premium ? (trial ? 'Premium trial' : 'Premium') : 'Loveek Premium'}</Text>
-          </View>
-          {premium ? (
-            <Text style={styles.planText}>
-              {subscription?.currentPeriodEnd
-                ? cancelling
-                  ? `Ends on ${date(subscription.currentPeriodEnd)} — you won't be charged again`
-                  : trial
-                    ? `Becomes ₹499/month on ${date(subscription.currentPeriodEnd)}`
-                    : `Renews on ${date(subscription.currentPeriodEnd)}`
-                : 'All characters, 150 messages a day'}
-              {allowance && allowance.enforced ? ` · ${left} messages left today` : ''}
-            </Text>
-          ) : (
-            <>
+            <View style={styles.crown}>
+              <Icon name="diamond" size={20} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.planTitle}>{premium ? (trial ? 'Premium · first day' : 'Premium') : 'Loveek Premium'}</Text>
               <Text style={styles.planText}>
-                {/* No free plan by default (limits.freeDaily = 0); if the admin sets a free allowance, it shows here. */}
-                {allowance && allowance.enforced && allowance.limit > 0
-                  ? `${left} of ${allowance.limit} free messages left today${allowance.credits ? ` · 🪙 ${allowance.credits} coins` : ''}`
-                  : `Every character, up to 150 messages a day${allowance?.credits ? ` · 🪙 ${allowance.credits} coins` : ''}`}
+                {premium
+                  ? subscription?.currentPeriodEnd
+                    ? cancelling
+                      ? `Ends on ${date(subscription.currentPeriodEnd)}`
+                      : trial
+                        ? `₹499/month from ${date(subscription.currentPeriodEnd)}`
+                        : `Renews on ${date(subscription.currentPeriodEnd)}`
+                    : 'Every character, 150 messages a day'
+                  : 'Every character, 150 messages a day'}
               </Text>
+            </View>
+            {premium ? (
+              <Icon name="arrow-right" size={18} color="#FFFFFF" />
+            ) : (
               <View style={styles.planCta}>
-                <Text style={styles.planCtaText}>Start for ₹1</Text>
+                <Text style={styles.planCtaText}>Start ₹1</Text>
               </View>
-            </>
-          )}
-          {premium && <Text style={styles.manage}>Manage ›</Text>}
+            )}
+          </View>
         </Pressable>
 
         {/* Settings */}
+        <Text style={styles.sectionLabel}>Settings</Text>
         <View style={styles.list}>
           {ROWS.map((r, i) => (
             <Pressable
@@ -182,8 +208,8 @@ export const ProfileScreen: React.FC = () => {
               accessibilityRole="button"
               accessibilityLabel={r.title}
             >
-              <View style={styles.rowIcon}>
-                <Icon name={r.icon} size={18} color={darkThemeColors.accent} />
+              <View style={[styles.rowIcon, { backgroundColor: r.tint }]}>
+                <Icon name={r.icon} size={18} color={r.color} />
               </View>
               <View style={styles.rowText}>
                 <Text style={styles.rowTitle}>{r.title}</Text>
@@ -194,9 +220,13 @@ export const ProfileScreen: React.FC = () => {
           ))}
         </View>
 
-        <Button label="Sign out" variant="secondary" size="md" fullWidth onPress={signOut} accessibilityLabel="Sign out" />
+        <Pressable onPress={signOut} style={({ pressed }) => [styles.signOut, pressed && styles.rowPressed]} accessibilityRole="button" accessibilityLabel="Sign out">
+          <Text style={styles.signOutText}>Sign out</Text>
+        </Pressable>
         <Text style={styles.version}>Loveek v{APP_VERSION}</Text>
       </ScrollView>
+
+      <CoinStoreSheet visible={coinStoreOpen} onClose={() => setCoinStoreOpen(false)} />
 
       {/* Edit name */}
       <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
@@ -227,33 +257,49 @@ export const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: darkThemeColors.background },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 120, gap: spacing.lg },
-  title: { color: darkThemeColors.textPrimary, fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginTop: spacing.lg },
-  me: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  meText: { flex: 1, minWidth: 0 },
-  name: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
-  email: { color: darkThemeColors.textMuted, fontSize: 13, marginTop: 2 },
-  stat: { color: darkThemeColors.textSecondary, fontSize: 13, marginTop: 4 },
-  editBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: darkThemeColors.border },
-  editText: { color: darkThemeColors.textPrimary, fontSize: 13, fontWeight: '600' },
-  plan: { borderRadius: 20, padding: spacing.lg, backgroundColor: darkThemeColors.surface, borderWidth: 1, borderColor: darkThemeColors.border, gap: 6 },
-  planPremium: { borderColor: 'rgba(236,72,153,0.45)', backgroundColor: 'rgba(236,72,153,0.08)' },
-  planHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  planTitle: { color: darkThemeColors.textPrimary, fontSize: 17, fontWeight: '700' },
-  planText: { color: darkThemeColors.textSecondary, fontSize: 14, lineHeight: 20 },
-  planCta: { marginTop: spacing.sm, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: '#8B5CF6' },
-  planCtaText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  manage: { color: '#F472B6', fontSize: 14, fontWeight: '600', marginTop: 4 },
-  list: { borderRadius: 20, backgroundColor: darkThemeColors.surface, borderWidth: 1, borderColor: darkThemeColors.border, overflow: 'hidden' },
+  container: { flex: 1, backgroundColor: '#0B0614' },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: 120, gap: spacing.md },
+  glow: { position: 'absolute', top: 0, left: -spacing.lg, right: -spacing.lg, height: 320 },
+  me: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xs },
+  ring: { width: 104, height: 104, borderRadius: 52, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  ringInner: { width: 98, height: 98, borderRadius: 49, backgroundColor: '#0B0614', alignItems: 'center', justifyContent: 'center' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.md, maxWidth: '90%' },
+  name: { color: '#FFFFFF', fontSize: 24, fontWeight: '800', letterSpacing: -0.3, flexShrink: 1 },
+  editDot: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(168,85,247,0.3)' },
+  email: { color: darkThemeColors.textMuted, fontSize: 13, marginTop: 4 },
+  stats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  stat: { flex: 1, alignItems: 'center' },
+  statValue: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  statLabel: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 2 },
+  statDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.08)' },
+  plan: { borderRadius: 20, padding: spacing.md, overflow: 'hidden' },
+  pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  planHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  crown: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
+  planTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
+  planText: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginTop: 2 },
+  planCta: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999, backgroundColor: '#FFFFFF' },
+  planCtaText: { color: '#6D28D9', fontSize: 15, fontWeight: '800' },
+  sectionLabel: { color: darkThemeColors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: spacing.sm, marginLeft: 4 },
+  list: { borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 14 },
-  rowBorder: { borderTopWidth: 1, borderTopColor: darkThemeColors.border },
-  rowPressed: { backgroundColor: 'rgba(255,255,255,0.04)' },
-  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139,92,246,0.14)' },
+  rowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  rowPressed: { backgroundColor: 'rgba(255,255,255,0.05)' },
+  rowIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1 },
-  rowTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
+  rowTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   rowSub: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 2 },
-  version: { color: darkThemeColors.textMuted, fontSize: 12, textAlign: 'center' },
+  signOut: { alignItems: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
+  signOutText: { color: '#F87171', fontSize: 15, fontWeight: '700' },
+  version: { color: darkThemeColors.textDisabled, fontSize: 12, textAlign: 'center' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
   sheet: { backgroundColor: darkThemeColors.surface, borderRadius: 20, padding: spacing.lg, gap: spacing.sm },
   sheetTitle: { color: darkThemeColors.textPrimary, fontSize: 18, fontWeight: '700' },

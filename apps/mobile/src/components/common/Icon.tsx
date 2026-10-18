@@ -15,6 +15,7 @@ import {
   Coffee,
   Compass,
   Copy,
+  Pencil,
   Crown,
   Ellipsis,
   EllipsisVertical,
@@ -103,7 +104,8 @@ export type IconName =
   | 'more-vertical'
   | 'chevron-down-double'
   | 'check-double'
-  | 'copy';
+  | 'copy'
+  | 'pencil';
 
 const ICONS: Record<IconName, LucideIcon> = {
   bell: Bell,
@@ -154,6 +156,7 @@ const ICONS: Record<IconName, LucideIcon> = {
   'chevron-down-double': ChevronsDown,
   'check-double': CheckCheck,
   copy: Copy,
+  pencil: Pencil,
 };
 
 interface IconProps {
