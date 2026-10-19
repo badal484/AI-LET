@@ -1705,6 +1705,7 @@ enum BillingProvider {
   GOOGLE
   STRIPE
   MOCK
+  RAZORPAY
 }
 
 enum PriceCurrency {

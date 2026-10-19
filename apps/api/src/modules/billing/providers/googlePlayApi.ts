@@ -73,3 +73,46 @@ export const getProductPurchase = (productId: string, purchaseToken: string) =>
 /** A message pack is consumable: consumed once its messages are granted, so it can be bought again. */
 export const consumeProduct = (productId: string, purchaseToken: string) =>
   call<unknown>('POST', `purchases/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(purchaseToken)}:consume`, {});
+
+// ── User choice billing: sales paid outside Google Play (Razorpay) are reported to Google ─────────────
+
+export interface ExternalTransactionReport {
+  /** Our id for the sale (unique, ≤ 63 chars); renewals point back to the first one. */
+  externalTransactionId: string;
+  amountMinorUnits: number;
+  taxMinorUnits: number;
+  transactionTime: Date;
+  /** First sale of a subscription or a one-time purchase: the token Google gave the app at the choice screen. */
+  externalTransactionToken?: string;
+  /** A renewal: the externalTransactionId of the subscription's first sale. */
+  initialExternalTransactionId?: string;
+  kind: 'one_time' | 'subscription';
+}
+
+const micros = (minor: number) => String(Math.round(minor * 10_000)); // paise → micros (1 ₹ = 1,000,000)
+
+/** externalTransactions.create — must happen within 24 hours of the sale. */
+export const reportExternalTransaction = (r: ExternalTransactionReport) =>
+  call<{ externalTransactionId?: string }>('POST', `externalTransactions?externalTransactionId=${encodeURIComponent(r.externalTransactionId)}`, {
+    originalPreTaxAmount: { priceMicros: micros(r.amountMinorUnits - r.taxMinorUnits), currency: 'INR' },
+    originalTaxAmount: { priceMicros: micros(r.taxMinorUnits), currency: 'INR' },
+    transactionTime: r.transactionTime.toISOString(),
+    userTaxAddress: { regionCode: 'IN' },
+    ...(r.kind === 'one_time'
+      ? { oneTimeTransaction: { externalTransactionToken: r.externalTransactionToken } }
+      : {
+          recurringTransaction: {
+            ...(r.initialExternalTransactionId
+              ? { initialExternalTransactionId: r.initialExternalTransactionId }
+              : { externalTransactionToken: r.externalTransactionToken }),
+            externalSubscription: { subscriptionType: 'RECURRING' },
+          },
+        }),
+  });
+
+/** externalTransactions.refund — a refunded Razorpay sale, so Google doesn't charge its fee on it. */
+export const refundExternalTransaction = (externalTransactionId: string, refundTime: Date) =>
+  call('POST', `externalTransactions/${encodeURIComponent(externalTransactionId)}:refund`, {
+    refundTime: refundTime.toISOString(),
+    fullRefund: {},
+  });

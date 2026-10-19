@@ -11,6 +11,7 @@ import type { IconName } from '../../components/common/Icon.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { payWithRazorpay, rupees } from '../../services/razorpayCheckout.js';
 
 /**
  * Premium: ₹1 for the first day, then ₹499/month — the only plan (no free plan) — plus ₹49 message packs.
@@ -49,6 +50,7 @@ export const PaywallScreen: React.FC = () => {
 
   const isPremium = Boolean(subscription && ['active', 'trialing', 'grace_period'].includes(String(subscription.status).toLowerCase()));
 
+  const [payRoute, setPayRoute] = useState<'choice' | 'upi' | 'play' | 'none' | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
@@ -59,7 +61,17 @@ export const PaywallScreen: React.FC = () => {
       alive = false;
     };
   }, [attempt]);
+  // Google Play (with its "Play or UPI" choice) when it can sell; otherwise UPI straight away.
+  useEffect(() => {
+    if (catalog === null) return;
+    let alive = true;
+    void StoreBilling.route(Object.keys(catalog.offers).length > 0).then((r) => alive && setPayRoute(r));
+    return () => {
+      alive = false;
+    };
+  }, [catalog]);
   const retry = () => {
+    setPayRoute(null);
     setCatalog(null);
     setAttempt((n) => n + 1);
   };
@@ -103,9 +115,23 @@ export const PaywallScreen: React.FC = () => {
     finish(r, 'Welcome to Premium 🎉');
   };
 
+  const upi = StoreBilling.upiConfig();
+  const upiFirst = upi ? rupees(upi.premium.firstDayMinorUnits) : '₹1';
+  const upiMonthly = upi ? rupees(upi.premium.monthlyMinorUnits) : '₹499';
+  const upiPack = upi?.coinPacks.find((p) => p.id === 'coins_100');
+  const upiFirstCharge = fmtDate(new Date(Date.now() + 86_400_000));
+  const upiDisclosure = `${upiFirst} today. Then ${upiMonthly}/month from tomorrow (${upiFirstCharge}), auto-debited with UPI Autopay. Cancel anytime in Loveek — cancel before then and you won't be charged ${upiMonthly}.`;
+
+  const subscribeUpi = async () => {
+    setBusy('subscribe');
+    const r = await payWithRazorpay({ kind: 'premium' });
+    setBusy(null);
+    finish(r, 'Welcome to Premium 🎉');
+  };
+
   const buyPack = async () => {
     setBusy('pack');
-    const r = await StoreBilling.buyPack();
+    const r = payRoute === 'upi' ? await payWithRazorpay({ kind: 'coins', packId: 'coins_100' }) : await StoreBilling.buyPack();
     setBusy(null);
     finish(r, '100 messages added ✨');
   };
@@ -134,7 +160,7 @@ export const PaywallScreen: React.FC = () => {
       </View>
       <View style={styles.topBar}>
         {isTab ? <View /> : <IconButton icon="close" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Close" />}
-        <Button label="Restore" variant="ghost" size="sm" onPress={restore} disabled={busy !== null} accessibilityLabel="Restore purchases" />
+        {payRoute === 'upi' ? <View /> : <Button label="Restore" variant="ghost" size="sm" onPress={restore} disabled={busy !== null} accessibilityLabel="Restore purchases" />}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -168,8 +194,52 @@ export const PaywallScreen: React.FC = () => {
 
         {!StoreBilling.isAvailable ? (
           <Text style={styles.notice}>{StoreBilling.unavailableMessage}</Text>
-        ) : loading ? (
+        ) : loading || payRoute === null ? (
           <ActivityIndicator color={darkThemeColors.accent} style={{ marginVertical: spacing.xl }} />
+        ) : payRoute === 'upi' ? (
+          <>
+            {(reason === 'fair_use' || isPremium) && upiPack && (
+              <View style={[styles.card, styles.packCard]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>100 extra messages</Text>
+                  <Text style={styles.cardSub}>One-time, used after your daily 150. No subscription.</Text>
+                </View>
+                <Button label={rupees(upiPack.amountMinorUnits)} size="sm" onPress={buyPack} disabled={busy !== null} accessibilityLabel={`Buy 100 messages for ${rupees(upiPack.amountMinorUnits)}`} />
+              </View>
+            )}
+            {!isPremium && (
+              <>
+                <View style={[styles.card, styles.cardSelected]}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.row}>
+                      <Text style={styles.cardTitle}>Monthly</Text>
+                      <Badge label={`${upiFirst} for the first day`} variant="success" size="sm" />
+                    </View>
+                  </View>
+                  <Text style={styles.price}>
+                    {upiMonthly}
+                    <Text style={styles.per}>/month</Text>
+                  </Text>
+                </View>
+                <Text style={styles.disclosure}>{upiDisclosure}</Text>
+                <View style={styles.ctaWrap}>
+                  <Button
+                    label={busy === 'subscribe' ? 'Opening UPI…' : `Start for ${upiFirst}`}
+                    onPress={subscribeUpi}
+                    disabled={busy !== null}
+                    accessibilityLabel={upiDisclosure}
+                  />
+                  <Shine active={busy === null} />
+                </View>
+                <Text style={styles.trust}>UPI · Cards · Netbanking  ·  🔒 Secured by Razorpay</Text>
+              </>
+            )}
+            {isPremium && (
+              <TouchableOpacity onPress={() => navigation.navigate('SubscriptionManagement')} style={styles.manage}>
+                <Text style={styles.link}>Manage or cancel Premium</Text>
+              </TouchableOpacity>
+            )}
+          </>
         ) : !storeReady ? (
           <View style={styles.noticeBox}>
             <Text style={styles.notice}>
@@ -243,7 +313,9 @@ export const PaywallScreen: React.FC = () => {
         )}
 
         <Text style={styles.fineprint}>
-          Payments are handled by Google Play. Prices include taxes. You can cancel anytime from Google Play → Payments & subscriptions.
+          {payRoute === 'upi'
+            ? 'Payments are processed securely by Razorpay. Prices include taxes. Cancel anytime in Loveek → Profile → Your Premium, or in your UPI app.'
+            : 'Payments are handled by Google Play. Prices include taxes. You can cancel anytime from Google Play → Payments & subscriptions.'}
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -297,5 +369,6 @@ const styles = StyleSheet.create({
   disclosure: { color: darkThemeColors.textSecondary, fontSize: 13, lineHeight: 19, marginVertical: spacing.md, textAlign: 'center' },
   manage: { alignItems: 'center', marginTop: spacing.lg },
   link: { color: darkThemeColors.accent, fontSize: 14, fontWeight: '600' },
+  trust: { color: darkThemeColors.textMuted, fontSize: 12, textAlign: 'center', marginTop: spacing.sm },
   fineprint: { color: darkThemeColors.textDisabled, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: spacing.xl },
 });

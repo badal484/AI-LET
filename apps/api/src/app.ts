@@ -88,7 +88,15 @@ export const createApp = (): Express => {
   app.use(cookieParser());
 
   // Body parsers
-  app.use(express.json({ limit: '2mb' }));
+  app.use(
+    express.json({
+      limit: '2mb',
+      // Razorpay signs its webhooks over the exact bytes sent: keep them for that one path.
+      verify: (req, _res, buf) => {
+        if ((req as { url?: string }).url?.includes('/billing/webhooks/razorpay')) (req as { rawBody?: string }).rawBody = buf.toString('utf8');
+      },
+    }),
+  );
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
   // Tracing, Request Logging & Request Deadlines

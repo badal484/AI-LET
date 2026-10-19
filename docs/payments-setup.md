@@ -92,3 +92,35 @@ Crisis and emergency messages are never counted or blocked.
 - **Easy cancelling:** "Manage subscription" opens Google Play.
 - **Reminder before the first charge:** Google Play handles payments and its own receipts. Check in Play Console whether Google sends a reminder before the trial ends. If it doesn't, add an in-app reminder a few hours before the ₹1 day ends (with a 1-day offer there's no "day 2"); the user's trial end date is in `billing_subscriptions.trial_end`. In India, Google may place the payment authorisation up to 5 days before a renewal, so with a 1-day offer users may see their bank's "upcoming debit" notice on the day they pay ₹1 — the paywall text says plainly that the full price is charged from tomorrow.
 - **GST:** Play collects and remits GST on in-app sales in India. Check with your CA how it shows in your books.
+
+## UPI with Razorpay (user choice billing, India)
+
+Built on 19 Oct 2026, so Loveek can sell before the Google Play payout verification (BillDesk / PA-CB) is done.
+Premium costs **₹1 today, then ₹499 a month** by UPI Autopay. One UPI PIN pays the ₹1 and sets up the mandate.
+Coin packs are one-time payments of ₹49, ₹149 or ₹399.
+
+**Who sees what in the app:**
+- Google Play can sell **and** `PLAY_USER_CHOICE_BILLING=true` → Google's own screen offers "Google Play" or "UPI". Choosing UPI opens Razorpay.
+- Only Razorpay is set up → UPI opens directly. **Use this mode only for testing**: Play's rules require the choice screen for sales to the public.
+- UPI subscribers cancel in **Profile → Your Premium → Cancel Premium**, or in their UPI app.
+
+**Setup:**
+1. Razorpay dashboard: the account is **Activated** (KYC done) and **Subscriptions** is enabled.
+2. Razorpay → Settings → **Webhooks** → Add:
+   - URL: `https://ai-let-fgx6.onrender.com/api/v1/billing/webhooks/razorpay`;
+   - a secret you choose;
+   - events: `subscription.authenticated`, `subscription.activated`, `subscription.charged`, `subscription.pending`, `subscription.halted`, `subscription.cancelled`, `subscription.completed`, `payment.captured`, `refund.processed`.
+3. On Render (and in `apps/api/.env` for local tests), set:
+   ```
+   RAZORPAY_KEY_ID=rzp_live_…          (rzp_test_… for testing)
+   RAZORPAY_KEY_SECRET=…
+   RAZORPAY_WEBHOOK_SECRET=…           (the secret from step 2)
+   ```
+   `RAZORPAY_PLAN_ID` is optional; the ₹499 monthly plan is created automatically.
+4. Play Console → Loveek → **Monetization setup → User choice billing**: enrol (India). Then set `PLAY_USER_CHOICE_BILLING=true`.
+5. Google sale reports: set up the service account from step 2 (`GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_PLAY_PACKAGE_NAME`).
+   - Every UPI sale made after Google's choice screen is reported to Google (`externalTransactions`). Failed reports are retried every 10 minutes.
+   - Google invoices its fee (about 11%) monthly.
+6. Optional: `GST_RATE_PERCENT=18` once you are GST-registered. Google's reports then split out the tax.
+
+Every payment counts only when all of these hold: the checkout signature is valid, Razorpay's own record says it was paid, it belongs to this account, and the amount is the server's price. Signed webhooks keep subscriptions current: renewals, failed debits (3 days of grace, then Premium stops), cancellations and refunds.

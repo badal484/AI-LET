@@ -2255,7 +2255,7 @@ export interface CreateVoiceSessionResponse {
 
 export type ProductType = 'subscription' | 'one_time' | 'credit_pack' | 'add_on';
 export type ProductStatus = 'active' | 'archived' | 'draft';
-export type BillingProviderType = 'apple' | 'google' | 'stripe' | 'mock';
+export type BillingProviderType = 'apple' | 'google' | 'stripe' | 'mock' | 'razorpay';
 export type PriceCurrency = 'INR' | 'USD' | 'EUR' | 'GBP';
 export type PlanInterval = 'week' | 'month' | 'year' | 'one_time';
 

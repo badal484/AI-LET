@@ -7,6 +7,7 @@ import { recordJobRun } from '../modules/console/health.js';
 import { nightlyRetention } from './retention.js';
 import { logger } from '../config/logger.js';
 import { reportError } from '../infrastructure/monitoring/sentry.js';
+import { retryGoogleReports } from '../modules/billing/razorpay/razorpay.service.js';
 
 /**
  * The periodic jobs: account deletions (a promise to the user — DPDP Act / Google Play), reminders,
@@ -70,6 +71,8 @@ export function startScheduledJobs(where: 'worker' | 'api'): void {
   every('proactive-expire', 60 * 60_000, () => ProactiveSchedulerService.expireStaleActions());
   // Old log rows, once a night around 3 am IST (docs/DB_OPTIMIZATION_PLAN.md step 2). Never chats or memories.
   every('retention', 60 * 60_000, () => nightlyRetention());
+  // UPI (Razorpay) sales not yet reported to Google — user choice billing wants each within 24 hours.
+  every('google-sale-reports', 10 * 60_000, () => retryGoogleReports());
   logger.info(`⏱️  Scheduled jobs running in the ${where}`);
 }
 

@@ -79,6 +79,14 @@ const envSchema = z.object({
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  /** Razorpay (UPI Autopay / cards) — see docs/payments-setup.md. */
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  RAZORPAY_PLAN_ID: z.string().optional(),
+  /** 'true' once the app is enrolled in Google Play user choice billing (India). */
+  PLAY_USER_CHOICE_BILLING: z.string().optional(),
+  GST_RATE_PERCENT: z.coerce.number().optional(),
 
   /**
    * Agent tools without a real provider integration return simulated data. Allowed ONLY outside
@@ -152,6 +160,12 @@ export const ENV_SECRET_CLASSIFICATION: Record<keyof EnvConfig, 'SECRET' | 'PUBL
   FIREBASE_SERVICE_ACCOUNT_JSON: 'SECRET',
   STRIPE_SECRET_KEY: 'SECRET',
   STRIPE_WEBHOOK_SECRET: 'SECRET',
+  RAZORPAY_KEY_ID: 'PUBLIC_CONFIG',
+  RAZORPAY_KEY_SECRET: 'SECRET',
+  RAZORPAY_WEBHOOK_SECRET: 'SECRET',
+  RAZORPAY_PLAN_ID: 'PUBLIC_CONFIG',
+  PLAY_USER_CHOICE_BILLING: 'PUBLIC_CONFIG',
+  GST_RATE_PERCENT: 'PUBLIC_CONFIG',
   AGENT_SIMULATED_TOOLS: 'PUBLIC_CONFIG',
   BILLING_SIMULATED_PROVIDERS: 'PUBLIC_CONFIG',
 };

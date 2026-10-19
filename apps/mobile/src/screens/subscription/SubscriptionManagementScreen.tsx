@@ -6,10 +6,18 @@ import { useNavigation } from '@react-navigation/native';
 import { darkThemeColors, spacing } from '../../theme/index.js';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { StoreBilling } from '../../services/storeBilling.js';
-import { Button, Icon, IconButton, Skeleton, ToastService, type IconName } from '../../components/common/index.js';
+import {
+  Button,
+  Icon,
+  IconButton,
+  Skeleton,
+  ToastService,
+  type IconName,
+} from '../../components/common/index.js';
 import { PromoCodeBox } from '../../components/PromoCodeBox.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { cancelUpiPremium } from '../../services/razorpayCheckout.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 
 /**
@@ -17,11 +25,15 @@ import { GradientFill } from '../../components/common/GradientFill.js';
  * and the way to manage or cancel it — which Google Play does (Google's rule).
  */
 
-const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const fmtDate = (d?: string | null) =>
+  d
+    ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
 
 export const SubscriptionManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { subscription, creditWallet, isLoading, loadBillingState, restorePurchases } = useBillingStore();
+  const { subscription, creditWallet, isLoading, loadBillingState, restorePurchases } =
+    useBillingStore();
   const [coinStoreOpen, setCoinStoreOpen] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
@@ -57,7 +69,37 @@ export const SubscriptionManagementScreen: React.FC = () => {
           ? `Renews on ${periodEnd}. Up to 150 messages a day with every character.`
           : 'Up to 150 messages a day with every character.';
 
+  const viaUpi = String(subscription?.provider ?? '') === 'razorpay';
+
+  const cancelUpi = () =>
+    AppAlert.alert(
+      'Cancel Premium?',
+      `No more ₹499 debits. You keep Premium${periodEnd ? ` until ${periodEnd}` : ' for the time you paid for'}.`,
+      [
+        { text: 'Keep Premium', style: 'cancel' },
+        {
+          text: 'Cancel Premium',
+          style: 'destructive',
+          onPress: async () => {
+            const r = await cancelUpiPremium();
+            if (!r.ok)
+              return AppAlert.alert(
+                'Couldn’t cancel',
+                r.message ?? 'Please try again in a moment.',
+              );
+            ToastService.show({
+              message: 'Premium cancelled — no more debits',
+              type: 'success',
+              duration: 2500,
+            });
+            void loadBillingState();
+          },
+        },
+      ],
+    );
+
   const manage = () => {
+    if (viaUpi) return cancelUpi();
     if (StoreBilling.isAvailable) {
       StoreBilling.openManageSubscription();
       return;
@@ -73,15 +115,33 @@ export const SubscriptionManagementScreen: React.FC = () => {
     setRestoring(true);
     const n = await restorePurchases().catch(() => 0);
     setRestoring(false);
-    if (n > 0) ToastService.show({ message: 'Purchases restored', type: 'success', duration: 2500 });
-    else AppAlert.alert('Nothing to restore', 'No active purchase was found on this Google account.');
+    if (n > 0)
+      ToastService.show({ message: 'Purchases restored', type: 'success', duration: 2500 });
+    else
+      AppAlert.alert('Nothing to restore', 'No active purchase was found on this Google account.');
   };
 
-  const Row = ({ icon, label, onPress, first, busy }: { icon: IconName; label: string; onPress: () => void; first?: boolean; busy?: boolean }) => (
+  const Row = ({
+    icon,
+    label,
+    onPress,
+    first,
+    busy,
+  }: {
+    icon: IconName;
+    label: string;
+    onPress: () => void;
+    first?: boolean;
+    busy?: boolean;
+  }) => (
     <Pressable
       onPress={onPress}
       disabled={busy}
-      style={({ pressed }) => [styles.row, !first && styles.rowBorder, (pressed || busy) && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        !first && styles.rowBorder,
+        (pressed || busy) && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -96,10 +156,23 @@ export const SubscriptionManagementScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.glow} pointerEvents="none">
-        <GradientFill radial colors={[['#A855F7', 0.2], ['#EC4899', 0.05], ['#0B0614', 0]]} />
+        <GradientFill
+          radial
+          colors={[
+            ['#A855F7', 0.2],
+            ['#EC4899', 0.05],
+            ['#0B0614', 0],
+          ]}
+        />
       </View>
       <View style={styles.header}>
-        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
+        <IconButton
+          icon="arrow-left"
+          size="sm"
+          variant="surface"
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Back"
+        />
         <Text style={styles.title}>Your Premium</Text>
       </View>
 
@@ -119,7 +192,12 @@ export const SubscriptionManagementScreen: React.FC = () => {
             </View>
             <Text style={styles.planDetail}>{detail}</Text>
             {!isPremium && (
-              <Button label="Start for ₹1" onPress={() => navigation.navigate('Paywall')} accessibilityLabel="Start Premium for ₹1" style={styles.planButton} />
+              <Button
+                label="Start for ₹1"
+                onPress={() => navigation.navigate('Paywall')}
+                accessibilityLabel="Start Premium for ₹1"
+                style={styles.planButton}
+              />
             )}
           </View>
         )}
@@ -130,16 +208,35 @@ export const SubscriptionManagementScreen: React.FC = () => {
             <Text style={styles.coinCount}>{coins.toLocaleString('en-IN')} coins</Text>
             <Text style={styles.coinSub}>For sending gifts</Text>
           </View>
-          <Button label="Get coins" size="sm" variant="secondary" onPress={() => setCoinStoreOpen(true)} accessibilityLabel="Get coins" />
+          <Button
+            label="Get coins"
+            size="sm"
+            variant="secondary"
+            onPress={() => setCoinStoreOpen(true)}
+            accessibilityLabel="Get coins"
+          />
         </View>
 
-        <View style={styles.card}>
-          {isPremium && <Row first icon="settings" label="Manage or cancel in Google Play" onPress={manage} />}
-          <Row first={!isPremium} icon="check" label="Restore purchases" onPress={restore} busy={restoring} />
-        </View>
+        {viaUpi ? (
+          // UPI Autopay: cancelling happens right here (nothing to restore from Google Play).
+          isPremium && !ending ? (
+            <View style={styles.card}>
+              <Row first icon="settings" label="Cancel Premium" onPress={manage} />
+            </View>
+          ) : null
+        ) : (
+          <View style={styles.card}>
+            {isPremium && <Row first icon="settings" label="Manage or cancel in Google Play" onPress={manage} />}
+            <Row first={!isPremium} icon="check" label="Restore purchases" onPress={restore} busy={restoring} />
+          </View>
+        )}
 
         <PromoCodeBox />
-        <Text style={styles.fineprint}>Payments are handled by Google Play. Cancel anytime from Google Play → Payments & subscriptions.</Text>
+        <Text style={styles.fineprint}>
+          {viaUpi
+            ? 'Paid with UPI Autopay through Razorpay. Cancel anytime here or in your UPI app — no debits after you cancel.'
+            : 'Payments are handled by Google Play. Cancel anytime from Google Play → Payments & subscriptions.'}
+        </Text>
       </ScrollView>
 
       <CoinStoreSheet visible={coinStoreOpen} onClose={() => setCoinStoreOpen(false)} />
@@ -150,7 +247,13 @@ export const SubscriptionManagementScreen: React.FC = () => {
 const styles = StyleSheet.create({
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
   title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
   content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md, paddingBottom: 48 },
   planCard: {
@@ -161,7 +264,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(196,181,253,0.22)',
   },
   planTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  crown: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#3B1D6E', alignItems: 'center', justifyContent: 'center' },
+  crown: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3B1D6E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   planName: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
   pill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: '700' },
@@ -180,11 +290,30 @@ const styles = StyleSheet.create({
   coinEmoji: { fontSize: 26 },
   coinCount: { color: darkThemeColors.textPrimary, fontSize: 16, fontWeight: '700' },
   coinSub: { color: darkThemeColors.textMuted, fontSize: 12, marginTop: 1 },
-  card: { backgroundColor: darkThemeColors.surface, borderRadius: 16, borderWidth: 1, borderColor: darkThemeColors.border, paddingHorizontal: spacing.md },
+  card: {
+    backgroundColor: darkThemeColors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: darkThemeColors.border,
+    paddingHorizontal: spacing.md,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 14 },
   rowBorder: { borderTopWidth: 1, borderTopColor: darkThemeColors.border },
-  rowIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139,92,246,0.14)' },
+  rowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(139,92,246,0.14)',
+  },
   rowLabel: { flex: 1, color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '600' },
   pressed: { opacity: 0.7 },
-  fineprint: { color: darkThemeColors.textDisabled, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: spacing.sm },
+  fineprint: {
+    color: darkThemeColors.textDisabled,
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
 });

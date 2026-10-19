@@ -7,8 +7,10 @@ import {
   getAvailablePurchases,
   purchaseUpdatedListener,
   purchaseErrorListener,
+  userChoiceBillingListenerAndroid,
   type Purchase,
 } from 'react-native-iap';
+import { loadUpiConfig, payWithRazorpay, type PayIntent, type UpiConfig } from './razorpayCheckout.js';
 import { billingApi } from './api/billingApi.js';
 import { api } from './api/client.js';
 import { isoDays } from '../utils/isoPeriod.js';
@@ -57,6 +59,9 @@ export interface CoinPack {
 let accountId: string | null = null;
 let connected = false;
 let listening = false;
+let upi: UpiConfig | null = null;
+/** What they were buying when Google's choice screen opened — so "UPI" there knows what to charge. */
+let pendingIntent: PayIntent | null = null;
 const waiting = new Set<(r: { ok: boolean; kind?: 'subscription' | 'pack'; message?: string }) => void>();
 
 const settle = (r: { ok: boolean; kind?: 'subscription' | 'pack'; message?: string }) => {
@@ -96,6 +101,15 @@ function listen() {
       message: ok ? undefined : 'Payment received by Google, but we could not confirm it yet. Tap Restore in a minute — you will not be charged twice.',
     });
   });
+  // Google's choice screen (user choice billing): they picked UPI / Razorpay instead of Google Play.
+  if (upi?.userChoiceBilling) {
+    userChoiceBillingListenerAndroid((details) => {
+      const intent = pendingIntent;
+      pendingIntent = null;
+      if (!intent) return settle({ ok: false });
+      void payWithRazorpay(intent, details.externalTransactionToken).then(settle);
+    });
+  }
   purchaseErrorListener((error) => {
     const cancelled = /cancel/i.test(String((error as { code?: string }).code ?? error.message ?? ''));
     settle({ ok: false, message: cancelled ? undefined : 'The purchase did not go through. Please try again.' });
@@ -129,7 +143,11 @@ export const StoreBilling = {
       accountId = res.data.data.obfuscatedAccountId;
       catalogIds = { subscription: res.data.data.catalog.subscriptionProductId, pack: res.data.data.catalog.packProductId };
       if (Array.isArray(res.data.data.catalog.coinPacks)) coinPackDefs = res.data.data.catalog.coinPacks;
-      connected = Boolean(await initConnection());
+      upi = await loadUpiConfig();
+      // With user choice billing, Google shows its own "Google Play or UPI" choice before each purchase.
+      connected = Boolean(
+        await initConnection(upi?.enabled && upi.userChoiceBilling ? { enableBillingProgramAndroid: 'user-choice-billing' } : undefined),
+      );
       if (connected) listen();
     } catch {
       connected = false;
@@ -175,6 +193,7 @@ export const StoreBilling = {
   /** Opens Google Play's purchase sheet; resolves once our server has confirmed it (or it failed/was cancelled). */
   async buySubscription(offer: StoreOffer, withTrial: boolean): Promise<{ ok: boolean; message?: string }> {
     if (!(await currentAccountId())) return NO_ACCOUNT;
+    pendingIntent = { kind: 'premium' };
     return new Promise((resolve) => {
       waiting.add(resolve);
       requestPurchase({
@@ -207,6 +226,7 @@ export const StoreBilling = {
   /** Buys a coin pack; resolves once our server has confirmed it and added the coins. */
   async buyCoins(productId: string): Promise<{ ok: boolean; message?: string }> {
     if (!(await currentAccountId())) return NO_ACCOUNT;
+    pendingIntent = { kind: 'coins', packId: productId };
     return new Promise((resolve) => {
       waiting.add(resolve);
       requestPurchase({ type: 'in-app', request: { google: { skus: [productId], obfuscatedAccountId: accountId } } }).catch(() =>
@@ -219,6 +239,21 @@ export const StoreBilling = {
   buyPack(): Promise<{ ok: boolean; message?: string }> {
     return StoreBilling.buyCoins(coinPackDefs[0]?.id ?? catalogIds.pack);
   },
+
+  /**
+   * How to sell right now:
+   *  - 'choice': Google Play is set up and enrolled in user choice billing → Google's screen offers Play or UPI;
+   *  - 'upi': only Razorpay works (e.g. Play payouts not verified yet) → straight to UPI;
+   *  - 'play': Google Play only;  - 'none': nothing available.
+   */
+  async route(playReady: boolean): Promise<'choice' | 'upi' | 'play' | 'none'> {
+    const cfg = upi ?? (await loadUpiConfig());
+    if (playReady && cfg?.enabled && cfg.userChoiceBilling) return 'choice';
+    if (cfg?.enabled) return 'upi';
+    return playReady ? 'play' : 'none';
+  },
+
+  upiConfig: () => upi,
 
   /** Re-sends every purchase Google still holds to our server (safe to repeat). */
   async restore(): Promise<number> {

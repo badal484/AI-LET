@@ -269,8 +269,9 @@ export class SubscriptionService {
    * Get user's current subscription summary.
    */
   public static async getUserSubscription(userId: string): Promise<BillingSubscription | null> {
+    // A checkout that was opened but never paid (INCOMPLETE) never hides the real subscription.
     const sub = await prisma.billingSubscription.findFirst({
-      where: { userId },
+      where: { userId, status: { not: 'INCOMPLETE' } },
       include: { plan: true },
       orderBy: { createdAt: 'desc' },
     });

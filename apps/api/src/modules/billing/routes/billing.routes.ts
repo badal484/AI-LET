@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { BillingController } from '../controllers/billing.controller.js';
+import { RazorpayController } from '../razorpay/razorpay.controller.js';
 import { authenticateUser, optionalAuth } from '../../../shared/middleware/auth.middleware.js';
 import { validateBody } from '../../../shared/middleware/validateRequest.js';
 import {
@@ -17,6 +18,7 @@ billingRouter.get('/plans', BillingController.getPlans);
 billingRouter.get('/paywall/config', optionalAuth, BillingController.getPaywallConfig);
 
 // Webhooks (authoritative asynchronous payment provider updates)
+billingRouter.post('/webhooks/razorpay', RazorpayController.webhook);
 billingRouter.post('/webhooks/:provider', BillingController.handleWebhook);
 
 // Authenticated User Endpoints
@@ -26,6 +28,13 @@ billingRouter.get('/me', BillingController.getSubscription);
 billingRouter.get('/entitlements', BillingController.getEntitlements);
 billingRouter.get('/usage', BillingController.getUsage);
 billingRouter.get('/allowance', BillingController.getAllowance);
+
+// Razorpay (UPI Autopay / cards), offered next to Google Play through user choice billing.
+billingRouter.get('/razorpay/config', RazorpayController.config);
+billingRouter.post('/razorpay/premium', RazorpayController.startPremium);
+billingRouter.post('/razorpay/coins', RazorpayController.startCoins);
+billingRouter.post('/razorpay/confirm', RazorpayController.confirm);
+billingRouter.post('/razorpay/cancel', RazorpayController.cancel);
 billingRouter.get('/play-account', BillingController.getPlayAccount);
 billingRouter.get('/credits', BillingController.getCredits);
 billingRouter.get('/credits/transactions', BillingController.getCreditTransactions);

@@ -64,3 +64,14 @@ secrets or simulated billing. Values here are examples or descriptions, never re
 The app has no secrets. `apps/mobile/src/config/appInfo.ts`: release builds use `PROD_API_ORIGIN`
 (`https://ai-let-fgx6.onrender.com`). `google-services.json` (Firebase client config) is git-ignored and
 must be present to build. Release signing comes from `~/.gradle/gradle.properties` (`LOVIRA_UPLOAD_*`).
+
+## Razorpay (UPI Autopay) — see docs/payments-setup.md
+
+| Variable | Secret | Purpose |
+|---|---|---|
+| `RAZORPAY_KEY_ID` | no (public, sent to the app) | Razorpay key id (`rzp_test_…` / `rzp_live_…`). With the secret, turns UPI payments on. |
+| `RAZORPAY_KEY_SECRET` | **yes** | Server-side API calls and checkout signature checks. |
+| `RAZORPAY_WEBHOOK_SECRET` | **yes** | Checks Razorpay's webhooks (renewals, failed debits, cancellations, refunds). |
+| `RAZORPAY_PLAN_ID` | no | Optional: an existing ₹499 monthly plan; otherwise one is created and remembered. |
+| `PLAY_USER_CHOICE_BILLING` | no | `true` once enrolled in Play's user choice billing: Google's choice screen offers Play or UPI. |
+| `GST_RATE_PERCENT` | no | Optional, e.g. `18` when GST-registered: the tax part in sale reports to Google. |

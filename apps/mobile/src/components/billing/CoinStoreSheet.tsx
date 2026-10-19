@@ -5,6 +5,7 @@ import { ToastService } from '../common/Toast.js';
 import { StoreBilling, type CoinPack } from '../../services/storeBilling.js';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { tapFeedback } from '../../utils/motion.js';
+import { loadUpiConfig, payWithRazorpay, rupees } from '../../services/razorpayCheckout.js';
 
 /**
  * "Get coins": the three Google Play coin packs. Coins pay for gifts and for messages beyond the daily
@@ -14,6 +15,8 @@ const BADGE: Record<string, string> = { coins_330: '+10% extra', coins_1000: 'Be
 
 export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; reason?: string }> = ({ visible, onClose, reason }) => {
   const [packs, setPacks] = useState<CoinPack[] | null>(null);
+  /** Google Play's packs when Play can sell them; otherwise the same packs paid with UPI (Razorpay). */
+  const [viaUpi, setViaUpi] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const balance = useBillingStore((s) => s.creditWallet?.availableBalance ?? 0);
   const reload = useBillingStore((s) => s.loadBillingState);
@@ -23,9 +26,18 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
     let alive = true;
     setPacks(null);
     void reload().catch(() => undefined); // their current balance
-    StoreBilling.loadCoinPacks()
-      .then((p) => alive && setPacks(p))
-      .catch(() => alive && setPacks([]));
+    (async () => {
+      const play = await StoreBilling.loadCoinPacks().catch(() => [] as CoinPack[]);
+      const cfg = await loadUpiConfig();
+      // Play's own sheet already offers UPI when user choice billing is on; without Play packs, go straight to UPI.
+      if (play.length > 0 || !cfg?.enabled) {
+        if (alive) setPacks(play);
+        return;
+      }
+      if (!alive) return;
+      setViaUpi(true);
+      setPacks(cfg.coinPacks.map((p) => ({ id: p.id, coins: p.coins, price: rupees(p.amountMinorUnits) })));
+    })();
     return () => {
       alive = false;
     };
@@ -34,7 +46,7 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
   const buy = async (pack: CoinPack) => {
     tapFeedback();
     setBusy(pack.id);
-    const r = await StoreBilling.buyCoins(pack.id);
+    const r = viaUpi ? await payWithRazorpay({ kind: 'coins', packId: pack.id }) : await StoreBilling.buyCoins(pack.id);
     setBusy(null);
     if (r.ok) {
       await reload().catch(() => undefined);
@@ -76,6 +88,7 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
         )}
 
         <Text style={styles.note}>Coins pay for gifts and for messages after your daily 150. They never expire.</Text>
+        {viaUpi && <Text style={styles.note}>UPI · Cards · Netbanking  ·  🔒 Secured by Razorpay</Text>}
       </View>
     </BottomSheet>
   );

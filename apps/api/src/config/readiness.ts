@@ -16,6 +16,11 @@ export function configWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
   if (!usesPooler(env['DATABASE_URL'])) out.push('The database URL is not the pooler URL: use the Neon "-pooler" address for the app (migrations use the direct one).');
   if ((env['JWT_ACCESS_SECRET']?.length ?? 0) < 32 || (env['JWT_REFRESH_SECRET']?.length ?? 0) < 32) out.push('JWT_ACCESS_SECRET / JWT_REFRESH_SECRET are shorter than 32 characters: use long random values (changing them signs everyone out).');
   if (!env['FIREBASE_SERVICE_ACCOUNT_JSON']?.trim()) out.push('FIREBASE_SERVICE_ACCOUNT_JSON is not set: no push notifications reach phones (messages from characters, reminders).');
+  if (env['RAZORPAY_KEY_ID'] && env['RAZORPAY_KEY_SECRET']) {
+    if (!env['RAZORPAY_WEBHOOK_SECRET']) out.push('RAZORPAY_WEBHOOK_SECRET is not set: UPI renewals, failed debits and cancellations are not received (Razorpay → Settings → Webhooks).');
+    if (env['PLAY_USER_CHOICE_BILLING'] !== 'true') out.push('Razorpay is on but PLAY_USER_CHOICE_BILLING is not "true": the app sells through Razorpay without Google\'s choice screen — enrol in user choice billing in Play Console before selling to the public.');
+    if (!env['GOOGLE_SERVICE_ACCOUNT_JSON'] || !env['GOOGLE_PLAY_PACKAGE_NAME']) out.push('GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_PLAY_PACKAGE_NAME are not set: UPI sales cannot be reported to Google (required within 24 hours).');
+  }
   if (!env['SENTRY_DSN']) out.push('SENTRY_DSN is not set: server errors are not reported.');
   if (env['RUN_SCHEDULED_JOBS_IN_API'] === 'false') out.push('RUN_SCHEDULED_JOBS_IN_API=false: account deletions and reminders need a running worker.');
   return out;
