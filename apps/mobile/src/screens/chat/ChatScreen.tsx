@@ -53,6 +53,7 @@ import { GiftBurst } from '../../components/chat/GiftBurst.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { GiftsApi, type GiftItem } from '../../services/api/giftsApi.js';
 import { ChatBackdrop } from '../../components/chat/ChatBackdrop.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 
 /** The "…" typing bubble's timestamp: fixed, so it doesn't count as a new message every render. */
 const TYPING_AT = new Date(0).toISOString();
@@ -1229,50 +1230,66 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             activeOpacity={1}
             onPress={() => setIsGiftModalVisible(false)}
           >
-            <View style={styles.giftSheetContent}>
+            <TouchableOpacity activeOpacity={1} onPress={() => undefined} style={styles.giftSheetContent}>
+              <View style={styles.giftGlow} pointerEvents="none">
+                <GradientFill radial colors={[['#EC4899', 0.3], ['#8B5CF6', 0.12], ['#140E24', 0]]} />
+              </View>
               <View style={styles.sheetHandle} />
-              <Text style={styles.giftSheetTitle}>Send a Gift to {companionFirstName}</Text>
-              {giftCatalog?.charged === false ? (
-                <Text style={styles.giftSheetSubtitle}>Gifts are free for now 💝</Text>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsGiftModalVisible(false);
-                    setCoinStore({ visible: true });
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`You have ${walletCoins} coins. Get more coins`}
-                >
-                  <Text style={styles.giftSheetSubtitle}>
-                    🪙 {walletCoins.toLocaleString('en-IN')} coins · <Text style={styles.getCoinsLink}>Get more</Text>
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.giftHeader}>
+                <View style={styles.giftAvatarRing}>
+                  <GradientFill colors={['#EC4899', '#8B5CF6']} />
+                  <Avatar uri={characterAvatarUrl} name={characterName} size="md" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.giftSheetTitle}>Make {companionFirstName} smile</Text>
+                  <Text style={styles.giftSheetHint}>Send a little something 💝</Text>
+                </View>
+                {giftCatalog?.charged === false ? null : (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsGiftModalVisible(false);
+                      setCoinStore({ visible: true });
+                    }}
+                    style={styles.walletPill}
+                    accessibilityRole="button"
+                    accessibilityLabel={`You have ${walletCoins} coins. Get more coins`}
+                  >
+                    <Text style={styles.walletText}>🪙 {walletCoins.toLocaleString('en-IN')}</Text>
+                    <Text style={styles.walletPlus}>+</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
               <View style={styles.giftGrid}>
-                {giftsToShow.map(gift => {
+                {giftsToShow.map((gift, i) => {
                   const short = giftCatalog?.charged !== false && walletCoins < gift.coins;
+                  const top = i === giftsToShow.length - 1;
                   return (
                     <TouchableOpacity
                       key={gift.id}
-                      style={[styles.giftItem, short && styles.giftItemShort]}
+                      style={[styles.giftItem, top && styles.giftItemTop, short && styles.giftItemShort]}
                       onPress={() => void handleSendGift(gift)}
                       activeOpacity={0.7}
                       accessibilityRole="button"
                       accessibilityLabel={`${gift.name}, ${gift.coins} coins${short ? ', not enough coins' : ''}`}
                     >
-                      <Text style={styles.giftIcon}>{gift.icon}</Text>
+                      {top && <GradientFill colors={[['#7C3AED', 0.5], ['#DB2777', 0.4]]} vertical />}
+                      <View style={styles.giftIconHalo}>
+                        <Text style={styles.giftIcon}>{gift.icon}</Text>
+                      </View>
                       <Text style={styles.giftName} numberOfLines={1}>{gift.name.replace('Box of Belgian ', '')}</Text>
-                      {giftCatalog?.charged === false ? null : (
-                        <View style={styles.coinBadge}>
-                          <Text style={styles.coinText}>{gift.coins} 🪙</Text>
+                      {giftCatalog?.charged === false ? (
+                        <Text style={styles.giftFree}>Free</Text>
+                      ) : (
+                        <View style={[styles.coinBadge, top && styles.coinBadgeTop]}>
+                          <Text style={[styles.coinText, top && styles.coinTextTop]}>🪙 {gift.coins}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
-            </View>
+            </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
 
@@ -2003,84 +2020,65 @@ const styles = StyleSheet.create({
   },
   giftSheetContent: {
     backgroundColor: '#140E24',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 36,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 30,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 10,
+    borderColor: 'rgba(196,181,253,0.16)',
+    overflow: 'hidden',
   },
+  giftGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 200 },
   sheetHandle: {
     width: 44,
     height: 4.5,
     borderRadius: 3,
-    backgroundColor: '#4C3B6B',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignSelf: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
   },
-  giftSheetTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  giftSheetSubtitle: {
-    fontSize: 13,
-    color: '#D8B4FE',
-    textAlign: 'center',
-    fontWeight: '700',
-    marginBottom: 22,
-  },
-  giftGrid: {
+  giftHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
+  giftAvatarRing: { width: 52, height: 52, borderRadius: 26, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  giftSheetTitle: { fontSize: 19, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.2 },
+  giftSheetHint: { fontSize: 13, color: '#C9C2D9', marginTop: 2 },
+  walletPill: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 12,
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 12,
+    paddingRight: 6,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: 'rgba(252,211,77,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(252,211,77,0.35)',
   },
+  walletText: { color: '#FCD34D', fontSize: 14, fontWeight: '800' },
+  walletPlus: { color: '#140E24', fontSize: 15, fontWeight: '900', backgroundColor: '#FCD34D', width: 22, height: 22, borderRadius: 11, textAlign: 'center', lineHeight: 22, overflow: 'hidden' },
+  giftGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
   giftItem: {
-    // Three to a row: the width leaves room for the two gaps (it used to wrap to two, far apart).
-    width: '31.5%',
-    backgroundColor: '#201736',
-    borderRadius: 18,
-    paddingVertical: 16,
+    // Three to a row: the width leaves room for the two gaps.
+    width: '31.8%',
+    backgroundColor: '#1D1531',
+    borderRadius: 20,
+    paddingTop: 14,
+    paddingBottom: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255,255,255,0.07)',
+    overflow: 'hidden',
   },
+  giftItemTop: { borderColor: '#E879F9', borderWidth: 1.5 },
   giftItemShort: { opacity: 0.45 },
-  getCoinsLink: { color: '#F0ABFC', fontWeight: '800' },
-  giftIcon: {
-    fontSize: 34,
-    marginBottom: 8,
-  },
-  giftName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  coinBadge: {
-    backgroundColor: 'rgba(168, 85, 247, 0.25)',
-    borderRadius: 12,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.35)',
-  },
-  coinText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#E9D5FF',
-  },
+  giftIconHalo: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 8 },
+  giftIcon: { fontSize: 32 },
+  giftName: { fontSize: 12.5, fontWeight: '700', color: '#FFFFFF', marginBottom: 8, textAlign: 'center' },
+  giftFree: { fontSize: 11, fontWeight: '800', color: '#6EE7B7' },
+  coinBadge: { backgroundColor: 'rgba(252,211,77,0.12)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  coinBadgeTop: { backgroundColor: '#FFFFFF' },
+  coinText: { fontSize: 11.5, fontWeight: '800', color: '#FCD34D' },
+  coinTextTop: { color: '#6D28D9' },
   menuSheetContent: {
     backgroundColor: '#161026',
     borderTopLeftRadius: 24,
