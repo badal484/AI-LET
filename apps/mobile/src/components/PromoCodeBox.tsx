@@ -40,9 +40,7 @@ export const PromoCodeBox: React.FC = () => {
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         accessibilityRole="button"
       >
-        <View style={styles.rowIcon}>
-          <Icon name="gift" size={17} color="#F9A8D4" />
-        </View>
+        <Text style={styles.rowEmoji}>🎁</Text>
         <Text style={styles.rowText}>Have a code?</Text>
         <Icon name="arrow-right" size={16} color="#8E86A3" />
       </Pressable>
@@ -116,11 +114,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
+    gap: 10,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#140F20',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
   },
@@ -132,6 +130,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(236,72,153,0.14)',
   },
+  rowEmoji: { fontSize: 18 },
   rowText: { flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   pressed: { opacity: 0.8 },
   box: {

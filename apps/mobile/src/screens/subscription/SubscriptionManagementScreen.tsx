@@ -153,13 +153,6 @@ export const SubscriptionManagementScreen: React.FC = () => {
   const daysLeft = endMs ? Math.max(0, Math.ceil((endMs - Date.now()) / 86_400_000)) : 0;
   const leftShare =
     endMs > startMs ? Math.min(1, Math.max(0.04, (endMs - Date.now()) / (endMs - startMs))) : 0;
-  const heroTitle = !isPremium
-    ? 'Loveek Premium'
-    : viaPromo
-      ? 'Premium · gifted'
-      : status === 'trialing'
-        ? 'Premium · first day'
-        : 'Premium';
   const heroLine = !isPremium
     ? 'Talk to everyone, up to 150 messages a day.'
     : status === 'past_due' || status === 'grace_period'
@@ -195,84 +188,54 @@ export const SubscriptionManagementScreen: React.FC = () => {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {isLoading && !subscription ? (
-          <Skeleton height={210} borderRadius={26} />
+          <Skeleton height={150} borderRadius={20} />
         ) : (
           <View style={styles.hero}>
-            <GradientFill colors={isPremium ? ['#6D28D9', '#BE185D'] : ['#2A1F45', '#3B1D4E']} />
             <View style={styles.heroTop}>
-              <View style={styles.crown}>
-                <Icon name="diamond" size={24} color="#FFFFFF" />
-              </View>
-              <View style={[styles.pill, { backgroundColor: 'rgba(0,0,0,0.25)' }]}>
-                <Text style={[styles.pillText, { color: '#FFFFFF' }]}>{pill.label}</Text>
-              </View>
+              <Icon name="diamond" size={18} color="#C4B5FD" />
+              <Text style={styles.heroLabel}>{isPremium ? 'PREMIUM' : 'LOVEEK PREMIUM'}</Text>
+              <Text style={styles.heroBadge}>{pill.label}</Text>
             </View>
-            <Text style={styles.heroTitle}>{heroTitle}</Text>
-            <Text style={styles.heroLine}>{heroLine}</Text>
-
-            {isPremium && endMs > 0 && (
-              <View style={styles.countdown}>
-                <View style={styles.countRow}>
-                  <Text style={styles.countBig}>{daysLeft}</Text>
-                  <Text style={styles.countUnit}>{daysLeft === 1 ? 'day left' : 'days left'}</Text>
-                </View>
+            {isPremium && endMs > 0 ? (
+              <>
+                <Text style={styles.heroBig}>
+                  {daysLeft}{' '}
+                  <Text style={styles.heroBigUnit}>
+                    {daysLeft === 1 ? 'day left' : 'days left'}
+                  </Text>
+                </Text>
                 <View style={styles.track}>
                   <View style={[styles.fill, { width: `${Math.round(leftShare * 100)}%` }]} />
                 </View>
-              </View>
+                <Text style={styles.heroLine}>{heroLine}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.heroLine}>{heroLine}</Text>
+                {!isPremium && (
+                  <Pressable
+                    onPress={() => navigation.navigate('Paywall')}
+                    style={({ pressed }) => [styles.heroCta, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.heroCtaText}>Start for ₹1</Text>
+                  </Pressable>
+                )}
+              </>
             )}
-
-            {!isPremium && (
-              <Pressable
-                onPress={() => navigation.navigate('Paywall')}
-                style={({ pressed }) => [styles.heroCta, pressed && styles.pressed]}
-                accessibilityRole="button"
-              >
-                <Text style={styles.heroCtaText}>Start for ₹1</Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-
-        {/* What Premium includes, at a glance. */}
-        {isPremium && (
-          <View style={styles.perks}>
-            {[
-              ['💬', '150 / day'],
-              ['🧠', 'Remembers you'],
-              ['💜', 'Deeper bond'],
-              ['📚', 'Courses'],
-            ].map(([icon, label]) => (
-              <View key={label} style={styles.perk}>
-                <Text style={styles.perkIcon}>{icon}</Text>
-                <Text style={styles.perkText} numberOfLines={1}>
-                  {label}
-                </Text>
-              </View>
-            ))}
           </View>
         )}
 
         <Pressable
           onPress={() => setCoinStoreOpen(true)}
-          style={({ pressed }) => [styles.coinCard, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.coinRow, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel={`${coins} coins, get more`}
         >
-          <GradientFill
-            colors={[
-              ['#F59E0B', 0.22],
-              ['#F59E0B', 0.04],
-            ]}
-          />
           <Text style={styles.coinEmoji}>🪙</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.coinCount}>{coins.toLocaleString('en-IN')} coins</Text>
-            <Text style={styles.coinSub}>Gifts · 2 coins per extra message</Text>
-          </View>
-          <View style={styles.coinBtn}>
-            <Text style={styles.coinBtnText}>+ Get</Text>
-          </View>
+          <Text style={styles.coinCount}>{coins.toLocaleString('en-IN')} coins</Text>
+          <Text style={styles.coinGet}>Get more</Text>
+          <Icon name="arrow-right" size={14} color="#8E86A3" />
         </Pressable>
 
         {viaPromo ? null : viaUpi ? (
@@ -324,80 +287,56 @@ const styles = StyleSheet.create({
   },
   title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
   content: { padding: spacing.lg, paddingTop: spacing.sm, gap: 14, paddingBottom: 48 },
-  hero: { borderRadius: 26, padding: 20, overflow: 'hidden' },
-  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  crown: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+  hero: {
+    borderRadius: 20,
+    padding: 18,
+    backgroundColor: '#140F20',
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.18)',
   },
-  pill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  pillText: { fontSize: 12, fontWeight: '800' },
-  heroTitle: {
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroLabel: { flex: 1, color: '#C4B5FD', fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
+  heroBadge: { color: '#B9B2CC', fontSize: 12, fontWeight: '700' },
+  heroBig: {
     color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: -0.4,
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -0.5,
     marginTop: 14,
   },
-  heroLine: { color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 3 },
-  countdown: { marginTop: 18 },
-  countRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  countBig: { color: '#FFFFFF', fontSize: 40, fontWeight: '900', letterSpacing: -1 },
-  countUnit: { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '700' },
+  heroBigUnit: { color: '#B9B2CC', fontSize: 15, fontWeight: '600' },
   track: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    marginTop: 8,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginTop: 12,
     overflow: 'hidden',
   },
-  fill: { height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  fill: { height: 4, borderRadius: 2, backgroundColor: '#A78BFA' },
+  heroLine: { color: '#9E97B0', fontSize: 13, marginTop: 10 },
   heroCta: {
-    marginTop: 16,
+    marginTop: 14,
     alignSelf: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#7C3AED',
   },
-  heroCtaText: { color: '#6D28D9', fontSize: 15, fontWeight: '800' },
-  perks: { flexDirection: 'row', gap: 8 },
-  perk: {
-    flex: 1,
+  heroCtaText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  coinRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#140F20',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',
   },
-  perkIcon: { fontSize: 20 },
-  perkText: { color: '#C9C2D9', fontSize: 11, fontWeight: '700', marginTop: 4 },
-  coinCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: '#17120A',
-    borderWidth: 1,
-    borderColor: 'rgba(252,211,77,0.3)',
-  },
-  coinEmoji: { fontSize: 30 },
-  coinCount: { color: '#FCD34D', fontSize: 18, fontWeight: '900' },
-  coinSub: { color: '#C9B98A', fontSize: 12, marginTop: 1 },
-  coinBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#FCD34D',
-  },
-  coinBtnText: { color: '#1A1205', fontSize: 13, fontWeight: '900' },
+  coinEmoji: { fontSize: 18 },
+  coinCount: { flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  coinGet: { color: '#A78BFA', fontSize: 13, fontWeight: '700' },
   card: {
     backgroundColor: darkThemeColors.surface,
     borderRadius: 16,
