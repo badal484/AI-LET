@@ -12,7 +12,17 @@ import { loadUpiConfig, payWithRazorpay, rupees } from '../../services/razorpayC
  * "Get coins": the three Google Play coin packs. Coins pay for gifts and for messages beyond the daily
  * allowance. Prices are Play's own (localized); how many coins each pack gives is our server's.
  */
-const BADGE: Record<string, string> = { coins_100: 'Starter', coins_330: '+10% extra', coins_1000: 'BEST · +25%' };
+const BADGE: Record<string, string> = {
+  coins_100: 'Starter',
+  coins_330: '+10% Bonus',
+  coins_1000: '🔥 Best · +25%',
+};
+
+const FALLBACK_PRICES: Record<string, string> = {
+  coins_100: '₹49',
+  coins_330: '₹149',
+  coins_1000: '₹399',
+};
 
 export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; reason?: string }> = ({ visible, onClose, reason }) => {
   const [packs, setPacks] = useState<CoinPack[] | null>(null);
@@ -30,9 +40,16 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
     (async () => {
       const play = await StoreBilling.loadCoinPacks().catch(() => [] as CoinPack[]);
       const cfg = await loadUpiConfig();
-      // Play's own sheet already offers UPI when user choice billing is on; without Play packs, go straight to UPI.
-      if (play.length > 0 || !cfg?.enabled) {
-        if (alive) setPacks(play);
+      const playHasValidPrices = play.length > 0 && play.every((p) => Boolean(p.price));
+      if (playHasValidPrices || !cfg?.enabled) {
+        if (alive) {
+          const withPrices = (play.length > 0 ? play : [
+            { id: 'coins_100', coins: 100, price: '₹49' },
+            { id: 'coins_330', coins: 330, price: '₹149' },
+            { id: 'coins_1000', coins: 1000, price: '₹399' },
+          ]).map((p) => ({ ...p, price: p.price || FALLBACK_PRICES[p.id] || 'Buy' }));
+          setPacks(withPrices);
+        }
         return;
       }
       if (!alive) return;
@@ -64,24 +81,33 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
         {/* A glowing coin and what they have now. */}
         <View style={styles.hero}>
           <View style={styles.heroGlow} pointerEvents="none">
-            <GradientFill radial colors={[['#F59E0B', 0.35], ['#A855F7', 0.12], ['#0B0614', 0]]} />
+            <GradientFill radial colors={[['#F59E0B', 0.45], ['#A855F7', 0.18], ['#130D22', 0]]} />
           </View>
           <Text style={styles.heroCoin}>🪙</Text>
-          <Text style={styles.heroTitle}>Get coins</Text>
-          <Text style={styles.heroSub}>
-            You have <Text style={styles.heroBalance}>{balance.toLocaleString('en-IN')}</Text> · for gifts and extra messages
-          </Text>
+          <Text style={styles.heroTitle}>Get Coins</Text>
+          
+          <View style={styles.balanceBadge}>
+            <Text style={styles.balanceLabel}>Your Balance: </Text>
+            <Text style={styles.heroBalance}>🪙 {balance.toLocaleString('en-IN')} coins</Text>
+          </View>
+          <Text style={styles.heroSub}>Use coins for romantic gifts & unlocking extra messages</Text>
         </View>
-        {reason ? <Text style={styles.reason}>{reason}</Text> : null}
+
+        {reason ? (
+          <View style={styles.reasonBox}>
+            <Text style={styles.reason}>{reason}</Text>
+          </View>
+        ) : null}
 
         {packs === null ? (
-          <ActivityIndicator color="#C4B5FD" style={{ marginVertical: 24 }} />
+          <ActivityIndicator color="#C4B5FD" style={{ marginVertical: 28 }} />
         ) : packs.length === 0 ? (
           <Text style={styles.empty}>Coin packs aren't available right now. Please try again later.</Text>
         ) : (
           <View style={styles.grid}>
             {packs.map((pack) => {
               const best = pack.id === 'coins_1000';
+              const displayPrice = pack.price || FALLBACK_PRICES[pack.id] || 'Buy';
               return (
                 <Pressable
                   key={pack.id}
@@ -89,21 +115,31 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
                   disabled={busy !== null}
                   style={({ pressed }) => [styles.tile, best && styles.tileBest, pressed && styles.pressed]}
                   accessibilityRole="button"
-                  accessibilityLabel={`${pack.coins} coins for ${pack.price}`}
+                  accessibilityLabel={`${pack.coins} coins for ${displayPrice}`}
                 >
-                  {best && <GradientFill colors={[['#7C3AED', 0.55], ['#DB2777', 0.45]]} vertical />}
+                  {best && <GradientFill colors={[['#8B5CF6', 0.6], ['#EC4899', 0.45]]} vertical />}
+                  
                   {BADGE[pack.id] ? (
                     <View style={[styles.ribbon, best && styles.ribbonBest]}>
-                      <Text style={styles.ribbonText}>{BADGE[pack.id]}</Text>
+                      <Text style={[styles.ribbonText, best && styles.ribbonTextBest]}>{BADGE[pack.id]}</Text>
                     </View>
                   ) : (
                     <View style={styles.ribbonSpace} />
                   )}
-                  <Text style={styles.tileCoin}>{best ? '💰' : '🪙'}</Text>
+
+                  <View style={[styles.coinHalo, best && styles.coinHaloBest]}>
+                    <Text style={styles.tileCoin}>{best ? '💰' : '🪙'}</Text>
+                  </View>
+
                   <Text style={styles.tileCount}>{pack.coins.toLocaleString('en-IN')}</Text>
                   <Text style={styles.tileUnit}>coins</Text>
+
                   <View style={[styles.pricePill, best && styles.pricePillBest]}>
-                    {busy === pack.id ? <ActivityIndicator color={best ? '#6D28D9' : '#FFFFFF'} size="small" /> : <Text style={[styles.priceText, best && styles.priceTextBest]}>{pack.price}</Text>}
+                    {busy === pack.id ? (
+                      <ActivityIndicator color={best ? '#4C1D95' : '#FFFFFF'} size="small" />
+                    ) : (
+                      <Text style={[styles.priceText, best && styles.priceTextBest]}>{displayPrice}</Text>
+                    )}
                   </View>
                 </Pressable>
               );
@@ -111,45 +147,122 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
           </View>
         )}
 
-        <Text style={styles.note}>Coins never expire</Text>
+        <View style={styles.footerNoteRow}>
+          <Text style={styles.footerTrust}>🔒 Secure Payment</Text>
+          <Text style={styles.footerDot}>•</Text>
+          <Text style={styles.footerTrust}>⚡ Instant Add</Text>
+          <Text style={styles.footerDot}>•</Text>
+          <Text style={styles.footerTrust}>♾️ Never Expire</Text>
+        </View>
       </View>
     </BottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  body: { gap: 14, paddingBottom: 8 },
-  hero: { alignItems: 'center', paddingTop: 4, paddingBottom: 4 },
-  heroGlow: { position: 'absolute', top: -30, left: -40, right: -40, height: 170 },
-  heroCoin: { fontSize: 44 },
-  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 4, letterSpacing: -0.3 },
-  heroSub: { color: '#B9B2CC', fontSize: 13.5, marginTop: 4, textAlign: 'center' },
-  heroBalance: { color: '#FCD34D', fontWeight: '800' },
-  reason: { color: '#B9B2CC', fontSize: 13.5, textAlign: 'center', lineHeight: 19 },
-  empty: { color: '#9E97B0', fontSize: 14, textAlign: 'center', marginVertical: 16 },
-  grid: { flexDirection: 'row', gap: 10 },
+  body: { gap: 14, paddingBottom: 10 },
+  hero: { alignItems: 'center', paddingTop: 2, paddingBottom: 6 },
+  heroGlow: { position: 'absolute', top: -30, left: -40, right: -40, height: 180 },
+  heroCoin: { fontSize: 46 },
+  heroTitle: { color: '#FFFFFF', fontSize: 23, fontWeight: '900', marginTop: 4, letterSpacing: -0.3 },
+  balanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(251, 191, 36, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.35)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 8,
+  },
+  balanceLabel: { color: '#E2E8F0', fontSize: 13, fontWeight: '600' },
+  heroBalance: { color: '#FCD34D', fontSize: 13.5, fontWeight: '800' },
+  heroSub: { color: '#C4B5FD', fontSize: 13, marginTop: 7, textAlign: 'center', fontWeight: '500' },
+  reasonBox: {
+    backgroundColor: 'rgba(139, 92, 246, 0.16)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  reason: { color: '#F5E9FF', fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  empty: { color: '#C4B5FD', fontSize: 14, textAlign: 'center', marginVertical: 18 },
+  grid: { flexDirection: 'row', gap: 10, marginTop: 4 },
   tile: {
     flex: 1,
     alignItems: 'center',
-    paddingBottom: 12,
-    borderRadius: 20,
+    paddingBottom: 14,
+    borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: '#1A1428',
+    backgroundColor: '#1E1632',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(167, 139, 250, 0.22)',
   },
-  tileBest: { borderColor: '#E879F9', borderWidth: 1.5 },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.97 }] },
-  ribbon: { alignSelf: 'stretch', paddingVertical: 4, backgroundColor: 'rgba(167,139,250,0.22)', alignItems: 'center' },
-  ribbonBest: { backgroundColor: 'rgba(0,0,0,0.25)' },
-  ribbonSpace: { height: 22 },
-  ribbonText: { color: '#F5E9FF', fontSize: 10.5, fontWeight: '800' },
-  tileCoin: { fontSize: 30, marginTop: 10 },
-  tileCount: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', marginTop: 4 },
-  tileUnit: { color: '#C9C2D9', fontSize: 12, marginTop: -2 },
-  pricePill: { marginTop: 10, minWidth: 64, height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
-  pricePillBest: { backgroundColor: '#FFFFFF' },
-  priceText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-  priceTextBest: { color: '#6D28D9' },
-  note: { color: '#7E778F', fontSize: 12, textAlign: 'center' },
+  tileBest: {
+    borderColor: '#F472B6',
+    borderWidth: 1.5,
+    backgroundColor: '#24143D',
+  },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.97 }] },
+  ribbon: {
+    alignSelf: 'stretch',
+    paddingVertical: 4.5,
+    backgroundColor: 'rgba(139, 92, 246, 0.32)',
+    alignItems: 'center',
+  },
+  ribbonBest: {
+    backgroundColor: 'rgba(236, 72, 153, 0.45)',
+  },
+  ribbonSpace: { height: 24 },
+  ribbonText: { color: '#E9D5FF', fontSize: 11, fontWeight: '800', letterSpacing: 0.2 },
+  ribbonTextBest: { color: '#FFFFFF', fontWeight: '900' },
+  coinHalo: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  coinHaloBest: {
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  tileCoin: { fontSize: 28 },
+  tileCount: { color: '#FFFFFF', fontSize: 23, fontWeight: '900', marginTop: 6 },
+  tileUnit: { color: '#D8B4FE', fontSize: 12, marginTop: -2, fontWeight: '600' },
+  pricePill: {
+    marginTop: 12,
+    minWidth: 72,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pricePillBest: {
+    backgroundColor: '#FDE047',
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.5,
+  },
+  priceText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  priceTextBest: { color: '#3B0764', fontSize: 14, fontWeight: '900' },
+  footerNoteRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    paddingTop: 4,
+  },
+  footerTrust: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
+  footerDot: { color: '#64748B', fontSize: 12 },
 });

@@ -1267,14 +1267,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   return (
                     <TouchableOpacity
                       key={gift.id}
-                      style={[styles.giftItem, top && styles.giftItemTop, short && styles.giftItemShort]}
+                      style={[styles.giftItem, top && styles.giftItemTop]}
                       onPress={() => void handleSendGift(gift)}
-                      activeOpacity={0.7}
+                      activeOpacity={0.75}
                       accessibilityRole="button"
                       accessibilityLabel={`${gift.name}, ${gift.coins} coins${short ? ', not enough coins' : ''}`}
                     >
-                      {top && <GradientFill colors={[['#7C3AED', 0.5], ['#DB2777', 0.4]]} vertical />}
-                      <View style={styles.giftIconHalo}>
+                      {top && <GradientFill colors={[['#8B5CF6', 0.55], ['#EC4899', 0.45]]} vertical />}
+                      {top && (
+                        <View style={styles.topGiftRibbon}>
+                          <Text style={styles.topGiftRibbonText}>SPECIAL</Text>
+                        </View>
+                      )}
+                      <View style={[styles.giftIconHalo, top && styles.giftIconHaloTop]}>
                         <Text style={styles.giftIcon}>{gift.icon}</Text>
                       </View>
                       <Text style={styles.giftName} numberOfLines={1}>{gift.name.replace('Box of Belgian ', '')}</Text>
@@ -1288,6 +1293,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                     </TouchableOpacity>
                   );
                 })}
+              </View>
+
+              <View style={styles.giftSheetFooter}>
+                <Text style={styles.giftSheetFooterText}>✨ Gifts deepen your bond & unlock romantic reactions</Text>
               </View>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -2040,45 +2049,109 @@ const styles = StyleSheet.create({
   },
   giftHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
   giftAvatarRing: { width: 52, height: 52, borderRadius: 26, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  giftSheetTitle: { fontSize: 19, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.2 },
-  giftSheetHint: { fontSize: 13, color: '#C9C2D9', marginTop: 2 },
+  giftSheetTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', letterSpacing: -0.2 },
+  giftSheetHint: { fontSize: 13.5, color: '#D8B4FE', marginTop: 2, fontWeight: '600' },
   walletPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingLeft: 12,
     paddingRight: 6,
-    height: 34,
+    height: 36,
     borderRadius: 999,
-    backgroundColor: 'rgba(252,211,77,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(252,211,77,0.35)',
+    backgroundColor: 'rgba(251, 191, 36, 0.16)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
   },
-  walletText: { color: '#FCD34D', fontSize: 14, fontWeight: '800' },
-  walletPlus: { color: '#140E24', fontSize: 15, fontWeight: '900', backgroundColor: '#FCD34D', width: 22, height: 22, borderRadius: 11, textAlign: 'center', lineHeight: 22, overflow: 'hidden' },
-  giftGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
-  giftItem: {
-    // Three to a row: the width leaves room for the two gaps.
-    width: '31.8%',
-    backgroundColor: '#1D1531',
-    borderRadius: 20,
-    paddingTop: 14,
-    paddingBottom: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+  walletText: { color: '#FCD34D', fontSize: 14.5, fontWeight: '900' },
+  walletPlus: {
+    color: '#130E24',
+    fontSize: 16,
+    fontWeight: '900',
+    backgroundColor: '#FCD34D',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    textAlign: 'center',
+    lineHeight: 24,
     overflow: 'hidden',
   },
-  giftItemTop: { borderColor: '#E879F9', borderWidth: 1.5 },
-  giftItemShort: { opacity: 0.45 },
-  giftIconHalo: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 8 },
-  giftIcon: { fontSize: 32 },
-  giftName: { fontSize: 12.5, fontWeight: '700', color: '#FFFFFF', marginBottom: 8, textAlign: 'center' },
-  giftFree: { fontSize: 11, fontWeight: '800', color: '#6EE7B7' },
-  coinBadge: { backgroundColor: 'rgba(252,211,77,0.12)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  coinBadgeTop: { backgroundColor: '#FFFFFF' },
-  coinText: { fontSize: 11.5, fontWeight: '800', color: '#FCD34D' },
-  coinTextTop: { color: '#6D28D9' },
+  giftGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  giftItem: {
+    width: '31.8%',
+    backgroundColor: '#1E1533',
+    borderRadius: 22,
+    paddingTop: 16,
+    paddingBottom: 14,
+    alignItems: 'center',
+    borderWidth: 1.2,
+    borderColor: 'rgba(167, 139, 250, 0.2)',
+    overflow: 'hidden',
+  },
+  giftItemTop: {
+    borderColor: '#EC4899',
+    borderWidth: 1.8,
+    backgroundColor: '#27133D',
+  },
+  topGiftRibbon: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(236, 72, 153, 0.4)',
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  topGiftRibbonText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  giftIconHalo: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  giftIconHaloTop: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(236, 72, 153, 0.4)',
+  },
+  giftIcon: { fontSize: 34 },
+  giftName: { fontSize: 13, fontWeight: '800', color: '#FFFFFF', marginBottom: 8, textAlign: 'center' },
+  giftFree: { fontSize: 12, fontWeight: '900', color: '#6EE7B7' },
+  coinBadge: {
+    backgroundColor: 'rgba(251, 191, 36, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  coinBadgeTop: {
+    backgroundColor: '#FDE047',
+    borderColor: '#F59E0B',
+  },
+  coinText: { fontSize: 12, fontWeight: '900', color: '#FDE047' },
+  coinTextTop: { fontSize: 12, fontWeight: '900', color: '#3B0764' },
+  giftSheetFooter: {
+    marginTop: 16,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  giftSheetFooterText: {
+    color: '#C4B5FD',
+    fontSize: 12.5,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   menuSheetContent: {
     backgroundColor: '#161026',
     borderTopLeftRadius: 24,

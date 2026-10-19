@@ -209,18 +209,40 @@ export const StoreBilling = {
     });
   },
 
-  /** The coin packs with their real Google Play prices (empty if Play isn't reachable or they aren't set up yet). */
+  /** The coin packs with their real Google Play prices (falls back to configured INR prices). */
   async loadCoinPacks(): Promise<CoinPack[]> {
-    // Without Play billing (emulator, no Play account) connecting can hang: give up after 8 s → "not available".
-    const load = async (): Promise<CoinPack[]> => {
-      if (!(await StoreBilling.connect())) return [];
-      const products = ((await fetchProducts({ skus: coinPackDefs.map((p) => p.id), type: 'in-app' })) ?? []) as Array<{ id: string; displayPrice: string }>;
-      return coinPackDefs.flatMap((def) => {
-        const product = products.find((p) => p.id === def.id);
-        return product ? [{ ...def, price: product.displayPrice }] : [];
-      });
+    const fallbackPrices: Record<string, string> = {
+      coins_100: '₹49',
+      coins_330: '₹149',
+      coins_1000: '₹399',
     };
-    return Promise.race([load(), new Promise<CoinPack[]>((resolve) => setTimeout(() => resolve([]), 8000))]);
+    const load = async (): Promise<CoinPack[]> => {
+      if (!(await StoreBilling.connect())) {
+        return coinPackDefs.map((def) => ({ ...def, price: fallbackPrices[def.id] || '₹49' }));
+      }
+      try {
+        const products = ((await fetchProducts({ skus: coinPackDefs.map((p) => p.id), type: 'in-app' })) ?? []) as any[];
+        return coinPackDefs.map((def) => {
+          const product = products.find((p) => (p.productId || p.id) === def.id);
+          const price =
+            product?.oneTimePurchaseOfferDetails?.formattedPrice ||
+            product?.displayPrice ||
+            product?.formattedPrice ||
+            product?.localizedPrice ||
+            fallbackPrices[def.id] ||
+            '₹49';
+          return { ...def, price };
+        });
+      } catch {
+        return coinPackDefs.map((def) => ({ ...def, price: fallbackPrices[def.id] || '₹49' }));
+      }
+    };
+    return Promise.race([
+      load(),
+      new Promise<CoinPack[]>((resolve) =>
+        setTimeout(() => resolve(coinPackDefs.map((def) => ({ ...def, price: fallbackPrices[def.id] || '₹49' }))), 4000)
+      ),
+    ]);
   },
 
   /** Buys a coin pack; resolves once our server has confirmed it and added the coins. */
