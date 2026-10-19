@@ -59,6 +59,9 @@ async function load(): Promise<Map<string, unknown>> {
 }
 
 export async function getSetting<K extends SettingKey>(key: K): Promise<Value<K>> {
+  if (key === 'limits.enforce' && process.env['BILLING_ENFORCE_LIMITS'] !== undefined) {
+    return (process.env['BILLING_ENFORCE_LIMITS'] === 'true') as Value<K>;
+  }
   const values = await load();
   return (values.has(key) ? values.get(key) : SETTINGS[key].default()) as Value<K>;
 }

@@ -37,7 +37,12 @@ export interface AllowanceResult {
 // From the admin console's settings (env values are the defaults).
 const limits = async () => ({ free: await getSetting('limits.freeDaily'), premium: await getSetting('limits.premiumDaily') });
 
-export const limitsEnforced = () => getSetting('limits.enforce');
+export const limitsEnforced = async (): Promise<boolean> => {
+  if (process.env['BILLING_ENFORCE_LIMITS'] !== undefined) {
+    return process.env['BILLING_ENFORCE_LIMITS'] === 'true';
+  }
+  return Boolean(await getSetting('limits.enforce'));
+};
 
 /** The user's day in India (resets at midnight IST). */
 function istDay(now = new Date()): { key: string; resetsAt: Date } {
