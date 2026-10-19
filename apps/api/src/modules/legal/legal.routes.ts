@@ -1,4 +1,5 @@
 import express, { Router, type Request, type Response } from 'express';
+import { fileURLToPath } from 'node:url';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../../infrastructure/database/prisma.js';
 import { logger } from '../../config/logger.js';
@@ -228,6 +229,12 @@ most things can be sorted out quickly.</p>
 ${contactHtml()}`,
     ),
   );
+});
+
+// The Loveek logo (Razorpay's checkout shows it; also handy for any page).
+const LOGO = fileURLToPath(new URL('../../../assets/loveek-logo.png', import.meta.url));
+legalRouter.get('/logo.png', (_req: Request, res: Response) => {
+  res.set('Cache-Control', 'public, max-age=86400').sendFile(LOGO);
 });
 
 // ── Home, About us, Refunds & cancellation, Contact (Razorpay reviews these) ─────────────────────────────

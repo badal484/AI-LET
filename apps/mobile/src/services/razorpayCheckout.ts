@@ -36,6 +36,8 @@ export type PayIntent = { kind: 'premium' } | { kind: 'coins'; packId: string };
 export type PayResult = { ok: boolean; message?: string };
 
 const BRAND = { name: 'Loveek', theme: { color: '#8B5CF6' } };
+/** The Loveek heart on Razorpay's checkout (served by our API), instead of Razorpay's letter placeholder. */
+const brandFor = (started: Record<string, unknown>) => ({ ...BRAND, ...(typeof started['logoUrl'] === 'string' && { image: started['logoUrl'] }) });
 
 function prefill() {
   const user = useAuthStore.getState().user;
@@ -76,7 +78,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string): 
           key: String(started['keyId']),
           subscription_id: String(started['subscriptionId']),
           description: `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`,
-          ...BRAND,
+          ...brandFor(started),
           prefill: prefill(),
         }
       : {
@@ -85,7 +87,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string): 
           amount: Number(started['amountMinorUnits']),
           currency: 'INR',
           description: `${Number(started['coins']).toLocaleString('en-IN')} coins`,
-          ...BRAND,
+          ...brandFor(started),
           prefill: prefill(),
         };
 

@@ -4,6 +4,7 @@ import { prisma } from '../../../infrastructure/database/prisma.js';
 import { redis } from '../../../infrastructure/redis/redis.js';
 import { AppError, BadRequestError, NotFoundError } from '../../../shared/errors/AppError.js';
 import { logger } from '../../../config/logger.js';
+import { publicOrigin } from '../../../infrastructure/email/email.js';
 import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 import { EntitlementService } from '../entitlements/EntitlementService.js';
 import { CreditWalletService } from '../credits/CreditWalletService.js';
@@ -33,6 +34,9 @@ import {
  * Webhooks (signed) keep the subscription in step afterwards — renewals, failed debits, cancellations.
  * Every sale is reported to Google within 24 hours (user choice billing rules); failed reports are retried.
  */
+
+/** Where Razorpay's checkout loads the Loveek logo from (our own server). */
+const logoUrl = () => `${publicOrigin()}/legal/logo.png`;
 
 export const RAZORPAY_PREMIUM = { monthlyMinorUnits: 49_900, firstDayMinorUnits: 100, planCode: 'PREMIUM' };
 const ONE_TIME_PACKS = ['coins_100', 'coins_330', 'coins_1000'] as const;
@@ -117,6 +121,7 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
     firstDayMinorUnits: RAZORPAY_PREMIUM.firstDayMinorUnits,
     monthlyMinorUnits: RAZORPAY_PREMIUM.monthlyMinorUnits,
     chargesFrom: new Date(startAt * 1000).toISOString(),
+    logoUrl: logoUrl(),
   };
 }
 
@@ -133,7 +138,7 @@ export async function startCoinPack(userId: string, packId: string, opts: { goog
   });
   // The Google token is longer than Razorpay's notes allow: kept here for the sale report.
   if (opts.googleToken) await redis.set(`razorpay:order:${order.id}:token`, opts.googleToken, 'EX', 3 * 86_400);
-  return { orderId: order.id, keyId: razorpayKeyId(), amountMinorUnits: pack.amountMinorUnits, coins: pack.coins };
+  return { orderId: order.id, keyId: razorpayKeyId(), amountMinorUnits: pack.amountMinorUnits, coins: pack.coins, logoUrl: logoUrl() };
 }
 
 // ── Confirming (the app right after checkout; webhooks do the same if the app never comes back) ──────
