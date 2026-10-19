@@ -18,7 +18,7 @@ import { GradientFill } from '../../components/common/GradientFill.js';
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'How many messages can I send?',
-    a: 'Premium gives you up to 150 messages a day with everyone; they refill at midnight. Your first day is ₹1, then ₹499 a month. Need more on a busy day? Add 100 messages any time for ₹49.',
+    a: 'Premium gives you up to 150 messages a day with everyone; they refill at midnight. Your first day is ₹1, then ₹499 a month. Need more on a busy day? Extra messages cost 2 coins each — 100 coins (₹49) gives you 50 more.',
   },
   {
     q: 'How do I cancel Premium?',

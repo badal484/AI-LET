@@ -225,7 +225,7 @@ export const PaywallScreen: React.FC = () => {
           : await payWithRazorpay({ kind: 'premium' }, undefined, method);
     }
     setBusy(false);
-    finish(r, mode === 'pack' ? '100 messages added ✨' : 'Welcome to Premium 💜');
+    finish(r, mode === 'pack' ? '100 coins added — 50 more messages ✨' : 'Welcome to Premium 💜');
   };
 
   const restore = async () => {
@@ -243,12 +243,12 @@ export const PaywallScreen: React.FC = () => {
     : mode === 'manage'
       ? 'Manage Premium'
       : mode === 'pack'
-        ? `Add 100 messages · ${packPrice ?? '₹49'}`
+        ? `Add 50 messages · ${packPrice ?? '₹49'}`
         : firstIsTrial
           ? `Start for ${first}`
           : `Subscribe · ${monthly}/mo`;
   // Premium's terms are already in the price line above (and in the button's label for screen readers).
-  const legal = mode === 'pack' ? 'One-time payment. Used after your daily 150.' : '';
+  const legal = mode === 'pack' ? '100 coins, one-time. Each extra message after your daily 150 is 2 coins.' : '';
   const terms = firstIsTrial
     ? `${first} today, then ${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`
     : `${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`;

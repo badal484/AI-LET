@@ -202,7 +202,7 @@ With UPI Autopay your bank notifies you before each debit.</li>
 <li>Cancel any time: in the app (Profile → Your Premium) for UPI, or in the Play Store (Payments &amp; subscriptions →
 Subscriptions → Loveek) for Google Play. Premium stays on until the end of the period you paid for. See
 <a href="/legal/refunds">Refunds &amp; cancellation</a>.</li>
-<li>Premium has a fair-use daily message limit; extra message packs can be bought in the app.</li>
+<li>Premium has a fair-use daily limit (150 messages); after it, each extra message costs 2 coins.</li>
 <li>Prices and features may change; we'll tell you before a change affects what you pay.</li>
 </ul>
 
@@ -252,7 +252,7 @@ They remember what you share and talk your way.</p>
 <ul>
 <li><b>Premium:</b> ₹1 for the first day, then <b>₹499 a month</b> — up to 150 messages a day with everyone. Renews
 automatically; cancel any time.</li>
-<li><b>Coins</b> (for gifts and extra messages): 100 coins ₹49 · 330 coins ₹149 · 1,000 coins ₹399. One-time payments.</li>
+<li><b>Coins</b> (for gifts, and 2 coins per extra message after the daily 150): 100 coins ₹49 · 330 coins ₹149 · 1,000 coins ₹399. One-time payments.</li>
 <li>Prices include taxes. Pay with UPI (including UPI Autopay), debit/credit cards, netbanking, or Google Play.</li>
 </ul>
 </div>

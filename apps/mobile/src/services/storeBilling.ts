@@ -235,7 +235,7 @@ export const StoreBilling = {
     });
   },
 
-  /** The smallest coin pack (also how "add more messages" works: extra messages cost 1 coin each). */
+  /** The smallest coin pack (also how "add more messages" works: extra messages cost 2 coins each). */
   buyPack(): Promise<{ ok: boolean; message?: string }> {
     return StoreBilling.buyCoins(coinPackDefs[0]?.id ?? catalogIds.pack);
   },

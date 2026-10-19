@@ -1,6 +1,8 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { useMessage } from '../../src/modules/billing/messageAllowance.js';
+import { COINS_PER_EXTRA_MESSAGE, useMessage } from '../../src/modules/billing/messageAllowance.js';
+import { CreditWalletService } from '../../src/modules/billing/credits/CreditWalletService.js';
+import { createUser } from '../fixtures.js';
 import { redis } from '../../src/infrastructure/redis/redis.js';
 
 describe('Daily message allowance', () => {
@@ -41,6 +43,23 @@ describe('Daily message allowance', () => {
     expect(first.limit).toBe(0);
     expect((await useMessage(newUser, 'jeene ka mann nahi karta')).allowed).toBe(true);
     const keys = await redis.keys(`msgs:${newUser}:*`);
+    if (keys.length) await redis.del(...keys);
+  });
+
+  it('past the daily limit, each extra message costs 2 coins; 1 coin left is not enough', async () => {
+    expect(COINS_PER_EXTRA_MESSAGE).toBe(2);
+    const u = await createUser({ verified: true });
+    process.env['BILLING_ENFORCE_LIMITS'] = 'true';
+    process.env['FREE_DAILY_MESSAGES'] = '1';
+    await CreditWalletService.grantCredits({ userId: u.id, amount: 5, type: 'GRANT', idempotencyKey: `t_${u.id}`, description: 'test' });
+    expect((await useMessage(u.id, 'hii')).allowed).toBe(true); // the free one
+    const a = await useMessage(u.id, 'aur batao');
+    expect(a).toMatchObject({ allowed: true, credits: 3 });
+    expect((await useMessage(u.id, 'kya chal raha')).credits).toBe(1);
+    const c = await useMessage(u.id, 'ek aur');
+    expect(c.allowed).toBe(false);
+    expect((await CreditWalletService.getWalletSummary(u.id)).availableBalance).toBe(1);
+    const keys = await redis.keys(`msgs:${u.id}:*`);
     if (keys.length) await redis.del(...keys);
   });
 });

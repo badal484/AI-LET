@@ -47,6 +47,9 @@ function istDay(now = new Date()): { key: string; resetsAt: Date } {
   return { key, resetsAt: new Date(nextMidnightIst) };
 }
 
+/** What one message past the daily limit costs (owner's decision, 19 Oct 2026: 2 coins ≈ ₹0.65 earned, above AI cost). */
+export const COINS_PER_EXTRA_MESSAGE = 2;
+
 /** Trial, active, grace period, or cancelled-but-paid-up. */
 export async function hasPremium(userId: string): Promise<boolean> {
   const sub = await prisma.billingSubscription.findFirst({
@@ -97,19 +100,19 @@ export async function useMessage(userId: string, text: string): Promise<Allowanc
     if (used === 1) await redis.expire(counterKey, 2 * 86_400);
     if (used <= limit) return { allowed: true, premium, used, limit, ...base };
 
-    // Over today's plan limit with payments on: a coin pays for one more message.
+    // Over today's plan limit with payments on: coins pay for one more message (COINS_PER_EXTRA_MESSAGE each).
     if (rule === 'plan') {
       const wallet = await CreditWalletService.getWalletSummary(userId).catch(() => null);
       const credits = wallet?.availableBalance ?? 0;
-      if (credits > 0) {
+      if (credits >= COINS_PER_EXTRA_MESSAGE) {
         await CreditWalletService.consumeCredits({
           userId,
-          amount: 1,
+          amount: COINS_PER_EXTRA_MESSAGE,
           idempotencyKey: `msg_${userId}_${key}_${used}`,
           description: 'Extra message (message pack)',
           referenceType: 'MESSAGE',
         });
-        return { allowed: true, premium, used, limit, credits: credits - 1, ...base };
+        return { allowed: true, premium, used, limit, credits: credits - COINS_PER_EXTRA_MESSAGE, ...base };
       }
     }
     await redis.decr(counterKey); // a blocked message doesn't use up tomorrow's room
