@@ -1,33 +1,26 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
-import { ApiClient } from '../../services/api/client.js';
 import { ChatBackdrop } from '../chat/ChatBackdrop.js';
 import { useReduceMotion } from '../../utils/motion.js';
 
 const LOGO = require('../../assets/brand/logo.png');
+/** Small copies of five faces, inside the app: the sign-in screen shows them instantly, even with no network. */
+const LOCAL_FACES = [
+  require('../../assets/faces/face1.jpg'),
+  require('../../assets/faces/face2.jpg'),
+  require('../../assets/faces/face3.jpg'),
+  require('../../assets/faces/face4.jpg'),
+  require('../../assets/faces/face5.jpg'),
+];
 
 /**
  * The top of sign-in / sign-up: the logo, what Loveek is, and a row of real character faces — the first thing a
  * new user sees should be the people they can talk to, not an empty form. Fades in; nothing moves when the phone
- * asks for reduced motion. Faces come from the public character list (no sign-in needed); without it the row hides.
+ * asks for reduced motion. The faces ship inside the app, so they show at once — no server wait on a cold start.
  */
 export const AuthHero: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => {
   const reduceMotion = useReduceMotion();
-  // Public list, fetched without the session token: right after signing out the old token is already revoked,
-  // and the normal client would send it (and get a 401) — the faces row then never appeared.
-  const { data } = useQuery({
-    queryKey: ['auth-faces'],
-    queryFn: async () => {
-      const res = await fetch(`${ApiClient.getBaseUrl()}/characters?limit=6`, { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`faces ${res.status}`);
-      return (await res.json()) as { data: Array<{ id: string; avatarUrl?: string | null }>; meta?: { total?: number } };
-    },
-    staleTime: 60 * 60_000,
-    retry: 2,
-  });
-  const faces = (data?.data ?? []).filter((c) => c.avatarUrl).slice(0, 5);
-  const total = data?.meta?.total;
+  const total = 32;
 
   const enter = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
   useEffect(() => {
@@ -50,14 +43,12 @@ export const AuthHero: React.FC<{ title: string; subtitle: string }> = ({ title,
         </View>
         <Text style={styles.wordmark}>Loveek</Text>
 
-        {faces.length > 0 && (
-          <View style={styles.facesRow} accessibilityLabel={`${total ?? faces.length} people to talk to`}>
-            {faces.map((c, i) => (
-              <Image key={c.id} source={{ uri: c.avatarUrl! }} style={[styles.face, { marginLeft: i === 0 ? 0 : -12, zIndex: 10 - i }]} />
-            ))}
-            <Text style={styles.facesText}>{total ? `${total} people who remember you` : 'People who remember you'}</Text>
-          </View>
-        )}
+        <View style={styles.facesRow} accessibilityLabel={`${total} people to talk to`}>
+          {LOCAL_FACES.map((src, i) => (
+            <Image key={i} source={src} fadeDuration={0} style={[styles.face, { marginLeft: i === 0 ? 0 : -12, zIndex: 10 - i }]} />
+          ))}
+          <Text style={styles.facesText}>{total}+ people who remember you</Text>
+        </View>
 
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
