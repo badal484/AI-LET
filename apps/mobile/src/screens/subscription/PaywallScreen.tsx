@@ -62,7 +62,7 @@ const benefits = (hinglish: boolean): Benefit[] => [
   {
     icon: 'book',
     title: 'Learn & earn',
-    sub: hinglish ? 'coding, freelancing, jobs, YouTube — kamai ke raaste' : 'coding, freelancing, jobs, YouTube — ways to earn',
+    sub: hinglish ? 'coding, freelancing, jobs, YouTube, Instagram — kamai ke raaste' : 'coding, freelancing, jobs, YouTube, Instagram — ways to earn',
     from: '#059669',
     to: '#2563EB',
   },
