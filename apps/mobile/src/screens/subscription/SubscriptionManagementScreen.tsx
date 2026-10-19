@@ -43,7 +43,8 @@ export const SubscriptionManagementScreen: React.FC = () => {
 
   const status = String(subscription?.status ?? '').toLowerCase();
   const isPremium = ['active', 'trialing', 'grace_period', 'past_due'].includes(status);
-  const ending = Boolean(subscription?.cancelAtPeriodEnd);
+  const viaPromo = String(subscription?.provider ?? '') === 'promo';
+  const ending = Boolean(subscription?.cancelAtPeriodEnd) && !viaPromo;
   const periodEnd = fmtDate(subscription?.currentPeriodEnd);
   const coins = creditWallet?.availableBalance ?? 0;
 
@@ -53,21 +54,25 @@ export const SubscriptionManagementScreen: React.FC = () => {
       ? { label: 'Payment problem', color: '#FBBF24', bg: 'rgba(251,191,36,0.14)' }
       : ending
         ? { label: 'Ending', color: '#FBBF24', bg: 'rgba(251,191,36,0.14)' }
-        : status === 'trialing'
-          ? { label: 'First day', color: '#C4B5FD', bg: 'rgba(139,92,246,0.18)' }
-          : { label: 'Active', color: '#34D399', bg: 'rgba(52,211,153,0.14)' };
+        : viaPromo
+          ? { label: 'Gift 🎁', color: '#F9A8D4', bg: 'rgba(236,72,153,0.16)' }
+          : status === 'trialing'
+            ? { label: 'First day', color: '#C4B5FD', bg: 'rgba(139,92,246,0.18)' }
+            : { label: 'Active', color: '#34D399', bg: 'rgba(52,211,153,0.14)' };
 
   const detail = !isPremium
     ? 'Talk to everyone, up to 150 messages a day. Your first day is ₹1.'
     : status === 'past_due' || status === 'grace_period'
       ? 'Google Play couldn’t take the payment. Update your payment method in Google Play to keep Premium.'
-      : ending
-        ? periodEnd
-          ? `Premium stays on until ${periodEnd}, then it won’t renew.`
-          : 'Premium won’t renew.'
-        : periodEnd
-          ? `Renews on ${periodEnd}. Up to 150 messages a day with every character.`
-          : 'Up to 150 messages a day with every character.';
+      : viaPromo
+        ? `Free Premium from a code, until ${periodEnd}. Nothing to pay or cancel.`
+        : ending
+          ? periodEnd
+            ? `Premium stays on until ${periodEnd}, then it won’t renew.`
+            : 'Premium won’t renew.'
+          : periodEnd
+            ? `Renews on ${periodEnd}. Up to 150 messages a day with every character.`
+            : 'Up to 150 messages a day with every character.';
 
   const viaUpi = String(subscription?.provider ?? '') === 'razorpay';
 
@@ -217,7 +222,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
           />
         </View>
 
-        {viaUpi ? (
+        {viaPromo ? null : viaUpi ? (
           // UPI Autopay: cancelling happens right here (nothing to restore from Google Play).
           isPremium && !ending ? (
             <View style={styles.card}>
@@ -226,16 +231,26 @@ export const SubscriptionManagementScreen: React.FC = () => {
           ) : null
         ) : (
           <View style={styles.card}>
-            {isPremium && <Row first icon="settings" label="Manage or cancel in Google Play" onPress={manage} />}
-            <Row first={!isPremium} icon="check" label="Restore purchases" onPress={restore} busy={restoring} />
+            {isPremium && (
+              <Row first icon="settings" label="Manage or cancel in Google Play" onPress={manage} />
+            )}
+            <Row
+              first={!isPremium}
+              icon="check"
+              label="Restore purchases"
+              onPress={restore}
+              busy={restoring}
+            />
           </View>
         )}
 
         <PromoCodeBox />
         <Text style={styles.fineprint}>
-          {viaUpi
-            ? 'Paid with UPI Autopay through Razorpay. Cancel anytime here or in your UPI app — no debits after you cancel.'
-            : 'Payments are handled by Google Play. Cancel anytime from Google Play → Payments & subscriptions.'}
+          {viaPromo
+            ? 'Want to keep Premium after it ends? Start it from the Premium tab any time.'
+            : viaUpi
+              ? 'Paid with UPI Autopay through Razorpay. Cancel anytime here or in your UPI app — no debits after you cancel.'
+              : 'Payments are handled by Google Play. Cancel anytime from Google Play → Payments & subscriptions.'}
         </Text>
       </ScrollView>
 

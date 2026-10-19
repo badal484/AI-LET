@@ -189,10 +189,8 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       await get().loadCredits();
       set({ isLoading: false });
 
-      if (res.bonusCredits) {
-        return { success: true, message: `Successfully redeemed! Added ${res.bonusCredits} coins.` };
-      }
-      return { success: true, message: 'Promotion successfully applied!' };
+      // The server says exactly what they got ("Premium is yours until 18 Nov 2026 💜" / "50 coins added 🪙").
+      return { success: true, message: (res as { message?: string }).message || 'Code applied 🎉' };
     } catch (err: any) {
       set({ isLoading: false });
       return { success: false, message: err?.message || 'Invalid or expired promo code.' };

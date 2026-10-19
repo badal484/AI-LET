@@ -12,6 +12,7 @@ import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 import { loadUpiConfig, payWithRazorpay, rupees, type PayMethod } from '../../services/razorpayCheckout.js';
 import { tapFeedback } from '../../utils/motion.js';
+import { PromoCodeBox } from '../../components/PromoCodeBox.js';
 
 /**
  * Premium: ₹1 for the first day, then ₹499/month — the only plan — plus coin packs.
@@ -293,6 +294,13 @@ export const PaywallScreen: React.FC = () => {
             </Pressable>
           </View>
         )}
+
+        {/* A code from Loveek or a friend: free Premium days or coins. */}
+        {mode === 'premium' && (
+          <View style={styles.code}>
+            <PromoCodeBox />
+          </View>
+        )}
       </ScrollView>
 
       {/* The bar: how they pay, and the button — always in reach. */}
@@ -337,6 +345,7 @@ export const PaywallScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  code: { marginTop: 22 },
   container: { flex: 1, backgroundColor: '#0B0614' },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 460 },
   topBar: {

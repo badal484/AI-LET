@@ -52,7 +52,7 @@ class UnverifiedProviderGuard implements IBillingProvider {
 }
 
 export class BillingProviderFactory {
-  private static readonly simulated: Record<Exclude<BillingProviderType, 'razorpay'>, IBillingProvider> = {
+  private static readonly simulated: Record<Exclude<BillingProviderType, 'razorpay' | 'promo'>, IBillingProvider> = {
     mock: new MockBillingProvider(),
     apple: new AppleBillingProvider(),
     google: new GoogleBillingProvider(),
@@ -69,7 +69,7 @@ export class BillingProviderFactory {
     // Real Google Play verification (service account configured) — always, in every environment.
     if (type === 'google' && googlePlayConfigured()) return (this.googlePlay ??= new GooglePlayBillingProvider());
     // Razorpay payments are checked only by the Razorpay module (signature + Razorpay's record), never here.
-    if (type === 'razorpay') return new UnverifiedProviderGuard(type);
+    if (type === 'razorpay' || type === 'promo') return new UnverifiedProviderGuard(type);
     if (!billingSimulationAllowed()) return new UnverifiedProviderGuard(type);
     return this.simulated[type] ?? this.simulated.mock;
   }

@@ -3,6 +3,39 @@ import { BadRequestError, NotFoundError } from '../../../shared/errors/AppError.
 import { ErrorCode } from '@ai-companion/config';
 import { CreditWalletService } from '../credits/CreditWalletService.js';
 import { BillingPromotion } from '@ai-companion/types';
+import { EntitlementService } from '../entitlements/EntitlementService.js';
+
+/**
+ * Free Premium from a promo code: N days, added after any Premium they already have (paid or promo), so a code
+ * never wastes days they've paid for. Recorded as its own subscription (provider PROMO) — nothing to renew or cancel.
+ */
+async function grantPremiumDays(userId: string, days: number, code: string): Promise<Date> {
+  const plan = await prisma.billingPlan.findUnique({ where: { code: 'PREMIUM' } });
+  if (!plan) throw new NotFoundError('Premium is not set up yet.');
+  const now = new Date();
+  const latest = await prisma.billingSubscription.findFirst({
+    where: { userId, currentPeriodEnd: { gt: now }, status: { in: ['TRIALING', 'ACTIVE', 'GRACE_PERIOD', 'CANCELLED'] }, plan: { code: { not: 'FREE' } } },
+    orderBy: { currentPeriodEnd: 'desc' },
+    select: { currentPeriodEnd: true },
+  });
+  const start = latest ? latest.currentPeriodEnd : now;
+  const end = new Date(start.getTime() + days * 86_400_000);
+  await prisma.billingSubscription.create({
+    data: {
+      userId,
+      planId: plan.id,
+      status: 'ACTIVE',
+      provider: 'PROMO',
+      providerSubscriptionId: `promo_${code}_${userId}_${now.getTime()}`,
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      cancelAtPeriodEnd: true, // never renews
+      metadata: { promoCode: code, days },
+    },
+  });
+  await EntitlementService.invalidateUserEntitlementsCache(userId);
+  return end;
+}
 
 export class PromotionService {
   /**
@@ -43,19 +76,24 @@ export class PromotionService {
       );
     }
 
-    // Apply promotion effect
+    // What a code gives (admin → Settings → Promo codes): free coins, or free Premium for a number of days.
     let grantedCredits = 0;
+    let premiumUntil: Date | null = null;
     if (promotion.discountType === 'FREE_CREDITS') {
       grantedCredits = Math.round(promotion.discountValue);
       await CreditWalletService.grantCredits({
         userId,
         amount: grantedCredits,
         type: 'GRANT',
-        idempotencyKey: `promo_${promotion.id}_${userId}_${Date.now()}`,
-        description: `Promo Code: ${promotion.code} (${promotion.name})`,
+        idempotencyKey: `promo_${promotion.id}_${userId}_${userRedemptionsCount + 1}`,
+        description: `Promo code ${promotion.code}`,
         isPromotional: true,
-        expiresAt: new Date(now.getTime() + 30 * 86400000), // 30 day expiration for promo credits
       });
+    } else if (promotion.discountType === 'TRIAL_EXTENSION') {
+      premiumUntil = await grantPremiumDays(userId, Math.round(promotion.discountValue), promotion.code);
+    } else {
+      // % / ₹ off are not offered (a discount on the ₹499 needs Play/Razorpay offers): never say "redeemed" for nothing.
+      throw new BadRequestError(`Promotion code '${code}' can't be used in the app`, ErrorCode.PROMOTION_NOT_ELIGIBLE);
     }
 
     // Record redemption and increment counter
@@ -79,7 +117,10 @@ export class PromotionService {
       discountType: promotion.discountType.toLowerCase(),
       discountValue: promotion.discountValue,
       grantedCredits: grantedCredits > 0 ? grantedCredits : undefined,
-      message: `Promotion '${promotion.name}' successfully redeemed!`,
+      premiumUntil: premiumUntil?.toISOString(),
+      message: premiumUntil
+        ? `Premium is yours until ${premiumUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} 💜`
+        : `${grantedCredits} coins added 🪙`,
     };
   }
 

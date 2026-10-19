@@ -1706,6 +1706,7 @@ enum BillingProvider {
   STRIPE
   MOCK
   RAZORPAY
+  PROMO
 }
 
 enum PriceCurrency {

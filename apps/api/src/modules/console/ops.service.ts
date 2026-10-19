@@ -247,8 +247,11 @@ export async function listPromos() {
 export async function createPromo(adminId: string, input: { code: string; name: string; type: string; value: number; maxRedemptions?: number | null; validUntil?: string | null }) {
   const code = input.code.trim().toUpperCase();
   if (!/^[A-Z0-9_-]{3,30}$/.test(code)) throw new BadRequestError('Code: 3–30 letters, numbers, - or _.');
-  if (!['PERCENTAGE', 'FREE_CREDITS', 'TRIAL_EXTENSION'].includes(input.type)) throw new BadRequestError('Unknown promo type');
-  if (!(input.value > 0) || (input.type === 'PERCENTAGE' && input.value > 100)) throw new BadRequestError('Value is out of range');
+  // Two kinds that really do something: free coins, or free Premium for a number of days.
+  if (!['FREE_CREDITS', 'TRIAL_EXTENSION'].includes(input.type)) throw new BadRequestError('Pick free coins or free Premium days.');
+  if (!Number.isInteger(input.value) || input.value < 1) throw new BadRequestError('Enter a whole number, 1 or more.');
+  if (input.type === 'TRIAL_EXTENSION' && input.value > 365) throw new BadRequestError('Free Premium can be up to 365 days.');
+  if (input.type === 'FREE_CREDITS' && input.value > 10_000) throw new BadRequestError('Up to 10,000 coins per code.');
   const plan = await prisma.billingPlan.findUnique({ where: { code: 'PREMIUM' } });
   const promo = await prisma.billingPromotion
     .create({
