@@ -2890,6 +2890,8 @@ export interface PublicCharacterDetailedProfile {
   };
   conversationStarters: string[];
   highlightBadges: string[];
+  /** The character's own photos (admin console gallery), in order. */
+  galleryImages?: string[];
   voiceAvailable: boolean;
   voiceSampleUrl?: string | null;
   existingConversationId?: string | null;

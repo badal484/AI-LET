@@ -257,7 +257,7 @@ export const CharacterDetailScreen: React.FC = () => {
   const about = aboutRaw && aboutRaw !== profile.tagline?.trim() ? aboutRaw : '';
   const starters = profile.conversationStarters.slice(0, 2);
   const tags = profile.tags.slice(0, 4);
-  const galleryImages: unknown = (profile as any)?.discoveryConfig?.localizedProfiles?.galleryImages;
+  const galleryImages: unknown = profile.galleryImages;
   const gallery = Array.isArray(galleryImages)
     ? galleryImages.filter((u): u is string => typeof u === 'string' && u.startsWith('http')).slice(0, 6)
     : [];

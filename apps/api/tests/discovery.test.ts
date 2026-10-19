@@ -51,6 +51,7 @@ describe('Phase 12: Discovery, Catalog, Search, Recommendations & Home API', () 
       conversationStarters: ['What are you reading?'],
       highlightBadges: ['Editor Choice'],
       ageGate: 0,
+      localizedProfiles: { galleryImages: ['https://ik.imagekit.io/x/elena/gallery-1.webp', 'javascript:alert(1)', 42] },
     },
     tagLinks: [
       {
@@ -219,6 +220,8 @@ describe('Phase 12: Discovery, Catalog, Search, Recommendations & Home API', () 
       expect(profile.name).toBe('Elena Vance');
       expect(profile.traits.warmth).toBe(85);
       expect(profile.conversationStarters).toContain('What are you reading?');
+      // The admin-console gallery reaches the app (only real http(s) URLs).
+      expect(profile.galleryImages).toEqual(['https://ik.imagekit.io/x/elena/gallery-1.webp']);
       expect((profile as any).compiledPromptSnapshot).toBeUndefined();
       expect((profile as any).behaviorRulesData).toBeUndefined();
     });

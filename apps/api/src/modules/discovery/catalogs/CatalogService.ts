@@ -544,6 +544,11 @@ export class CatalogService {
         `Ask ${character.name} about their day`,
       ],
       highlightBadges: ((discoveryConfig as any).highlightBadges as string[]) || [],
+      // The photos added in the admin console (Characters → Edit → Gallery), in order. Only real http(s) URLs.
+      galleryImages: (Array.isArray((discoveryConfig as any).localizedProfiles?.galleryImages)
+        ? ((discoveryConfig as any).localizedProfiles.galleryImages as unknown[])
+        : []
+      ).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)),
       voiceAvailable,
       voiceSampleUrl: null,
       existingConversationId,
