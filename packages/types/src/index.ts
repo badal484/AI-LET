@@ -1163,7 +1163,7 @@ export interface RetrievedRelationshipContext {
 // AI Types
 // -----------------------------------------------------------------------------
 
-export type AIProviderName = 'openai' | 'anthropic' | 'google' | 'mistral' | 'local' | 'local_ollama' | 'mock';
+export type AIProviderName = 'openai' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'local' | 'local_ollama' | 'mock';
 export type AITaskType = 'chat' | 'memory_extraction' | 'summarization' | 'embedding' | 'moderation';
 
 export interface TokenUsage {

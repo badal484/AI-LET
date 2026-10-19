@@ -56,8 +56,11 @@ const envSchema = z.object({
   GOOGLE_AI_API_KEY: z.string().optional(),
   MISTRAL_API_KEY: z.string().optional(),
   MISTRAL_CHAT_MODEL: z.string().optional(),
-  /** Which provider answers chat first: 'google' (Gemini) or 'mistral'. The other one is the backup. */
-  CHAT_PROVIDER: z.enum(['google', 'mistral']).optional(),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_CHAT_MODEL: z.string().optional(),
+  GROQ_BACKGROUND_MODEL: z.string().optional(),
+  /** Which provider answers chat first: 'google' (Gemini), 'mistral', or 'groq'. Others act as automatic fallback. */
+  CHAT_PROVIDER: z.enum(['google', 'mistral', 'groq']).optional(),
   MISTRAL_BACKGROUND_MODEL: z.string().optional(),
 
   DEFAULT_CHAT_MODEL: z.string().default('gpt-4o-mini'),
@@ -145,6 +148,9 @@ export const ENV_SECRET_CLASSIFICATION: Record<keyof EnvConfig, 'SECRET' | 'PUBL
   GOOGLE_AI_API_KEY: 'SECRET',
   MISTRAL_API_KEY: 'SECRET',
   MISTRAL_CHAT_MODEL: 'PUBLIC_CONFIG',
+  GROQ_API_KEY: 'SECRET',
+  GROQ_CHAT_MODEL: 'PUBLIC_CONFIG',
+  GROQ_BACKGROUND_MODEL: 'PUBLIC_CONFIG',
   CHAT_PROVIDER: 'PUBLIC_CONFIG',
   MISTRAL_BACKGROUND_MODEL: 'PUBLIC_CONFIG',
   DEFAULT_CHAT_MODEL: 'PUBLIC_CONFIG',

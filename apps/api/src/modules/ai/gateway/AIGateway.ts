@@ -19,6 +19,7 @@ import { OpenAIProviderAdapter } from './OpenAIProviderAdapter.js';
 import { AnthropicProviderAdapter } from './AnthropicProviderAdapter.js';
 import { GoogleAIProviderAdapter } from './GoogleAIProviderAdapter.js';
 import { MistralProviderAdapter } from './MistralProviderAdapter.js';
+import { GroqProviderAdapter } from './GroqProviderAdapter.js';
 
 export class AIGatewayError extends AppError {
   public readonly failureType: AIFailureType;
@@ -51,6 +52,7 @@ export class AIGateway {
     this.registerAdapter(new AnthropicProviderAdapter());
     this.registerAdapter(new GoogleAIProviderAdapter());
     this.registerAdapter(new MistralProviderAdapter());
+    this.registerAdapter(new GroqProviderAdapter());
   }
 
   public static getInstance(): AIGateway {

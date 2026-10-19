@@ -137,7 +137,19 @@ async function premiumPlanId(): Promise<string> {
 /** Premium: a Razorpay subscription — ₹1 now (sets up Autopay), ₹499 monthly from tomorrow. */
 export async function startPremium(userId: string, opts: { googleToken?: string } = {}) {
   requireConfigured();
-  if (await hasPremium(userId)) throw new BadRequestError('You already have Premium.');
+  if (await hasPremium(userId)) {
+    const existing = await prisma.billingSubscription.findFirst({
+      where: {
+        userId,
+        currentPeriodEnd: { gt: new Date() },
+        status: { in: ['TRIALING', 'ACTIVE', 'GRACE_PERIOD'] },
+        plan: { code: { not: 'FREE' } },
+      },
+    });
+    if (existing && existing.provider === 'RAZORPAY') {
+      throw new BadRequestError('You already have an active Premium subscription.');
+    }
+  }
   const plan = await prisma.billingPlan.findUnique({ where: { code: RAZORPAY_PREMIUM.planCode } });
   if (!plan) throw new NotFoundError('Premium is not set up yet.');
 

@@ -1040,7 +1040,7 @@ export const aiModelCapabilitySchema = z.enum([
 
 export const aiLatencyClassSchema = z.enum(['fast', 'balanced', 'quality']);
 export const aiQualityClassSchema = z.enum(['standard', 'advanced', 'flagship']);
-export const aiProviderNameSchema = z.enum(['mock', 'openai', 'anthropic', 'google', 'local']);
+export const aiProviderNameSchema = z.enum(['mock', 'openai', 'anthropic', 'google', 'mistral', 'groq', 'local']);
 export const aiWorkloadTypeSchema = z.enum([
   'CONVERSATION',
   'MEMORY_EXTRACTION',

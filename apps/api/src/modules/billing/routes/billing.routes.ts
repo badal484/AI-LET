@@ -16,6 +16,7 @@ export const billingRouter: Router = Router();
 // Public / Optional auth
 billingRouter.get('/plans', BillingController.getPlans);
 billingRouter.get('/paywall/config', optionalAuth, BillingController.getPaywallConfig);
+billingRouter.get('/razorpay/config', optionalAuth, RazorpayController.config);
 
 // Webhooks (authoritative asynchronous payment provider updates)
 billingRouter.post('/webhooks/razorpay', RazorpayController.webhook);
@@ -30,7 +31,6 @@ billingRouter.get('/usage', BillingController.getUsage);
 billingRouter.get('/allowance', BillingController.getAllowance);
 
 // Razorpay (UPI Autopay / cards), offered next to Google Play through user choice billing.
-billingRouter.get('/razorpay/config', RazorpayController.config);
 billingRouter.post('/razorpay/premium', RazorpayController.startPremium);
 billingRouter.post('/razorpay/coins', RazorpayController.startCoins);
 billingRouter.post('/razorpay/confirm', RazorpayController.confirm);

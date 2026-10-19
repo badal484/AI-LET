@@ -1600,17 +1600,29 @@ export class StreamingChatService {
   ): Array<{ provider: AIProviderName; model: string }> {
     if (process.env['NODE_ENV'] === 'test') return [{ provider: 'mock', model: 'mock-gpt-4o' }];
     const googleModel = process.env['DEFAULT_CHAT_MODEL'] || 'gemini-3.6-flash';
-    // Platform routing (CHAT_PROVIDER picks Gemini or Mistral first; the other is the backup).
-    if (process.env['MISTRAL_API_KEY'] || process.env['CHAT_PROVIDER']) {
+    // Platform routing (CHAT_PROVIDER picks Gemini, Mistral, or Groq first; others are backups).
+    if (process.env['MISTRAL_API_KEY'] || process.env['GROQ_API_KEY'] || process.env['CHAT_PROVIDER']) {
       const chain = chatAIRoutes();
       if (chain.length) return chain;
     }
     const configured = ((characterRuntime.aiConfig as any)?.provider || '').toLowerCase() as AIProviderName;
-    const fallback: AIProviderName = process.env['GOOGLE_AI_API_KEY'] ? 'google' : process.env['OPENAI_API_KEY'] ? 'openai' : 'mock';
+    const fallback: AIProviderName = process.env['GOOGLE_AI_API_KEY']
+      ? 'google'
+      : process.env['GROQ_API_KEY']
+      ? 'groq'
+      : process.env['OPENAI_API_KEY']
+      ? 'openai'
+      : 'mock';
     const providerName = configured || fallback;
     const model =
       characterRuntime.aiConfig?.customModelName ||
-      (providerName === 'google' ? googleModel : providerName === 'openai' ? 'gpt-4o-mini' : 'mock-gpt-4o');
+      (providerName === 'google'
+        ? googleModel
+        : providerName === 'groq'
+        ? process.env['GROQ_CHAT_MODEL'] || 'qwen/qwen3.8-27b'
+        : providerName === 'openai'
+        ? 'gpt-4o-mini'
+        : 'mock-gpt-4o');
     return [{ provider: providerName, model }];
   }
 

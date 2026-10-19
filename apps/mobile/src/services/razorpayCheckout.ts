@@ -42,24 +42,34 @@ export type PayResult = { ok: boolean; message?: string };
 export type PayMethod = 'upi' | 'card';
 
 const BRAND = { name: 'Loveek', theme: { color: '#8B5CF6' } };
-/** The Loveek heart on Razorpay's checkout (served by our API), instead of Razorpay's letter placeholder. */
-const brandFor = (started: Record<string, unknown>) => ({ ...BRAND, ...(typeof started['logoUrl'] === 'string' && { image: started['logoUrl'] }) });
+/** The Loveek heart on Razorpay's checkout (only when served over HTTPS, avoiding cleartext HTTP issues on Android). */
+const brandFor = (started: Record<string, unknown>) => {
+  const logo = typeof started['logoUrl'] === 'string' && started['logoUrl'].startsWith('https://') ? started['logoUrl'] : undefined;
+  return { ...BRAND, ...(logo && { image: logo }) };
+};
 
 function prefill(method?: PayMethod) {
   const user = useAuthStore.getState().user;
-  return { email: user?.email ?? '', name: user?.profile?.displayName ?? '', ...(method && { method }) };
+  const p: Record<string, string> = {};
+  if (user?.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email) && !user.email.endsWith('.local')) {
+    p['email'] = user.email;
+  }
+  if (user?.profile?.displayName?.trim()) {
+    p['name'] = user.profile.displayName.trim();
+  }
+  if (method) {
+    p['method'] = method;
+  }
+  return p;
 }
 
 /**
- * A short sheet: UPI apps first (GPay, PhonePe, Paytm…), then cards (and netbanking for coins). No wallets, EMI or
- * pay-later; the email is filled in and hidden. Razorpay asks for a phone number once (needed for AutoPay) and
- * remembers it.
+ * A curated sheet: UPI apps first (GPay, PhonePe, Paytm…), then cards (and netbanking for coins).
+ * Default blocks remain enabled as a fallback so Razorpay can always render supported instruments for Autopay/mandates.
  */
 function shortSheet(kind: PayIntent['kind']) {
   const other = kind === 'coins' ? [{ method: 'card' }, { method: 'netbanking' }] : [{ method: 'card' }];
   return {
-    hidden: { email: true },
-    readonly: { email: true },
     remember_customer: true,
     config: {
       display: {
@@ -68,7 +78,7 @@ function shortSheet(kind: PayIntent['kind']) {
           other: { name: kind === 'coins' ? 'Card or netbanking' : 'Card', instruments: other },
         },
         sequence: ['block.upi', 'block.other'],
-        preferences: { show_default_blocks: false },
+        preferences: { show_default_blocks: true },
       },
     },
   };
@@ -110,6 +120,8 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
       ? {
           key: String(started['keyId']),
           subscription_id: String(started['subscriptionId']),
+          currency: 'INR',
+          amount: Number(started['firstDayMinorUnits']) || 100,
           description: `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`,
           ...brandFor(started),
           ...shortSheet('premium'),
@@ -130,10 +142,16 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
   try {
     paid = await RazorpayCheckout.open(options);
   } catch (err) {
-    const e = err as { code?: number; description?: string; error?: { description?: string } };
-    const text = `${e.description ?? ''} ${e.error?.description ?? ''}`;
+    const e = err as { code?: number; description?: string; error?: { description?: string; reason?: string } };
+    const text = `${e.description ?? ''} ${e.error?.description ?? ''} ${e.error?.reason ?? ''}`.trim();
     if (e.code === 0 || e.code === 2 || /cancel/i.test(text)) return { ok: false }; // they closed it
-    return { ok: false, message: 'The payment didn’t go through. If money was taken, it’s refunded automatically — please try again.' };
+    const detail = e.description || e.error?.description || e.error?.reason;
+    return {
+      ok: false,
+      message: detail
+        ? `Payment error: ${detail}`
+        : 'The payment didn’t go through. If money was taken, it’s refunded automatically — please try again.',
+    };
   }
 
   const ok = await confirmWithServer({

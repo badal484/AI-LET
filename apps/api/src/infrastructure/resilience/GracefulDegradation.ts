@@ -23,6 +23,13 @@ export class GracefulDegradation {
     timeoutMs: 12000,
   });
 
+  private static groqBreaker = new CircuitBreaker({
+    name: 'groq-gateway',
+    failureThreshold: 4,
+    cooldownPeriodMs: 20000,
+    timeoutMs: 12000,
+  });
+
   private static voiceBreaker = new CircuitBreaker({
     name: 'voice-elevenlabs-gateway',
     failureThreshold: 3,
@@ -42,6 +49,10 @@ export class GracefulDegradation {
     return this.googleBreaker;
   }
 
+  public static getGroqBreaker(): CircuitBreaker {
+    return this.groqBreaker;
+  }
+
   public static getVoiceBreaker(): CircuitBreaker {
     return this.voiceBreaker;
   }
@@ -51,7 +62,7 @@ export class GracefulDegradation {
    */
   public static async executeWithAIFallback<T>(
     providers: Array<{
-      name: 'openai' | 'anthropic' | 'google' | 'custom';
+      name: 'openai' | 'anthropic' | 'google' | 'groq' | 'mistral' | 'custom';
       fn: () => Promise<T>;
     }>,
     safeFallback: (lastError: Error) => T,
@@ -67,6 +78,8 @@ export class GracefulDegradation {
           ? this.openaiBreaker
           : provider.name === 'anthropic'
           ? this.anthropicBreaker
+          : provider.name === 'groq'
+          ? this.groqBreaker
           : this.googleBreaker;
 
       try {
