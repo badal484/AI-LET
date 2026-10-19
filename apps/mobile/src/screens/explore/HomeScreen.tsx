@@ -31,6 +31,7 @@ import { useBillingStore } from '../../stores/billingStore.js';
 import { FadeIn } from '../../components/common/FadeIn.js';
 import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import { ContinueChatCard } from '../../components/home/ContinueChatCard.js';
+import { FallbackImage } from '../../components/common/FallbackImage.js';
 
 const CARD_WIDTH = 148;
 const CARD_HEIGHT = 210;
@@ -435,10 +436,10 @@ function renderSection(
               accessibilityLabel={ageRestricted(char) ? `${char.name}, 18+ only` : `Open ${char.name}`}
             >
               {/* Full Bleed Image (blurred for a romance character when they're under 18) */}
-              <Image
-                source={{ uri: char.coverImageUrl || char.avatarUrl }}
+              <FallbackImage
+                uris={[char.coverImageUrl, char.avatarUrl]}
+                name={char.name}
                 style={styles.cardImage}
-                resizeMode="cover"
                 fadeDuration={150}
                 blurRadius={ageRestricted(char) ? AGE_BLUR_RADIUS : 0}
               />

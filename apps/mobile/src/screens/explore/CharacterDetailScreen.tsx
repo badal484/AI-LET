@@ -33,6 +33,7 @@ import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem, ReportReasonCode } from '@ai-companion/types';
 import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { FallbackImage } from '../../components/common/FallbackImage.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -188,6 +189,7 @@ export const CharacterDetailScreen: React.FC = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [brokenPhotos, setBrokenPhotos] = useState<string[]>([]);
 
   const handleSubmitReport = async () => {
     if (!profile) return;
@@ -259,7 +261,7 @@ export const CharacterDetailScreen: React.FC = () => {
   const tags = profile.tags.slice(0, 4);
   const galleryImages: unknown = profile.galleryImages;
   const gallery = Array.isArray(galleryImages)
-    ? galleryImages.filter((u): u is string => typeof u === 'string' && u.startsWith('http')).slice(0, 6)
+    ? galleryImages.filter((u): u is string => typeof u === 'string' && u.startsWith('http') && !brokenPhotos.includes(u)).slice(0, 6)
     : [];
 
   return (
@@ -267,10 +269,12 @@ export const CharacterDetailScreen: React.FC = () => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Cover Hero Header */}
         <View style={styles.heroContainer}>
-          <Image
-            source={{ uri: profile.coverImageUrl || profile.avatarUrl }}
+          <FallbackImage
+            uris={[profile.coverImageUrl, profile.avatarUrl]}
+            name={profile.name}
             style={styles.coverImage}
             blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
+            initialSize={72}
           />
           <View style={styles.heroGradientOverlay} />
           {ageRestricted(profile) && <AgeRestrictedBadge />}
@@ -410,6 +414,7 @@ export const CharacterDetailScreen: React.FC = () => {
                       style={styles.galleryImage}
                       resizeMode="cover"
                       blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
+                      onError={() => setBrokenPhotos((b) => [...b, imgUrl])}
                     />
                   </View>
                 ))}

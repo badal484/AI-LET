@@ -1,6 +1,6 @@
 import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import type { CharacterCatalogItem } from '@ai-companion/types';
 import { IconButton, Skeleton } from '../../components/common/index.js';
 import { BottomFade } from '../../components/common/BottomFade.js';
 import { PressableScale } from '../../components/common/PressableScale.js';
+import { FallbackImage } from '../../components/common/FallbackImage.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CategoryRouteProp = RouteProp<RootStackParamList, 'CategoryBrowser'>;
@@ -52,10 +53,10 @@ export const CategoryBrowserScreen: React.FC = () => {
       accessibilityRole="button"
       accessibilityLabel={ageRestricted(item) ? `${item.name}, 18+ only` : `Open ${item.name}`}
     >
-      <Image
-        source={{ uri: item.coverImageUrl || item.avatarUrl }}
+      <FallbackImage
+        uris={[item.coverImageUrl, item.avatarUrl]}
+        name={item.name}
         style={styles.cardImage}
-        resizeMode="cover"
         fadeDuration={150}
         blurRadius={ageRestricted(item) ? AGE_BLUR_RADIUS : 0}
       />
