@@ -182,7 +182,7 @@ export const PaywallScreen: React.FC = () => {
         onScrollBeginDrag={() => {
           userScrolled.current = true;
         }}
-        contentContainerStyle={[styles.scroll, { paddingBottom: 190 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+        contentContainerStyle={[styles.scroll, { paddingBottom: 110 + (isTab ? 0 : insets.bottom) }]} showsVerticalScrollIndicator={false}>
         {/* The person they talk to — in a soft glowing shape, saying hi. */}
         <View style={styles.hero}>
           {/* Two more faces behind, tilted out to the sides — a glimpse of who else is there. */}
@@ -274,7 +274,8 @@ export const PaywallScreen: React.FC = () => {
       </ScrollView>
 
       {/* The bar: how they pay, and the button — always in reach. */}
-      <View style={[styles.bar, { paddingBottom: 12 + insets.bottom }]}>
+      {/* As a tab, the tab bar already sits below (and keeps clear of the phone's gesture bar). */}
+      <View style={[styles.bar, { paddingBottom: isTab ? 8 : 8 + insets.bottom }]}>
         <View style={styles.barRow}>
           {mode !== 'manage' && payRoute === 'upi' && (
             <Pressable
@@ -377,8 +378,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: 'rgba(11,6,20,0.96)',
+    paddingTop: 8,
+    backgroundColor: '#0B0614',
     borderTopWidth: 1,
     borderTopColor: 'rgba(196,181,253,0.12)',
   },
