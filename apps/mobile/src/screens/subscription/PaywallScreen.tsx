@@ -363,7 +363,7 @@ export const PaywallScreen: React.FC = () => {
           <View style={styles.priceBlock}>
             <Text style={styles.title}>You're Premium 💜</Text>
             <Text style={styles.priceSub}>
-              Talk as much as you like — up to 150 messages a day.
+              Talk as much as you like.
             </Text>
           </View>
         )}
