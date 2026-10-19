@@ -11,6 +11,7 @@ import { ACCOUNT_DELETION_GRACE_DAYS } from '../privacy/services/PrivacyService.
  *   /legal/privacy          Privacy policy
  *   /legal/terms            Terms of use
  *   /legal/delete-account   How to delete your account + a request form (no app needed)
+ *   /legal (home), /legal/about, /legal/refunds, /legal/contact — what payment providers (Razorpay) review
  *
  * Who runs Loveek and how to reach them comes from the environment:
  *   LEGAL_OPERATOR_NAME, LEGAL_CONTACT_EMAIL, LEGAL_ADDRESS, GRIEVANCE_OFFICER_NAME, GRIEVANCE_OFFICER_EMAIL
@@ -51,10 +52,10 @@ input,textarea{width:100%;font:inherit;padding:10px 12px;border-radius:10px;bord
 button{margin-top:12px;font:inherit;font-weight:700;padding:10px 18px;border:0;border-radius:10px;background:#ec4899;color:#fff;cursor:pointer}
 label{display:block;font-weight:600;margin-top:12px}
 </style></head><body><main>
-<a class="brand" href="/legal/privacy">Loveek</a>
+<a class="brand" href="/legal">Loveek</a>
 <h1>${esc(title)}</h1><p class="muted">Last updated ${UPDATED}${operator ? ` · Loveek is run by ${esc(operator)}, India` : ''}.</p>
 ${body}
-<nav><a href="/legal/privacy">Privacy policy</a><a href="/legal/terms">Terms of use</a><a href="/legal/delete-account">Delete your account</a></nav>
+<nav><a href="/legal/about">About us</a><a href="/legal/privacy">Privacy policy</a><a href="/legal/terms">Terms of use</a><a href="/legal/refunds">Refunds &amp; cancellation</a><a href="/legal/contact">Contact us</a><a href="/legal/delete-account">Delete your account</a></nav>
 </main></body></html>`;
 }
 
@@ -84,8 +85,8 @@ an exam date, your birthday) and how close you are with each character, so they 
 <li><b>Reminders</b> you ask a character to give you.</li>
 <li><b>Your device:</b> phone platform and app version, a notification token (so we can send you notifications) and
 whether you allowed notifications.</li>
-<li><b>Payments:</b> if you buy Premium, Google Play handles the payment. We receive the plan, its status and a
-purchase reference — never your card or UPI details.</li>
+<li><b>Payments:</b> if you buy Premium or coins, Google Play or Razorpay (UPI, cards, netbanking) handles the
+payment. We receive the plan, its status, the amount and a payment reference — never your card number or UPI PIN.</li>
 <li><b>Use of the app:</b> which screens and features you use, to improve the app; technical logs including IP
 address, for security and to stop abuse; error reports when something breaks (these never include your messages).</li>
 <li><b>Safety signals:</b> if a message suggests someone may be in danger, we record that it happened (the type,
@@ -113,6 +114,7 @@ notes and the search index for memories.</p>
 <h2>Who we share it with</h2>
 <ul>
 <li><b>Google:</b> Gemini (AI replies), Firebase Cloud Messaging (notifications) and Google Play (payments).</li>
+<li><b>Razorpay</b> (payments by UPI, cards and netbanking in India), under its own privacy policy.</li>
 <li><b>Our hosting and infrastructure providers</b>, who store and run the service for us under contract.</li>
 <li><b>Error monitoring</b> (Sentry), which receives technical details of errors, never your messages.</li>
 <li><b>Authorities</b>, only when the law requires it.</li>
@@ -191,12 +193,14 @@ app; or get around limits or payments. We may limit, suspend or close accounts t
 
 <h2>Premium</h2>
 <ul>
-<li>Chatting with the characters needs <b>Premium</b>, a monthly subscription through Google Play. Your first day
-costs ₹1 (new subscribers); unless you cancel before that day ends, it continues at the price shown in the app
-(currently ₹499 a month), charged automatically each month until you cancel.</li>
+<li>Chatting with the characters needs <b>Premium</b>, a monthly subscription paid through Google Play or through
+Razorpay (UPI Autopay, cards). Your first day costs ₹1 (new subscribers); unless you cancel before that day ends, it
+continues at the price shown in the app (currently ₹499 a month), charged automatically each month until you cancel.
+With UPI Autopay your bank notifies you before each debit.</li>
 <li>Messages about a crisis or an emergency always go through, with or without Premium.</li>
-<li>Cancel any time in the Play Store (Payments &amp; subscriptions → Subscriptions → Loveek). Premium stays on until
-the end of the period you paid for. Refunds follow Google Play's policies.</li>
+<li>Cancel any time: in the app (Profile → Your Premium) for UPI, or in the Play Store (Payments &amp; subscriptions →
+Subscriptions → Loveek) for Google Play. Premium stays on until the end of the period you paid for. See
+<a href="/legal/refunds">Refunds &amp; cancellation</a>.</li>
 <li>Premium has a fair-use daily message limit; extra message packs can be bought in the app.</li>
 <li>Prices and features may change; we'll tell you before a change affects what you pay.</li>
 </ul>
@@ -226,6 +230,91 @@ ${contactHtml()}`,
   );
 });
 
+// ── Home, About us, Refunds & cancellation, Contact (Razorpay reviews these) ─────────────────────────────
+const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.aicompanionmobile';
+
+legalRouter.get('/', (_req: Request, res: Response) => {
+  res.type('html').send(
+    page(
+      'Chat with people who remember you',
+      `<p><b>Loveek</b> is an Android app for India where you chat — in Hinglish, English or Hindi — with people who
+have their own personality and story: friends, mentors, coaches, an astrologer, someone to talk about your day with.
+They remember what you share and talk your way.</p>
+<div class="box">
+<h2 style="margin-top:0">Pricing</h2>
+<ul>
+<li><b>Premium:</b> ₹1 for the first day, then <b>₹499 a month</b> — up to 150 messages a day with everyone. Renews
+automatically; cancel any time.</li>
+<li><b>Coins</b> (for gifts and extra messages): 100 coins ₹49 · 330 coins ₹149 · 1,000 coins ₹399. One-time payments.</li>
+<li>Prices include taxes. Pay with UPI (including UPI Autopay), debit/credit cards, netbanking, or Google Play.</li>
+</ul>
+</div>
+<p><a href="${PLAY_URL}">Get Loveek on Google Play</a></p>`,
+    ),
+  );
+});
+
+legalRouter.get('/about', (_req: Request, res: Response) => {
+  const operator = env('LEGAL_OPERATOR_NAME');
+  res.type('html').send(
+    page(
+      'About us',
+      `<p>Loveek is an Android app made in India${operator ? ` by <b>${esc(operator)}</b>` : ''}. It gives you someone to talk to,
+any time: friends who chat the way you do, mentors who teach whole courses step by step, health and wellbeing guides,
+an astrologer, and more — each with their own personality, who remembers your life, your days and your goals.</p>
+<p>Conversations are generated with artificial intelligence (see our <a href="/legal/terms">terms</a>). Loveek is not a
+medical, legal or emergency service; in an emergency call 112, and for mental-health support call Tele-MANAS on 14416.</p>
+<h2>What we sell</h2>
+<p>A monthly Premium subscription (₹1 for the first day, then ₹499 a month) and one-time coin packs (₹49–₹399), as
+described on our <a href="/legal">home page</a>. Everything is delivered instantly inside the app; nothing is shipped.</p>
+<h2>Contact</h2>
+${contactHtml()}`,
+    ),
+  );
+});
+
+legalRouter.get('/refunds', (_req: Request, res: Response) => {
+  res.type('html').send(
+    page(
+      'Refunds & cancellation',
+      `<h2>Cancelling Premium</h2>
+<ul>
+<li><b>Paid with UPI / card (Razorpay):</b> in the app go to <b>Profile → Your Premium → Cancel Premium</b>, or cancel
+the Loveek mandate in your UPI app. No further debits are made after you cancel.</li>
+<li><b>Paid through Google Play:</b> Play Store → Payments &amp; subscriptions → Subscriptions → Loveek → Cancel.</li>
+<li>After cancelling, Premium stays on until the end of the period you have already paid for. Cancel during your
+₹1 first day and you will not be charged ₹499.</li>
+<li>Your bank sends a notice before every UPI Autopay debit, so a renewal never comes as a surprise.</li>
+</ul>
+<h2>Refunds</h2>
+<ul>
+<li><b>Charged twice, charged after cancelling, or charged for a payment that failed:</b> full refund.</li>
+<li><b>A monthly renewal you didn't mean to keep:</b> write to us within <b>48 hours</b> of the debit; if you haven't
+used Premium since, we refund it in full and cancel the subscription.</li>
+<li><b>Coins:</b> unused coin packs can be refunded within <b>7 days</b> of purchase. Coins already spent on gifts or
+messages can't be refunded.</li>
+<li>Refunds for UPI and card payments go back to the original payment method within <b>5–7 working days</b> after we
+approve them. Purchases made through Google Play are refunded under Google Play's refund policy.</li>
+</ul>
+<h2>How to ask</h2>
+<p>In the app: <b>Profile → Help &amp; contact us</b>, or email us (below) with the email on your account and the
+payment reference (from your UPI app or bank SMS). We reply within 2 working days.</p>
+${contactHtml()}`,
+    ),
+  );
+});
+
+legalRouter.get('/contact', (_req: Request, res: Response) => {
+  res.type('html').send(
+    page(
+      'Contact us',
+      `<p>Questions, payments, refunds or a complaint — we're happy to help.</p>
+${contactHtml()}
+<p class="muted">We reply within 2 working days.</p>`,
+    ),
+  );
+});
+
 // ── Account deletion (Google Play requires a web link) ────────────────────────
 const deletionForm = (notice = '') =>
   page(
@@ -234,8 +323,8 @@ const deletionForm = (notice = '') =>
 <p>What happens: you're signed out, and ${ACCOUNT_DELETION_GRACE_DAYS} days later your account and everything in it is deleted for good —
 your profile, chats, what characters remember about you, reminders and notification settings. Signing in again
 before then cancels it. Payment records are kept only as long as tax law requires, without your chats.</p>
-<p>Premium bought on Google Play is not cancelled automatically: cancel it in the Play Store (Payments &amp;
-subscriptions → Subscriptions → Loveek).</p>
+<p>Premium is not cancelled automatically: cancel it first — in the app (Profile → Your Premium) if you pay with UPI,
+or in the Play Store (Payments &amp; subscriptions → Subscriptions → Loveek) if you pay through Google Play.</p>
 <p>Only want the characters to forget you? Profile → Privacy &amp; account → <b>Make characters forget me</b> deletes
 their memories but keeps your account.</p>
 <div class="box"><b>Can't open the app?</b> Ask us here. To protect your account, we'll confirm with you at the
