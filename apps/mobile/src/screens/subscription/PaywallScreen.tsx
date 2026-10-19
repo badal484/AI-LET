@@ -1,57 +1,69 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { darkThemeColors, spacing, radius } from '../../theme/index.js';
+import { useQuery } from '@tanstack/react-query';
 import { useBillingStore } from '../../stores/billingStore.js';
-import { StoreBilling, type BasePlan, type StoreCatalog, type StoreOffer } from '../../services/storeBilling.js';
-import { IconButton, Button, Badge, ToastService, Icon } from '../../components/common/index.js';
+import { useAuthStore } from '../../stores/authStore.js';
+import { StoreBilling, type StoreCatalog } from '../../services/storeBilling.js';
+import { ConversationApi } from '../../services/api/conversationApi.js';
+import { IconButton, ToastService, Icon } from '../../components/common/index.js';
 import type { IconName } from '../../components/common/Icon.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
-import { payWithRazorpay, rupees } from '../../services/razorpayCheckout.js';
+import { payWithRazorpay, rupees, type PayMethod } from '../../services/razorpayCheckout.js';
+import { tapFeedback } from '../../utils/motion.js';
 
 /**
- * Premium: ₹1 for the first day, then ₹499/month — the only plan (no free plan) — plus ₹49 message packs.
- * Prices shown are Google Play's own (localized); the price and the auto-renewal are stated in plain
- * words right above the button — no surprise charges.
+ * Premium: ₹1 for the first day, then ₹499/month — the only plan — plus coin packs.
+ * One face (the person they talk to most), one big price, four short benefits, and a bar at the bottom:
+ * how they pay + the button. The price and the auto-renewal sit right under the button in plain words.
+ * Pays with Google Play (and its "Play or UPI" choice) when Play can sell; otherwise UPI / cards via Razorpay.
  */
 
-const PLAN_LABEL: Record<BasePlan, { title: string; per: string; note?: string }> = {
-  monthly: { title: 'Monthly', per: '/month' },
-  weekly: { title: 'Weekly', per: '/week' },
-  yearly: { title: 'Yearly', per: '/year', note: 'Save 17%' },
-};
-// One plan (owner's decision, 15 Oct 2026): monthly, starting with the ₹1 first day. The other base plans stay in
-// the type so a catalog that still has them doesn't break, but they aren't offered.
-const ORDER: BasePlan[] = ['monthly'];
+const LOGO = require('../../assets/brand/logo.png');
 
-const BENEFITS: Array<{ icon: IconName; title: string; sub: string; color: string; tint: string }> = [
-  { icon: 'chat', title: 'Talk to everyone', sub: 'Up to 150 messages a day', color: '#C4B5FD', tint: 'rgba(139,92,246,0.18)' },
-  { icon: 'book', title: 'Full courses and programs', sub: 'Step by step, at your pace', color: '#93C5FD', tint: 'rgba(59,130,246,0.16)' },
-  { icon: 'brain', title: 'They remember you', sub: 'Your days, your people, your goals', color: '#F9A8D4', tint: 'rgba(236,72,153,0.16)' },
-  { icon: 'shield', title: 'Crisis help is always free', sub: 'With or without Premium', color: '#6EE7B7', tint: 'rgba(16,185,129,0.16)' },
+type Benefit = { icon: IconName; title: string; sub: string; from: string; to: string };
+const benefits = (hinglish: boolean): Benefit[] => [
+  { icon: 'chat', title: 'Talk every day', sub: hinglish ? 'roz 150 messages, bina rukawat' : '150 messages a day, no waiting', from: '#7C3AED', to: '#4F46E5' },
+  { icon: 'brain', title: 'They remember you', sub: hinglish ? 'tumhari har baat yaad rahegi' : 'your days, your people, your goals', from: '#DB2777', to: '#9333EA' },
+  { icon: 'moon', title: 'Always there', sub: hinglish ? 'jab chaho, tab baat' : 'day or night, whenever you want', from: '#2563EB', to: '#7C3AED' },
+  { icon: 'book', title: 'Learn & grow', sub: hinglish ? 'courses aur guidance, step by step' : 'courses and guidance, step by step', from: '#059669', to: '#2563EB' },
 ];
-
-const fmtDate = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
 export const PaywallScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const reason: 'free_limit' | 'fair_use' | undefined = route.params?.reason;
   const resetsAt: string | undefined = route.params?.resetsAt;
+  const isTab = route.name === 'BuyPro';
 
   const { loadBillingState, subscription } = useBillingStore();
+  const user = useAuthStore((s) => s.user);
+  const hinglish = (user?.profile?.preferredLanguage ?? 'hinglish') !== 'en';
   const [catalog, setCatalog] = useState<StoreCatalog | null>(null);
-  const [selected, setSelected] = useState<BasePlan>('monthly');
-  const [busy, setBusy] = useState<'subscribe' | 'pack' | 'restore' | null>(null);
+  const [payRoute, setPayRoute] = useState<'choice' | 'upi' | 'play' | 'none' | null>(null);
+  const [method, setMethod] = useState<PayMethod>('upi');
+  const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   const isPremium = Boolean(subscription && ['active', 'trialing', 'grace_period'].includes(String(subscription.status).toLowerCase()));
 
-  const [payRoute, setPayRoute] = useState<'choice' | 'upi' | 'play' | 'none' | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  // The face on top: whoever they last talked to (shares the Chats list's cache).
+  const { data: chats } = useQuery({
+    queryKey: ['conversations', 'list'],
+    queryFn: () => ConversationApi.listConversations({ limit: 50 }),
+    staleTime: 60_000,
+  });
+  const face = useMemo(() => {
+    const items = (chats?.items ?? []).filter((c) => c.character?.avatarUrl);
+    const latest = [...items].sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''))[0];
+    return latest ? { name: latest.character.name.split(' ')[0]!, uri: latest.character.avatarUrl as string } : null;
+  }, [chats]);
+
   useEffect(() => {
     let alive = true;
     StoreBilling.loadCatalog()
@@ -61,7 +73,6 @@ export const PaywallScreen: React.FC = () => {
       alive = false;
     };
   }, [attempt]);
-  // Google Play (with its "Play or UPI" choice) when it can sell; otherwise UPI straight away.
   useEffect(() => {
     if (catalog === null) return;
     let alive = true;
@@ -70,118 +81,142 @@ export const PaywallScreen: React.FC = () => {
       alive = false;
     };
   }, [catalog]);
-  const retry = () => {
-    setPayRoute(null);
-    setCatalog(null);
-    setAttempt((n) => n + 1);
-  };
-  // As the Premium tab there's nowhere to close to; opened from a limit or a locked character, there is.
-  const isTab = route.name === 'BuyPro';
 
-  const offer: StoreOffer | undefined = catalog?.offers[selected];
-  const trial = selected === 'monthly' ? offer?.trial : undefined;
-  const trialDays = trial?.days ?? 1;
-  const firstCharge = useMemo(() => fmtDate(new Date(Date.now() + trialDays * 86_400_000)), [trialDays]);
-  const resetTime = resetsAt ? new Date(resetsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : 'midnight';
+  // Prices: Google Play's own when it sells; otherwise the server's (Razorpay).
+  const upi = StoreBilling.upiConfig();
+  const playOffer = catalog?.offers.monthly;
+  const viaPlay = payRoute === 'choice' || payRoute === 'play';
+  const first = viaPlay ? playOffer?.trial?.price ?? playOffer?.price ?? '₹1' : rupees(upi?.premium.firstDayMinorUnits ?? 100);
+  const monthly = viaPlay ? playOffer?.price ?? '₹499' : rupees(upi?.premium.monthlyMinorUnits ?? 49_900);
+  const firstIsTrial = viaPlay ? Boolean(playOffer?.trial) : true;
+  const packPrice = viaPlay ? catalog?.pack?.price : upi?.coinPacks.find((p) => p.id === 'coins_100') && rupees(upi!.coinPacks.find((p) => p.id === 'coins_100')!.amountMinorUnits);
+  const loading = catalog === null || payRoute === null;
+  const canSell = payRoute !== null && payRoute !== 'none';
 
-  const title =
-    reason === 'fair_use'
-      ? "You've reached today's 150 messages"
-      : reason === 'free_limit'
-        ? `Start chatting for ${trial?.price ?? '₹1'}`
-        : 'Go Premium';
-  const subtitle =
-    reason === 'fair_use'
-      ? `Your messages refill at ${resetTime}. Can't wait? Add 100 messages now.`
-      : reason === 'free_limit'
-        ? 'Premium lets you talk to everyone — up to 150 messages a day. Your first day is just ₹1.'
-        : 'Keep talking with the people who get you.';
+  const mode: 'premium' | 'pack' | 'manage' = isPremium && reason !== 'fair_use' ? 'manage' : reason === 'fair_use' ? 'pack' : 'premium';
 
   const finish = (r: { ok: boolean; message?: string }, success: string) => {
     if (r.ok) {
       ToastService.show({ message: success, type: 'success', duration: 2500 });
       void loadBillingState();
-      navigation.goBack();
+      if (!isTab) navigation.goBack();
     } else if (r.message) {
-      AppAlert.alert('Purchase', r.message);
+      AppAlert.alert('Payment', r.message);
     }
   };
 
-  const subscribe = async () => {
-    if (!offer) return;
-    setBusy('subscribe');
-    const r = await StoreBilling.buySubscription(offer, Boolean(trial));
-    setBusy(null);
-    finish(r, 'Welcome to Premium 🎉');
-  };
-
-  const upi = StoreBilling.upiConfig();
-  const upiFirst = upi ? rupees(upi.premium.firstDayMinorUnits) : '₹1';
-  const upiMonthly = upi ? rupees(upi.premium.monthlyMinorUnits) : '₹499';
-  const upiPack = upi?.coinPacks.find((p) => p.id === 'coins_100');
-  const upiFirstCharge = fmtDate(new Date(Date.now() + 86_400_000));
-  const upiDisclosure = `${upiFirst} today. Then ${upiMonthly}/month from tomorrow (${upiFirstCharge}), auto-debited with UPI Autopay. Cancel anytime in Loveek — cancel before then and you won't be charged ${upiMonthly}.`;
-
-  const subscribeUpi = async () => {
-    setBusy('subscribe');
-    const r = await payWithRazorpay({ kind: 'premium' });
-    setBusy(null);
-    finish(r, 'Welcome to Premium 🎉');
-  };
-
-  const buyPack = async () => {
-    setBusy('pack');
-    const r = payRoute === 'upi' ? await payWithRazorpay({ kind: 'coins', packId: 'coins_100' }) : await StoreBilling.buyPack();
-    setBusy(null);
-    finish(r, '100 messages added ✨');
+  const go = async () => {
+    tapFeedback();
+    if (mode === 'manage') return navigation.navigate('SubscriptionManagement');
+    if (!canSell) return;
+    setBusy(true);
+    let r: { ok: boolean; message?: string };
+    if (mode === 'pack') {
+      r = viaPlay ? await StoreBilling.buyPack() : await payWithRazorpay({ kind: 'coins', packId: 'coins_100' }, undefined, method);
+    } else {
+      r = viaPlay && playOffer ? await StoreBilling.buySubscription(playOffer, Boolean(playOffer.trial)) : await payWithRazorpay({ kind: 'premium' }, undefined, method);
+    }
+    setBusy(false);
+    finish(r, mode === 'pack' ? '100 messages added ✨' : 'Welcome to Premium 💜');
   };
 
   const restore = async () => {
-    setBusy('restore');
     const n = await StoreBilling.restore().catch(() => 0);
-    setBusy(null);
     if (n > 0) finish({ ok: true }, 'Purchases restored');
     else AppAlert.alert('Nothing to restore', 'No active purchase was found on this Google account.');
   };
 
-  const loading = catalog === null;
-  const storeReady = !loading && Object.keys(catalog?.offers ?? {}).length > 0;
-
-  const disclosure = !offer
-    ? ''
-    : trial
-      ? `${trial.price} today. Then ${offer.price}/month from ${trialDays === 1 ? `tomorrow (${firstCharge})` : firstCharge}, charged automatically. Cancel anytime in Google Play — cancel before then and you won't be charged ${offer.price}.`
-      : `${offer.price}${PLAN_LABEL[selected].per}. Renews automatically until you cancel — cancel anytime in Google Play.`;
+  const resetTime = resetsAt ? new Date(resetsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : 'midnight';
+  const ctaLabel = busy
+    ? 'Opening…'
+    : mode === 'manage'
+      ? 'Manage Premium'
+      : mode === 'pack'
+        ? `Add 100 messages · ${packPrice ?? '₹49'}`
+        : firstIsTrial
+          ? `Start for ${first}`
+          : `Subscribe · ${monthly}/mo`;
+  // Premium's terms are already in the price line above (and in the button's label for screen readers).
+  const legal = mode === 'pack' ? 'One-time payment. Used after your daily 150.' : '';
+  const terms = firstIsTrial
+    ? `${first} today, then ${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`
+    : `${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.glow} pointerEvents="none">
-        <GradientFill radial colors={[['#A855F7', 0.34], ['#EC4899', 0.1], ['#0B0614', 0]]} />
-      </View>
-      <View style={styles.topBar}>
-        {isTab ? <View /> : <IconButton icon="close" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Close" />}
-        {payRoute === 'upi' ? <View /> : <Button label="Restore" variant="ghost" size="sm" onPress={restore} disabled={busy !== null} accessibilityLabel="Restore purchases" />}
+        <GradientFill radial colors={[['#7C3AED', 0.45], ['#4338CA', 0.18], ['#0B0614', 0]]} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <View style={styles.topBar}>
+        {isTab ? <View /> : <IconButton icon="close" size="sm" variant="glass" onPress={() => navigation.goBack()} accessibilityLabel="Close" />}
+        {viaPlay && mode !== 'manage' ? (
+          <Pressable onPress={restore} hitSlop={10} accessibilityRole="button">
+            <Text style={styles.restore}>Restore</Text>
+          </Pressable>
+        ) : (
+          <View />
+        )}
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 190 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+        {/* The person they talk to — in a soft glowing shape, saying hi. */}
         <View style={styles.hero}>
-          <View style={styles.crownHalo}>
-            <View style={styles.crown}>
-              <GradientFill colors={['#7C3AED', '#DB2777']} />
-              <Icon name="diamond" size={30} color="#FFFFFF" />
-            </View>
+          <View style={styles.blobBack}>
+            <GradientFill colors={['#6D28D9', '#4338CA']} vertical />
           </View>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <View style={styles.blobFront}>
+            <GradientFill colors={['#DB2777', '#7C3AED']} vertical />
+          </View>
+          <View style={styles.photoRing}>
+            <Image source={face ? { uri: face.uri } : LOGO} style={styles.photo} resizeMode="cover" />
+          </View>
+          {face ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText} numberOfLines={1}>
+                {hinglish ? `Hey, main ${face.name} hoon 💜` : `Hey, it's ${face.name} 💜`}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* What Premium gives — shown right away, even before Google Play answers. */}
-        {!isPremium && reason !== 'fair_use' && (
-          <View style={styles.benefits}>
-            {BENEFITS.map((b) => (
-              <View key={b.title} style={styles.benefitRow}>
-                <View style={[styles.benefitIcon, { backgroundColor: b.tint }]}>
-                  <Icon name={b.icon} size={18} color={b.color} />
+        {mode === 'premium' && (
+          <View style={styles.priceBlock}>
+            <Text style={styles.kicker}>{reason === 'free_limit' ? 'Keep talking' : 'Start Premium'}</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.at}>{firstIsTrial ? 'at' : ''}</Text>
+              <Text style={styles.bigPrice} adjustsFontSizeToFit numberOfLines={1}>
+                {firstIsTrial ? first : monthly}
+              </Text>
+            </View>
+            <Text style={styles.priceSub}>{firstIsTrial ? `then ${monthly}/month · auto-renews · cancel anytime` : 'per month · auto-renews · cancel anytime'}</Text>
+          </View>
+        )}
+        {mode === 'pack' && (
+          <View style={styles.priceBlock}>
+            <Text style={styles.title}>You've used today's 150</Text>
+            <Text style={styles.priceSub}>Messages refill at {resetTime}. Can't wait?</Text>
+          </View>
+        )}
+        {mode === 'manage' && (
+          <View style={styles.priceBlock}>
+            <Text style={styles.title}>You're Premium 💜</Text>
+            <Text style={styles.priceSub}>Talk as much as you like — up to 150 messages a day.</Text>
+          </View>
+        )}
+
+        {mode !== 'pack' && (
+          <>
+            <View style={styles.dividerRow}>
+              <View style={styles.line} />
+              <Text style={styles.dividerText}>{mode === 'manage' ? 'Your Premium' : 'What you get'}</Text>
+              <View style={styles.line} />
+            </View>
+            {benefits(hinglish).map((b) => (
+              <View key={b.title} style={styles.benefit}>
+                <View style={styles.benefitIcon}>
+                  <GradientFill colors={[b.from, b.to]} />
+                  <Icon name={b.icon} size={22} color="#FFFFFF" />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.benefitTitle}>{b.title}</Text>
@@ -189,186 +224,146 @@ export const PaywallScreen: React.FC = () => {
                 </View>
               </View>
             ))}
-          </View>
+            <Text style={styles.crisis}>Crisis help is always free — with or without Premium.</Text>
+          </>
         )}
 
-        {!StoreBilling.isAvailable ? (
-          <Text style={styles.notice}>{StoreBilling.unavailableMessage}</Text>
-        ) : loading || payRoute === null ? (
-          <ActivityIndicator color={darkThemeColors.accent} style={{ marginVertical: spacing.xl }} />
-        ) : payRoute === 'upi' ? (
-          <>
-            {(reason === 'fair_use' || isPremium) && upiPack && (
-              <View style={[styles.card, styles.packCard]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>100 extra messages</Text>
-                  <Text style={styles.cardSub}>One-time, used after your daily 150. No subscription.</Text>
-                </View>
-                <Button label={rupees(upiPack.amountMinorUnits)} size="sm" onPress={buyPack} disabled={busy !== null} accessibilityLabel={`Buy 100 messages for ${rupees(upiPack.amountMinorUnits)}`} />
-              </View>
-            )}
-            {!isPremium && (
-              <>
-                <View style={[styles.card, styles.cardSelected]}>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.row}>
-                      <Text style={styles.cardTitle}>Monthly</Text>
-                      <Badge label={`${upiFirst} for the first day`} variant="success" size="sm" />
-                    </View>
-                  </View>
-                  <Text style={styles.price}>
-                    {upiMonthly}
-                    <Text style={styles.per}>/month</Text>
-                  </Text>
-                </View>
-                <Text style={styles.disclosure}>{upiDisclosure}</Text>
-                <View style={styles.ctaWrap}>
-                  <Button
-                    label={busy === 'subscribe' ? 'Opening UPI…' : `Start for ${upiFirst}`}
-                    onPress={subscribeUpi}
-                    disabled={busy !== null}
-                    accessibilityLabel={upiDisclosure}
-                  />
-                  <Shine active={busy === null} />
-                </View>
-                <Text style={styles.trust}>UPI · Cards · Netbanking  ·  🔒 Secured by Razorpay</Text>
-              </>
-            )}
-            {isPremium && (
-              <TouchableOpacity onPress={() => navigation.navigate('SubscriptionManagement')} style={styles.manage}>
-                <Text style={styles.link}>Manage or cancel Premium</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        ) : !storeReady ? (
-          <View style={styles.noticeBox}>
-            <Text style={styles.notice}>
-              {catalog?.connected
-                ? 'Premium plans are not available on this version of the app yet. Please update the app from Google Play.'
-                : "Couldn't reach Google Play. Check your connection and try again."}
+        {!loading && !canSell && mode !== 'manage' && (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>
+              {catalog?.connected ? 'Payments aren’t available on this version yet — please update the app.' : 'Couldn’t connect. Check your internet and try again.'}
             </Text>
-            {!catalog?.connected && <Button label="Try again" variant="secondary" size="sm" onPress={retry} accessibilityLabel="Try again" />}
+            <Pressable onPress={() => { setPayRoute(null); setCatalog(null); setAttempt((n) => n + 1); }} hitSlop={8}>
+              <Text style={styles.retry}>Try again</Text>
+            </Pressable>
           </View>
-        ) : (
-          <>
-            {(reason === 'fair_use' || isPremium) && catalog?.pack && (
-              <View style={[styles.card, styles.packCard]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>100 extra messages</Text>
-                  <Text style={styles.cardSub}>One-time, used after your daily 150. No subscription.</Text>
-                </View>
-                <Button label={catalog.pack.price} size="sm" onPress={buyPack} disabled={busy !== null} accessibilityLabel={`Buy 100 messages for ${catalog.pack.price}`} />
-              </View>
-            )}
-
-            {!isPremium && (
-              <>
-                {ORDER.filter((p) => catalog?.offers[p]).map((p) => {
-                  const o = catalog!.offers[p]!;
-                  const isSel = selected === p;
-                  return (
-                    <TouchableOpacity
-                      key={p}
-                      style={[styles.card, isSel && styles.cardSelected]}
-                      onPress={() => setSelected(p)}
-                      activeOpacity={0.85}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: isSel }}
-                      accessibilityLabel={`${PLAN_LABEL[p].title}, ${o.price}${PLAN_LABEL[p].per}`}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <View style={styles.row}>
-                          <Text style={styles.cardTitle}>{PLAN_LABEL[p].title}</Text>
-                          {p === 'monthly' && o.trial && <Badge label={`${o.trial.price} for ${o.trial.days === 1 ? 'the first day' : `${o.trial.days} days`}`} variant="success" size="sm" />}
-                          {PLAN_LABEL[p].note && <Badge label={PLAN_LABEL[p].note!} variant="success" size="sm" />}
-                        </View>
-                      </View>
-                      <Text style={styles.price}>
-                        {o.price}
-                        <Text style={styles.per}>{PLAN_LABEL[p].per}</Text>
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-
-                <Text style={styles.disclosure}>{disclosure}</Text>
-                <View style={styles.ctaWrap}>
-                  <Button
-                    label={busy === 'subscribe' ? 'Opening Google Play…' : trial ? `Start for ${trial.price}` : 'Subscribe'}
-                    onPress={subscribe}
-                    disabled={busy !== null || !offer}
-                    accessibilityLabel={disclosure}
-                  />
-                  <Shine active={busy === null && Boolean(offer)} />
-                </View>
-              </>
-            )}
-
-            {isPremium && (
-              <TouchableOpacity onPress={StoreBilling.openManageSubscription} style={styles.manage}>
-                <Text style={styles.link}>Manage or cancel your subscription in Google Play</Text>
-              </TouchableOpacity>
-            )}
-          </>
         )}
-
-        <Text style={styles.fineprint}>
-          {payRoute === 'upi'
-            ? 'Payments are processed securely by Razorpay. Prices include taxes. Cancel anytime in Loveek → Profile → Your Premium, or in your UPI app.'
-            : 'Payments are handled by Google Play. Prices include taxes. You can cancel anytime from Google Play → Payments & subscriptions.'}
-        </Text>
       </ScrollView>
+
+      {/* The bar: how they pay, and the button — always in reach. */}
+      <View style={[styles.bar, { paddingBottom: 12 + insets.bottom }]}>
+        <View style={styles.barRow}>
+          {mode !== 'manage' && payRoute === 'upi' && (
+            <Pressable
+              onPress={() => {
+                tapFeedback();
+                setMethod((m) => (m === 'upi' ? 'card' : 'upi'));
+              }}
+              style={styles.payVia}
+              accessibilityRole="button"
+              accessibilityLabel={`Pay with ${method === 'upi' ? 'UPI' : 'card'}, tap to change`}
+            >
+              <View style={styles.payIcon}>
+                <Text style={styles.payIconText}>{method === 'upi' ? '₹' : '💳'}</Text>
+              </View>
+              <View>
+                <Text style={styles.payLabel}>PAY VIA</Text>
+                <Text style={styles.payValue}>{method === 'upi' ? 'UPI' : 'Card'} ▾</Text>
+              </View>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={go}
+            disabled={busy || (mode !== 'manage' && (loading || !canSell))}
+            style={({ pressed }) => [styles.cta, (busy || (mode !== 'manage' && (loading || !canSell))) && styles.ctaOff, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={mode === 'premium' ? `${ctaLabel}. ${terms}` : legal ? `${ctaLabel}. ${legal}` : ctaLabel}
+          >
+            <GradientFill colors={['#7C3AED', '#DB2777']} />
+            {loading && mode !== 'manage' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.ctaText}>{ctaLabel}</Text>}
+            <Shine active={!busy && !loading && canSell} />
+          </Pressable>
+        </View>
+        {legal ? <Text style={styles.legal}>{legal}</Text> : null}
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  ctaWrap: { borderRadius: radius.md, overflow: 'hidden' },
   container: { flex: 1, backgroundColor: '#0B0614' },
-  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 360 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
-  hero: { alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg, gap: spacing.sm },
-  title: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', textAlign: 'center', letterSpacing: -0.4 },
-  subtitle: { color: darkThemeColors.textMuted, fontSize: 15, textAlign: 'center', lineHeight: 21 },
-  notice: { color: darkThemeColors.textSecondary, textAlign: 'center', lineHeight: 21 },
-  crownHalo: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(236,72,153,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  crown: { width: 66, height: 66, borderRadius: 33, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  benefits: {
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+  glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 460 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, height: 48 },
+  restore: { color: '#C4B5FD', fontSize: 14, fontWeight: '600' },
+  scroll: { paddingHorizontal: 20 },
+
+  hero: { alignItems: 'center', justifyContent: 'center', height: 236, marginTop: 4 },
+  blobBack: { position: 'absolute', width: 170, height: 150, borderRadius: 64, overflow: 'hidden', transform: [{ rotate: '-14deg' }, { translateX: -18 }], opacity: 0.9 },
+  blobFront: { position: 'absolute', width: 160, height: 160, borderRadius: 72, overflow: 'hidden', transform: [{ rotate: '22deg' }, { translateX: 20 }, { translateY: 10 }], opacity: 0.85 },
+  photoRing: { width: 150, height: 186, borderRadius: 75, overflow: 'hidden', borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', backgroundColor: '#1A1230' },
+  photo: { width: '100%', height: '100%' },
+  tag: {
+    position: 'absolute',
+    bottom: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#130B24',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(196,181,253,0.5)',
+    maxWidth: '80%',
   },
-  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  benefitIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  benefitTitle: { color: darkThemeColors.textPrimary, fontSize: 15, fontWeight: '700' },
-  benefitSub: { color: darkThemeColors.textMuted, fontSize: 13, marginTop: 1 },
-  noticeBox: { alignItems: 'center', gap: spacing.sm, marginVertical: spacing.md },
-  card: {
+  tagText: { color: '#F5E9FF', fontSize: 13, fontWeight: '700', fontStyle: 'italic' },
+
+  priceBlock: { alignItems: 'center', marginTop: 14 },
+  kicker: { color: '#E9D5FF', fontSize: 24, fontWeight: '800', letterSpacing: -0.3 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: -2 },
+  at: { color: '#E9D5FF', fontSize: 26, fontWeight: '700' },
+  bigPrice: {
+    color: '#F0ABFC',
+    fontSize: 76,
+    fontWeight: '900',
+    letterSpacing: -2,
+    textShadowColor: 'rgba(219,39,119,0.55)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 18,
+  },
+  priceSub: { color: '#B9B2CC', fontSize: 15, marginTop: 2, textAlign: 'center' },
+  title: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', textAlign: 'center', letterSpacing: -0.4 },
+
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 28, marginBottom: 8 },
+  line: { flex: 1, height: 1, backgroundColor: 'rgba(196,181,253,0.25)' },
+  dividerText: { color: '#C4B5FD', fontSize: 15, fontWeight: '700' },
+  benefit: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 11 },
+  benefitIcon: { width: 48, height: 48, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  benefitTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
+  benefitSub: { color: '#B9B2CC', fontSize: 14, marginTop: 1 },
+  crisis: { color: '#7D7591', fontSize: 12, textAlign: 'center', marginTop: 14 },
+
+  notice: { alignItems: 'center', gap: 8, marginTop: 20 },
+  noticeText: { color: '#B9B2CC', fontSize: 14, textAlign: 'center' },
+  retry: { color: '#C4B5FD', fontSize: 14, fontWeight: '700' },
+
+  bar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    backgroundColor: 'rgba(11,6,20,0.96)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(196,181,253,0.12)',
+  },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  payVia: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: darkThemeColors.border,
-    backgroundColor: darkThemeColors.surface,
-    marginBottom: spacing.sm,
-    gap: spacing.md,
+    gap: 10,
+    paddingHorizontal: 12,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: '#1A1230',
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.22)',
   },
-  cardSelected: { borderColor: darkThemeColors.accent, backgroundColor: darkThemeColors.accentMuted },
-  packCard: { marginBottom: spacing.lg },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  cardTitle: { color: darkThemeColors.textPrimary, fontSize: 16, fontWeight: '700' },
-  cardSub: { color: darkThemeColors.textMuted, fontSize: 13, marginTop: 2 },
-  price: { color: darkThemeColors.textPrimary, fontSize: 18, fontWeight: '800' },
-  per: { color: darkThemeColors.textMuted, fontSize: 13, fontWeight: '500' },
-  disclosure: { color: darkThemeColors.textSecondary, fontSize: 13, lineHeight: 19, marginVertical: spacing.md, textAlign: 'center' },
-  manage: { alignItems: 'center', marginTop: spacing.lg },
-  link: { color: darkThemeColors.accent, fontSize: 14, fontWeight: '600' },
-  trust: { color: darkThemeColors.textMuted, fontSize: 12, textAlign: 'center', marginTop: spacing.sm },
-  fineprint: { color: darkThemeColors.textDisabled, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: spacing.xl },
+  payIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: '#5B21B6', alignItems: 'center', justifyContent: 'center' },
+  payIconText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  payLabel: { color: '#A78BFA', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  payValue: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  cta: { flex: 1, height: 58, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  ctaOff: { opacity: 0.6 },
+  pressed: { transform: [{ scale: 0.98 }] },
+  ctaText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
+  legal: { color: '#8E86A3', fontSize: 11.5, textAlign: 'center', marginTop: 8, lineHeight: 16 },
 });

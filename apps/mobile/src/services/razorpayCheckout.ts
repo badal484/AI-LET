@@ -34,14 +34,16 @@ export const rupees = (minor: number) => `₹${(minor / 100).toLocaleString('en-
 
 export type PayIntent = { kind: 'premium' } | { kind: 'coins'; packId: string };
 export type PayResult = { ok: boolean; message?: string };
+/** Opens Razorpay straight on this method (fewer taps); they can still switch inside the sheet. */
+export type PayMethod = 'upi' | 'card';
 
 const BRAND = { name: 'Loveek', theme: { color: '#8B5CF6' } };
 /** The Loveek heart on Razorpay's checkout (served by our API), instead of Razorpay's letter placeholder. */
 const brandFor = (started: Record<string, unknown>) => ({ ...BRAND, ...(typeof started['logoUrl'] === 'string' && { image: started['logoUrl'] }) });
 
-function prefill() {
+function prefill(method?: PayMethod) {
   const user = useAuthStore.getState().user;
-  return { email: user?.email ?? '', name: user?.profile?.displayName ?? '' };
+  return { email: user?.email ?? '', name: user?.profile?.displayName ?? '', ...(method && { method }) };
 }
 
 /** Confirms with the server; retried a few times on a bad connection (the webhook also confirms it). */
@@ -60,7 +62,7 @@ async function confirmWithServer(body: Record<string, string | undefined>): Prom
 }
 
 /** Opens Razorpay for Premium or a coin pack. `googleToken` comes from Google's choice screen (user choice billing). */
-export async function payWithRazorpay(intent: PayIntent, googleToken?: string): Promise<PayResult> {
+export async function payWithRazorpay(intent: PayIntent, googleToken?: string, method?: PayMethod): Promise<PayResult> {
   let started: Record<string, unknown>;
   try {
     started =
@@ -79,7 +81,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string): 
           subscription_id: String(started['subscriptionId']),
           description: `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`,
           ...brandFor(started),
-          prefill: prefill(),
+          prefill: prefill(method),
         }
       : {
           key: String(started['keyId']),
@@ -88,7 +90,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string): 
           currency: 'INR',
           description: `${Number(started['coins']).toLocaleString('en-IN')} coins`,
           ...brandFor(started),
-          prefill: prefill(),
+          prefill: prefill(method),
         };
 
   let paid: { razorpay_payment_id: string; razorpay_signature: string; razorpay_subscription_id?: string; razorpay_order_id?: string };
