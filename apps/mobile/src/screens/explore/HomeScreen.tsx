@@ -32,6 +32,7 @@ import { FadeIn } from '../../components/common/FadeIn.js';
 import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import { ContinueChatCard } from '../../components/home/ContinueChatCard.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
+import { thumb } from '../../utils/thumb.js';
 
 const CARD_WIDTH = 148;
 const CARD_HEIGHT = 210;
@@ -437,7 +438,7 @@ function renderSection(
             >
               {/* Full Bleed Image (blurred for a romance character when they're under 18) */}
               <FallbackImage
-                uris={[char.coverImageUrl, char.avatarUrl]}
+                uris={[thumb(char.coverImageUrl, CARD_WIDTH), thumb(char.avatarUrl, CARD_WIDTH)]}
                 name={char.name}
                 style={styles.cardImage}
                 fadeDuration={150}

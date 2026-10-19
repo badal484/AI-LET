@@ -36,6 +36,7 @@ import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
+import { thumb } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -241,7 +242,7 @@ export const CharacterDetailScreen: React.FC = () => {
         {/* Cover Hero Header */}
         <View style={styles.heroContainer}>
           <FallbackImage
-            uris={[profile.coverImageUrl, profile.avatarUrl]}
+            uris={[thumb(profile.coverImageUrl, 420), thumb(profile.avatarUrl, 420)]}
             name={profile.name}
             style={styles.coverImage}
             blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
@@ -335,7 +336,7 @@ export const CharacterDetailScreen: React.FC = () => {
                 {gallery.map((imgUrl, idx) => (
                   <View key={imgUrl} style={[styles.galleryCard, { width: galleryTile, height: Math.round(galleryTile * 1.6) }]}>
                     <Image
-                      source={{ uri: imgUrl }}
+                      source={{ uri: thumb(imgUrl, galleryTile) }}
                       style={styles.galleryImage}
                       resizeMode="cover"
                       blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}

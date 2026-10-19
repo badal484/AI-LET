@@ -50,6 +50,30 @@ function prefill(method?: PayMethod) {
   return { email: user?.email ?? '', name: user?.profile?.displayName ?? '', ...(method && { method }) };
 }
 
+/**
+ * A short sheet: UPI apps first (GPay, PhonePe, Paytm…), then cards (and netbanking for coins). No wallets, EMI or
+ * pay-later; the email is filled in and hidden. Razorpay asks for a phone number once (needed for AutoPay) and
+ * remembers it.
+ */
+function shortSheet(kind: PayIntent['kind']) {
+  const other = kind === 'coins' ? [{ method: 'card' }, { method: 'netbanking' }] : [{ method: 'card' }];
+  return {
+    hidden: { email: true },
+    readonly: { email: true },
+    remember_customer: true,
+    config: {
+      display: {
+        blocks: {
+          upi: { name: 'Pay with UPI', instruments: [{ method: 'upi' }] },
+          other: { name: kind === 'coins' ? 'Card or netbanking' : 'Card', instruments: other },
+        },
+        sequence: ['block.upi', 'block.other'],
+        preferences: { show_default_blocks: false },
+      },
+    },
+  };
+}
+
 /** Confirms with the server; retried a few times on a bad connection (the webhook also confirms it). */
 async function confirmWithServer(body: Record<string, string | undefined>): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -85,6 +109,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
           subscription_id: String(started['subscriptionId']),
           description: `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`,
           ...brandFor(started),
+          ...shortSheet('premium'),
           prefill: prefill(method),
         }
       : {
@@ -94,6 +119,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
           currency: 'INR',
           description: `${Number(started['coins']).toLocaleString('en-IN')} coins`,
           ...brandFor(started),
+          ...shortSheet('coins'),
           prefill: prefill(method),
         };
 

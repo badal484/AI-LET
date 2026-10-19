@@ -12,6 +12,7 @@ import { IconButton, Skeleton } from '../../components/common/index.js';
 import { BottomFade } from '../../components/common/BottomFade.js';
 import { PressableScale } from '../../components/common/PressableScale.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
+import { thumb } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CategoryRouteProp = RouteProp<RootStackParamList, 'CategoryBrowser'>;
@@ -54,7 +55,7 @@ export const CategoryBrowserScreen: React.FC = () => {
       accessibilityLabel={ageRestricted(item) ? `${item.name}, 18+ only` : `Open ${item.name}`}
     >
       <FallbackImage
-        uris={[item.coverImageUrl, item.avatarUrl]}
+        uris={[thumb(item.coverImageUrl, cardWidth), thumb(item.avatarUrl, cardWidth)]}
         name={item.name}
         style={styles.cardImage}
         fadeDuration={150}

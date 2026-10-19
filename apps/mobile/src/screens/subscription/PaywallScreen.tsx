@@ -23,15 +23,14 @@ import {
   loadUpiConfig,
   payWithRazorpay,
   rupees,
-  type PayMethod,
 } from '../../services/razorpayCheckout.js';
 import { tapFeedback } from '../../utils/motion.js';
-import { PromoCodeBox } from '../../components/PromoCodeBox.js';
+import { thumb } from '../../utils/thumb.js';
 
 /**
  * Premium: ₹1 for the first day, then ₹499/month — the only plan — plus coin packs.
- * One face (the person they talk to most), one big price, four short benefits, and a bar at the bottom:
- * how they pay + the button. The price and the auto-renewal sit right under the button in plain words.
+ * Three faces, one big price, three short benefits, and one button. Razorpay's own sheet picks UPI or card;
+ * promo codes live on Your Premium.
  * Pays with Google Play (and its "Play or UPI" choice) when Play can sell; otherwise UPI / cards via Razorpay.
  */
 
@@ -54,25 +53,11 @@ const benefits = (hinglish: boolean): Benefit[] => [
     to: '#9333EA',
   },
   {
-    icon: 'moon',
-    title: 'Always there',
-    sub: hinglish ? 'jab chaho, tab baat' : 'day or night, whenever you want',
-    from: '#2563EB',
-    to: '#7C3AED',
-  },
-  {
     icon: 'heart-filled',
     title: 'Deeper connection',
     sub: hinglish ? 'sacha aur pyara rishta' : 'a real, warm bond',
     from: '#E11D48',
     to: '#C026D3',
-  },
-  {
-    icon: 'book',
-    title: 'Learn & grow',
-    sub: hinglish ? 'courses aur guidance, step by step' : 'courses and guidance, step by step',
-    from: '#059669',
-    to: '#2563EB',
   },
 ];
 
@@ -89,7 +74,6 @@ export const PaywallScreen: React.FC = () => {
   const hinglish = (user?.profile?.preferredLanguage ?? 'hinglish') !== 'en';
   const [catalog, setCatalog] = useState<StoreCatalog | null>(null);
   const [payRoute, setPayRoute] = useState<'choice' | 'upi' | 'play' | 'none' | null>(null);
-  const [method, setMethod] = useState<PayMethod>('upi');
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
   // Always opens at the top (the faces and the price), never where it was last scrolled.
@@ -217,12 +201,12 @@ export const PaywallScreen: React.FC = () => {
     if (mode === 'pack') {
       r = viaPlay
         ? await StoreBilling.buyPack()
-        : await payWithRazorpay({ kind: 'coins', packId: 'coins_100' }, undefined, method);
+        : await payWithRazorpay({ kind: 'coins', packId: 'coins_100' });
     } else {
       r =
         viaPlay && playOffer
           ? await StoreBilling.buySubscription(playOffer, Boolean(playOffer.trial))
-          : await payWithRazorpay({ kind: 'premium' }, undefined, method);
+          : await payWithRazorpay({ kind: 'premium' });
     }
     setBusy(false);
     finish(r, mode === 'pack' ? '100 coins added — 50 more messages ✨' : 'Welcome to Premium 💜');
@@ -248,7 +232,10 @@ export const PaywallScreen: React.FC = () => {
           ? `Start for ${first}`
           : `Subscribe · ${monthly}/mo`;
   // Premium's terms are already in the price line above (and in the button's label for screen readers).
-  const legal = mode === 'pack' ? '100 coins, one-time. Each extra message after your daily 150 is 2 coins.' : '';
+  const legal =
+    mode === 'pack'
+      ? '100 coins, one-time. Each extra message after your daily 150 is 2 coins.'
+      : '';
   const terms = firstIsTrial
     ? `${first} today, then ${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`
     : `${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`;
@@ -315,7 +302,7 @@ export const PaywallScreen: React.FC = () => {
                 />
               </View>
               <View style={styles.sideRing}>
-                <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
+                <Image source={{ uri: thumb(uri, 110) }} style={styles.photo} resizeMode="cover" />
               </View>
             </View>
           ))}
@@ -327,7 +314,7 @@ export const PaywallScreen: React.FC = () => {
           </View>
           <View style={styles.photoRing}>
             <Image
-              source={face ? { uri: face.uri } : LOGO}
+              source={face ? { uri: thumb(face.uri, 150) } : LOGO}
               style={styles.photo}
               resizeMode="cover"
             />
@@ -417,13 +404,6 @@ export const PaywallScreen: React.FC = () => {
             </Pressable>
           </View>
         )}
-
-        {/* A code from Loveek or a friend: free Premium days or coins. */}
-        {mode === 'premium' && (
-          <View style={styles.code}>
-            <PromoCodeBox />
-          </View>
-        )}
       </ScrollView>
 
       {/* The bar: how they pay, and the button — always in reach. */}
@@ -431,25 +411,6 @@ export const PaywallScreen: React.FC = () => {
       {keyboard === 0 && (
         <View style={[styles.bar, { paddingBottom: isTab ? 8 : 8 + insets.bottom }]}>
           <View style={styles.barRow}>
-            {mode !== 'manage' && payRoute === 'upi' && (
-              <Pressable
-                onPress={() => {
-                  tapFeedback();
-                  setMethod(m => (m === 'upi' ? 'card' : 'upi'));
-                }}
-                style={styles.payVia}
-                accessibilityRole="button"
-                accessibilityLabel={`Pay with ${method === 'upi' ? 'UPI' : 'card'}, tap to change`}
-              >
-                <View style={styles.payIcon}>
-                  <Text style={styles.payIconText}>{method === 'upi' ? '₹' : '💳'}</Text>
-                </View>
-                <View>
-                  <Text style={styles.payLabel}>PAY VIA</Text>
-                  <Text style={styles.payValue}>{method === 'upi' ? 'UPI' : 'Card'} ▾</Text>
-                </View>
-              </Pressable>
-            )}
             <Pressable
               onPress={go}
               disabled={busy || (mode !== 'manage' && (loading || !canSell))}
@@ -484,7 +445,6 @@ export const PaywallScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  code: { marginTop: 22 },
   container: { flex: 1, backgroundColor: '#0B0614' },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 460 },
   topBar: {
@@ -631,28 +591,6 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(196,181,253,0.12)',
   },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  payVia: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 10,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#1A1230',
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.22)',
-  },
-  payIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: '#5B21B6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  payIconText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  payLabel: { color: '#A78BFA', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
-  payValue: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
   cta: {
     flex: 1,
     height: 46,

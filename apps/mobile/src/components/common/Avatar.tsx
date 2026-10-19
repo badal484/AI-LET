@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Image, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { darkThemeColors } from '../../theme/index.js';
+import { thumb } from '../../utils/thumb.js';
 
 export interface AvatarProps {
   uri?: string | null;
@@ -74,7 +75,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     >
       {uri && !imageError ? (
         <Image
-          source={{ uri }}
+          source={{ uri: thumb(uri, dim) }}
           style={[styles.image, { width: dim, height: dim, borderRadius }]}
           onError={() => setImageError(true)}
           blurRadius={blurRadius}
