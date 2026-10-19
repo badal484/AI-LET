@@ -53,9 +53,14 @@ export const PaywallScreen: React.FC = () => {
   // The face on top: one character chosen in admin Settings, with their photo as it is now (fetched fresh, so a
   // new photo or a different character shows without an app update).
   const [face, setFace] = useState<{ name: string; uri: string } | null>(null);
+  const [sides, setSides] = useState<string[]>([]);
   useEffect(() => {
     let alive = true;
-    void loadUpiConfig(true).then((c) => alive && setFace(c?.face ? { name: c.face.name, uri: c.face.avatarUrl } : null));
+    void loadUpiConfig(true).then((c) => {
+      if (!alive) return;
+      setFace(c?.face ? { name: c.face.name, uri: c.face.avatarUrl } : null);
+      setSides((c?.sideFaces ?? []).map((f) => f.avatarUrl));
+    });
     return () => {
       alive = false;
     };
@@ -159,6 +164,17 @@ export const PaywallScreen: React.FC = () => {
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 190 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* The person they talk to — in a soft glowing shape, saying hi. */}
         <View style={styles.hero}>
+          {/* Two more faces behind, tilted out to the sides — a glimpse of who else is there. */}
+          {sides.map((uri, i) => (
+            <View key={uri + i} style={[styles.side, i === 0 ? styles.sideLeft : styles.sideRight]}>
+              <View style={styles.sideBlob}>
+                <GradientFill colors={i === 0 ? ['#4338CA', '#7C3AED'] : ['#9333EA', '#DB2777']} vertical />
+              </View>
+              <View style={styles.sideRing}>
+                <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
+              </View>
+            </View>
+          ))}
           <View style={styles.blobBack}>
             <GradientFill colors={['#6D28D9', '#4338CA']} vertical />
           </View>
@@ -287,6 +303,11 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', justifyContent: 'center', height: 236, marginTop: 4 },
   blobBack: { position: 'absolute', width: 170, height: 150, borderRadius: 64, overflow: 'hidden', transform: [{ rotate: '-14deg' }, { translateX: -18 }], opacity: 0.9 },
   blobFront: { position: 'absolute', width: 160, height: 160, borderRadius: 72, overflow: 'hidden', transform: [{ rotate: '22deg' }, { translateX: 20 }, { translateY: 10 }], opacity: 0.85 },
+  side: { position: 'absolute', top: 40, width: 112, height: 142, alignItems: 'center', justifyContent: 'center', opacity: 0.88 },
+  sideLeft: { left: 4, transform: [{ rotate: '-10deg' }] },
+  sideRight: { right: 4, transform: [{ rotate: '10deg' }] },
+  sideBlob: { position: 'absolute', width: 120, height: 132, borderRadius: 56, overflow: 'hidden', opacity: 0.75 },
+  sideRing: { width: 98, height: 124, borderRadius: 49, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.55)', backgroundColor: '#1A1230' },
   photoRing: { width: 150, height: 186, borderRadius: 75, overflow: 'hidden', borderWidth: 3, borderColor: 'rgba(255,255,255,0.85)', backgroundColor: '#1A1230' },
   photo: { width: '100%', height: '100%' },
   tag: {

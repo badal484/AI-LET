@@ -292,7 +292,7 @@ describe('each UPI sale is reported to Google (user choice billing)', () => {
 
 describe('the Premium screen face', () => {
   afterAll(async () => {
-    await prisma.appSetting.deleteMany({ where: { key: 'paywall.character' } }).catch(() => undefined);
+    await prisma.appSetting.deleteMany({ where: { key: { in: ['paywall.character', 'paywall.sideCharacters'] } } }).catch(() => undefined);
   });
 
   it('is the character chosen in Settings, with their photo as it is now — and never a romance one for an under-18', async () => {
@@ -306,6 +306,10 @@ describe('the Premium screen face', () => {
     expect((await face())?.avatarUrl).toBe('https://ik.imagekit.io/x/old.webp');
     await prisma.character.update({ where: { id: c.id }, data: { avatarUrl: 'https://ik.imagekit.io/x/new.webp' } });
     expect((await face())?.avatarUrl).toBe('https://ik.imagekit.io/x/new.webp'); // a new photo shows by itself
+    await setSetting(randomUUID(), 'paywall.sideCharacters', `${slug},${slug}`);
+    const sides = (await request(app).get('/api/v1/billing/razorpay/config').set(auth(u))).body.data.sideFaces;
+    expect(sides).toHaveLength(2);
+    await expect(setSetting(randomUUID(), 'paywall.sideCharacters', 'no-such-person')).rejects.toThrow(/No published character/);
 
     await prisma.character.update({ where: { id: c.id }, data: { category: 'love' } });
     const teen = await createUser({ verified: true });

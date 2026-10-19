@@ -12,6 +12,8 @@ import { useAuthStore } from '../stores/authStore.js';
 export interface UpiConfig {
   /** The Premium screen's face: the character chosen in admin Settings, with their current photo. */
   face?: { name: string; avatarUrl: string } | null;
+  /** Up to two faces shown behind the main one. */
+  sideFaces?: Array<{ name: string; avatarUrl: string }>;
   enabled: boolean;
   keyId: string | null;
   userChoiceBilling: boolean;

@@ -52,22 +52,34 @@ const sec = (unix: number | null | undefined) => (unix ? new Date(unix * 1000) :
  * The face on the Premium screen: the character chosen in admin Settings, with their photo as it is now.
  * Not a romance character for someone under 18 (falls back to no face → the Loveek logo).
  */
-export async function paywallFace(userId?: string): Promise<{ name: string; avatarUrl: string } | null> {
-  const slug = String(await getSetting('paywall.character')).trim();
+type Face = { name: string; avatarUrl: string };
+
+async function faceFor(slug: string, teen: boolean): Promise<Face | null> {
   if (!slug) return null;
   const c = await prisma.character.findFirst({
     where: { slug, status: 'PUBLISHED', deletedAt: null },
-    select: { id: true, slug: true, name: true, avatarUrl: true, category: true },
+    select: { slug: true, name: true, avatarUrl: true, category: true },
   });
-  if (!c?.avatarUrl) return null;
-  if (userId && (await isTeen(userId)) && isRomanceCharacter(c)) return null;
+  if (!c?.avatarUrl || (teen && isRomanceCharacter(c))) return null;
   return { name: c.name.split(' ')[0]!, avatarUrl: c.avatarUrl };
+}
+
+export async function paywallFace(userId?: string): Promise<Face | null> {
+  return faceFor(String(await getSetting('paywall.character')).trim(), Boolean(userId && (await isTeen(userId))));
+}
+
+/** The two faces behind the main one (admin Settings), same rules. */
+export async function paywallSideFaces(userId?: string): Promise<Face[]> {
+  const teen = Boolean(userId && (await isTeen(userId)));
+  const slugs = String(await getSetting('paywall.sideCharacters')).split(',').map((s) => s.trim()).filter(Boolean).slice(0, 2);
+  return (await Promise.all(slugs.map((s) => faceFor(s, teen)))).filter((f): f is Face => f !== null);
 }
 
 /** What the app needs to show Razorpay at all, plus the Premium screen's face. */
 export async function razorpayClientConfig(userId?: string) {
   return {
     face: await paywallFace(userId),
+    sideFaces: await paywallSideFaces(userId),
     enabled: razorpayConfigured(),
     keyId: razorpayConfigured() ? razorpayKeyId() : null,
     /** Google's choice screen (Play vs. Razorpay) is on once the app is enrolled in user choice billing. */

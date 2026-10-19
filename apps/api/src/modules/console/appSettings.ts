@@ -33,6 +33,7 @@ export const SETTINGS = {
   'announcement.text': { label: 'Announcement', type: 'string', default: () => '' },
   // The face on the Premium screen: one character (their current photo is used, so a new photo shows by itself).
   'paywall.character': { label: 'Premium screen character (slug, e.g. aarohi-nair)', type: 'string', default: () => 'aarohi-nair' },
+  'paywall.sideCharacters': { label: 'Premium screen: two faces behind it (slugs, comma-separated)', type: 'string', default: () => 'kiara-khanna,dev-bhatia' },
   'app.minVersion': { label: 'Minimum app version (older apps must update)', type: 'string', default: () => '' },
   // Hard stop (audit H-1): once today's AI cost reaches this, new replies pause until midnight IST (crisis
   // messages are still answered). The budget below only alerts.
@@ -85,10 +86,14 @@ export async function setSetting(adminId: string, key: string, value: unknown) {
   if ((key === 'maintenance.imageUrl' || key === 'maintenance.linkUrl') && value !== '' && !/^https:\/\/\S+$/.test(String(value))) {
     throw new BadRequestError('Use a full https:// link (or leave it empty).');
   }
-  if (key === 'paywall.character' && value !== '') {
-    const found = await prisma.character.findFirst({ where: { slug: String(value).trim(), status: 'PUBLISHED', deletedAt: null }, select: { avatarUrl: true } });
-    if (!found) throw new BadRequestError('No published character with that slug (see the address of their page, e.g. aarohi-nair).');
-    if (!found.avatarUrl) throw new BadRequestError('That character has no profile photo yet — add one first.');
+  if ((key === 'paywall.character' || key === 'paywall.sideCharacters') && value !== '') {
+    const slugs = String(value).split(',').map((v) => v.trim()).filter(Boolean);
+    if (key === 'paywall.sideCharacters' && slugs.length > 2) throw new BadRequestError('Up to two characters, comma-separated.');
+    for (const slug of slugs) {
+      const found = await prisma.character.findFirst({ where: { slug, status: 'PUBLISHED', deletedAt: null }, select: { avatarUrl: true } });
+      if (!found) throw new BadRequestError(`No published character "${slug}" (see the address of their page, e.g. aarohi-nair).`);
+      if (!found.avatarUrl) throw new BadRequestError(`"${slug}" has no profile photo yet — add one first.`);
+    }
   }
   if (key === 'maintenance.until' && value !== '' && Number.isNaN(Date.parse(String(value)))) throw new BadRequestError('Pick a date and time (or leave it empty).');
   const before = await getSetting(key as SettingKey);
