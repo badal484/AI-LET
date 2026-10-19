@@ -111,7 +111,7 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
           </View>
         )}
 
-        <Text style={styles.note}>Coins never expire{viaUpi ? '  ·  UPI · Cards · Netbanking  ·  🔒 Razorpay' : ''}</Text>
+        <Text style={styles.note}>Coins never expire</Text>
       </View>
     </BottomSheet>
   );
