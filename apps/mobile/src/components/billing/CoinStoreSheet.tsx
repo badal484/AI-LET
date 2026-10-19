@@ -12,7 +12,7 @@ import { loadUpiConfig, payWithRazorpay, rupees } from '../../services/razorpayC
  * "Get coins": the three Google Play coin packs. Coins pay for gifts and for messages beyond the daily
  * allowance. Prices are Play's own (localized); how many coins each pack gives is our server's.
  */
-const BADGE: Record<string, string> = { coins_330: '+10% extra', coins_1000: 'BEST · +25%' };
+const BADGE: Record<string, string> = { coins_100: 'Starter', coins_330: '+10% extra', coins_1000: 'BEST · +25%' };
 
 export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; reason?: string }> = ({ visible, onClose, reason }) => {
   const [packs, setPacks] = useState<CoinPack[] | null>(null);

@@ -246,7 +246,7 @@ export const HomeScreen: React.FC = () => {
                 onPress={() => handleChipPress(chip.id)}
               >
                 <View style={[styles.orbImageContainer, isSelected && styles.orbImageContainerActive]}>
-                  <Image source={orbImage} style={styles.orbImage} resizeMode="cover" />
+                  <Image source={orbImage} style={styles.orbImage} resizeMode="cover" fadeDuration={0} />
                 </View>
                 <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
                   {chip.label}
@@ -409,7 +409,7 @@ function renderSection(
       >
         <View style={styles.sectionTitleRow}>
           <View style={styles.sectionOrbContainer}>
-            <Image source={orbImage} style={styles.sectionOrbImage} resizeMode="cover" />
+            <Image source={orbImage} style={styles.sectionOrbImage} resizeMode="cover" fadeDuration={0} />
           </View>
           <Text style={styles.sectionTitle}>{cleanTitle}</Text>
         </View>
