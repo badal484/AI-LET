@@ -40,21 +40,36 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
     (async () => {
       const play = await StoreBilling.loadCoinPacks().catch(() => [] as CoinPack[]);
       const cfg = await loadUpiConfig();
-      const playHasValidPrices = play.length > 0 && play.every((p) => Boolean(p.price));
-      if (playHasValidPrices || !cfg?.enabled) {
+      // If Google Play has active products returned by Play Store, sell via Google Play
+      if (play.length > 0) {
         if (alive) {
-          const withPrices = (play.length > 0 ? play : [
-            { id: 'coins_100', coins: 100, price: '₹49' },
-            { id: 'coins_330', coins: 330, price: '₹149' },
-            { id: 'coins_1000', coins: 1000, price: '₹399' },
-          ]).map((p) => ({ ...p, price: p.price || FALLBACK_PRICES[p.id] || 'Buy' }));
-          setPacks(withPrices);
+          setViaUpi(false);
+          setPacks(play);
         }
         return;
       }
-      if (!alive) return;
-      setViaUpi(true);
-      setPacks(cfg.coinPacks.map((p) => ({ id: p.id, coins: p.coins, price: rupees(p.amountMinorUnits) })));
+      // If Play is not ready or has no coin products, sell directly via Razorpay (UPI, GPay, PhonePe, Paytm, Cards)
+      if (cfg?.enabled && (cfg.coinPacks?.length ?? 0) > 0) {
+        if (!alive) return;
+        setViaUpi(true);
+        setPacks(
+          cfg.coinPacks.map((p) => ({
+            id: p.id,
+            coins: p.coins,
+            price: rupees(p.amountMinorUnits) || FALLBACK_PRICES[p.id] || 'Buy',
+          }))
+        );
+        return;
+      }
+      // Fallback if offline or unconfigured
+      if (alive) {
+        setViaUpi(false);
+        setPacks([
+          { id: 'coins_100', coins: 100, price: '₹49' },
+          { id: 'coins_330', coins: 330, price: '₹149' },
+          { id: 'coins_1000', coins: 1000, price: '₹399' },
+        ]);
+      }
     })();
     return () => {
       alive = false;
@@ -64,14 +79,19 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
   const buy = async (pack: CoinPack) => {
     tapFeedback();
     setBusy(pack.id);
-    const r = viaUpi ? await payWithRazorpay({ kind: 'coins', packId: pack.id }) : await StoreBilling.buyCoins(pack.id);
-    setBusy(null);
-    if (r.ok) {
-      await reload().catch(() => undefined);
-      ToastService.show({ message: `🪙 ${pack.coins} coins added`, type: 'success', duration: 2500 });
-      onClose();
-    } else if (r.message) {
-      ToastService.show({ message: r.message, type: 'error', duration: 3500 });
+    try {
+      const r = viaUpi ? await payWithRazorpay({ kind: 'coins', packId: pack.id }) : await StoreBilling.buyCoins(pack.id);
+      if (r.ok) {
+        await reload().catch(() => undefined);
+        ToastService.show({ message: `🪙 ${pack.coins} coins added`, type: 'success', duration: 2500 });
+        onClose();
+      } else if (r.message) {
+        ToastService.show({ message: r.message, type: 'error', duration: 3500 });
+      }
+    } catch (err: any) {
+      ToastService.show({ message: err?.message || 'Payment could not be completed.', type: 'error', duration: 3500 });
+    } finally {
+      setBusy(null);
     }
   };
 

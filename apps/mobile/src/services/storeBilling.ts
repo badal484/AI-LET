@@ -209,39 +209,30 @@ export const StoreBilling = {
     });
   },
 
-  /** The coin packs with their real Google Play prices (falls back to configured INR prices). */
+  /** The coin packs with their real Google Play prices (or empty array if not on Play). */
   async loadCoinPacks(): Promise<CoinPack[]> {
-    const fallbackPrices: Record<string, string> = {
-      coins_100: '₹49',
-      coins_330: '₹149',
-      coins_1000: '₹399',
-    };
     const load = async (): Promise<CoinPack[]> => {
-      if (!(await StoreBilling.connect())) {
-        return coinPackDefs.map((def) => ({ ...def, price: fallbackPrices[def.id] || '₹49' }));
-      }
+      if (!(await StoreBilling.connect())) return [];
       try {
         const products = ((await fetchProducts({ skus: coinPackDefs.map((p) => p.id), type: 'in-app' })) ?? []) as any[];
-        return coinPackDefs.map((def) => {
+        if (!products || products.length === 0) return [];
+        return coinPackDefs.flatMap((def) => {
           const product = products.find((p) => (p.productId || p.id) === def.id);
+          if (!product) return [];
           const price =
-            product?.oneTimePurchaseOfferDetails?.formattedPrice ||
-            product?.displayPrice ||
-            product?.formattedPrice ||
-            product?.localizedPrice ||
-            fallbackPrices[def.id] ||
-            '₹49';
-          return { ...def, price };
+            product.oneTimePurchaseOfferDetails?.formattedPrice ||
+            product.displayPrice ||
+            product.formattedPrice ||
+            product.localizedPrice;
+          return price ? [{ ...def, price }] : [];
         });
       } catch {
-        return coinPackDefs.map((def) => ({ ...def, price: fallbackPrices[def.id] || '₹49' }));
+        return [];
       }
     };
     return Promise.race([
       load(),
-      new Promise<CoinPack[]>((resolve) =>
-        setTimeout(() => resolve(coinPackDefs.map((def) => ({ ...def, price: fallbackPrices[def.id] || '₹49' }))), 4000)
-      ),
+      new Promise<CoinPack[]>((resolve) => setTimeout(() => resolve([]), 3500)),
     ]);
   },
 
@@ -249,12 +240,20 @@ export const StoreBilling = {
   async buyCoins(productId: string): Promise<{ ok: boolean; message?: string }> {
     if (!(await currentAccountId())) return NO_ACCOUNT;
     pendingIntent = { kind: 'coins', packId: productId };
-    return new Promise((resolve) => {
-      waiting.add(resolve);
-      requestPurchase({ type: 'in-app', request: { google: { skus: [productId], obfuscatedAccountId: accountId } } }).catch(() =>
-        settle({ ok: false, message: 'Could not open Google Play. Please try again.' }),
-      );
-    });
+    return Promise.race([
+      new Promise<{ ok: boolean; message?: string }>((resolve) => {
+        waiting.add(resolve);
+        requestPurchase({ type: 'in-app', request: { google: { skus: [productId], obfuscatedAccountId: accountId } } }).catch(() =>
+          settle({ ok: false, message: 'Could not open Google Play. Please try again.' }),
+        );
+      }),
+      new Promise<{ ok: boolean; message?: string }>((resolve) =>
+        setTimeout(() => {
+          settle({ ok: false, message: 'Google Play did not respond. Please try again.' });
+          resolve({ ok: false, message: 'Google Play did not respond. Please try again.' });
+        }, 12_000),
+      ),
+    ]);
   },
 
   /** The smallest coin pack (also how "add more messages" works: extra messages cost 2 coins each). */
