@@ -29,7 +29,7 @@ import { thumb } from '../../utils/thumb.js';
 
 /**
  * Premium: ₹1 for the first day, then ₹499/month — the only plan — plus coin packs.
- * Three faces, one big price, three short benefits, and one button. Razorpay's own sheet picks UPI or card;
+ * Three faces, one big price, four short benefits, and one button. Razorpay's own sheet picks UPI or card;
  * promo codes live on Your Premium.
  * Pays with Google Play (and its "Play or UPI" choice) when Play can sell; otherwise UPI / cards via Razorpay.
  */
@@ -58,6 +58,13 @@ const benefits = (hinglish: boolean): Benefit[] => [
     sub: hinglish ? 'sacha aur pyara rishta' : 'a real, warm bond',
     from: '#E11D48',
     to: '#C026D3',
+  },
+  {
+    icon: 'book',
+    title: 'Learn & earn',
+    sub: hinglish ? 'coding, freelancing, jobs, YouTube — kamai ke raaste' : 'coding, freelancing, jobs, YouTube — ways to earn',
+    from: '#059669',
+    to: '#2563EB',
   },
 ];
 
