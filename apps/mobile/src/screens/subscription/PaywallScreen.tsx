@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { StoreBilling, type StoreCatalog } from '../../services/storeBilling.js';
@@ -28,6 +28,7 @@ const benefits = (hinglish: boolean): Benefit[] => [
   { icon: 'chat', title: 'Talk every day', sub: hinglish ? 'roz 150 messages, bina rukawat' : '150 messages a day, no waiting', from: '#7C3AED', to: '#4F46E5' },
   { icon: 'brain', title: 'They remember you', sub: hinglish ? 'tumhari har baat yaad rahegi' : 'your days, your people, your goals', from: '#DB2777', to: '#9333EA' },
   { icon: 'moon', title: 'Always there', sub: hinglish ? 'jab chaho, tab baat' : 'day or night, whenever you want', from: '#2563EB', to: '#7C3AED' },
+  { icon: 'heart-filled', title: 'Deeper connection', sub: hinglish ? 'sacha aur pyara rishta' : 'a real, warm bond', from: '#E11D48', to: '#C026D3' },
   { icon: 'book', title: 'Learn & grow', sub: hinglish ? 'courses aur guidance, step by step' : 'courses and guidance, step by step', from: '#059669', to: '#2563EB' },
 ];
 
@@ -47,6 +48,20 @@ export const PaywallScreen: React.FC = () => {
   const [method, setMethod] = useState<PayMethod>('upi');
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // Always opens at the top (the faces and the price), never where it was last scrolled.
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  // Android scrolls a page to a focused button when content loads in (the faces, the price): keep it at the top
+  // until they scroll themselves.
+  const userScrolled = useRef(false);
+  const toTop = useCallback(() => {
+    if (!userScrolled.current) scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      userScrolled.current = false;
+      toTop();
+    }, [toTop]),
+  );
 
   const isPremium = Boolean(subscription && ['active', 'trialing', 'grace_period'].includes(String(subscription.status).toLowerCase()));
 
@@ -161,7 +176,13 @@ export const PaywallScreen: React.FC = () => {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 190 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        onContentSizeChange={toTop}
+        onScrollBeginDrag={() => {
+          userScrolled.current = true;
+        }}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 190 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* The person they talk to — in a soft glowing shape, saying hi. */}
         <View style={styles.hero}>
           {/* Two more faces behind, tilted out to the sides — a glimpse of who else is there. */}
@@ -237,7 +258,6 @@ export const PaywallScreen: React.FC = () => {
                 </View>
               </View>
             ))}
-            <Text style={styles.crisis}>Crisis help is always free — with or without Premium.</Text>
           </>
         )}
 
@@ -346,7 +366,6 @@ const styles = StyleSheet.create({
   benefitIcon: { width: 48, height: 48, borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   benefitTitle: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   benefitSub: { color: '#B9B2CC', fontSize: 14, marginTop: 1 },
-  crisis: { color: '#7D7591', fontSize: 12, textAlign: 'center', marginTop: 14 },
 
   notice: { alignItems: 'center', gap: 8, marginTop: 20 },
   noticeText: { color: '#B9B2CC', fontSize: 14, textAlign: 'center' },
@@ -358,7 +377,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 10,
     backgroundColor: 'rgba(11,6,20,0.96)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(196,181,253,0.12)',
@@ -368,20 +387,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
-    height: 58,
-    borderRadius: 18,
+    paddingHorizontal: 10,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: '#1A1230',
     borderWidth: 1,
     borderColor: 'rgba(196,181,253,0.22)',
   },
-  payIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: '#5B21B6', alignItems: 'center', justifyContent: 'center' },
-  payIconText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  payLabel: { color: '#A78BFA', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
-  payValue: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  cta: { flex: 1, height: 58, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  payIcon: { width: 26, height: 26, borderRadius: 8, backgroundColor: '#5B21B6', alignItems: 'center', justifyContent: 'center' },
+  payIconText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  payLabel: { color: '#A78BFA', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  payValue: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  cta: { flex: 1, height: 46, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   ctaOff: { opacity: 0.6 },
   pressed: { transform: [{ scale: 0.98 }] },
-  ctaText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
+  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   legal: { color: '#8E86A3', fontSize: 11.5, textAlign: 'center', marginTop: 8, lineHeight: 16 },
 });

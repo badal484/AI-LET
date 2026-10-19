@@ -6,7 +6,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore.js';
 import { useBillingStore } from '../../stores/billingStore.js';
-import { Avatar, Button, Icon, ToastService, type IconName } from '../../components/common/index.js';
+import { Avatar, Icon, ToastService, type IconName } from '../../components/common/index.js';
 import { api } from '../../services/api/client.js';
 import { ConversationApi } from '../../services/api/conversationApi.js';
 import { APP_VERSION } from '../../config/appInfo.js';
@@ -232,8 +232,12 @@ export const ProfileScreen: React.FC = () => {
       <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
         <Pressable style={styles.backdrop} onPress={() => setEditing(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
-            <Text style={styles.sheetTitle}>Your name</Text>
-            <Text style={styles.sheetSub}>This is what they'll call you.</Text>
+            <GradientFill radial colors={[['#A855F7', 0.28], ['#EC4899', 0.06], ['#1A1428', 0]]} />
+            <View style={styles.sheetBadge}>
+              <Icon name="pencil" size={20} color="#E9D5FF" />
+            </View>
+            <Text style={styles.sheetTitle}>What should they call you?</Text>
+            <Text style={styles.sheetSub}>Everyone you talk to will use this name.</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -246,8 +250,18 @@ export const ProfileScreen: React.FC = () => {
               onSubmitEditing={() => void saveName()}
             />
             <View style={styles.sheetActions}>
-              <Button label="Cancel" variant="ghost" size="md" onPress={() => setEditing(false)} />
-              <Button label={saving ? 'Saving…' : 'Save'} variant="primary" size="md" disabled={saving || !name.trim()} onPress={() => void saveName()} />
+              <Pressable onPress={() => setEditing(false)} style={({ pressed }) => [styles.sheetBtn, styles.sheetCancel, pressed && styles.pressed]} accessibilityRole="button">
+                <Text style={styles.sheetCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void saveName()}
+                disabled={saving || !name.trim()}
+                style={({ pressed }) => [styles.sheetBtn, (saving || !name.trim()) && styles.sheetOff, pressed && styles.pressed]}
+                accessibilityRole="button"
+              >
+                <GradientFill colors={['#7C3AED', '#DB2777']} />
+                <Text style={styles.sheetSaveText}>{saving ? 'Saving…' : 'Save'}</Text>
+              </Pressable>
             </View>
           </Pressable>
         </Pressable>
@@ -300,20 +314,47 @@ const styles = StyleSheet.create({
   signOut: { alignItems: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)' },
   signOutText: { color: '#F87171', fontSize: 15, fontWeight: '700' },
   version: { color: darkThemeColors.textDisabled, fontSize: 12, textAlign: 'center' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
-  sheet: { backgroundColor: darkThemeColors.surface, borderRadius: 20, padding: spacing.lg, gap: spacing.sm },
-  sheetTitle: { color: darkThemeColors.textPrimary, fontSize: 18, fontWeight: '700' },
-  sheetSub: { color: darkThemeColors.textMuted, fontSize: 13 },
-  input: {
-    color: darkThemeColors.textPrimary,
-    backgroundColor: darkThemeColors.background,
-    borderRadius: 12,
+  backdrop: { flex: 1, backgroundColor: 'rgba(5,2,10,0.7)', justifyContent: 'center', padding: 28 },
+  sheet: {
+    backgroundColor: '#1A1428',
+    borderRadius: 28,
+    padding: 22,
+    gap: 8,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: darkThemeColors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginTop: spacing.xs,
+    borderColor: 'rgba(196,181,253,0.2)',
   },
-  sheetActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.xs },
+  sheetBadge: {
+    alignSelf: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    backgroundColor: 'rgba(168,85,247,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(216,180,254,0.35)',
+  },
+  sheetTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', textAlign: 'center', letterSpacing: -0.3 },
+  sheetSub: { color: '#C9C2D9', fontSize: 14, textAlign: 'center', marginBottom: 6 },
+  sheetBtn: { flex: 1, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  sheetCancel: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  sheetCancelText: { color: '#E6E0F2', fontSize: 15, fontWeight: '700' },
+  sheetSaveText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+  sheetOff: { opacity: 0.5 },
+  input: {
+    color: '#FFFFFF',
+    backgroundColor: '#120D1D',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(167,139,250,0.55)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  sheetActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
 });
