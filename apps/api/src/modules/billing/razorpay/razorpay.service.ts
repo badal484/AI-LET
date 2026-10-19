@@ -9,6 +9,8 @@ import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 import { EntitlementService } from '../entitlements/EntitlementService.js';
 import { CreditWalletService } from '../credits/CreditWalletService.js';
 import { hasPremium } from '../messageAllowance.js';
+import { getSetting } from '../../console/appSettings.js';
+import { isRomanceCharacter, isTeen } from '../../users/ageGate.js';
 import { COIN_PACKS } from '../providers/GooglePlayBillingProvider.js';
 import { googlePlayConfigured, refundExternalTransaction, reportExternalTransaction } from '../providers/googlePlayApi.js';
 import {
@@ -46,9 +48,26 @@ const RETRY_GRACE_MS = 3 * 86_400_000;
 
 const sec = (unix: number | null | undefined) => (unix ? new Date(unix * 1000) : null);
 
-/** What the app needs to show Razorpay at all. */
-export function razorpayClientConfig() {
+/**
+ * The face on the Premium screen: the character chosen in admin Settings, with their photo as it is now.
+ * Not a romance character for someone under 18 (falls back to no face → the Loveek logo).
+ */
+export async function paywallFace(userId?: string): Promise<{ name: string; avatarUrl: string } | null> {
+  const slug = String(await getSetting('paywall.character')).trim();
+  if (!slug) return null;
+  const c = await prisma.character.findFirst({
+    where: { slug, status: 'PUBLISHED', deletedAt: null },
+    select: { id: true, slug: true, name: true, avatarUrl: true, category: true },
+  });
+  if (!c?.avatarUrl) return null;
+  if (userId && (await isTeen(userId)) && isRomanceCharacter(c)) return null;
+  return { name: c.name.split(' ')[0]!, avatarUrl: c.avatarUrl };
+}
+
+/** What the app needs to show Razorpay at all, plus the Premium screen's face. */
+export async function razorpayClientConfig(userId?: string) {
   return {
+    face: await paywallFace(userId),
     enabled: razorpayConfigured(),
     keyId: razorpayConfigured() ? razorpayKeyId() : null,
     /** Google's choice screen (Play vs. Razorpay) is on once the app is enrolled in user choice billing. */

@@ -1,19 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { StoreBilling, type StoreCatalog } from '../../services/storeBilling.js';
-import { ConversationApi } from '../../services/api/conversationApi.js';
 import { IconButton, ToastService, Icon } from '../../components/common/index.js';
 import type { IconName } from '../../components/common/Icon.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
-import { payWithRazorpay, rupees, type PayMethod } from '../../services/razorpayCheckout.js';
+import { loadUpiConfig, payWithRazorpay, rupees, type PayMethod } from '../../services/razorpayCheckout.js';
 import { tapFeedback } from '../../utils/motion.js';
 
 /**
@@ -52,17 +50,16 @@ export const PaywallScreen: React.FC = () => {
 
   const isPremium = Boolean(subscription && ['active', 'trialing', 'grace_period'].includes(String(subscription.status).toLowerCase()));
 
-  // The face on top: whoever they last talked to (shares the Chats list's cache).
-  const { data: chats } = useQuery({
-    queryKey: ['conversations', 'list'],
-    queryFn: () => ConversationApi.listConversations({ limit: 50 }),
-    staleTime: 60_000,
-  });
-  const face = useMemo(() => {
-    const items = (chats?.items ?? []).filter((c) => c.character?.avatarUrl);
-    const latest = [...items].sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? ''))[0];
-    return latest ? { name: latest.character.name.split(' ')[0]!, uri: latest.character.avatarUrl as string } : null;
-  }, [chats]);
+  // The face on top: one character chosen in admin Settings, with their photo as it is now (fetched fresh, so a
+  // new photo or a different character shows without an app update).
+  const [face, setFace] = useState<{ name: string; uri: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void loadUpiConfig(true).then((c) => alive && setFace(c?.face ? { name: c.face.name, uri: c.face.avatarUrl } : null));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;

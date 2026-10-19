@@ -1,11 +1,13 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import { createHmac, generateKeyPairSync } from 'node:crypto';
+import { createHmac, generateKeyPairSync, randomUUID } from 'node:crypto';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 import { hasPremium } from '../../src/modules/billing/messageAllowance.js';
 import { reportSale } from '../../src/modules/billing/razorpay/razorpay.service.js';
-import { createUser } from '../fixtures.js';
+import { setSetting } from '../../src/modules/console/appSettings.js';
+import { dobFromAge, forgetAge } from '../../src/modules/users/ageGate.js';
+import { createCharacter, createUser } from '../fixtures.js';
 
 /**
  * Razorpay (UPI Autopay / cards) through Google Play user choice billing. A fake Razorpay and a fake Google
@@ -285,5 +287,30 @@ describe('each UPI sale is reported to Google (user choice billing)', () => {
     expect((tx.metadata as { google: { status: string } }).google.status).toBe('failed');
     vi.stubGlobal('fetch', vi.fn(fakeFetch));
     expect(await reportSale(tx.id)).toBe('reported');
+  });
+});
+
+describe('the Premium screen face', () => {
+  afterAll(async () => {
+    await prisma.appSetting.deleteMany({ where: { key: 'paywall.character' } }).catch(() => undefined);
+  });
+
+  it('is the character chosen in Settings, with their photo as it is now — and never a romance one for an under-18', async () => {
+    const c = await createCharacter();
+    await prisma.character.update({ where: { id: c.id }, data: { status: 'PUBLISHED', avatarUrl: 'https://ik.imagekit.io/x/old.webp', category: 'coaching' } });
+    const slug = (await prisma.character.findUniqueOrThrow({ where: { id: c.id }, select: { slug: true } })).slug;
+    await setSetting(randomUUID(), 'paywall.character', slug);
+    const u = await createUser({ verified: true });
+    const face = async (who = u) => (await request(app).get('/api/v1/billing/razorpay/config').set(auth(who))).body.data.face;
+
+    expect((await face())?.avatarUrl).toBe('https://ik.imagekit.io/x/old.webp');
+    await prisma.character.update({ where: { id: c.id }, data: { avatarUrl: 'https://ik.imagekit.io/x/new.webp' } });
+    expect((await face())?.avatarUrl).toBe('https://ik.imagekit.io/x/new.webp'); // a new photo shows by itself
+
+    await prisma.character.update({ where: { id: c.id }, data: { category: 'love' } });
+    const teen = await createUser({ verified: true });
+    await prisma.userProfile.upsert({ where: { userId: teen.id }, create: { userId: teen.id, displayName: 'T', dateOfBirth: dobFromAge(15) }, update: { dateOfBirth: dobFromAge(15) } });
+    forgetAge(teen.id);
+    expect(await face(teen)).toBeNull();
   });
 });

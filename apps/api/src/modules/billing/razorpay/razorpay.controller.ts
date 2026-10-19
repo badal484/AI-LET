@@ -28,7 +28,7 @@ const wrap =
       .catch(next);
 
 export const RazorpayController = {
-  config: wrap(async () => razorpayClientConfig()),
+  config: wrap(async (req) => razorpayClientConfig(req.user?.userId)),
   startPremium: wrap(async (req) => startPremium(req.user!.userId, parse(startPremiumBody, req.body))),
   startCoins: wrap(async (req) => {
     const b = parse(startCoinsBody, req.body);
