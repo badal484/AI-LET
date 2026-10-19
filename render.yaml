@@ -16,9 +16,9 @@ envVarGroups:
         value: info
       - key: TRUST_PROXY
         value: "1"
-      # Message limits stay off until pricing is decided (then "true", together with payments).
+      # Message limits on together with payments.
       - key: BILLING_ENFORCE_LIMITS
-        value: "false"
+        value: "true"
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
