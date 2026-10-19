@@ -86,7 +86,7 @@ export const CategoryBrowserScreen: React.FC = () => {
           <Text style={styles.headerTitle} numberOfLines={1}>
             {title}
           </Text>
-          {count > 0 && <Text style={styles.headerSubtitle}>{count === 1 ? '1 character' : `${count} characters`}</Text>}
+          {count > 0 && <Text style={styles.headerSubtitle}>{count === 1 ? '1 person to talk to' : `${count} people to talk to`}</Text>}
         </View>
       </View>
 
@@ -127,7 +127,7 @@ export const CategoryBrowserScreen: React.FC = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>{selectedTag ? 'No one with this tag yet' : 'No one here yet'}</Text>
-              <Text style={styles.emptySubtitle}>New characters are on the way.</Text>
+              <Text style={styles.emptySubtitle}>New faces are on the way.</Text>
             </View>
           }
         />

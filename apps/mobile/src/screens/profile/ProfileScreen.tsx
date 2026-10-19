@@ -183,8 +183,8 @@ export const ProfileScreen: React.FC = () => {
                       : trial
                         ? `₹499/month from ${date(subscription.currentPeriodEnd)}`
                         : `Renews on ${date(subscription.currentPeriodEnd)}`
-                    : 'Every character, 150 a day'
-                  : 'Every character, 150 a day'}
+                    : 'Everyone, 150 messages a day'
+                  : 'Everyone, 150 messages a day'}
               </Text>
             </View>
             {premium ? (
@@ -233,7 +233,7 @@ export const ProfileScreen: React.FC = () => {
         <Pressable style={styles.backdrop} onPress={() => setEditing(false)}>
           <Pressable style={styles.sheet} onPress={() => undefined}>
             <Text style={styles.sheetTitle}>Your name</Text>
-            <Text style={styles.sheetSub}>This is what characters call you.</Text>
+            <Text style={styles.sheetSub}>This is what they'll call you.</Text>
             <TextInput
               value={name}
               onChangeText={setName}

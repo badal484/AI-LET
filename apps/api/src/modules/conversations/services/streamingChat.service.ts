@@ -150,7 +150,7 @@ export class StreamingChatService {
       await EnforcementService.assertUserNotRestricted(userId, 'CANNOT_SEND_MESSAGES');
       // Romance characters are 18+ (users/ageGate.ts).
       if (isRomanceCharacter(conversation.character) && (await isTeen(userId))) {
-        this.sendSingleSseError(res, ErrorCode.AGE_RESTRICTED, 'This character is for 18+.');
+        this.sendSingleSseError(res, ErrorCode.AGE_RESTRICTED, 'This chat is for 18+ only.');
         return;
       }
 

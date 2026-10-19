@@ -115,7 +115,7 @@ export class NotificationDeliveryEngine {
     }
 
     if (!showPreview || privacy === 'LIMITED_PREVIEW') {
-      return characterName ? `New message from ${characterName}` : 'New companion message';
+      return characterName ? `New message from ${characterName}` : 'New message';
     }
 
     // FULL_PREVIEW

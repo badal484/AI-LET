@@ -26,7 +26,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
   }, []);
 
   const forget = () =>
-    AppAlert.alert('Make every character forget you?', 'They will forget everything they remembered about you — your name, your life, your goals. Your chats stay. This can’t be undone.', [
+    AppAlert.alert('Make everyone forget you?', 'They will forget everything they remembered about you — your name, your life, your goals. Your chats stay. This can’t be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Forget me',
@@ -74,7 +74,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
     );
 
   const unblock = (b: BlockedItem) =>
-    AppAlert.alert(`Unblock ${b.targetDisplayName || 'this character'}?`, 'They will show up again.', [
+    AppAlert.alert(`Unblock ${b.targetDisplayName || 'them'}?`, 'They will show up again.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Unblock',
@@ -118,7 +118,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
         </Text>
 
         <View style={styles.card}>
-          {action('brain', 'Make characters forget me', 'Delete everything they remember about you', forget, 'forget', true)}
+          {action('brain', 'Make everyone forget me', 'Delete everything they remember about you', forget, 'forget', true)}
         </View>
 
         {blocks.length > 0 && (
@@ -126,7 +126,7 @@ export const SafetyPrivacyScreen: React.FC = () => {
             <Text style={styles.cardTitle}>Blocked</Text>
             {blocks.map((b) => (
               <View key={b.id} style={[styles.row, styles.rowBorder]}>
-                <Text style={[styles.rowTitle, { flex: 1 }]}>{b.targetDisplayName || 'Character'}</Text>
+                <Text style={[styles.rowTitle, { flex: 1 }]}>{b.targetDisplayName || 'Blocked'}</Text>
                 <Pressable onPress={() => unblock(b)} hitSlop={8}>
                   <Text style={styles.unblock}>Unblock</Text>
                 </Pressable>

@@ -101,7 +101,7 @@ export const NotificationPreferencesScreen: React.FC = () => {
           <View style={styles.card}>
             {toggle('Characters can text you first', 'Now and then, when they have something to say', prefs.proactivityEnabled ?? true, (v) => void save({ proactivityEnabled: v }), true)}
             {toggle('Reminders', 'When a character reminds you of something you asked', prefs.userReminderCategoryEnabled ?? true, (v) => void save({ userReminderCategoryEnabled: v }))}
-            {toggle('News & offers', 'New characters and deals, rarely', (prefs.productUpdatesCategoryEnabled ?? true) || (prefs.marketingCategoryEnabled ?? false), (v) =>
+            {toggle('News & offers', 'New faces and deals, rarely', (prefs.productUpdatesCategoryEnabled ?? true) || (prefs.marketingCategoryEnabled ?? false), (v) =>
               void save({ productUpdatesCategoryEnabled: v, marketingCategoryEnabled: v }),
             )}
             {toggle('Show message on lock screen', 'Off: only “New message from Kiara”', prefs.showPreview ?? true, (v) => void save({ showPreview: v }))}

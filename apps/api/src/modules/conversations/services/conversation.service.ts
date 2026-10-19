@@ -46,7 +46,7 @@ export class ConversationService {
 
     // 1a. Romance characters are 18+ (users/ageGate.ts).
     if (isRomanceCharacter(character) && (await isTeen(userId))) {
-      throw new AppError('This character is for 18+', 403, ErrorCode.AGE_RESTRICTED);
+      throw new AppError('This chat is for 18+ only', 403, ErrorCode.AGE_RESTRICTED);
     }
 
     // 1b. Check Character Access Monetization Gating (Phase 11)

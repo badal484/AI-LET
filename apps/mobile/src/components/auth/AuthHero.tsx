@@ -55,7 +55,7 @@ export const AuthHero: React.FC<{ title: string; subtitle: string }> = ({ title,
             {faces.map((c, i) => (
               <Image key={c.id} source={{ uri: c.avatarUrl! }} style={[styles.face, { marginLeft: i === 0 ? 0 : -12, zIndex: 10 - i }]} />
             ))}
-            <Text style={styles.facesText}>{total ? `${total} characters who remember you` : 'Characters who remember you'}</Text>
+            <Text style={styles.facesText}>{total ? `${total} people who remember you` : 'People who remember you'}</Text>
           </View>
         )}
 

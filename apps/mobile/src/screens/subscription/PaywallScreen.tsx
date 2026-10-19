@@ -28,7 +28,7 @@ const PLAN_LABEL: Record<BasePlan, { title: string; per: string; note?: string }
 const ORDER: BasePlan[] = ['monthly'];
 
 const BENEFITS: Array<{ icon: IconName; title: string; sub: string; color: string; tint: string }> = [
-  { icon: 'chat', title: 'Every character', sub: 'Up to 150 messages a day', color: '#C4B5FD', tint: 'rgba(139,92,246,0.18)' },
+  { icon: 'chat', title: 'Talk to everyone', sub: 'Up to 150 messages a day', color: '#C4B5FD', tint: 'rgba(139,92,246,0.18)' },
   { icon: 'book', title: 'Full courses and programs', sub: 'Step by step, at your pace', color: '#93C5FD', tint: 'rgba(59,130,246,0.16)' },
   { icon: 'brain', title: 'They remember you', sub: 'Your days, your people, your goals', color: '#F9A8D4', tint: 'rgba(236,72,153,0.16)' },
   { icon: 'shield', title: 'Crisis help is always free', sub: 'With or without Premium', color: '#6EE7B7', tint: 'rgba(16,185,129,0.16)' },
@@ -82,7 +82,7 @@ export const PaywallScreen: React.FC = () => {
     reason === 'fair_use'
       ? `Your messages refill at ${resetTime}. Can't wait? Add 100 messages now.`
       : reason === 'free_limit'
-        ? 'Premium opens every character — up to 150 messages a day. Your first day is just ₹1.'
+        ? 'Premium lets you talk to everyone — up to 150 messages a day. Your first day is just ₹1.'
         : 'Keep talking with the people who get you.';
 
   const finish = (r: { ok: boolean; message?: string }, success: string) => {

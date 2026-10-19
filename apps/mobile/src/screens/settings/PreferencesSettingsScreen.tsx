@@ -96,7 +96,7 @@ export const PreferencesSettingsScreen: React.FC = () => {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View>
             <Text style={styles.sectionTitle}>Language</Text>
-            <Text style={styles.sectionNote}>Characters start in this, then follow the way you write.</Text>
+            <Text style={styles.sectionNote}>They start in this, then follow the way you write.</Text>
             <View style={styles.card}>
               {LANGUAGES.map((l, i) => (
                 <Option

@@ -32,7 +32,7 @@ const DEVICE_ID_KEY = 'push.deviceId';
 const ASKED_KEY = 'push.askedAt';
 
 const CHANNELS = [
-  { id: 'messages', name: 'Messages from characters', importance: AndroidImportance.HIGH },
+  { id: 'messages', name: 'Messages', importance: AndroidImportance.HIGH },
   { id: 'reminders', name: 'Reminders you set', importance: AndroidImportance.HIGH },
   { id: 'account', name: 'Account & payments', importance: AndroidImportance.DEFAULT },
   { id: 'news', name: 'News & offers', importance: AndroidImportance.DEFAULT },

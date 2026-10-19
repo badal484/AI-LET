@@ -18,23 +18,23 @@ import { GradientFill } from '../../components/common/GradientFill.js';
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: 'How many messages can I send?',
-    a: 'Premium gives you up to 150 messages a day with every character; they refill at midnight. Your first day is ₹1, then ₹499 a month. Need more on a busy day? Add 100 messages any time for ₹49.',
+    a: 'Premium gives you up to 150 messages a day with everyone; they refill at midnight. Your first day is ₹1, then ₹499 a month. Need more on a busy day? Add 100 messages any time for ₹49.',
   },
   {
     q: 'How do I cancel Premium?',
     a: 'Open the Play Store → your profile photo → Payments & subscriptions → Subscriptions → Loveek → Cancel. Premium stays on until the end of the period you paid for.',
   },
   {
-    q: 'Are the characters real people?',
-    a: 'No — they\'re characters, made with AI, each with their own life, story and way of talking, and they remember what you share. No real person reads or writes your chats.',
+    q: 'Are they real people?',
+    a: 'No — everyone here is made with AI, each with their own life, story and way of talking, and they remember what you share. No real person reads or writes your chats.',
   },
   {
     q: 'Is my chat private?',
     a: 'Yes. Your chats are only for you. Our team never reads them, except for a safety review when something serious is reported, and that is logged. You can delete your account in Profile → Privacy & account, and ask us for a copy of your data below (Get a copy of my data).',
   },
   {
-    q: 'How do I make a character forget something?',
-    a: 'Go to Profile → Privacy & account → Make characters forget me. Every character forgets what they remembered about you; your chats stay.',
+    q: 'How do I make them forget something?',
+    a: 'Go to Profile → Privacy & account → Make everyone forget me. Everyone forgets what they remembered about you; your chats stay.',
   },
   {
     q: 'I am going through something really hard',

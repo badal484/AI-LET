@@ -46,7 +46,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
           : { label: 'Active', color: '#34D399', bg: 'rgba(52,211,153,0.14)' };
 
   const detail = !isPremium
-    ? 'Every character, up to 150 messages a day. Your first day is ₹1.'
+    ? 'Talk to everyone, up to 150 messages a day. Your first day is ₹1.'
     : status === 'past_due' || status === 'grace_period'
       ? 'Google Play couldn’t take the payment. Update your payment method in Google Play to keep Premium.'
       : ending
@@ -128,7 +128,7 @@ export const SubscriptionManagementScreen: React.FC = () => {
           <Text style={styles.coinEmoji}>🪙</Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.coinCount}>{coins.toLocaleString('en-IN')} coins</Text>
-            <Text style={styles.coinSub}>For gifts to characters</Text>
+            <Text style={styles.coinSub}>For sending gifts</Text>
           </View>
           <Button label="Get coins" size="sm" variant="secondary" onPress={() => setCoinStoreOpen(true)} accessibilityLabel="Get coins" />
         </View>

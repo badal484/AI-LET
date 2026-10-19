@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Share,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,10 +34,12 @@ import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem, ReportReasonCode } from '@ai-companion/types';
 import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
-import { MediaViewerModal } from '../../components/common/MediaViewerModal.js';
+import { GradientFill } from '../../components/common/GradientFill.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
+
+const GALLERY_GAP = 8;
 
 const REPORT_REASON_LABEL: Record<ReportReasonCode, string> = {
   UNSAFE: 'Unsafe',
@@ -54,6 +57,9 @@ export const CharacterDetailScreen: React.FC = () => {
   const route = useRoute<DetailRouteProp>();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  // Three across inside the page's side padding.
+  const galleryTile = Math.floor((screenWidth - spacing.lg * 2 - GALLERY_GAP * 2) / 3);
 
   const identifier = route.params.characterSlug || route.params.characterId;
   const { favoriteIds, toggleFavoriteOptimistic } = useDiscoveryStore();
@@ -156,7 +162,6 @@ export const CharacterDetailScreen: React.FC = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [brokenPhotos, setBrokenPhotos] = useState<string[]>([]);
-  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const handleSubmitReport = async () => {
     if (!profile) return;
@@ -212,8 +217,8 @@ export const CharacterDetailScreen: React.FC = () => {
       <View style={styles.container}>
         <ErrorState
           type="general"
-          title="Character not found"
-          message="This character may have been updated or removed."
+          title="Profile not found"
+          message="This profile may have been updated or removed."
           onRetry={() => navigation.goBack()}
           retryLabel="Go back"
         />
@@ -227,7 +232,7 @@ export const CharacterDetailScreen: React.FC = () => {
   const tags = profile.tags.slice(0, 4);
   const galleryImages: unknown = profile.galleryImages;
   const gallery = Array.isArray(galleryImages)
-    ? galleryImages.filter((u): u is string => typeof u === 'string' && u.startsWith('http') && !brokenPhotos.includes(u)).slice(0, 6)
+    ? galleryImages.filter((u): u is string => typeof u === 'string' && u.startsWith('http') && !brokenPhotos.includes(u)).slice(0, 12)
     : [];
 
   return (
@@ -325,26 +330,21 @@ export const CharacterDetailScreen: React.FC = () => {
           {gallery.length > 0 && (
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionHeading}>Photos</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
+              {/* Three tall photos per row, like a profile grid. Just to look at — no tap. */}
+              <View style={styles.galleryGrid}>
                 {gallery.map((imgUrl, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={styles.galleryCard}
-                    activeOpacity={0.85}
-                    onPress={() => !ageRestricted(profile) && setViewerUri(imgUrl)}
-                    accessibilityRole="imagebutton"
-                    accessibilityLabel={`Photo ${idx + 1} of ${profile.name}`}
-                  >
+                  <View key={imgUrl} style={[styles.galleryCard, { width: galleryTile, height: Math.round(galleryTile * 1.6) }]}>
                     <Image
                       source={{ uri: imgUrl }}
                       style={styles.galleryImage}
                       resizeMode="cover"
                       blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
                       onError={() => setBrokenPhotos((b) => [...b, imgUrl])}
+                      accessibilityLabel={`Photo ${idx + 1} of ${profile.name}`}
                     />
-                  </TouchableOpacity>
+                  </View>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
@@ -397,6 +397,10 @@ export const CharacterDetailScreen: React.FC = () => {
 
       {/* Back / report / share / like: pinned below the status bar, above the scrolling page (inside the
           scroll view they sat under the status bar on tall-status-bar phones and taps never reached them). */}
+      {/* A soft dark fade behind the buttons, so page text scrolling under them stays out of the way. */}
+      <View style={[styles.topScrim, { height: insets.top + 72 }]} pointerEvents="none">
+        <GradientFill vertical colors={[['#0B0D13', 1], ['#0B0D13', 0.94], ['#0B0D13', 0]]} />
+      </View>
       <View style={[styles.topActionsRow, { top: insets.top + 8 }]} pointerEvents="box-none">
         <IconButton
           icon="arrow-left"
@@ -411,7 +415,7 @@ export const CharacterDetailScreen: React.FC = () => {
             size="md"
             variant="glass"
             onPress={() => setReportModalVisible(true)}
-            accessibilityLabel="Report character"
+            accessibilityLabel={`Report ${profile.name}`}
           />
           <IconButton
             icon="share"
@@ -431,12 +435,10 @@ export const CharacterDetailScreen: React.FC = () => {
         </View>
       </View>
 
-      <MediaViewerModal visible={viewerUri !== null} uri={viewerUri} caption={profile.name} onClose={() => setViewerUri(null)} />
-
       {/* Report Modal Dialog */}
       <ModalDialog
         visible={reportModalVisible}
-        title="Report character"
+        title={`Report ${profile.name}`}
         description="Pick a reason and tell us what happened."
         primaryLabel="Send report"
         primaryVariant="danger"
@@ -513,6 +515,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(11, 13, 19, 0.45)',
   },
+  topScrim: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9, elevation: 9 },
   topActionsRow: {
     position: 'absolute',
     zIndex: 10,
@@ -616,7 +619,7 @@ const styles = StyleSheet.create({
     color: darkThemeColors.textSecondary,
   },
   moreText: { marginTop: 6, fontSize: 13, fontWeight: '700', color: darkThemeColors.accent },
-  galleryRow: { gap: 10 },
+  galleryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: GALLERY_GAP },
   tagsContainer: {
     marginTop: spacing.lg,
     flexDirection: 'row',
@@ -722,9 +725,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   galleryCard: {
-    width: 130,
-    height: 170,
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#160E26',
     borderWidth: 1,

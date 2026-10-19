@@ -128,7 +128,7 @@ export const RemindersScreen: React.FC = () => {
             <Icon name="bell" size={26} color={darkThemeColors.accent} />
           </View>
           <Text style={styles.emptyTitle}>No reminders yet</Text>
-          <Text style={styles.emptySubtitle}>Ask any character to remind you of something — it shows up here.</Text>
+          <Text style={styles.emptySubtitle}>Ask anyone to remind you of something — it shows up here.</Text>
         </View>
       ) : (
         <FlatList
