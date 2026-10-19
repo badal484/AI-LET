@@ -244,11 +244,18 @@ export async function listPromos() {
   return prisma.billingPromotion.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { plan: { select: { code: true } } } });
 }
 
-export async function createPromo(adminId: string, input: { code: string; name: string; type: string; value: number; maxRedemptions?: number | null; validUntil?: string | null }) {
+export async function createPromo(adminId: string, input: { code: string; name: string; type: string; value: number; maxRedemptions?: number | null; validUntil?: string | null; premiumUntil?: string | null }) {
   const code = input.code.trim().toUpperCase();
   if (!/^[A-Z0-9_-]{3,30}$/.test(code)) throw new BadRequestError('Code: 3–30 letters, numbers, - or _.');
   // Two kinds that really do something: free coins, or free Premium for a number of days.
   if (!['FREE_CREDITS', 'TRIAL_EXTENSION'].includes(input.type)) throw new BadRequestError('Pick free coins or free Premium days.');
+  // Free Premium either for N days, or until one fixed date for everyone.
+  const premiumUntil = input.type === 'TRIAL_EXTENSION' && input.premiumUntil ? new Date(`${input.premiumUntil}T23:59:59+05:30`) : null;
+  if (premiumUntil) {
+    if (Number.isNaN(premiumUntil.getTime()) || premiumUntil <= new Date()) throw new BadRequestError('Pick a date in the future.');
+    if (premiumUntil.getTime() - Date.now() > 366 * 86_400_000) throw new BadRequestError('Free Premium can be up to a year.');
+    input.value = Math.ceil((premiumUntil.getTime() - Date.now()) / 86_400_000);
+  }
   if (!Number.isInteger(input.value) || input.value < 1) throw new BadRequestError('Enter a whole number, 1 or more.');
   if (input.type === 'TRIAL_EXTENSION' && input.value > 365) throw new BadRequestError('Free Premium can be up to 365 days.');
   if (input.type === 'FREE_CREDITS' && input.value > 10_000) throw new BadRequestError('Up to 10,000 coins per code.');
@@ -263,6 +270,7 @@ export async function createPromo(adminId: string, input: { code: string; name: 
         planId: plan?.id,
         maxRedemptions: input.maxRedemptions ?? null,
         validUntil: input.validUntil ? new Date(input.validUntil) : null,
+        premiumUntil,
       },
     })
     .catch((err: unknown) => {

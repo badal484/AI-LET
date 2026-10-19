@@ -43,6 +43,18 @@ describe('promo codes', () => {
     expect(new Date(second.body.data.premiumUntil).getTime() - Date.now()).toBeGreaterThan(13.9 * 86_400_000);
   });
 
+  it('free Premium until a fixed date: the same end date for everyone, whenever they redeem', async () => {
+    const d = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10);
+    await createPromo(randomUUID(), { code: `FEST${tag}`, name: 'Festival', type: 'TRIAL_EXTENSION', value: 1, premiumUntil: d });
+    const a = await createUser({ verified: true });
+    const b = await createUser({ verified: true });
+    const ra = await redeem(a.token, `FEST${tag}`).expect(200);
+    const rb = await redeem(b.token, `FEST${tag}`).expect(200);
+    expect(ra.body.data.premiumUntil.slice(0, 10)).toBe(rb.body.data.premiumUntil.slice(0, 10));
+    expect(new Date(ra.body.data.premiumUntil).toISOString().slice(0, 10)).toBe(new Date(`${d}T23:59:59+05:30`).toISOString().slice(0, 10));
+    await expect(createPromo(randomUUID(), { code: `PAST${tag}`, name: 'x', type: 'TRIAL_EXTENSION', value: 1, premiumUntil: '2020-01-01' })).rejects.toThrow(/future/);
+  });
+
   it('free coins: added to the wallet with no expiry', async () => {
     await createPromo(randomUUID(), { code: `COINS${tag}`, name: 'Coins', type: 'FREE_CREDITS', value: 50 });
     const u = await createUser({ verified: true });

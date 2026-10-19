@@ -9,7 +9,15 @@ import { EntitlementService } from '../entitlements/EntitlementService.js';
  * Free Premium from a promo code: N days, added after any Premium they already have (paid or promo), so a code
  * never wastes days they've paid for. Recorded as its own subscription (provider PROMO) — nothing to renew or cancel.
  */
-async function grantPremiumDays(userId: string, days: number, code: string): Promise<Date> {
+/** Free Premium until a fixed date (e.g. a festival offer): the same end date for everyone, never shorter than what they have. */
+async function grantPremiumUntil(userId: string, until: Date, code: string): Promise<Date> {
+  const now = new Date();
+  if (until <= now) throw new BadRequestError('This code has expired', ErrorCode.PROMOTION_EXPIRED);
+  const days = Math.ceil((until.getTime() - now.getTime()) / 86_400_000);
+  return grantPremiumDays(userId, days, code, until);
+}
+
+async function grantPremiumDays(userId: string, days: number, code: string, fixedEnd?: Date): Promise<Date> {
   const plan = await prisma.billingPlan.findUnique({ where: { code: 'PREMIUM' } });
   if (!plan) throw new NotFoundError('Premium is not set up yet.');
   const now = new Date();
@@ -19,7 +27,8 @@ async function grantPremiumDays(userId: string, days: number, code: string): Pro
     select: { currentPeriodEnd: true },
   });
   const start = latest ? latest.currentPeriodEnd : now;
-  const end = new Date(start.getTime() + days * 86_400_000);
+  // A fixed date is the end for everyone (unless they already have Premium past it — then nothing is taken away).
+  const end = fixedEnd ? new Date(Math.max(fixedEnd.getTime(), start.getTime())) : new Date(start.getTime() + days * 86_400_000);
   await prisma.billingSubscription.create({
     data: {
       userId,
@@ -90,7 +99,9 @@ export class PromotionService {
         isPromotional: true,
       });
     } else if (promotion.discountType === 'TRIAL_EXTENSION') {
-      premiumUntil = await grantPremiumDays(userId, Math.round(promotion.discountValue), promotion.code);
+      premiumUntil = promotion.premiumUntil
+        ? await grantPremiumUntil(userId, promotion.premiumUntil, promotion.code)
+        : await grantPremiumDays(userId, Math.round(promotion.discountValue), promotion.code);
     } else {
       // % / ₹ off are not offered (a discount on the ₹499 needs Play/Razorpay offers): never say "redeemed" for nothing.
       throw new BadRequestError(`Promotion code '${code}' can't be used in the app`, ErrorCode.PROMOTION_NOT_ELIGIBLE);

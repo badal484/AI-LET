@@ -153,7 +153,7 @@ function Switches() {
   );
 }
 
-interface Promo { id: string; code: string; name: string; discountType: string; discountValue: number; maxRedemptions: number | null; currentRedemptions: number; validUntil: string | null; isActive: boolean }
+interface Promo { id: string; code: string; name: string; discountType: string; discountValue: number; premiumUntil?: string | null; maxRedemptions: number | null; currentRedemptions: number; validUntil: string | null; isActive: boolean }
 const PROMO_TYPE: Record<string, string> = { FREE_CREDITS: 'coins', TRIAL_EXTENSION: 'days of Premium', PERCENTAGE: '% off (not used)', FIXED_AMOUNT: '₹ off (not used)' };
 const PROMO_KINDS = [
   { type: 'TRIAL_EXTENSION', icon: '👑', title: 'Free Premium', unit: 'days', hint: 'Premium (₹499/month) free for this many days — no payment, nothing to cancel.', presets: [7, 30, 90] },
@@ -163,10 +163,11 @@ const PROMO_KINDS = [
 function Promos() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['promos'], queryFn: () => api<Promo[]>('/console/promos') });
-  const [f, setF] = useState({ code: '', name: '', type: 'TRIAL_EXTENSION', value: '30', maxRedemptions: '', validUntil: '' });
+  const [f, setF] = useState({ code: '', name: '', type: 'TRIAL_EXTENSION', value: '30', maxRedemptions: '', validUntil: '', premiumUntil: '' });
+  const [byDate, setByDate] = useState(false);
   const kind = PROMO_KINDS.find((k) => k.type === f.type) ?? PROMO_KINDS[0];
   const create = useMutation({
-    mutationFn: () => api('/console/promos', { method: 'POST', body: JSON.stringify({ ...f, value: Number(f.value), maxRedemptions: f.maxRedemptions ? Number(f.maxRedemptions) : null, validUntil: f.validUntil || null }) }),
+    mutationFn: () => api('/console/promos', { method: 'POST', body: JSON.stringify({ ...f, value: Number(f.value) || 1, maxRedemptions: f.maxRedemptions ? Number(f.maxRedemptions) : null, validUntil: f.validUntil || null, premiumUntil: f.type === 'TRIAL_EXTENSION' && byDate ? f.premiumUntil || null : null }) }),
     onSuccess: () => { setF({ ...f, code: '', name: '' }); void qc.invalidateQueries({ queryKey: ['promos'] }); },
   });
   const toggle = useMutation({ mutationFn: (v: { id: string; active: boolean }) => api(`/console/promos/${v.id}/active`, { method: 'POST', body: JSON.stringify({ active: v.active }) }), onSuccess: () => qc.invalidateQueries({ queryKey: ['promos'] }) });
@@ -195,15 +196,30 @@ function Promos() {
                 <span className="text-muted">Code people type</span>
                 <Input required placeholder="e.g. LAUNCH30" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '') })} />
               </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-muted">How many {kind.unit}</span>
-                <div className="flex gap-2">
-                  <Input required type="number" min={1} max={kind.type === 'TRIAL_EXTENSION' ? 365 : 10000} value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} />
-                  {kind.presets.map((n) => (
-                    <Button key={n} type="button" variant="ghost" onClick={() => setF({ ...f, value: String(n) })}>{n}</Button>
-                  ))}
-                </div>
-              </label>
+              <div className="space-y-1 text-sm">
+                {kind.type === 'TRIAL_EXTENSION' && (
+                  <div className="mb-1 inline-flex rounded-lg border border-border p-0.5">
+                    <button type="button" onClick={() => setByDate(false)} className={`rounded-md px-3 py-1 ${!byDate ? 'bg-accent text-white' : 'text-muted'}`}>For a number of days</button>
+                    <button type="button" onClick={() => setByDate(true)} className={`rounded-md px-3 py-1 ${byDate ? 'bg-accent text-white' : 'text-muted'}`}>Until a date</button>
+                  </div>
+                )}
+                {kind.type === 'TRIAL_EXTENSION' && byDate ? (
+                  <>
+                    <span className="block text-muted">Premium ends on (same date for everyone)</span>
+                    <Input required type="date" min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)} value={f.premiumUntil} onChange={(e) => setF({ ...f, premiumUntil: e.target.value })} />
+                  </>
+                ) : (
+                  <>
+                    <span className="block text-muted">How many {kind.unit} — type any number</span>
+                    <div className="flex gap-2">
+                      <Input required type="number" min={1} max={kind.type === 'TRIAL_EXTENSION' ? 365 : 10000} value={f.value} onChange={(e) => setF({ ...f, value: e.target.value })} />
+                      {kind.presets.map((n) => (
+                        <Button key={n} type="button" variant="secondary" onClick={() => setF({ ...f, value: String(n) })}>{n}</Button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
               <label className="space-y-1 text-sm">
                 <span className="text-muted">Max uses in total (blank = unlimited)</span>
                 <Input type="number" min={1} placeholder="Unlimited" value={f.maxRedemptions} onChange={(e) => setF({ ...f, maxRedemptions: e.target.value })} />
@@ -219,7 +235,11 @@ function Promos() {
             </div>
             <div className="rounded-lg bg-surface px-4 py-3 text-sm">
               {f.code ? <span className="font-mono font-semibold">{f.code}</span> : 'This code'} gives each person{' '}
-              <b>{Number(f.value) || 0} {kind.type === 'TRIAL_EXTENSION' ? `days of Premium (worth ₹${Math.round(((Number(f.value) || 0) / 30) * 499)})` : 'coins'}</b>, once.
+              <b>
+                {kind.type === 'TRIAL_EXTENSION' && byDate
+                  ? `Premium until ${f.premiumUntil || '…'}`
+                  : `${Number(f.value) || 0} ${kind.type === 'TRIAL_EXTENSION' ? `days of Premium (worth ₹${Math.round(((Number(f.value) || 0) / 30) * 499)})` : 'coins'}`}
+              </b>, once.
               {f.maxRedemptions ? ` First ${f.maxRedemptions} people only.` : ''}
               {f.validUntil ? ` Until ${f.validUntil}.` : ''}
             </div>
@@ -238,7 +258,7 @@ function Promos() {
             {data?.map((p) => (
               <tr key={p.id}>
                 <Td><span className="font-mono font-medium">{p.code}</span><span className="block text-xs text-muted">{p.name}</span></Td>
-                <Td>{p.discountType === 'TRIAL_EXTENSION' ? '👑' : '🪙'} {p.discountValue} {PROMO_TYPE[p.discountType] ?? p.discountType}</Td>
+                <Td>{p.discountType === 'TRIAL_EXTENSION' ? '👑' : '🪙'} {p.premiumUntil ? `Premium until ${date(p.premiumUntil)}` : `${p.discountValue} ${PROMO_TYPE[p.discountType] ?? p.discountType}`}</Td>
                 <Td className="text-right tabular-nums">{count(p.currentRedemptions)}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ''}</Td>
                 <Td className="text-muted">{p.validUntil ? date(p.validUntil) : 'No end'}</Td>
                 <Td><Switch checked={p.isActive} label={`${p.code} active`} onChange={(v) => toggle.mutate({ id: p.id, active: v })} /></Td>
