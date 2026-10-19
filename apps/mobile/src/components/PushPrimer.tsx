@@ -6,7 +6,7 @@ import { PushService } from '../services/push/PushService.js';
 import { darkThemeColors, spacing } from '../theme/index.js';
 
 /**
- * Asks for notification permission at a good moment — when they leave a chat after a few messages from
+ * Asks for notification permission at a good moment — when they leave their first chat with a reply from
  * the character, in the character's name — instead of on first launch (when most people tap "Don't allow" for good).
  * Android's own popup only appears after "Yes". "Not now" waits 3 days; we stop after 3 tries.
  */
@@ -16,8 +16,8 @@ type Moment = Who & { replies: number };
 
 const MOMENTS_KEY = 'push.goodMoments';
 const DECLINED_KEY = 'push.primerDeclined'; // "count:lastTimestamp"
-/** Messages from characters before we ask (counted across chats). */
-const MOMENTS_NEEDED = 3;
+/** Messages from characters before we ask (counted across chats): after the first chat with a reply. */
+const MOMENTS_NEEDED = 1;
 const WAIT_MS = 3 * 86_400_000;
 const MAX_TRIES = 3;
 
