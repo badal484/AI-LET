@@ -146,14 +146,6 @@ export const CoinStoreSheet: React.FC<{ visible: boolean; onClose: () => void; r
             })}
           </View>
         )}
-
-        <View style={styles.footerNoteRow}>
-          <Text style={styles.footerTrust}>🔒 Secure Payment</Text>
-          <Text style={styles.footerDot}>•</Text>
-          <Text style={styles.footerTrust}>⚡ Instant Add</Text>
-          <Text style={styles.footerDot}>•</Text>
-          <Text style={styles.footerTrust}>♾️ Never Expire</Text>
-        </View>
       </View>
     </BottomSheet>
   );
@@ -255,14 +247,4 @@ const styles = StyleSheet.create({
   },
   priceText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   priceTextBest: { color: '#3B0764', fontSize: 14, fontWeight: '900' },
-  footerNoteRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-    paddingTop: 4,
-  },
-  footerTrust: { color: '#94A3B8', fontSize: 12, fontWeight: '600' },
-  footerDot: { color: '#64748B', fontSize: 12 },
 });
