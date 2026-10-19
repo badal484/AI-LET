@@ -26,7 +26,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Are the characters real people?',
-    a: 'No. Every character is an AI with their own personality and story. No real person reads or writes your chats.',
+    a: 'No — they\'re characters, made with AI, each with their own life, story and way of talking, and they remember what you share. No real person reads or writes your chats.',
   },
   {
     q: 'Is my chat private?',

@@ -190,7 +190,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       set({ isLoading: false });
 
       if (res.bonusCredits) {
-        return { success: true, message: `Successfully redeemed! Added ${res.bonusCredits} AI credits.` };
+        return { success: true, message: `Successfully redeemed! Added ${res.bonusCredits} coins.` };
       }
       return { success: true, message: 'Promotion successfully applied!' };
     } catch (err: any) {

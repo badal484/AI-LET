@@ -72,8 +72,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       case 'ai_unavailable':
         return {
           icon: 'sparkles',
-          title: 'Companion Unavailable',
-          message: 'The companion engine is temporarily busy. We are restoring connectivity.',
+          title: 'Back in a moment',
+          message: 'Something on our side is slow right now. Please try again in a minute.',
         };
       case 'general':
       default:

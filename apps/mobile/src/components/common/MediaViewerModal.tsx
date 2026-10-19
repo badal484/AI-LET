@@ -32,7 +32,7 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
     try {
       await Share.share({
         url: uri,
-        message: caption || 'Check out this generated companion moment!',
+        message: caption ? `${caption} on Loveek` : 'From Loveek',
       });
     } catch {
       // Ignored

@@ -112,7 +112,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
         />
         <View style={styles.featuredOverlay}>
           <View style={styles.featuredHeaderRow}>
-            <Badge label="FEATURED COMPANION" variant="stage" size="sm" />
+            <Badge label="FEATURED" variant="stage" size="sm" />
             {onFavoriteToggle && (
               <TouchableOpacity
                 onPress={() => onFavoriteToggle(character)}

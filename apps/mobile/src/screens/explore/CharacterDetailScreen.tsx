@@ -11,12 +11,12 @@ import {
   TextInput,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { DiscoveryApi } from '../../services/api/discoveryApi.js';
 import { ConversationApi } from '../../services/api/conversationApi.js';
 import { ModerationApi } from '../../services/api/moderationApi.js';
-import { RelationshipApi } from '../../services/api/relationshipApi.js';
 import { useDiscoveryStore } from '../../stores/discoveryStore.js';
 import type { RootStackParamList } from '../../navigation/types.js';
 import {
@@ -33,6 +33,7 @@ import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem, ReportReasonCode } from '@ai-companion/types';
 import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
+import { MediaViewerModal } from '../../components/common/MediaViewerModal.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
@@ -48,28 +49,11 @@ const REPORT_REASON_LABEL: Record<ReportReasonCode, string> = {
 } as Record<ReportReasonCode, string>;
 type DetailRouteProp = RouteProp<RootStackParamList, 'CharacterDetail'>;
 
-// How close you two are, in words a person would use (not "Lvl 1 · 22% Intimacy").
-const getStageDetails = (stage?: string) => {
-  switch (stage) {
-    case 'ACQUAINTANCE':
-      return { label: 'Getting comfortable', icon: '💬', description: 'The awkward part is over — you two talk easily now.' };
-    case 'FRIEND':
-      return { label: 'Friends', icon: '🌟', description: 'Real trust. You can tell each other almost anything.' };
-    case 'CLOSE_FRIEND':
-      return { label: 'Close', icon: '✨', description: 'They know your world, and you know theirs.' };
-    case 'CONFIDANT':
-      return { label: 'Your person', icon: '💫', description: 'The one you go to first — on good days and bad.' };
-    case 'ROMANTIC_PARTNER':
-      return { label: 'Together', icon: '💖', description: 'Something special between you two.' };
-    default:
-      return { label: 'Just getting started', icon: '🌱', description: 'You two are just getting to know each other.' };
-  }
-};
-
 export const CharacterDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<DetailRouteProp>();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
 
   const identifier = route.params.characterSlug || route.params.characterId;
   const { favoriteIds, toggleFavoriteOptimistic } = useDiscoveryStore();
@@ -78,24 +62,6 @@ export const CharacterDetailScreen: React.FC = () => {
     queryKey: ['discovery', 'character', identifier],
     queryFn: () => DiscoveryApi.getCharacterProfile(identifier),
   });
-
-  const { data: relationshipData } = useQuery({
-    queryKey: ['relationship', profile?.id],
-    queryFn: () => (profile?.id ? RelationshipApi.getRelationship(profile.id) : null),
-    enabled: Boolean(profile?.id),
-    staleTime: 30_000,
-  });
-  const closeness = relationshipData
-    ? Math.min(
-        100,
-        Math.max(
-          0,
-          Math.round(
-            (relationshipData.familiarity + relationshipData.trust + relationshipData.comfort + relationshipData.affection + relationshipData.engagement) / 5,
-          ),
-        ),
-      )
-    : 0;
 
   // One view per character page open (feeds creator analytics).
   const viewedCharacterId = profile?.id;
@@ -130,8 +96,8 @@ export const CharacterDetailScreen: React.FC = () => {
     if (!profile) return;
     try {
       await Share.share({
-        title: `Chat with ${profile.name}`,
-        message: `Meet ${profile.name} on Loveek: ${profile.tagline}\ncompanion://character/${profile.slug}`,
+        title: `${profile.name} on Loveek`,
+        message: `Meet ${profile.name} on Loveek — ${profile.tagline}\nhttps://play.google.com/store/apps/details?id=com.aicompanionmobile`,
       });
     } catch {
       // Ignore share cancel
@@ -190,6 +156,7 @@ export const CharacterDetailScreen: React.FC = () => {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [brokenPhotos, setBrokenPhotos] = useState<string[]>([]);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const handleSubmitReport = async () => {
     if (!profile) return;
@@ -254,7 +221,6 @@ export const CharacterDetailScreen: React.FC = () => {
     );
   }
 
-  const stage = getStageDetails(relationshipData?.stage);
   const aboutRaw = (profile.longDescription || profile.shortDescription || '').trim();
   const about = aboutRaw && aboutRaw !== profile.tagline?.trim() ? aboutRaw : '';
   const starters = profile.conversationStarters.slice(0, 2);
@@ -279,41 +245,6 @@ export const CharacterDetailScreen: React.FC = () => {
           <View style={styles.heroGradientOverlay} />
           {ageRestricted(profile) && <AgeRestrictedBadge />}
 
-          {/* Navigation Bar Actions */}
-          <View style={styles.topActionsRow}>
-            <IconButton
-              icon="arrow-left"
-              size="md"
-              variant="glass"
-              onPress={navigation.goBack}
-              accessibilityLabel="Back"
-            />
-            <View style={styles.topRightActions}>
-              <IconButton
-                icon="flag"
-                size="md"
-                variant="glass"
-                onPress={() => setReportModalVisible(true)}
-                accessibilityLabel="Report character"
-              />
-              <IconButton
-                icon="share"
-                size="md"
-                variant="glass"
-                onPress={handleShare}
-                accessibilityLabel="Share character"
-              />
-              <IconButton
-                icon={isFavorited ? 'heart-filled' : 'heart'}
-                size="md"
-                variant="glass"
-                onPress={handleToggleFavorite}
-                accessibilityLabel={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-                style={isFavorited ? styles.favoritedBtn : undefined}
-              />
-            </View>
-          </View>
-
           {/* Avatar and Identity */}
           <View style={styles.avatarSection}>
             <Avatar
@@ -332,18 +263,6 @@ export const CharacterDetailScreen: React.FC = () => {
         <View style={styles.bodyContent}>
           <Text style={styles.name}>{profile.name}</Text>
           {profile.tagline ? <Text style={styles.tagline}>{profile.tagline}</Text> : null}
-
-          {/* How close you two are: a small chip, only once you've talked. */}
-          {relationshipData && profile.existingConversationId ? (
-            <View style={styles.connectionChip} accessibilityLabel={`${stage.label}, closeness ${closeness} out of 100`}>
-              <Text style={styles.connectionChipText}>
-                {stage.icon} {stage.label}
-              </Text>
-              <View style={styles.closenessTrack}>
-                <View style={[styles.closenessFill, { width: `${Math.max(6, closeness)}%` }]} />
-              </View>
-            </View>
-          ) : null}
 
           {/* Creator Attribution */}
           {profile.creator ? (
@@ -408,7 +327,14 @@ export const CharacterDetailScreen: React.FC = () => {
               <Text style={styles.sectionHeading}>Photos</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
                 {gallery.map((imgUrl, idx) => (
-                  <View key={idx} style={styles.galleryCard}>
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.galleryCard}
+                    activeOpacity={0.85}
+                    onPress={() => !ageRestricted(profile) && setViewerUri(imgUrl)}
+                    accessibilityRole="imagebutton"
+                    accessibilityLabel={`Photo ${idx + 1} of ${profile.name}`}
+                  >
                     <Image
                       source={{ uri: imgUrl }}
                       style={styles.galleryImage}
@@ -416,7 +342,7 @@ export const CharacterDetailScreen: React.FC = () => {
                       blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
                       onError={() => setBrokenPhotos((b) => [...b, imgUrl])}
                     />
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
@@ -468,6 +394,44 @@ export const CharacterDetailScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* Back / report / share / like: pinned below the status bar, above the scrolling page (inside the
+          scroll view they sat under the status bar on tall-status-bar phones and taps never reached them). */}
+      <View style={[styles.topActionsRow, { top: insets.top + 8 }]} pointerEvents="box-none">
+        <IconButton
+          icon="arrow-left"
+          size="md"
+          variant="glass"
+          onPress={navigation.goBack}
+          accessibilityLabel="Back"
+        />
+        <View style={styles.topRightActions}>
+          <IconButton
+            icon="flag"
+            size="md"
+            variant="glass"
+            onPress={() => setReportModalVisible(true)}
+            accessibilityLabel="Report character"
+          />
+          <IconButton
+            icon="share"
+            size="md"
+            variant="glass"
+            onPress={handleShare}
+            accessibilityLabel="Share character"
+          />
+          <IconButton
+            icon={isFavorited ? 'heart-filled' : 'heart'}
+            size="md"
+            variant="glass"
+            onPress={handleToggleFavorite}
+            accessibilityLabel={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+            style={isFavorited ? styles.favoritedBtn : undefined}
+          />
+        </View>
+      </View>
+
+      <MediaViewerModal visible={viewerUri !== null} uri={viewerUri} caption={profile.name} onClose={() => setViewerUri(null)} />
 
       {/* Report Modal Dialog */}
       <ModalDialog
@@ -551,7 +515,8 @@ const styles = StyleSheet.create({
   },
   topActionsRow: {
     position: 'absolute',
-    top: spacing.xxl + spacing.xs,
+    zIndex: 10,
+    elevation: 10,
     left: spacing.lg,
     right: spacing.lg,
     flexDirection: 'row',
@@ -651,22 +616,6 @@ const styles = StyleSheet.create({
     color: darkThemeColors.textSecondary,
   },
   moreText: { marginTop: 6, fontSize: 13, fontWeight: '700', color: darkThemeColors.accent },
-  connectionChip: {
-    marginTop: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 10,
-    backgroundColor: 'rgba(168, 85, 247, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 85, 247, 0.32)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  connectionChipText: { fontSize: 12, fontWeight: '700', color: '#E9D5FF' },
-  closenessTrack: { width: 56, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' },
-  closenessFill: { height: 4, borderRadius: 2, backgroundColor: '#C084FC' },
   galleryRow: { gap: 10 },
   tagsContainer: {
     marginTop: spacing.lg,

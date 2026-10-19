@@ -51,11 +51,11 @@ export const AuthHero: React.FC<{ title: string; subtitle: string }> = ({ title,
         <Text style={styles.wordmark}>Loveek</Text>
 
         {faces.length > 0 && (
-          <View style={styles.facesRow} accessibilityLabel={`${total ?? faces.length} AI characters to talk to`}>
+          <View style={styles.facesRow} accessibilityLabel={`${total ?? faces.length} people to talk to`}>
             {faces.map((c, i) => (
               <Image key={c.id} source={{ uri: c.avatarUrl! }} style={[styles.face, { marginLeft: i === 0 ? 0 : -12, zIndex: 10 - i }]} />
             ))}
-            <Text style={styles.facesText}>{total ? `${total} AI characters who remember you` : 'AI characters who remember you'}</Text>
+            <Text style={styles.facesText}>{total ? `${total} characters who remember you` : 'Characters who remember you'}</Text>
           </View>
         )}
 

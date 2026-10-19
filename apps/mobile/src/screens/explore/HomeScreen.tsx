@@ -292,7 +292,7 @@ export const HomeScreen: React.FC = () => {
 
         {sections.length === 0 && !isLoading && (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No companions found</Text>
+            <Text style={styles.emptyTitle}>No one here yet</Text>
             <Text style={styles.emptySubtitle}>Pull down to refresh</Text>
           </View>
         )}
@@ -328,7 +328,7 @@ function getCharacterHashtags(char: CharacterCatalogItem): string[] {
   if (name.includes('sakshi')) return ['#astrology', '#tarot'];
   if (name.includes('rohan')) return ['#freelancing', '#upwork'];
   if (name.includes('arjun')) return ['#career', '#resume'];
-  if (name.includes('dev')) return ['#coding', '#AI'];
+  if (name.includes('dev')) return ['#coding', '#tech'];
   if (name.includes('jiya')) return ['#english', '#fluency'];
   if (name.includes('aditya')) return ['#business', '#startup'];
   if (name.includes('raj')) return ['#wealth', '#trading'];
@@ -358,7 +358,7 @@ function getCharacterHashtags(char: CharacterCatalogItem): string[] {
 
   if (cat.includes('learn') || cat.includes('earn') || cat.includes('coaching') || cat.includes('business')) {
     if (tagline.includes('dating') || tagline.includes('attraction')) return ['#dating', '#coach'];
-    if (tagline.includes('code') || tagline.includes('developer') || occupation.includes('engineer')) return ['#coding', '#AI'];
+    if (tagline.includes('code') || tagline.includes('developer') || occupation.includes('engineer')) return ['#coding', '#tech'];
     if (tagline.includes('design') || tagline.includes('freelance')) return ['#freelancing', '#design'];
     if (tagline.includes('business') || tagline.includes('startup')) return ['#business', '#startup'];
     return ['#learning', '#growth'];
@@ -393,7 +393,7 @@ function renderSection(
 
   const categorySlug = (section.id || '').replace('section_cat_', '');
   const orbImage = getCategoryOrbImage(categorySlug);
-  const rawTitle = section.title || 'Companions';
+  const rawTitle = section.title || 'For you';
   const cleanTitle = rawTitle
     .replace(/\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Emoji_Component}|\p{Emoji}/gu, '')
     .replace(/[\u{FE00}-\u{FE0F}]/gu, '')

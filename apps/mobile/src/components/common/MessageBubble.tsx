@@ -201,7 +201,7 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
     >
       {!isUser &&
         (showAvatar ? (
-          <Avatar uri={characterAvatarUrl} name={characterName || 'AI'} size="sm" style={styles.avatar} />
+          <Avatar uri={characterAvatarUrl} name={characterName || '?'} size="sm" style={styles.avatar} />
         ) : (
           <View style={styles.avatarSpacer} />
         ))}
@@ -238,7 +238,7 @@ const MessageBubbleBase: React.FC<MessageBubbleProps> = ({
                   ((arr.length > 1 && pIdx < arr.length - 1) || isTypingNext) && { marginBottom: 6 },
                 ]}
                 accessibilityRole="text"
-                accessibilityLabel={`${isUser ? 'You' : characterName || 'Companion'} said: ${paragraph}`}
+                accessibilityLabel={`${isUser ? 'You' : characterName || 'They'} said: ${paragraph}`}
               >
                 {pIdx === 0 && replyTo && (
                   <TouchableOpacity

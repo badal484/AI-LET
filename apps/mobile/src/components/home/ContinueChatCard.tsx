@@ -71,12 +71,13 @@ export const ContinueChatCard: React.FC = () => {
         >
           <Avatar uri={latest.character.avatarUrl} name={latest.character.name} size="md" />
           <View style={styles.text}>
-            <View style={styles.titleRow}>
-              <Text style={styles.title} numberOfLines={1}>
-                Continue with {latest.character.name.split(' ')[0]}
-              </Text>
-              {latest.lastMessageAt ? <Text style={styles.time}>{chatListTime(latest.lastMessageAt)}</Text> : null}
-            </View>
+            <Text style={styles.kicker} numberOfLines={1}>
+              Continue chatting{latest.lastMessageAt ? ` · ${chatListTime(latest.lastMessageAt)}` : ''}
+            </Text>
+            {/* The full name on its own line — shrinks a little for a long name instead of being cut. */}
+            <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              {latest.character.name}
+            </Text>
             {latest.lastMessageSnippet ? (
               <Text style={styles.snippet} numberOfLines={1}>
                 {latest.lastMessageSnippet}
@@ -108,10 +109,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(192,132,252,0.22)',
   },
-  text: { flex: 1, gap: 3 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 15.5, fontWeight: '800' },
-  time: { color: '#8E86A3', fontSize: 12 },
+  text: { flex: 1, gap: 2 },
+  kicker: { color: '#C4B5FD', fontSize: 11.5, fontWeight: '700', letterSpacing: 0.3 },
+  title: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
   snippet: { color: '#B9B2CC', fontSize: 13.5 },
   go: {
     width: 34,

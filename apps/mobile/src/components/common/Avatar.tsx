@@ -15,7 +15,7 @@ export interface AvatarProps {
 
 export const Avatar: React.FC<AvatarProps> = ({
   uri,
-  name = 'AI',
+  name = '?',
   size = 'md',
   presence,
   onPress,

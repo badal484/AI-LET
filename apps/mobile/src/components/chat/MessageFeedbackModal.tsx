@@ -76,7 +76,7 @@ export const MessageFeedbackModal: React.FC<MessageFeedbackModalProps> = ({
       <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.title}>Rate Response Quality</Text>
-          <Text style={styles.subtitle}>Help us improve your AI companion experience.</Text>
+          <Text style={styles.subtitle}>Tell us how this reply felt.</Text>
           {error && (
             <Text style={styles.subtitle} accessibilityRole="alert">
               {error}

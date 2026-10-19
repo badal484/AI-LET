@@ -84,7 +84,7 @@ const getStageDetails = (stage?: string) => {
       };
     case 'CLOSE_FRIEND':
       return {
-        label: 'Deep Companions',
+        label: 'Close',
         icon: '✨',
         level: 'Lvl 4',
         description: 'A deep emotional connection with high comfort, care, and mutual vulnerability.',
@@ -292,7 +292,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const characterEffectiveSlug =
     routeCharacterSlug || conversation?.character?.slug || characterProfile?.slug;
 
-  const companionFirstName = characterName.split(' ')[0] || 'Companion';
+  const companionFirstName = characterName.split(' ')[0] || 'They';
 
   // 2. Fetch Live Relationship State
   const { data: relationshipData, refetch: refetchRelationship } = useQuery({
@@ -1289,18 +1289,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             onPress={() => setIsMenuVisible(false)}
           >
             <View style={styles.menuSheetContent}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setIsMenuVisible(false);
-                  setTimeout(() => setIsBondModalVisible(true), 150);
-                }}
-              >
-                <Text style={styles.menuItemText}>
-                  {stageInfo.icon} Chemistry & Bond ({intimacyPercent}%)
-                </Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
