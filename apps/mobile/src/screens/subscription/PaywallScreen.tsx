@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Image } from 'react-native';
-// React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useBillingStore } from '../../stores/billingStore.js';
 import { useAuthStore } from '../../stores/authStore.js';
@@ -54,12 +53,21 @@ export const PaywallScreen: React.FC = () => {
   // until they scroll themselves.
   const userScrolled = useRef(false);
   const toTop = useCallback(() => {
-    if (!userScrolled.current) scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (!userScrolled.current) {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
   }, []);
+
   useFocusEffect(
     useCallback(() => {
       userScrolled.current = false;
       toTop();
+      const t1 = setTimeout(toTop, 50);
+      const t2 = setTimeout(toTop, 200);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }, [toTop]),
   );
 
@@ -98,6 +106,12 @@ export const PaywallScreen: React.FC = () => {
       alive = false;
     };
   }, [catalog]);
+
+  useEffect(() => {
+    toTop();
+    const t = setTimeout(toTop, 150);
+    return () => clearTimeout(t);
+  }, [face, sides, catalog, payRoute, toTop]);
 
   // Prices: Google Play's own when it sells; otherwise the server's (Razorpay).
   const upi = StoreBilling.upiConfig();
@@ -160,29 +174,37 @@ export const PaywallScreen: React.FC = () => {
     : `${monthly}/month. Auto-renews · cancel anytime${viaPlay ? ' in Google Play' : ''}.`;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={styles.container}>
       <View style={styles.glow} pointerEvents="none">
         <GradientFill radial colors={[['#7C3AED', 0.45], ['#4338CA', 0.18], ['#0B0614', 0]]} />
       </View>
 
-      <View style={styles.topBar}>
-        {isTab ? <View /> : <IconButton icon="close" size="sm" variant="glass" onPress={() => navigation.goBack()} accessibilityLabel="Close" />}
-        {viaPlay && mode !== 'manage' ? (
-          <Pressable onPress={restore} hitSlop={10} accessibilityRole="button">
-            <Text style={styles.restore}>Restore</Text>
-          </Pressable>
-        ) : (
-          <View />
-        )}
-      </View>
+      {/* Floating top bar — never creates an artificial clipping line / empty block */}
+      {(!isTab || (viaPlay && mode !== 'manage')) ? (
+        <View style={[styles.topBar, { top: insets.top }]}>
+          {!isTab ? <IconButton icon="close" size="sm" variant="glass" onPress={() => navigation.goBack()} accessibilityLabel="Close" /> : <View />}
+          {viaPlay && mode !== 'manage' ? (
+            <Pressable onPress={restore} hitSlop={10} accessibilityRole="button">
+              <Text style={styles.restore}>Restore</Text>
+            </Pressable>
+          ) : (
+            <View />
+          )}
+        </View>
+      ) : null}
 
       <ScrollView
         ref={scrollRef}
-        onContentSizeChange={toTop}
-        onScrollBeginDrag={() => {
-          userScrolled.current = true;
-        }}
-        contentContainerStyle={[styles.scroll, { paddingBottom: 110 + (isTab ? 0 : insets.bottom) }]} showsVerticalScrollIndicator={false}>
+        overScrollMode="never"
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingTop: insets.top + (isTab ? 12 : 48),
+            paddingBottom: 110 + (isTab ? 0 : insets.bottom),
+          },
+        ]}>
         {/* The person they talk to — in a soft glowing shape, saying hi. */}
         <View style={styles.hero}>
           {/* Two more faces behind, tilted out to the sides — a glimpse of who else is there. */}
@@ -310,21 +332,32 @@ export const PaywallScreen: React.FC = () => {
         </View>
         {legal ? <Text style={styles.legal}>{legal}</Text> : null}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0614' },
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 460 },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8, height: 48 },
+  topBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    height: 48,
+  },
   restore: { color: '#C4B5FD', fontSize: 14, fontWeight: '600' },
   scroll: { paddingHorizontal: 20 },
 
-  hero: { alignItems: 'center', justifyContent: 'center', height: 236, marginTop: 4 },
+  hero: { alignItems: 'center', justifyContent: 'center', height: 226, marginTop: 4 },
   blobBack: { position: 'absolute', width: 170, height: 150, borderRadius: 64, overflow: 'hidden', transform: [{ rotate: '-14deg' }, { translateX: -18 }], opacity: 0.9 },
   blobFront: { position: 'absolute', width: 160, height: 160, borderRadius: 72, overflow: 'hidden', transform: [{ rotate: '22deg' }, { translateX: 20 }, { translateY: 10 }], opacity: 0.85 },
-  side: { position: 'absolute', top: 40, width: 112, height: 142, alignItems: 'center', justifyContent: 'center', opacity: 0.88 },
+  side: { position: 'absolute', top: 36, width: 112, height: 142, alignItems: 'center', justifyContent: 'center', opacity: 0.88 },
   sideLeft: { left: 4, transform: [{ rotate: '-10deg' }] },
   sideRight: { right: 4, transform: [{ rotate: '10deg' }] },
   sideBlob: { position: 'absolute', width: 120, height: 132, borderRadius: 56, overflow: 'hidden', opacity: 0.75 },
@@ -333,7 +366,7 @@ const styles = StyleSheet.create({
   photo: { width: '100%', height: '100%' },
   tag: {
     position: 'absolute',
-    bottom: 6,
+    bottom: 4,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
@@ -344,7 +377,7 @@ const styles = StyleSheet.create({
   },
   tagText: { color: '#F5E9FF', fontSize: 13, fontWeight: '700', fontStyle: 'italic' },
 
-  priceBlock: { alignItems: 'center', marginTop: 14 },
+  priceBlock: { alignItems: 'center', marginTop: 10 },
   kicker: { color: '#E9D5FF', fontSize: 24, fontWeight: '800', letterSpacing: -0.3 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginTop: -2 },
   at: { color: '#E9D5FF', fontSize: 26, fontWeight: '700' },
