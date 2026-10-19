@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Image, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { darkThemeColors } from '../../theme/index.js';
 
@@ -23,6 +23,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   style,
 }) => {
   const [imageError, setImageError] = useState(false);
+  // A new photo address gets a fresh try (a photo that failed once — e.g. replaced in the admin — must not stick).
+  useEffect(() => setImageError(false), [uri]);
 
   const dimensionMap = {
     xs: 28,
