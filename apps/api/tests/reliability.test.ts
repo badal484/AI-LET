@@ -37,6 +37,7 @@ describe('production settings check (H-7)', () => {
     expect(all).toMatch(/PUBSUB_PUSH_SERVICE_ACCOUNT/);
     expect(all).toMatch(/pooler/);
     expect(all).toMatch(/SENTRY_DSN/);
+    expect(all).toMatch(/FIREBASE_SERVICE_ACCOUNT_JSON/);
     expect(all).toMatch(/account deletions/);
     expect(all).toMatch(/shorter than 32 characters/);
 
@@ -48,6 +49,7 @@ describe('production settings check (H-7)', () => {
       LEGAL_CONTACT_EMAIL: 'a@b.c',
       PUBSUB_PUSH_SERVICE_ACCOUNT: 'x@y.iam.gserviceaccount.com',
       SENTRY_DSN: 'https://x@sentry.io/1',
+      FIREBASE_SERVICE_ACCOUNT_JSON: '{"project_id":"p"}',
       JWT_ACCESS_SECRET: 'a'.repeat(40),
       JWT_REFRESH_SECRET: 'b'.repeat(40),
     } as NodeJS.ProcessEnv);
