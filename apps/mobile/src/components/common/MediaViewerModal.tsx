@@ -5,7 +5,6 @@ import {
   Image,
   Text,
   StyleSheet,
-  Share,
   StatusBar,
 } from 'react-native';
 // React Native's own SafeAreaView is deprecated and ignores Android's system bars under edge-to-edge.
@@ -28,17 +27,6 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 }) => {
   if (!uri) return null;
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        url: uri,
-        message: caption ? `${caption} on Loveek` : 'From Loveek',
-      });
-    } catch {
-      // Ignored
-    }
-  };
-
   return (
     <Modal
       visible={visible}
@@ -57,15 +45,7 @@ export const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
             variant="glass"
             size="sm"
             onPress={onClose}
-            accessibilityLabel="Close media viewer"
-          />
-
-          <IconButton
-            icon="share"
-            variant="glass"
-            size="sm"
-            onPress={handleShare}
-            accessibilityLabel="Share image"
+            accessibilityLabel="Close photo"
           />
         </View>
 
