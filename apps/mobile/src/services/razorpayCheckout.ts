@@ -81,8 +81,9 @@ async function confirmWithServer(body: Record<string, string | undefined>): Prom
       await api.post('/billing/razorpay/confirm', body);
       return true;
     } catch (err) {
-      const status = (err as { response?: { status?: number } }).response?.status;
-      if (status && status < 500) return false; // refused: retrying won't help
+      // Refused by the server (bad signature, another account…): retrying won't help. Network trouble: retry.
+      const code = (err as { code?: string }).code;
+      if (code && code !== 'NETWORK_ERROR' && code !== 'INTERNAL_SERVER_ERROR') return false;
       await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
     }
   }
@@ -98,7 +99,9 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
         ? (await api.post('/billing/razorpay/premium', { googleToken })).data.data
         : (await api.post('/billing/razorpay/coins', { packId: intent.packId, googleToken })).data.data;
   } catch (err) {
-    const msg = (err as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message;
+    // The API client rejects with the server's error itself ({ code, message }), not an axios response.
+    const e = err as { code?: string; message?: string };
+    const msg = e.code === 'NETWORK_ERROR' || !e.message ? undefined : e.message;
     return { ok: false, message: msg ?? "Couldn't start the payment — check your connection and try again." };
   }
 

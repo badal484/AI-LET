@@ -176,6 +176,16 @@ describe('Premium through UPI Autopay: ₹1 today, ₹499 a month from tomorrow'
   });
 });
 
+describe('when Razorpay refuses (e.g. account not activated yet)', () => {
+  it('the person gets a plain "not available right now" message, not an internal error', async () => {
+    const u = await createUser({ verified: true });
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(json({ error: { description: 'Your account is not activated' } }, 400))));
+    const res = await request(app).post('/api/v1/billing/razorpay/premium').set(auth(u)).send({});
+    expect(res.status).toBe(503);
+    expect(res.body.error.message).toMatch(/Payments aren’t available right now/);
+  });
+});
+
 describe('webhooks keep Premium in step with the bank', () => {
   async function premiumUser() {
     const u = await createUser({ verified: true });

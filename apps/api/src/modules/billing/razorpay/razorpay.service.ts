@@ -24,6 +24,7 @@ import {
   type RzpOrder,
   type RzpPayment,
   type RzpSubscription,
+  RazorpayApiError,
 } from './razorpayClient.js';
 
 /**
@@ -93,6 +94,22 @@ function requireConfigured() {
   if (!razorpayConfigured()) throw new AppError('UPI payments are not available right now.', 503, ErrorCode.SERVICE_UNAVAILABLE);
 }
 
+/**
+ * Razorpay refused a call (keys not activated yet, wrong keys, subscriptions not enabled…): the exact reason goes to
+ * the server log for the owner; the person sees a plain message instead of a vague "internal error".
+ */
+async function razorpayCall<T>(what: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof RazorpayApiError) {
+      logger.error(`Razorpay refused ${what}: ${err.message}`);
+      throw new AppError('Payments aren’t available right now. Please try again in a little while.', 503, ErrorCode.SERVICE_UNAVAILABLE);
+    }
+    throw err;
+  }
+}
+
 /** GST inside the price (0 until the business is GST-registered: GST_RATE_PERCENT, e.g. 18). */
 function taxOf(amountMinor: number): number {
   const rate = Number(process.env['GST_RATE_PERCENT'] ?? 0);
@@ -125,15 +142,16 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
   if (!plan) throw new NotFoundError('Premium is not set up yet.');
 
   const startAt = Math.floor(Date.now() / 1000) + 86_400;
-  const sub = await rzp<RzpSubscription>('POST', '/subscriptions', {
-    plan_id: await premiumPlanId(),
+  const planId = await razorpayCall('creating the plan', () => premiumPlanId());
+  const sub = await razorpayCall('starting Premium', () => rzp<RzpSubscription>('POST', '/subscriptions', {
+    plan_id: planId,
     total_count: 120,
     quantity: 1,
     customer_notify: 1,
     start_at: startAt,
     addons: [{ item: { name: 'Loveek Premium · first day', amount: RAZORPAY_PREMIUM.firstDayMinorUnits, currency: 'INR' } }],
     notes: { userId, app: 'loveek' },
-  });
+  }));
   await prisma.billingSubscription.create({
     data: {
       userId,
@@ -161,12 +179,12 @@ export async function startCoinPack(userId: string, packId: string, opts: { goog
   requireConfigured();
   if (!(ONE_TIME_PACKS as readonly string[]).includes(packId)) throw new BadRequestError('Unknown coin pack.');
   const pack = COIN_PACKS[packId]!;
-  const order = await rzp<RzpOrder>('POST', '/orders', {
+  const order = await razorpayCall('starting a coin purchase', () => rzp<RzpOrder>('POST', '/orders', {
     amount: pack.amountMinorUnits,
     currency: 'INR',
     receipt: `coins_${Date.now().toString(36)}`,
     notes: { userId, packId, app: 'loveek' },
-  });
+  }));
   // The Google token is longer than Razorpay's notes allow: kept here for the sale report.
   if (opts.googleToken) await redis.set(`razorpay:order:${order.id}:token`, opts.googleToken, 'EX', 3 * 86_400);
   return { orderId: order.id, keyId: razorpayKeyId(), amountMinorUnits: pack.amountMinorUnits, coins: pack.coins, logoUrl: logoUrl() };
