@@ -1,7 +1,8 @@
-/** Keep in sync with `version` in apps/mobile/package.json (and the native build versionName). */
-export const APP_VERSION = '0.1.0';
-
 import { NativeModules } from 'react-native';
+
+/** The installed build's version (e.g. 0.1.9), read from Android; '0.1.0' when the native piece is missing (tests). */
+const nativeVersion: unknown = NativeModules.AppVersion?.versionName;
+export const APP_VERSION: string = typeof nativeVersion === 'string' && nativeVersion ? nativeVersion : '0.1.0';
 
 /**
  * Determine development host IP dynamically:

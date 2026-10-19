@@ -86,9 +86,12 @@ android {
         applicationId "com.aicompanionmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Raise for every Play upload: ./gradlew bundleRelease -PloviraVersionCode=2 -PloviraVersionName=1.0.1
-        versionCode((project.findProperty('loviraVersionCode') ?: '1') as Integer)
-        versionName((project.findProperty('loviraVersionName') ?: '1.0') as String)
+        // Raise for every Play upload: ./gradlew bundleRelease -PloviraVersionCode=9
+        // The visible version follows it (code 9 → 0.1.9) unless -PloviraVersionName is given; the app reads it
+        // at run time (AppVersionModule), so "Minimum app version" in the admin can require a newer build.
+        def loviraCode = (project.findProperty('loviraVersionCode') ?: '1') as Integer
+        versionCode loviraCode
+        versionName((project.findProperty('loviraVersionName') ?: "0.1.${loviraCode}") as String)
     }
     // Release signing (audit C-1): the upload key when it's configured; otherwise a release build refuses to
     // run — except a local test APK asked for explicitly with -PallowDebugSignedRelease (never a Play bundle).
