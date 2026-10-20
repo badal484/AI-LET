@@ -3,15 +3,12 @@ import { prisma } from '../../infrastructure/database/prisma.js';
 import { redis } from '../../infrastructure/redis/redis.js';
 import { logger } from '../../config/logger.js';
 import { CreditWalletService } from './credits/CreditWalletService.js';
-import { isCrisisMessage } from '../conversations/human/crisisSupport.js';
-import { classifySituations } from '../conversations/human/situation.js';
 import { emailReachesUsers } from '../../infrastructure/email/email.js';
 
 /**
  * How many messages a user may send today. Without Premium: limits.freeDaily (default 0 — no free plan; the
  * paywall offers the ₹1 first day). Premium (₹1 first day included):
  * PREMIUM_DAILY_MESSAGES (150, fair use). Past the limit, one message-pack credit per message.
- * Crisis and emergency messages are never counted or blocked.
  * Off until BILLING_ENFORCE_LIMITS=true (turn on together with payments at launch).
  *
  * Abuse guards that apply even while limits are off (audit H-1), so free use is never unlimited:
@@ -78,17 +75,13 @@ async function needsVerification(userId: string): Promise<boolean> {
 }
 
 /** Counts one message (call once per message they send). On an unexpected error it lets the message through (the daily AI spending cap is the backstop). */
-export async function useMessage(userId: string, text: string): Promise<AllowanceResult> {
+export async function useMessage(userId: string, _text?: string): Promise<AllowanceResult> {
   const { key, resetsAt } = istDay();
   const base = { resetsAt: resetsAt.toISOString() };
   try {
     const premium = await hasPremium(userId);
     const lim = await limits();
     const enforced = await limitsEnforced();
-    const situations = classifySituations(text, null);
-    if (isCrisisMessage(text) || situations.includes('emergency')) {
-      return { allowed: true, premium, used: 0, limit: premium ? lim.premium : lim.free, ...base };
-    }
 
     // The limit that applies today, and which rule set it (for the message the app shows).
     let limit = enforced ? (premium ? lim.premium : lim.free) : Number(await getSetting('limits.openDaily')) || Infinity;

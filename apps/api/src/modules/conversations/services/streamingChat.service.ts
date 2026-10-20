@@ -165,6 +165,33 @@ export class StreamingChatService {
           return;
         }
 
+        // Idempotent: a resent request (same clientRequestId) reuses the stored message.
+        const existing = input.clientRequestId
+          ? await prisma.message.findFirst({
+              where: { conversationId, role: 'user', clientRequestId: input.clientRequestId },
+              select: { id: true, sequenceNumber: true, createdAt: true, clientRequestId: true },
+            })
+          : null;
+
+        // Today's allowance (free 0 / premium 150 + message packs). A new message only — a resend is free.
+        // Off until BILLING_ENFORCE_LIMITS=true.
+        if (!existing) {
+          const allowance = await useMessage(userId, content);
+          if (!allowance.allowed) {
+            this.initSseResponse(res);
+            this.emitSseEvent<StreamLimitReachedPayload>(res, 'limit.reached', {
+              conversationId,
+              reason: allowance.reason ?? 'free_limit',
+              used: allowance.used,
+              limit: allowance.limit,
+              premium: allowance.premium,
+              resetsAt: allowance.resetsAt,
+            });
+            res.end();
+            return;
+          }
+        }
+
         const inputSafety = await SafetyService.evaluateInput({
           surface: 'INPUT',
           content,
@@ -186,14 +213,6 @@ export class StreamingChatService {
           return;
         }
 
-        // Idempotent: a resent request (same clientRequestId) reuses the stored message.
-        const existing = input.clientRequestId
-          ? await prisma.message.findFirst({
-              where: { conversationId, role: 'user', clientRequestId: input.clientRequestId },
-              select: { id: true, sequenceNumber: true, createdAt: true, clientRequestId: true },
-            })
-          : null;
-
         // Once coins are charged (payments live), a gift message must have been paid for (POST
         // /conversations/:id/gifts, same clientRequestId) — typing "[Sent a Gift: 💍 Diamond Ring]" by hand gets no
         // gift. Before that, gifts are free and older apps that send them directly keep working.
@@ -207,9 +226,8 @@ export class StreamingChatService {
           return;
         }
 
-        // The daily AI spending cap (audit H-1): once reached, new replies pause until midnight IST. Crisis
-        // and emergency messages are always answered.
-        if (!existing && !isCrisisMessage(content) && !classifySituations(content, null).includes('emergency') && (await spendCapReached())) {
+        // The daily AI spending cap (audit H-1): once reached, new replies pause until midnight IST.
+        if (!existing && (await spendCapReached())) {
           this.initSseResponse(res);
           this.emitSseEvent<StreamLimitReachedPayload>(res, 'limit.reached', {
             conversationId,
@@ -221,25 +239,6 @@ export class StreamingChatService {
           });
           res.end();
           return;
-        }
-
-        // Today's allowance (free 5 / premium 150 + message packs). A new message only — a resend is free.
-        // Crisis and emergency messages always go through. Off until BILLING_ENFORCE_LIMITS=true.
-        if (!existing) {
-          const allowance = await useMessage(userId, content);
-          if (!allowance.allowed) {
-            this.initSseResponse(res);
-            this.emitSseEvent<StreamLimitReachedPayload>(res, 'limit.reached', {
-              conversationId,
-              reason: allowance.reason ?? 'free_limit',
-              used: allowance.used,
-              limit: allowance.limit,
-              premium: allowance.premium,
-              resetsAt: allowance.resetsAt,
-            });
-            res.end();
-            return;
-          }
         }
 
         // A WhatsApp-style reply: only to a message from this same chat.
