@@ -76,8 +76,35 @@ export async function paywallSideFaces(userId?: string): Promise<Face[]> {
   return (await Promise.all(slugs.map((s) => faceFor(s, teen)))).filter((f): f is Face => f !== null);
 }
 
+/** A user is only eligible for the ₹1 trial once in their life. */
+export async function hasUsedTrial(userId: string): Promise<boolean> {
+  const [sub, purchase] = await Promise.all([
+    prisma.billingSubscription.findFirst({
+      where: {
+        userId,
+        plan: { code: { not: 'FREE' } },
+        OR: [
+          { trialStart: { not: null } },
+          { status: { in: ['ACTIVE', 'TRIALING', 'CANCELLED', 'EXPIRED', 'PAST_DUE'] } },
+        ],
+      },
+      select: { id: true },
+    }),
+    prisma.purchaseTransaction.findFirst({
+      where: {
+        userId,
+        status: 'SUCCEEDED',
+        productId: { in: ['companion_premium', 'premium_monthly'] },
+      },
+      select: { id: true },
+    }),
+  ]);
+  return Boolean(sub || purchase);
+}
+
 /** What the app needs to show Razorpay at all, plus the Premium screen's face. */
 export async function razorpayClientConfig(userId?: string) {
+  const eligibleForTrial = userId ? !(await hasUsedTrial(userId)) : true;
   return {
     face: await paywallFace(userId),
     sideFaces: await paywallSideFaces(userId),
@@ -85,6 +112,7 @@ export async function razorpayClientConfig(userId?: string) {
     keyId: razorpayConfigured() ? razorpayKeyId() : null,
     /** Google's choice screen (Play vs. Razorpay) is on once the app is enrolled in user choice billing. */
     userChoiceBilling: process.env['PLAY_USER_CHOICE_BILLING'] === 'true',
+    eligibleForTrial,
     premium: { firstDayMinorUnits: RAZORPAY_PREMIUM.firstDayMinorUnits, monthlyMinorUnits: RAZORPAY_PREMIUM.monthlyMinorUnits },
     coinPacks: ONE_TIME_PACKS.map((id) => ({ id, coins: COIN_PACKS[id]!.coins, amountMinorUnits: COIN_PACKS[id]!.amountMinorUnits })),
   };
@@ -153,7 +181,12 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
   const plan = await prisma.billingPlan.findUnique({ where: { code: RAZORPAY_PREMIUM.planCode } });
   if (!plan) throw new NotFoundError('Premium is not set up yet.');
 
-  const startAt = Math.floor(Date.now() / 1000) + 86_400;
+  const eligibleForTrial = !(await hasUsedTrial(userId));
+  const startAt = eligibleForTrial ? Math.floor(Date.now() / 1000) + 86_400 : Math.floor(Date.now() / 1000);
+  const addons = eligibleForTrial
+    ? [{ item: { name: 'Loveek Premium · first day', amount: RAZORPAY_PREMIUM.firstDayMinorUnits, currency: 'INR' } }]
+    : [];
+
   const planId = await razorpayCall('creating the plan', () => premiumPlanId());
   const sub = await razorpayCall('starting Premium', () => rzp<RzpSubscription>('POST', '/subscriptions', {
     plan_id: planId,
@@ -161,7 +194,7 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
     quantity: 1,
     customer_notify: 1,
     start_at: startAt,
-    addons: [{ item: { name: 'Loveek Premium · first day', amount: RAZORPAY_PREMIUM.firstDayMinorUnits, currency: 'INR' } }],
+    ...(addons.length > 0 && { addons }),
     notes: { userId, app: 'loveek' },
   }));
   await prisma.billingSubscription.create({
@@ -173,13 +206,13 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
       providerSubscriptionId: sub.id,
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(),
-      metadata: { razorpay: true, ...(opts.googleToken && { googleToken: opts.googleToken }) },
+      metadata: { razorpay: true, isTrial: eligibleForTrial, ...(opts.googleToken && { googleToken: opts.googleToken }) },
     },
   });
   return {
     subscriptionId: sub.id,
     keyId: razorpayKeyId(),
-    firstDayMinorUnits: RAZORPAY_PREMIUM.firstDayMinorUnits,
+    firstDayMinorUnits: eligibleForTrial ? RAZORPAY_PREMIUM.firstDayMinorUnits : RAZORPAY_PREMIUM.monthlyMinorUnits,
     monthlyMinorUnits: RAZORPAY_PREMIUM.monthlyMinorUnits,
     chargesFrom: new Date(startAt * 1000).toISOString(),
     logoUrl: logoUrl(),
@@ -252,7 +285,8 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
   if (notesOf(remote)['userId'] !== local.userId) {
     throw new BadRequestError('This payment belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
   }
-  const firstCharge = sec(remote.charge_at ?? remote.start_at) ?? new Date(Date.now() + 86_400_000);
+  const isTrial = (local.metadata as { isTrial?: boolean } | null)?.isTrial ?? true;
+  const firstCharge = sec(remote.charge_at ?? remote.start_at) ?? (isTrial ? new Date(Date.now() + 86_400_000) : new Date(Date.now() + 30 * 86_400_000));
   const googleToken = (local.metadata as { googleToken?: string } | null)?.googleToken;
   let txId = '';
   try {
@@ -260,11 +294,13 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
       await db.billingSubscription.update({
         where: { id: local.id },
         data: {
-          status: 'TRIALING',
-          trialStart: new Date(),
-          trialEnd: firstCharge,
+          status: isTrial ? 'TRIALING' : 'ACTIVE',
+          trialStart: isTrial ? new Date() : null,
+          trialEnd: isTrial ? firstCharge : null,
           currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(firstCharge.getTime() + CHARGE_GRACE_MS),
+          currentPeriodEnd: isTrial
+            ? new Date(firstCharge.getTime() + CHARGE_GRACE_MS)
+            : new Date(Math.max(firstCharge.getTime(), Date.now() + 28 * 86_400_000) + CHARGE_GRACE_MS),
           cancelAtPeriodEnd: false,
           cancelledAt: null,
           endedAt: null,

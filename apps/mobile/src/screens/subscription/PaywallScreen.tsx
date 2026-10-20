@@ -185,7 +185,7 @@ export const PaywallScreen: React.FC = () => {
   const monthly = viaPlay
     ? (playOffer?.price ?? '₹499')
     : rupees(upi?.premium.monthlyMinorUnits ?? 49_900);
-  const firstIsTrial = viaPlay ? Boolean(playOffer?.trial) : true;
+  const firstIsTrial = viaPlay ? Boolean(playOffer?.trial) : Boolean(upi?.eligibleForTrial ?? true);
   const packPrice = viaPlay
     ? catalog?.pack?.price
     : upi?.coinPacks.find(p => p.id === 'coins_100') &&

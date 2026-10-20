@@ -268,9 +268,9 @@ export const StoreBilling = {
    *  - 'play': Google Play only;  - 'none': nothing available.
    */
   async route(playReady: boolean): Promise<'choice' | 'upi' | 'play' | 'none'> {
-    const cfg = upi ?? (await loadUpiConfig());
-    if (playReady && cfg?.enabled && cfg.userChoiceBilling) return 'choice';
-    if (cfg?.enabled) return 'upi';
+    upi = (await loadUpiConfig(true)) ?? upi;
+    if (playReady && upi?.enabled && upi.userChoiceBilling) return 'choice';
+    if (upi?.enabled) return 'upi';
     return playReady ? 'play' : 'none';
   },
 

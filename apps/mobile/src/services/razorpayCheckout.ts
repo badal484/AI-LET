@@ -17,6 +17,7 @@ export interface UpiConfig {
   enabled: boolean;
   keyId: string | null;
   userChoiceBilling: boolean;
+  eligibleForTrial?: boolean;
   premium: { firstDayMinorUnits: number; monthlyMinorUnits: number };
   coinPacks: Array<{ id: string; coins: number; amountMinorUnits: number }>;
 }
