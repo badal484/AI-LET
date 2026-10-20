@@ -9,6 +9,7 @@ import { EntitlementService } from '../billing/entitlements/EntitlementService.j
 import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
 import { istMidnight, REAL_USERS, TEST_USERS } from './overview.service.js';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
+import { cancelSubscriptionRemote } from '../billing/razorpay/razorpay.service.js';
 
 /** Users screen: find a user, see their plan and usage, and help them. Every change is audited. */
 
@@ -349,19 +350,49 @@ export async function grantPremium(adminId: string, userId: string, days: number
 }
 
 /**
- * Ends Premium that an admin gave (provider MOCK). Paid Google Play subscriptions can't be ended from
- * here — Google owns those; the user cancels in the Play Store (or refund it in the Play Console).
+ * Ends Premium for a user:
+ * - If MOCK (admin-given): expires immediately.
+ * - If RAZORPAY: cancels the subscription on Razorpay to prevent future debits, and expires immediately.
+ * - If GOOGLE_PLAY: expires locally (Google Play renewals must be cancelled in Play Console / by user).
  */
 export async function removePremium(adminId: string, userId: string, reason: string) {
   const now = new Date();
-  const res = await prisma.billingSubscription.updateMany({
-    where: { userId, provider: 'MOCK', currentPeriodEnd: { gt: now }, status: { in: ['ACTIVE', 'TRIALING', 'GRACE_PERIOD', 'CANCELLED'] } },
-    data: { status: 'EXPIRED', currentPeriodEnd: now, cancelAtPeriodEnd: true },
+  const subs = await prisma.billingSubscription.findMany({
+    where: {
+      userId,
+      currentPeriodEnd: { gt: now },
+      status: { in: ['ACTIVE', 'TRIALING', 'GRACE_PERIOD', 'CANCELLED'] },
+      plan: { code: { not: 'FREE' } },
+    },
   });
-  if (!res.count) throw new BadRequestError('No admin-given Premium to remove. Paid Google Play subscriptions are cancelled by the user or refunded in the Play Console.');
+
+  if (subs.length === 0) {
+    throw new BadRequestError('This user has no active Premium subscription to remove.');
+  }
+
+  let rzpCancelled = 0;
+  for (const sub of subs) {
+    if (sub.provider === 'RAZORPAY' && sub.providerSubscriptionId) {
+      await cancelSubscriptionRemote(sub.providerSubscriptionId);
+      rzpCancelled++;
+    }
+  }
+
+  await prisma.billingSubscription.updateMany({
+    where: { id: { in: subs.map((s) => s.id) } },
+    data: {
+      status: 'CANCELLED',
+      currentPeriodEnd: now,
+      endedAt: now,
+      cancelledAt: now,
+      cancelAtPeriodEnd: true,
+    },
+  });
+
   await EntitlementService.invalidateUserEntitlementsCache(userId);
-  await audit(adminId, 'console.user.premium_removed', userId, { reason, ended: res.count });
-  return { ok: true, ended: res.count };
+  await audit(adminId, 'console.user.premium_removed', userId, { reason, ended: subs.length, rzpCancelled });
+  Realtime.publish(userId, { type: 'billing.updated' });
+  return { ok: true, ended: subs.length, rzpCancelled };
 }
 
 export async function addMessages(adminId: string, userId: string, amount: number, reason: string) {

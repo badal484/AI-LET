@@ -399,6 +399,16 @@ export async function cancelPremium(userId: string) {
   return { premiumUntil: updated.currentPeriodEnd.toISOString() };
 }
 
+/** Cancels the remote subscription immediately on Razorpay (used by admin or immediate revocation). */
+export async function cancelSubscriptionRemote(providerSubId: string) {
+  if (!razorpayConfigured()) return;
+  try {
+    await rzp('POST', `/subscriptions/${providerSubId}/cancel`, { cancel_at_cycle_end: 0 });
+  } catch (err) {
+    logger.warn(`Razorpay subscription cancel failed for ${providerSubId}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 // ── Webhooks ─────────────────────────────────────────────────────────────────
 
 interface RzpWebhook {

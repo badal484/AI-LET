@@ -54,11 +54,11 @@ type Action = 'premium' | 'removePremium' | 'messages' | 'reset' | 'signOut' | '
 const ACTIONS: Record<Action, { title: string; amount?: { label: string; def: string; max: number }; note?: string; danger?: boolean; path: string; done: string }> = {
   premium: { title: 'Give Premium for free', amount: { label: 'Days of Premium', def: '30', max: 365 }, path: 'premium', done: 'Premium given.' },
   removePremium: {
-    title: 'Remove Premium you gave',
-    note: 'Ends Premium that an admin gave. Paid Google Play subscriptions are cancelled by the user in the Play Store, or refunded in the Play Console.',
+    title: 'Cancel / Remove Premium',
+    note: 'Immediately revokes Premium for this user. If they paid via UPI AutoPay, it cancels future debits on Razorpay too.',
     danger: true,
     path: 'premium/remove',
-    done: 'Premium removed.',
+    done: 'Premium cancelled & removed.',
   },
   messages: { title: 'Add extra messages', amount: { label: 'Number of messages', def: '100', max: 10000 }, path: 'messages', done: 'Messages added.' },
   reset: { title: "Reset today's message limit", note: 'They get today\'s free messages back right away.', path: 'reset-today', done: "Today's limit reset." },
@@ -164,13 +164,12 @@ export default function UserPage() {
 
   const now = new Date();
   const active = u.subscriptions.find((s) => new Date(s.periodEnd) > now && ['ACTIVE', 'TRIALING', 'GRACE_PERIOD', 'CANCELLED'].includes(s.status));
-  const adminGiven = u.subscriptions.some((s) => s.provider === 'MOCK' && new Date(s.periodEnd) > now && s.status !== 'EXPIRED');
   const paid = u.purchases.filter((p) => p.status === 'SUCCEEDED').reduce((t, p) => t + p.amount, 0);
   const chart = u.activity.map((d) => ({ ...d, date: shortDay(d.day) }));
   const cfg = action ? ACTIONS[action] : null;
 
   const more: Array<{ a: Action; label: string; icon: ReactNode; show: boolean; danger?: boolean }> = [
-    { a: 'removePremium', label: 'Remove Premium you gave', icon: <XCircle size={16} />, show: adminGiven },
+    { a: 'removePremium', label: 'Cancel / Remove Premium', icon: <XCircle size={16} />, show: Boolean(active), danger: true },
     { a: 'reset', label: "Reset today's limit", icon: <RotateCcw size={16} />, show: true },
     { a: 'signOut', label: 'Sign out of all devices', icon: <LogOut size={16} />, show: true },
     { a: 'delete', label: 'Delete account', icon: <Trash2 size={16} />, show: !u.deletion, danger: true },
