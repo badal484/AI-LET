@@ -33,7 +33,21 @@ export interface RestorePurchasesInput {
   deviceAccountId?: string;
 }
 
+export interface AllowanceInfo {
+  premium: boolean;
+  used: number;
+  limit: number;
+  credits?: number;
+  resetsAt: string;
+  enforced: boolean;
+}
+
 export const billingApi = {
+  async getAllowance(): Promise<AllowanceInfo> {
+    const response = await api.get('/billing/allowance');
+    return response.data.data;
+  },
+
   async getPaywallConfig(): Promise<PaywallConfig> {
     const response = await api.get('/billing/paywall/config');
     return response.data.data;

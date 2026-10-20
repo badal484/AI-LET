@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../navigation/types.js';
 import { ConversationApi } from '../../services/api/conversationApi.js';
@@ -308,6 +309,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     queryFn: () => billingApi.getMyBillingState(),
   });
 
+  // 3b. Fetch Message Allowance & Limits
+  const { data: allowance, refetch: refetchAllowance } = useQuery({
+    queryKey: ['billing', 'allowance'],
+    queryFn: () => billingApi.getAllowance(),
+    staleTime: 15_000,
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchAllowance();
+      refetchBilling();
+    }, [refetchAllowance, refetchBilling]),
+  );
+
   // The gifts for this character (💋 for romance characters), prices, and their coins — fetched when the sheet opens.
   const { data: giftCatalog, refetch: refetchGifts } = useQuery({
     queryKey: ['gifts', effectiveConvId],
@@ -317,6 +332,31 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   });
   const walletCoins = giftCatalog?.coins ?? billingState?.creditWallet?.availableBalance ?? 0;
   const giftsToShow: GiftItem[] = giftCatalog?.gifts ?? VIRTUAL_GIFTS.map(({ id, name, icon, coins }) => ({ id, name, icon, coins }));
+
+  const subStatus = String(billingState?.subscription?.status ?? '').toLowerCase();
+  const isPremiumUser =
+    Boolean(allowance?.premium) ||
+    (Boolean(billingState?.subscription) && ['active', 'trialing', 'grace_period', 'cancelled'].includes(subStatus));
+  const isLimitsEnforced = allowance?.enforced ?? true;
+
+  const canSendMessage = useCallback(() => {
+    if (!isLimitsEnforced) return true;
+    if (isPremiumUser) {
+      if (allowance && allowance.limit > 0 && allowance.used >= allowance.limit) {
+        return walletCoins >= 10;
+      }
+      return true;
+    }
+    // Free user
+    if (allowance) {
+      const freeRemaining = Math.max(0, allowance.limit - allowance.used);
+      if (freeRemaining > 0) return true;
+      if (walletCoins >= 10) return true;
+      return false;
+    }
+    if (isPremiumUser) return true;
+    return true;
+  }, [isLimitsEnforced, isPremiumUser, allowance, walletCoins]);
 
   // 4. Fetch Messages with Infinite Cursor Pagination
   const {
@@ -637,11 +677,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     }
   };
 
-  // 6. Send Message Handler — never blocked: the message shows instantly and is stored at once.
+  // 6. Send Message Handler
   // `requestId`: a gift paid on the server is sent with the same id, so the server knows it was paid for.
   const handleSendMessage = async (textToSend?: string, requestId?: string) => {
     const content = (textToSend || inputText).trim();
     if (!content || !effectiveConvId) return;
+
+    // Pre-check message quota: if user is paywalled, open Paywall directly
+    // without creating a temporary ghost bubble or clearing their input text.
+    if (!requestId && !canSendMessage()) {
+      refetchAllowance();
+      refetchBilling();
+      navigation.navigate('Paywall', {
+        reason: isPremiumUser ? 'fair_use' : 'free_limit',
+        resetsAt: allowance?.resetsAt,
+      });
+      return;
+    }
+
     if (!textToSend) setInputText('');
     setSendError(null);
     const replying = replyTarget ?? undefined;

@@ -34,6 +34,7 @@ import { openAppLink } from '../navigation/openAppLink.js';
 import { Realtime } from '../services/realtime/RealtimeClient.js';
 import { useTypingStore } from '../stores/typingStore.js';
 import { useBillingStore } from '../stores/billingStore.js';
+import { billingApi } from '../services/api/billingApi.js';
 import { useNotificationStore } from '../stores/notificationStore.js';
 import { CampaignMessages } from '../components/CampaignMessages.js';
 import { AppAlert } from '../components/common/AppDialog.js';
@@ -150,6 +151,10 @@ export const AppContent: React.FC = () => {
     if (status === 'authenticated' && userId) {
       Analytics.identify(userId);
       setCrashUser(userId);
+      void queryClient.prefetchQuery({
+        queryKey: ['billing', 'allowance'],
+        queryFn: () => billingApi.getAllowance(),
+      });
       // Keep the profile's timezone in sync with the phone: quiet hours, "good morning" and
       // "today" on the server all depend on it.
       const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
