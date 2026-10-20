@@ -36,17 +36,24 @@ const limits = async () => ({ free: await getSetting('limits.freeDaily'), premiu
 
 export const limitsEnforced = async (): Promise<boolean> => {
   if (process.env['BILLING_ENFORCE_LIMITS'] !== undefined) {
-    return process.env['BILLING_ENFORCE_LIMITS'] === 'true';
+    return process.env['BILLING_ENFORCE_LIMITS'] !== 'false';
   }
-  return Boolean(await getSetting('limits.enforce'));
+  const setting = await getSetting('limits.enforce');
+  return setting !== false;
 };
+
+/** The next midnight in Indian Standard Time (when the calendar day ends at 12:00 AM). */
+export function nextMidnightIst(now = new Date()): Date {
+  const ist = new Date(now.getTime() + 330 * 60_000);
+  const nextMidnightUtc = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + 1) - 330 * 60_000;
+  return new Date(nextMidnightUtc);
+}
 
 /** The user's day in India (resets at midnight IST). */
 function istDay(now = new Date()): { key: string; resetsAt: Date } {
   const ist = new Date(now.getTime() + 330 * 60_000);
   const key = ist.toISOString().slice(0, 10);
-  const nextMidnightIst = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + 1) - 330 * 60_000;
-  return { key, resetsAt: new Date(nextMidnightIst) };
+  return { key, resetsAt: nextMidnightIst(now) };
 }
 
 /** What one message past the daily limit costs (owner's decision, 19 Oct 2026: 2 coins ≈ ₹0.65 earned, above AI cost). */

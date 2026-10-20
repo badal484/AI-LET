@@ -8,7 +8,7 @@ import { publicOrigin } from '../../../infrastructure/email/email.js';
 import { Realtime } from '../../../infrastructure/realtime/realtime.js';
 import { EntitlementService } from '../entitlements/EntitlementService.js';
 import { CreditWalletService } from '../credits/CreditWalletService.js';
-import { hasPremium } from '../messageAllowance.js';
+import { hasPremium, nextMidnightIst } from '../messageAllowance.js';
 import { getSetting } from '../../console/appSettings.js';
 import { isRomanceCharacter, isTeen } from '../../users/ageGate.js';
 import { COIN_PACKS } from '../providers/GooglePlayBillingProvider.js';
@@ -182,9 +182,16 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
   if (!plan) throw new NotFoundError('Premium is not set up yet.');
 
   const eligibleForTrial = !(await hasUsedTrial(userId));
-  const startAt = eligibleForTrial ? Math.floor(Date.now() / 1000) + 86_400 : Math.floor(Date.now() / 1000);
+  const midnight = nextMidnightIst();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const midnightSec = Math.floor(midnight.getTime() / 1000);
+  // Razorpay requires start_at to be at least 15 minutes (900s) in the future.
+  // Covers the whole of today; from tomorrow, the monthly subscription begins.
+  const startAt = eligibleForTrial
+    ? (midnightSec - nowSec >= 900 ? midnightSec : midnightSec + 86_400)
+    : nowSec;
   const addons = eligibleForTrial
-    ? [{ item: { name: 'Loveek Premium · first day', amount: RAZORPAY_PREMIUM.firstDayMinorUnits, currency: 'INR' } }]
+    ? [{ item: { name: 'Loveek Premium · today', amount: RAZORPAY_PREMIUM.firstDayMinorUnits, currency: 'INR' } }]
     : [];
 
   const planId = await razorpayCall('creating the plan', () => premiumPlanId());
@@ -286,7 +293,8 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
     throw new BadRequestError('This payment belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
   }
   const isTrial = (local.metadata as { isTrial?: boolean } | null)?.isTrial ?? true;
-  const firstCharge = sec(remote.charge_at ?? remote.start_at) ?? (isTrial ? new Date(Date.now() + 86_400_000) : new Date(Date.now() + 30 * 86_400_000));
+  const trialEnd = nextMidnightIst();
+  const firstCharge = sec(remote.charge_at ?? remote.start_at) ?? (isTrial ? trialEnd : new Date(Date.now() + 30 * 86_400_000));
   const googleToken = (local.metadata as { googleToken?: string } | null)?.googleToken;
   let txId = '';
   try {
@@ -296,10 +304,10 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
         data: {
           status: isTrial ? 'TRIALING' : 'ACTIVE',
           trialStart: isTrial ? new Date() : null,
-          trialEnd: isTrial ? firstCharge : null,
+          trialEnd: isTrial ? trialEnd : null,
           currentPeriodStart: new Date(),
           currentPeriodEnd: isTrial
-            ? new Date(firstCharge.getTime() + CHARGE_GRACE_MS)
+            ? trialEnd
             : new Date(Math.max(firstCharge.getTime(), Date.now() + 28 * 86_400_000) + CHARGE_GRACE_MS),
           cancelAtPeriodEnd: false,
           cancelledAt: null,

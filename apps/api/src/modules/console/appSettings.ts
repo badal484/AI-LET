@@ -12,7 +12,7 @@ export const SETTINGS = {
   'limits.enforce': {
     label: 'Message limits on',
     type: 'boolean',
-    default: () => (process.env['BILLING_ENFORCE_LIMITS'] ? process.env['BILLING_ENFORCE_LIMITS'] === 'true' : process.env['NODE_ENV'] === 'production'),
+    default: () => (process.env['BILLING_ENFORCE_LIMITS'] !== undefined ? process.env['BILLING_ENFORCE_LIMITS'] !== 'false' : true),
   },
   // No free plan (owner's decision, 15 Oct 2026): chatting starts with Premium's ₹1 first day. Crisis and
   // emergency messages always go through. Set a number here to bring back a free daily allowance.
