@@ -193,7 +193,7 @@ export class ChatStreamClient {
                       ? 'Verify your email to keep chatting today.'
                       : parsed.reason === 'service_busy'
                         ? 'Replies are paused for a little while. Please try again later.'
-                        : 'Start Premium to keep chatting — your first day is ₹1.',
+                        : 'Start Premium to keep chatting.',
                 retryable: true,
               });
               break;

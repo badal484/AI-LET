@@ -611,9 +611,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               // Refused before it was stored (blocked, rate-limited, offline): never lose the text.
               setOptimisticMessages(prev => prev.filter(m => m.clientRequestId !== opts.clientRequestId));
               if (opts.restoreOnReject) setInputText(prev => (prev.trim() ? prev : opts.content));
-              setSendError(payload.errorMessage);
-              if (payload.errorCode === 'LIMIT_REACHED') {
-                navigation.navigate('Paywall', { reason: 'free_limit' } as never);
+              if (payload.errorCode !== 'LIMIT_REACHED') {
+                setSendError(payload.errorMessage);
               }
             } else {
               setReplyNotice({ kind: 'failed', text: `Couldn't reach ${characterName}. Tap to try again.` });
