@@ -186,13 +186,16 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
   const nowSec = Math.floor(Date.now() / 1000);
   const midnightSec = Math.floor(midnight.getTime() / 1000);
   // Razorpay requires start_at to be at least 15 minutes (900s) in the future.
-  // Covers the whole of today; from tomorrow, the monthly subscription begins.
+  // For trial users: ₹1 today, monthly ₹499 starts at next midnight IST.
+  // For regular subscribers: ₹499 today (1st month), recurring ₹499 starts 30 days later.
+  // (Both use upfront addons so Razorpay charges the exact amount immediately instead of showing a confusing ₹5 mandate token).
   const startAt = eligibleForTrial
     ? (midnightSec - nowSec >= 900 ? midnightSec : midnightSec + 86_400)
-    : nowSec;
+    : nowSec + 30 * 86_400;
+
   const addons = eligibleForTrial
     ? [{ item: { name: 'Loveek Premium · today', amount: RAZORPAY_PREMIUM.firstDayMinorUnits, currency: 'INR' } }]
-    : [];
+    : [{ item: { name: 'Loveek Premium · 1st month', amount: RAZORPAY_PREMIUM.monthlyMinorUnits, currency: 'INR' } }];
 
   const planId = await razorpayCall('creating the plan', () => premiumPlanId());
   const sub = await razorpayCall('starting Premium', () => rzp<RzpSubscription>('POST', '/subscriptions', {
@@ -201,7 +204,7 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
     quantity: 1,
     customer_notify: 1,
     start_at: startAt,
-    ...(addons.length > 0 && { addons }),
+    addons,
     notes: { userId, app: 'loveek' },
   }));
   await prisma.billingSubscription.create({
@@ -222,6 +225,7 @@ export async function startPremium(userId: string, opts: { googleToken?: string 
     firstDayMinorUnits: eligibleForTrial ? RAZORPAY_PREMIUM.firstDayMinorUnits : RAZORPAY_PREMIUM.monthlyMinorUnits,
     monthlyMinorUnits: RAZORPAY_PREMIUM.monthlyMinorUnits,
     chargesFrom: new Date(startAt * 1000).toISOString(),
+    isTrial: eligibleForTrial,
     logoUrl: logoUrl(),
   };
 }
