@@ -110,8 +110,10 @@ async function queryUsers(params: ListParams) {
          ) dv ON true
         WHERE ${where}
      )
-     SELECT b.id, b.name, b.email, b.status, to_char(b.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') joined,
-            to_char(b.last_active_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') "lastActive", b.plan, b.gender, b.language, b.onboarded,
+     SELECT b.id, b.name, b.email, b.status,
+            to_char(b.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') joined,
+            to_char(b.last_active_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') "lastActive",
+            b.plan, b.gender, b.language, b.onboarded,
             b."signIn", b."hasPassword", b.platform, b."appVersion", b.paise, b.characters, b."messagesToday", b."messagesTotal", b.test,
             count(*) OVER ()::int total
        FROM base b
