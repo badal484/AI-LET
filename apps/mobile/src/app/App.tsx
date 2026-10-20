@@ -35,6 +35,7 @@ import { Realtime } from '../services/realtime/RealtimeClient.js';
 import { useTypingStore } from '../stores/typingStore.js';
 import { useBillingStore } from '../stores/billingStore.js';
 import { billingApi } from '../services/api/billingApi.js';
+import { loadUpiConfig } from '../services/razorpayCheckout.js';
 import { useNotificationStore } from '../stores/notificationStore.js';
 import { CampaignMessages } from '../components/CampaignMessages.js';
 import { AppAlert } from '../components/common/AppDialog.js';
@@ -151,6 +152,7 @@ export const AppContent: React.FC = () => {
     if (status === 'authenticated' && userId) {
       Analytics.identify(userId);
       setCrashUser(userId);
+      void loadUpiConfig();
       void queryClient.prefetchQuery({
         queryKey: ['billing', 'allowance'],
         queryFn: () => billingApi.getAllowance(),

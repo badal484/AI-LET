@@ -23,6 +23,7 @@ import {
   loadUpiConfig,
   payWithRazorpay,
   rupees,
+  type UpiConfig,
 } from '../../services/razorpayCheckout.js';
 import { tapFeedback } from '../../utils/motion.js';
 import { thumb } from '../../utils/thumb.js';
@@ -137,10 +138,13 @@ export const PaywallScreen: React.FC = () => {
   // new photo or a different character shows without an app update).
   const [face, setFace] = useState<{ name: string; uri: string } | null>(null);
   const [sides, setSides] = useState<string[]>([]);
+  const [upi, setUpi] = useState<UpiConfig | null>(() => StoreBilling.upiConfig());
+
   useEffect(() => {
     let alive = true;
     void loadUpiConfig(true).then(c => {
       if (!alive) return;
+      if (c) setUpi(c);
       setFace(c?.face ? { name: c.face.name, uri: c.face.avatarUrl } : null);
       setSides((c?.sideFaces ?? []).map(f => f.avatarUrl));
     });
@@ -176,16 +180,19 @@ export const PaywallScreen: React.FC = () => {
   }, [face, sides, catalog, payRoute, toTop]);
 
   // Prices: Google Play's own when it sells; otherwise the server's (Razorpay).
-  const upi = StoreBilling.upiConfig();
   const playOffer = catalog?.offers.monthly;
   const viaPlay = payRoute === 'choice' || payRoute === 'play';
+  // A user who already has or had a subscription record (active, trialed, or cancelled) is never eligible for ₹1 trial.
+  const hasPriorSubscription = Boolean(subscription);
+  const eligibleForTrial =
+    upi?.eligibleForTrial !== undefined ? upi.eligibleForTrial : !hasPriorSubscription;
+  const firstIsTrial = viaPlay ? Boolean(playOffer?.trial) : eligibleForTrial;
   const first = viaPlay
     ? (playOffer?.trial?.price ?? playOffer?.price ?? '₹1')
     : rupees(upi?.premium.firstDayMinorUnits ?? 100);
   const monthly = viaPlay
     ? (playOffer?.price ?? '₹499')
     : rupees(upi?.premium.monthlyMinorUnits ?? 49_900);
-  const firstIsTrial = viaPlay ? Boolean(playOffer?.trial) : Boolean(upi?.eligibleForTrial ?? true);
   const packPrice = viaPlay
     ? catalog?.pack?.price
     : upi?.coinPacks.find(p => p.id === 'coins_100') &&

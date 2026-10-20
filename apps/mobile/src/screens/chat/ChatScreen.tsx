@@ -333,10 +333,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const walletCoins = giftCatalog?.coins ?? billingState?.creditWallet?.availableBalance ?? 0;
   const giftsToShow: GiftItem[] = giftCatalog?.gifts ?? VIRTUAL_GIFTS.map(({ id, name, icon, coins }) => ({ id, name, icon, coins }));
 
-  const subStatus = String(billingState?.subscription?.status ?? '').toLowerCase();
-  const isPremiumUser =
-    Boolean(allowance?.premium) ||
-    (Boolean(billingState?.subscription) && ['active', 'trialing', 'grace_period', 'cancelled'].includes(subStatus));
+  const sub = billingState?.subscription;
+  const subStatus = String(sub?.status ?? '').toLowerCase();
+  const isSubActive =
+    Boolean(sub) &&
+    ['active', 'trialing'].includes(subStatus) &&
+    new Date(sub!.currentPeriodEnd).getTime() > Date.now();
+
+  const isPremiumUser = Boolean(allowance?.premium) || isSubActive;
   const isLimitsEnforced = allowance?.enforced ?? true;
 
   const canSendMessage = useCallback(() => {
@@ -347,15 +351,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       }
       return true;
     }
-    // Free user
+    // Free user: strictly requires available daily messages or coins
     if (allowance) {
       const freeRemaining = Math.max(0, allowance.limit - allowance.used);
       if (freeRemaining > 0) return true;
       if (walletCoins >= 10) return true;
       return false;
     }
-    if (isPremiumUser) return true;
-    return true;
+    // If not verified premium, block send by default (Option A: 0 free messages)
+    return false;
   }, [isLimitsEnforced, isPremiumUser, allowance, walletCoins]);
 
   // 4. Fetch Messages with Infinite Cursor Pagination
