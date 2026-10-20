@@ -29,7 +29,7 @@ const fmtDate = (d?: string | null) =>
     ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : '';
 
-export const SubscriptionManagementScreen: React.FC = () => {
+export const SubscriptionManagementScreen: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
   const navigation = useNavigation<any>();
   const { subscription, creditWallet, isLoading, loadBillingState, restorePurchases } =
     useBillingStore();
@@ -41,9 +41,15 @@ export const SubscriptionManagementScreen: React.FC = () => {
   }, [loadBillingState]);
 
   const status = String(subscription?.status ?? '').toLowerCase();
-  const isPremium = ['active', 'trialing', 'grace_period', 'past_due'].includes(status);
+  const periodEndMs = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).getTime()
+    : 0;
+  const isPeriodActive = periodEndMs > Date.now();
+  const isPremium =
+    ['active', 'trialing', 'grace_period', 'past_due'].includes(status) ||
+    (status === 'cancelled' && isPeriodActive);
   const viaPromo = String(subscription?.provider ?? '') === 'promo';
-  const ending = Boolean(subscription?.cancelAtPeriodEnd) && !viaPromo;
+  const ending = (Boolean(subscription?.cancelAtPeriodEnd) || status === 'cancelled') && !viaPromo;
   const periodEnd = fmtDate(subscription?.currentPeriodEnd);
   const coins = creditWallet?.availableBalance ?? 0;
 
@@ -176,13 +182,15 @@ export const SubscriptionManagementScreen: React.FC = () => {
         />
       </View>
       <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size="sm"
-          variant="surface"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Back"
-        />
+        {!isTab && (
+          <IconButton
+            icon="arrow-left"
+            size="sm"
+            variant="surface"
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Back"
+          />
+        )}
         <Text style={styles.title}>Your Premium</Text>
       </View>
 

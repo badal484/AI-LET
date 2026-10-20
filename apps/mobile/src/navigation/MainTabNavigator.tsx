@@ -4,7 +4,7 @@ import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/b
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/explore/HomeScreen.js';
 import { ConversationsScreen } from '../screens/conversations/ConversationsScreen.js';
-import { PaywallScreen } from '../screens/subscription/PaywallScreen.js';
+import { PremiumTabScreen } from '../screens/subscription/PremiumTabScreen.js';
 import { ProfileScreen } from '../screens/profile/ProfileScreen.js';
 import type { MainTabParamList } from './types.js';
 import { Icon, IconName } from '../components/common/Icon.js';
@@ -134,7 +134,7 @@ export const MainTabNavigator: React.FC = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Conversations" component={ConversationsScreen} />
-      <Tab.Screen name="BuyPro" component={PaywallScreen} />
+      <Tab.Screen name="BuyPro" component={PremiumTabScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

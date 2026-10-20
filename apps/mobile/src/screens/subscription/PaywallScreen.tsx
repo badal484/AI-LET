@@ -98,13 +98,14 @@ export const PaywallScreen: React.FC = () => {
     useCallback(() => {
       userScrolled.current = false;
       toTop();
+      void loadBillingState();
       const t1 = setTimeout(toTop, 50);
       const t2 = setTimeout(toTop, 200);
       return () => {
         clearTimeout(t1);
         clearTimeout(t2);
       };
-    }, [toTop]),
+    }, [toTop, loadBillingState]),
   );
 
   // Typing a code: lift the page above the keyboard (and hide the pay bar meanwhile) so the box stays visible.
@@ -121,9 +122,15 @@ export const PaywallScreen: React.FC = () => {
     };
   }, []);
 
+  const status = String(subscription?.status ?? '').toLowerCase();
+  const periodEndMs = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).getTime()
+    : 0;
+  const isPeriodActive = periodEndMs > Date.now();
   const isPremium = Boolean(
     subscription &&
-    ['active', 'trialing', 'grace_period'].includes(String(subscription.status).toLowerCase()),
+    (['active', 'trialing', 'grace_period', 'past_due'].includes(status) ||
+      (status === 'cancelled' && isPeriodActive)),
   );
 
   // The face on top: one character chosen in admin Settings, with their photo as it is now (fetched fresh, so a
