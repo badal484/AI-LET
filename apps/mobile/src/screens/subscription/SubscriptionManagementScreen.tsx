@@ -16,7 +16,7 @@ import {
 import { PromoCodeBox } from '../../components/PromoCodeBox.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
-import { cancelUpiPremium } from '../../services/razorpayCheckout.js';
+import { cancelUpiPremium, getCachedUpiConfig, rupees } from '../../services/razorpayCheckout.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 
 /**
@@ -48,6 +48,12 @@ export const SubscriptionManagementScreen: React.FC<{ isTab?: boolean }> = ({ is
   const isPremium =
     ['active', 'trialing', 'grace_period', 'past_due'].includes(status) ||
     (status === 'cancelled' && isPeriodActive);
+  const upi = StoreBilling.upiConfig() ?? getCachedUpiConfig();
+  const hasPriorSubscription = Boolean(subscription);
+  const eligibleForTrial = Boolean(upi?.eligibleForTrial) && !hasPriorSubscription;
+  const firstPrice = rupees(upi?.premium?.firstDayMinorUnits ?? 100);
+  const monthlyPrice = rupees(upi?.premium?.monthlyMinorUnits ?? 49_900);
+  const ctaText = eligibleForTrial ? `Start for ${firstPrice}` : `Subscribe · ${monthlyPrice}/mo`;
   const viaPromo = String(subscription?.provider ?? '') === 'promo';
   const ending = (Boolean(subscription?.cancelAtPeriodEnd) || status === 'cancelled') && !viaPromo;
   const periodEnd = fmtDate(subscription?.currentPeriodEnd);
@@ -226,7 +232,7 @@ export const SubscriptionManagementScreen: React.FC<{ isTab?: boolean }> = ({ is
                     style={({ pressed }) => [styles.heroCta, pressed && styles.pressed]}
                     accessibilityRole="button"
                   >
-                    <Text style={styles.heroCtaText}>Start for ₹1</Text>
+                    <Text style={styles.heroCtaText}>{ctaText}</Text>
                   </Pressable>
                 )}
               </>

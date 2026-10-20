@@ -15,6 +15,8 @@ import type { RootStackParamList } from '../../navigation/types.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { CoinStoreSheet } from '../../components/billing/CoinStoreSheet.js';
+import { StoreBilling } from '../../services/storeBilling.js';
+import { getCachedUpiConfig, rupees } from '../../services/razorpayCheckout.js';
 
 /**
  * Profile: who you are, your plan, and four settings — nothing else.
@@ -46,7 +48,6 @@ interface Allowance {
   enforced: boolean;
 }
 
-const ACTIVE = ['active', 'trialing', 'grace_period', 'cancelled'];
 const date = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
 export const ProfileScreen: React.FC = () => {
@@ -80,7 +81,20 @@ export const ProfileScreen: React.FC = () => {
   const characters = chats?.items?.length ?? 0;
 
   const status = String(subscription?.status ?? '').toLowerCase();
-  const premium = Boolean(subscription && ACTIVE.includes(status)) || Boolean(allowance?.premium);
+  const periodEndMs = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).getTime()
+    : 0;
+  const isPeriodActive = periodEndMs > Date.now();
+  const premium = Boolean(
+    subscription &&
+    (['active', 'trialing', 'grace_period', 'past_due'].includes(status) ||
+      (status === 'cancelled' && isPeriodActive)),
+  ) || Boolean(allowance?.premium);
+  const upi = StoreBilling.upiConfig() ?? getCachedUpiConfig();
+  const hasPriorSubscription = Boolean(subscription);
+  const eligibleForTrial = Boolean(upi?.eligibleForTrial) && !hasPriorSubscription;
+  const monthlyPrice = rupees(upi?.premium?.monthlyMinorUnits ?? 49_900);
+  const planCtaText = eligibleForTrial ? 'Start ₹1' : `${monthlyPrice}/mo`;
   const trial = status === 'trialing';
   const cancelling = Boolean(subscription?.cancelAtPeriodEnd) || status === 'cancelled';
   const left = allowance ? Math.max(0, allowance.limit - allowance.used) : null;
@@ -191,7 +205,7 @@ export const ProfileScreen: React.FC = () => {
               <Icon name="arrow-right" size={18} color="#FFFFFF" />
             ) : (
               <View style={styles.planCta}>
-                <Text style={styles.planCtaText}>Start ₹1</Text>
+                <Text style={styles.planCtaText}>{planCtaText}</Text>
               </View>
             )}
           </View>

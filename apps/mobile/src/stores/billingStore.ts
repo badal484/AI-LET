@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   BillingPlan,
   BillingSubscription,
@@ -44,6 +45,8 @@ interface BillingState {
   resetPurchaseState: () => void;
 }
 
+const BILLING_STORAGE_KEY = '@lovira/billing_subscription';
+
 export const useBillingStore = create<BillingState>((set, get) => ({
   paywallConfig: null,
   plans: [],
@@ -74,6 +77,12 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         plans,
         isLoading: false,
       });
+
+      if (billingState.subscription) {
+        void AsyncStorage.setItem(BILLING_STORAGE_KEY, JSON.stringify(billingState.subscription)).catch(() => undefined);
+      } else {
+        void AsyncStorage.removeItem(BILLING_STORAGE_KEY).catch(() => undefined);
+      }
     } catch (err: any) {
       set({
         isLoading: false,
@@ -218,3 +227,15 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     set({ purchaseState: 'idle', errorMessage: null });
   },
 }));
+
+// Immediately hydrate cached subscription on boot so eligibility checks don't default to unverified
+void AsyncStorage.getItem(BILLING_STORAGE_KEY).then(raw => {
+  if (raw) {
+    try {
+      const sub = JSON.parse(raw);
+      if (sub && typeof sub === 'object') {
+        useBillingStore.setState({ subscription: sub });
+      }
+    } catch {}
+  }
+}).catch(() => undefined);

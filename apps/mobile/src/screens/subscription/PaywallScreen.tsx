@@ -21,6 +21,7 @@ import { Shine } from '../../components/common/Shine.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 import {
   loadUpiConfig,
+  getCachedUpiConfig,
   payWithRazorpay,
   rupees,
   type UpiConfig,
@@ -138,11 +139,11 @@ export const PaywallScreen: React.FC = () => {
   // new photo or a different character shows without an app update).
   const [face, setFace] = useState<{ name: string; uri: string } | null>(null);
   const [sides, setSides] = useState<string[]>([]);
-  const [upi, setUpi] = useState<UpiConfig | null>(() => StoreBilling.upiConfig());
+  const [upi, setUpi] = useState<UpiConfig | null>(() => getCachedUpiConfig() ?? StoreBilling.upiConfig());
 
   useEffect(() => {
     let alive = true;
-    void loadUpiConfig(true).then(c => {
+    void loadUpiConfig().then(c => {
       if (!alive) return;
       if (c) setUpi(c);
       setFace(c?.face ? { name: c.face.name, uri: c.face.avatarUrl } : null);
@@ -184,11 +185,13 @@ export const PaywallScreen: React.FC = () => {
   const viaPlay = payRoute === 'choice' || payRoute === 'play';
   // A user who already has or had a subscription record (active, trialed, or cancelled) is never eligible for ₹1 trial.
   const hasPriorSubscription = Boolean(subscription);
-  const eligibleForTrial =
-    upi?.eligibleForTrial !== undefined ? upi.eligibleForTrial : !hasPriorSubscription;
-  const firstIsTrial = viaPlay ? Boolean(playOffer?.trial) : eligibleForTrial;
+  // Trial eligibility: STRICTLY requires explicit confirmation that eligibleForTrial is true AND no prior subscription.
+  // Must NEVER default to true during loading; standard price is ₹499/month.
+  const eligibleForTrial = Boolean(upi?.eligibleForTrial) && !hasPriorSubscription;
+  // If the user is not eligible for trial, trial is NEVER offered (even if Google Play catalog lists an intro offer).
+  const firstIsTrial = eligibleForTrial && (viaPlay ? Boolean(playOffer?.trial) : true);
   const first = viaPlay
-    ? (playOffer?.trial?.price ?? playOffer?.price ?? '₹1')
+    ? (playOffer?.trial?.price ?? '₹1')
     : rupees(upi?.premium.firstDayMinorUnits ?? 100);
   const monthly = viaPlay
     ? (playOffer?.price ?? '₹499')
@@ -220,14 +223,23 @@ export const PaywallScreen: React.FC = () => {
     setBusy(true);
     let r: { ok: boolean; message?: string };
     if (mode === 'pack') {
-      r = viaPlay
-        ? await StoreBilling.buyPack()
-        : await payWithRazorpay({ kind: 'coins', packId: 'coins_100' });
+      if (viaPlay) {
+        r = await StoreBilling.buyPack();
+        if (!r.ok && upi?.enabled && (r.message?.includes('Google Play') || !catalog?.connected)) {
+          r = await payWithRazorpay({ kind: 'coins', packId: 'coins_100' });
+        }
+      } else {
+        r = await payWithRazorpay({ kind: 'coins', packId: 'coins_100' });
+      }
     } else {
-      r =
-        viaPlay && playOffer
-          ? await StoreBilling.buySubscription(playOffer, Boolean(playOffer.trial))
-          : await payWithRazorpay({ kind: 'premium' });
+      if (viaPlay && playOffer) {
+        r = await StoreBilling.buySubscription(playOffer, Boolean(firstIsTrial && playOffer.trial));
+        if (!r.ok && upi?.enabled && (r.message?.includes('Google Play') || !catalog?.connected)) {
+          r = await payWithRazorpay({ kind: 'premium' });
+        }
+      } else {
+        r = await payWithRazorpay({ kind: 'premium' });
+      }
     }
     setBusy(false);
     finish(r, mode === 'pack' ? '100 coins added — 50 more messages ✨' : 'Welcome to Premium 💜');

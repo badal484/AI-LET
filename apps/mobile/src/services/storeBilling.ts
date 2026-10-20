@@ -10,7 +10,7 @@ import {
   userChoiceBillingListenerAndroid,
   type Purchase,
 } from 'react-native-iap';
-import { loadUpiConfig, payWithRazorpay, type PayIntent, type UpiConfig } from './razorpayCheckout.js';
+import { loadUpiConfig, getCachedUpiConfig, payWithRazorpay, type PayIntent, type UpiConfig } from './razorpayCheckout.js';
 import { billingApi } from './api/billingApi.js';
 import { api } from './api/client.js';
 import { isoDays } from '../utils/isoPeriod.js';
@@ -268,13 +268,13 @@ export const StoreBilling = {
    *  - 'play': Google Play only;  - 'none': nothing available.
    */
   async route(playReady: boolean): Promise<'choice' | 'upi' | 'play' | 'none'> {
-    upi = (await loadUpiConfig(true)) ?? upi;
+    upi = (await loadUpiConfig()) ?? upi ?? getCachedUpiConfig();
     if (playReady && upi?.enabled && upi.userChoiceBilling) return 'choice';
     if (upi?.enabled) return 'upi';
     return playReady ? 'play' : 'none';
   },
 
-  upiConfig: () => upi,
+  upiConfig: () => upi ?? getCachedUpiConfig(),
 
   /** Re-sends every purchase Google still holds to our server (safe to repeat). */
   async restore(): Promise<number> {

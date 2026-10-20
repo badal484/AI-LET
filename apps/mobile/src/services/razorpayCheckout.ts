@@ -1,4 +1,5 @@
 import RazorpayCheckout from 'react-native-razorpay';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from './api/client.js';
 import { useAuthStore } from '../stores/authStore.js';
 
@@ -22,13 +23,32 @@ export interface UpiConfig {
   coinPacks: Array<{ id: string; coins: number; amountMinorUnits: number }>;
 }
 
+const UPI_CONFIG_CACHE_KEY = '@lovira/upi_config';
 let cached: { at: number; config: UpiConfig } | null = null;
+
+// Immediately hydrate cache from persistent storage so it is available synchronously on app boot
+void AsyncStorage.getItem(UPI_CONFIG_CACHE_KEY).then(raw => {
+  if (raw && !cached) {
+    try {
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        cached = { at: Date.now(), config: data as UpiConfig };
+      }
+    } catch {}
+  }
+}).catch(() => undefined);
+
+export function getCachedUpiConfig(): UpiConfig | null {
+  return cached?.config ?? null;
+}
 
 export async function loadUpiConfig(force = false): Promise<UpiConfig | null> {
   if (!force && cached && Date.now() - cached.at < 5 * 60_000) return cached.config;
   try {
     const res = await api.get('/billing/razorpay/config');
-    cached = { at: Date.now(), config: res.data.data as UpiConfig };
+    const config = res.data.data as UpiConfig;
+    cached = { at: Date.now(), config };
+    void AsyncStorage.setItem(UPI_CONFIG_CACHE_KEY, JSON.stringify(config)).catch(() => undefined);
     return cached.config;
   } catch {
     return cached?.config ?? null;
@@ -122,8 +142,10 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
           key: String(started['keyId']),
           subscription_id: String(started['subscriptionId']),
           currency: 'INR',
-          amount: Number(started['firstDayMinorUnits']) || 100,
-          description: `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`,
+          amount: Number(started['firstDayMinorUnits']) || (started['isTrial'] ? 100 : 49_900),
+          description: started['isTrial']
+            ? `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`
+            : `Premium · ${rupees(Number(started['monthlyMinorUnits']))}/month`,
           ...brandFor(started),
           ...shortSheet('premium'),
           prefill: prefill(method),

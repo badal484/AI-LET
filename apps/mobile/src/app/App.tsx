@@ -153,6 +153,7 @@ export const AppContent: React.FC = () => {
       Analytics.identify(userId);
       setCrashUser(userId);
       void loadUpiConfig();
+      void useBillingStore.getState().loadBillingState();
       void queryClient.prefetchQuery({
         queryKey: ['billing', 'allowance'],
         queryFn: () => billingApi.getAllowance(),
