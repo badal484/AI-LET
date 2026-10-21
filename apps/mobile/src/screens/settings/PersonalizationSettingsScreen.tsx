@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
@@ -17,6 +18,7 @@ import type { UserRelationshipSettingsData } from '@ai-companion/types';
 import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const PersonalizationSettingsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
   const [settings, setSettings] = useState<UserRelationshipSettingsData>({
@@ -120,90 +122,93 @@ export const PersonalizationSettingsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Personalization & Continuity</Text>
-        <Text style={styles.subtitle}>
-          Control how companions adapt their demeanor and conversational dynamics over time.
-        </Text>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
+        <View style={styles.headerInner}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Personalization & Continuity</Text>
+          <Text style={styles.subtitle}>
+            Control how companions adapt their demeanor and conversational dynamics over time.
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.content}>
-        {/* SETTINGS CARD */}
-        <View style={styles.card}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Personalized Continuity</Text>
-              <Text style={styles.settingSubtitle}>
-                Allow companions to adapt conversational tone to your unique communication style.
-              </Text>
+      <FlatList
+        data={relationships}
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
+        ListHeaderComponent={
+          <>
+            {/* SETTINGS CARD */}
+            <View style={styles.card}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Personalized Continuity</Text>
+                  <Text style={styles.settingSubtitle}>
+                    Allow companions to adapt conversational tone to your unique communication style.
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.personalizationEnabled}
+                  onValueChange={handleTogglePersonalization}
+                  disabled={savingSettings}
+                  trackColor={{ false: darkThemeColors.surfaceElevated, true: darkThemeColors.accent }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              <View style={[styles.settingRow, styles.borderTop]}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingTitle}>Relationship Dynamics Progression</Text>
+                  <Text style={styles.settingSubtitle}>
+                    Enable characters to develop familiarity and comfort across long-term conversations.
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.relationshipProgressionEnabled}
+                  onValueChange={handleToggleProgression}
+                  disabled={savingSettings}
+                  trackColor={{ false: darkThemeColors.surfaceElevated, true: darkThemeColors.accent }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
             </View>
-            <Switch
-              value={settings.personalizationEnabled}
-              onValueChange={handleTogglePersonalization}
-              disabled={savingSettings}
-              trackColor={{ false: darkThemeColors.surfaceElevated, true: darkThemeColors.accent }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
 
-          <View style={[styles.settingRow, styles.borderTop]}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Relationship Dynamics Progression</Text>
-              <Text style={styles.settingSubtitle}>
-                Enable characters to develop familiarity and comfort across long-term conversations.
-              </Text>
-            </View>
-            <Switch
-              value={settings.relationshipProgressionEnabled}
-              onValueChange={handleToggleProgression}
-              disabled={savingSettings}
-              trackColor={{ false: darkThemeColors.surfaceElevated, true: darkThemeColors.accent }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-        </View>
-
-        {/* ACTIVE CONNECTIONS */}
-        <Text style={styles.sectionHeader}>Active Companions ({relationships.length})</Text>
-
-        {relationships.length === 0 ? (
+            {/* ACTIVE CONNECTIONS */}
+            <Text style={styles.sectionHeader}>Active Companions ({relationships.length})</Text>
+          </>
+        }
+        ListEmptyComponent={
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>No companion interactions recorded yet.</Text>
           </View>
-        ) : (
-          <FlatList
-            data={relationships}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <View style={styles.companionCard}>
-                <View style={styles.companionInfo}>
-                  <Text style={styles.companionName}>{item.character?.name || 'Companion'}</Text>
-                  <View style={styles.stageRow}>
-                    {renderStageBadge(item.stage)}
-                    <Text style={styles.interactionsText}>
-                      {item.totalInteractions} interactions
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={() => handleResetRelationship(item.characterId, item.character?.name || 'Companion')}
-                  disabled={resettingId === item.characterId}
-                >
-                  <Text style={styles.resetButtonText}>
-                    {resettingId === item.characterId ? 'Resetting...' : 'Reset Rapport'}
-                  </Text>
-                </TouchableOpacity>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.companionCard}>
+            <View style={styles.companionInfo}>
+              <Text style={styles.companionName}>{item.character?.name || 'Companion'}</Text>
+              <View style={styles.stageRow}>
+                {renderStageBadge(item.stage)}
+                <Text style={styles.interactionsText}>
+                  {item.totalInteractions} interactions
+                </Text>
               </View>
-            )}
-          />
+            </View>
+
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={() => handleResetRelationship(item.characterId, item.character?.name || 'Companion')}
+              disabled={resettingId === item.characterId}
+            >
+              <Text style={styles.resetButtonText}>
+                {resettingId === item.characterId ? 'Resetting...' : 'Reset Rapport'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
-      </View>
+      />
     </View>
   );
 };
@@ -218,12 +223,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    paddingTop: spacing.xxl + spacing.md,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     backgroundColor: darkThemeColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: darkThemeColors.borderSubtle,
+  },
+  headerInner: {
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backButton: {
     marginBottom: spacing.sm,
@@ -244,9 +253,11 @@ const styles = StyleSheet.create({
     color: darkThemeColors.textSecondary,
     lineHeight: 18,
   },
-  content: {
-    flex: 1,
+  listContent: {
     padding: spacing.lg,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: darkThemeColors.surface,

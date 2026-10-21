@@ -9,7 +9,7 @@ import { EntitlementService } from '../billing/entitlements/EntitlementService.j
 import { AccountDeletionService } from '../privacy/services/AccountDeletionService.js';
 import { istMidnight, REAL_USERS, TEST_USERS } from './overview.service.js';
 import { Realtime } from '../../infrastructure/realtime/realtime.js';
-import { cancelSubscriptionRemote } from '../billing/razorpay/razorpay.service.js';
+import { cancelSubscriptionRemote, reconcileIncompleteSubscription } from '../billing/razorpay/razorpay.service.js';
 
 /** Users screen: find a user, see their plan and usage, and help them. Every change is audited. */
 
@@ -190,6 +190,7 @@ function groupDevices(list: DeviceSeen[]) {
 export async function getUser(id: string) {
   const user = await prisma.user.findUnique({ where: { id }, include: { profile: true, authIdentities: { select: { provider: true, providerEmail: true } } } });
   if (!user) throw new NotFoundError('User not found');
+  await reconcileIncompleteSubscription(id).catch(() => undefined);
   const [subscriptions, allowance, characters, cost, purchases, today, devices, pushDevices, activeSessions, activity, wallet, feedback, support, safety, adminActions, deletion] =
     await Promise.all([
       prisma.billingSubscription.findMany({
@@ -393,6 +394,14 @@ export async function removePremium(adminId: string, userId: string, reason: str
   await audit(adminId, 'console.user.premium_removed', userId, { reason, ended: subs.length, rzpCancelled });
   Realtime.publish(userId, { type: 'billing.updated' });
   return { ok: true, ended: subs.length, rzpCancelled };
+}
+
+export async function syncUserSubscription(adminId: string, userId: string) {
+  await mustExist(userId);
+  const reconciled = await reconcileIncompleteSubscription(userId);
+  await audit(adminId, 'console.user.subscription_synced', userId, { reconciled });
+  Realtime.publish(userId, { type: 'billing.updated' });
+  return { ok: true, reconciled };
 }
 
 export async function addMessages(adminId: string, userId: string, amount: number, reason: string) {

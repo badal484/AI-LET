@@ -4,7 +4,7 @@ import { authenticateAdmin, requirePermission } from '../../shared/middleware/ad
 import { getOverview } from './overview.service.js';
 import {
   addMessages, cancelDeletion, deleteMemory, getMemories, getUser, grantPremium, listUsers, removePremium, requestDeletion, resetToday,
-  setBlocked, signOutEverywhere, usersCsv, type ListParams,
+  setBlocked, signOutEverywhere, syncUserSubscription, usersCsv, type ListParams,
 } from './users.service.js';
 import { addGalleryImage, getAiCost, getCharacter, getGallery, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
 import express from 'express';
@@ -69,6 +69,7 @@ consoleRouter.get('/users.csv', requirePermission(P.USERS_READ), async (req, res
 consoleRouter.get('/users/:id', requirePermission(P.USERS_READ), handle((req) => getUser(idOf(req))));
 consoleRouter.post('/users/:id/premium', requirePermission(P.BILLING_WRITE), handle((req) => grantPremium(adminId(req), idOf(req), Number(req.body?.days), reasonOf(req))));
 consoleRouter.post('/users/:id/premium/remove', requirePermission(P.BILLING_WRITE), handle((req) => removePremium(adminId(req), idOf(req), reasonOf(req))));
+consoleRouter.post('/users/:id/sync-subscription', requirePermission(P.BILLING_WRITE), handle((req) => syncUserSubscription(adminId(req), idOf(req))));
 consoleRouter.post('/users/:id/messages', requirePermission(P.BILLING_CREDITS_GRANT), handle((req) => addMessages(adminId(req), idOf(req), Number(req.body?.amount), reasonOf(req))));
 consoleRouter.post('/users/:id/reset-today', requirePermission(P.BILLING_CREDITS_GRANT), handle((req) => resetToday(adminId(req), idOf(req), reasonOf(req))));
 consoleRouter.post('/users/:id/block', requirePermission(P.USERS_SUSPEND), handle((req) => setBlocked(adminId(req), idOf(req), Boolean(req.body?.blocked), reasonOf(req))));

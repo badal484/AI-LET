@@ -8,14 +8,17 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboardingStore } from '../../stores/onboardingStore.js';
 import { useAuthStore } from '../../stores/authStore.js';
 import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
 import { Icon } from '../../components/common/index.js';
+import { thumb, prefetchImages } from '../../utils/thumb.js';
 
 export const CharacterSelectionScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const {
     starterCharacters,
     selectedCharacterId,
@@ -36,8 +39,12 @@ export const CharacterSelectionScreen: React.FC = () => {
         loaded.current = true;
         void init();
       }
-    } else if (!selectedCharacterId && starterCharacters.length > 0) {
-      selectCharacter(starterCharacters[0].id);
+    } else {
+      if (!selectedCharacterId) {
+        selectCharacter(starterCharacters[0].id);
+      }
+      const urls = starterCharacters.map(c => c.avatarUrl).filter(Boolean) as string[];
+      prefetchImages(urls, 60);
     }
   }, [starterCharacters, selectedCharacterId, init, selectCharacter]);
 
@@ -66,7 +73,16 @@ export const CharacterSelectionScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top + spacing.sm,
+          paddingBottom: Math.max(insets.bottom + spacing.sm, spacing.lg),
+        },
+      ]}
+    >
+      <View style={styles.innerWrapper}>
       <View style={styles.header}>
         <Text style={styles.stepIndicator}>STEP 4 OF 4 • CHOOSE YOUR COMPANION</Text>
         <Text style={styles.title}>Who would you like to talk to?</Text>
@@ -98,7 +114,7 @@ export const CharacterSelectionScreen: React.FC = () => {
             >
               <View style={styles.cardTop}>
                 {char.avatarUrl ? (
-                  <Image source={{ uri: char.avatarUrl }} style={styles.avatar} />
+                  <Image source={{ uri: thumb(char.avatarUrl, 60) || '', cache: 'force-cache' }} style={styles.avatar} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarPlaceholderText}>{char.name.charAt(0)}</Text>
@@ -158,6 +174,7 @@ export const CharacterSelectionScreen: React.FC = () => {
           )}
         </TouchableOpacity>
       </View>
+      </View>
     </View>
   );
 };
@@ -167,8 +184,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: darkThemeColors.background,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl + spacing.md,
-    paddingBottom: spacing.xxl,
+  },
+  innerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 580,
+    alignSelf: 'center',
   },
   centerContainer: {
     flex: 1,

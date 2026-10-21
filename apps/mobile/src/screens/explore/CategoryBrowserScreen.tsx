@@ -12,7 +12,7 @@ import { IconButton, Skeleton } from '../../components/common/index.js';
 import { BottomFade } from '../../components/common/BottomFade.js';
 import { PressableScale } from '../../components/common/PressableScale.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
-import { thumb } from '../../utils/thumb.js';
+import { thumb, prefetchImages } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CategoryRouteProp = RouteProp<RootStackParamList, 'CategoryBrowser'>;
@@ -26,7 +26,8 @@ export const CategoryBrowserScreen: React.FC = () => {
   const route = useRoute<CategoryRouteProp>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const cardWidth = Math.floor((width - GUTTER * 2 - GAP) / 2);
+  const numColumns = width >= 1024 ? 4 : width >= 640 ? 3 : 2;
+  const cardWidth = Math.floor((width - GUTTER * 2 - GAP * (numColumns - 1)) / numColumns);
   const cardHeight = Math.round(cardWidth * 1.38);
   const slug = route.params.categorySlug;
 
@@ -43,6 +44,12 @@ export const CategoryBrowserScreen: React.FC = () => {
 
   const category = data?.category;
   const allCharacters = data?.characters || [];
+  React.useEffect(() => {
+    if (allCharacters.length > 0) {
+      const urls = allCharacters.map(c => c.coverImageUrl || c.avatarUrl).filter(Boolean) as string[];
+      prefetchImages(urls.slice(0, 12), cardWidth);
+    }
+  }, [allCharacters, cardWidth]);
   const filteredCharacters = selectedTag ? allCharacters.filter((c) => c.tags.some((t) => t.slug === selectedTag)) : allCharacters;
   const title = category?.displayName || route.params.categoryName || 'Category';
   const count = allCharacters.length;
@@ -112,19 +119,24 @@ export const CategoryBrowserScreen: React.FC = () => {
 
       {isLoading ? (
         <View style={styles.skeletonGrid}>
-          {[0, 1, 2, 3].map((i) => (
+          {Array.from({ length: numColumns * 2 }).map((_, i) => (
             <Skeleton key={i} width={cardWidth} height={cardHeight} borderRadius={16} />
           ))}
         </View>
       ) : (
         <FlatList
+          key={`cat-grid-${numColumns}`}
           data={filteredCharacters}
           keyExtractor={(item) => item.id}
           renderItem={renderCard}
-          numColumns={2}
+          numColumns={numColumns}
           columnWrapperStyle={styles.row}
           contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          initialNumToRender={6}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>{selectedTag ? 'No one with this tag yet' : 'No one here yet'}</Text>

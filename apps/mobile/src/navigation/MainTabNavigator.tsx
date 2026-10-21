@@ -55,66 +55,68 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
         { paddingBottom: Math.max(insets.bottom, 6) },
       ]}
     >
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.index === index;
+      <View style={styles.tabBarInner}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-          if (!isFocused && !event.defaultPrevented) {
-            tapFeedback();
-            navigation.navigate(route.name);
+            if (!isFocused && !event.defaultPrevented) {
+              tapFeedback();
+              navigation.navigate(route.name);
+            }
+          };
+
+          let iconName: IconName = 'home';
+          let label = 'Home';
+
+          if (route.name === 'Home') {
+            iconName = 'home';
+            label = 'Home';
+          } else if (route.name === 'Conversations') {
+            iconName = 'chat';
+            label = 'Chats';
+          } else if (route.name === 'BuyPro') {
+            iconName = 'diamond';
+            label = 'Premium';
+          } else if (route.name === 'Profile') {
+            iconName = 'user';
+            label = 'Profile';
           }
-        };
 
-        let iconName: IconName = 'home';
-        let label = 'Home';
+          const activeColor = isFocused ? '#FFFFFF' : INACTIVE;
 
-        if (route.name === 'Home') {
-          iconName = 'home';
-          label = 'Home';
-        } else if (route.name === 'Conversations') {
-          iconName = 'chat';
-          label = 'Chats';
-        } else if (route.name === 'BuyPro') {
-          iconName = 'diamond';
-          label = 'Premium';
-        } else if (route.name === 'Profile') {
-          iconName = 'user';
-          label = 'Profile';
-        }
-
-        const activeColor = isFocused ? '#FFFFFF' : INACTIVE;
-
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            onPress={onPress}
-            style={styles.tabButton}
-            activeOpacity={0.75}
-          >
-            <TabIcon name={iconName} focused={isFocused} badge={route.name === 'Conversations' ? unreadChats : 0} />
-
-            <Text
-              style={[
-                styles.tabLabel,
-                { color: activeColor },
-                isFocused && styles.activeLabelFont,
-              ]}
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              onPress={onPress}
+              style={styles.tabButton}
+              activeOpacity={0.75}
             >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+              <TabIcon name={iconName} focused={isFocused} badge={route.name === 'Conversations' ? unreadChats : 0} />
+
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: activeColor },
+                  isFocused && styles.activeLabelFont,
+                ]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -142,11 +144,16 @@ export const MainTabNavigator: React.FC = () => {
 
 const styles = StyleSheet.create({
   tabBarContainer: {
-    flexDirection: 'row',
     backgroundColor: '#07060B',
     borderTopWidth: 1,
     borderTopColor: '#161422',
     paddingTop: 8,
+  },
+  tabBarInner: {
+    flexDirection: 'row',
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
   },
   tabButton: {
     flex: 1,

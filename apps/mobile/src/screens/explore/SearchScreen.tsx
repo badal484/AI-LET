@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -24,11 +25,13 @@ import {
 } from '../../components/common/index.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem } from '@ai-companion/types';
+import { prefetchImages } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type SearchRouteProp = RouteProp<RootStackParamList, 'Search'>;
 
 export const SearchScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<SearchRouteProp>();
 
@@ -68,6 +71,15 @@ export const SearchScreen: React.FC = () => {
       }),
   });
 
+  useEffect(() => {
+    if (searchResult?.items?.length) {
+      const urls = searchResult.items
+        .map(c => c.avatarUrl || c.coverImageUrl)
+        .filter(Boolean) as string[];
+      prefetchImages(urls.slice(0, 15), 100);
+    }
+  }, [searchResult]);
+
   const handleOpenCharacter = (char: CharacterCatalogItem) => {
     navigation.navigate('CharacterDetail', {
       characterId: char.id,
@@ -99,7 +111,7 @@ export const SearchScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Top Search Input Bar */}
-      <View style={styles.searchBarContainer}>
+      <View style={[styles.searchBarContainer, { paddingTop: insets.top + spacing.xs }]}>
         <View style={styles.searchHeaderRow}>
           {navigation.canGoBack() && (
             <IconButton
@@ -210,7 +222,7 @@ export const SearchScreen: React.FC = () => {
           data={searchResult?.items || []}
           keyExtractor={(item) => item.id}
           renderItem={renderCharacterItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={{ paddingVertical: spacing.xl }}>
@@ -281,13 +293,15 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xxl + spacing.xs,
     paddingBottom: spacing.sm,
     backgroundColor: darkThemeColors.background,
   },
   searchHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   categoriesBar: {
     paddingVertical: spacing.xs,
@@ -321,6 +335,9 @@ const styles = StyleSheet.create({
   recentContainer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   recentHeader: {
     flexDirection: 'row',
@@ -368,9 +385,15 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing.lg,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   loadingContainer: {
     padding: spacing.lg,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   suggestionsBlock: {
     marginTop: spacing.md,

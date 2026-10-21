@@ -23,6 +23,7 @@ import {
   loadUpiConfig,
   getCachedUpiConfig,
   payWithRazorpay,
+  flushPendingPaymentConfirmation,
   rupees,
   type UpiConfig,
 } from '../../services/razorpayCheckout.js';
@@ -100,7 +101,7 @@ export const PaywallScreen: React.FC = () => {
     useCallback(() => {
       userScrolled.current = false;
       toTop();
-      void loadBillingState();
+      void flushPendingPaymentConfirmation().then(() => loadBillingState());
       const t1 = setTimeout(toTop, 50);
       const t2 = setTimeout(toTop, 200);
       return () => {
@@ -319,7 +320,7 @@ export const PaywallScreen: React.FC = () => {
           styles.scroll,
           {
             paddingTop: insets.top + (isTab ? 12 : 48),
-            paddingBottom: keyboard ? keyboard + 24 : 110 + (isTab ? 0 : insets.bottom),
+            paddingBottom: keyboard ? keyboard + 24 : 140 + (isTab ? 10 : insets.bottom),
           },
         ]}
       >
@@ -335,7 +336,7 @@ export const PaywallScreen: React.FC = () => {
                 />
               </View>
               <View style={styles.sideRing}>
-                <Image source={{ uri: thumb(uri, 110) }} style={styles.photo} resizeMode="cover" />
+                <Image source={{ uri: thumb(uri, 110) || '', cache: 'force-cache' }} style={styles.photo} resizeMode="cover" />
               </View>
             </View>
           ))}
@@ -347,7 +348,7 @@ export const PaywallScreen: React.FC = () => {
           </View>
           <View style={styles.photoRing}>
             <Image
-              source={face ? { uri: thumb(face.uri, 150) } : LOGO}
+              source={face ? { uri: thumb(face.uri, 150) || '', cache: 'force-cache' } : LOGO}
               style={styles.photo}
               resizeMode="cover"
             />
@@ -443,34 +444,36 @@ export const PaywallScreen: React.FC = () => {
       {/* As a tab, the tab bar already sits below (and keeps clear of the phone's gesture bar). */}
       {keyboard === 0 && (
         <View style={[styles.bar, { paddingBottom: isTab ? 8 : 8 + insets.bottom }]}>
-          <View style={styles.barRow}>
-            <Pressable
-              onPress={go}
-              disabled={busy || (mode !== 'manage' && (loading || !canSell))}
-              style={({ pressed }) => [
-                styles.cta,
-                (busy || (mode !== 'manage' && (loading || !canSell))) && styles.ctaOff,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={
-                mode === 'premium'
-                  ? `${ctaLabel}. ${terms}`
-                  : legal
-                    ? `${ctaLabel}. ${legal}`
-                    : ctaLabel
-              }
-            >
-              <GradientFill colors={['#7C3AED', '#DB2777']} />
-              {loading && mode !== 'manage' ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.ctaText}>{ctaLabel}</Text>
-              )}
-              <Shine active={!busy && !loading && canSell} />
-            </Pressable>
+          <View style={styles.barInner}>
+            <View style={styles.barRow}>
+              <Pressable
+                onPress={go}
+                disabled={busy || (mode !== 'manage' && (loading || !canSell))}
+                style={({ pressed }) => [
+                  styles.cta,
+                  (busy || (mode !== 'manage' && (loading || !canSell))) && styles.ctaOff,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  mode === 'premium'
+                    ? `${ctaLabel}. ${terms}`
+                    : legal
+                      ? `${ctaLabel}. ${legal}`
+                      : ctaLabel
+                }
+              >
+                <GradientFill colors={['#7C3AED', '#DB2777']} />
+                {loading && mode !== 'manage' ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.ctaText}>{ctaLabel}</Text>
+                )}
+                <Shine active={!busy && !loading && canSell} />
+              </Pressable>
+            </View>
+            {legal ? <Text style={styles.legal}>{legal}</Text> : null}
           </View>
-          {legal ? <Text style={styles.legal}>{legal}</Text> : null}
         </View>
       )}
     </View>
@@ -493,7 +496,12 @@ const styles = StyleSheet.create({
     height: 48,
   },
   restore: { color: '#C4B5FD', fontSize: 14, fontWeight: '600' },
-  scroll: { paddingHorizontal: 20 },
+  scroll: {
+    paddingHorizontal: 20,
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
+  },
 
   hero: { alignItems: 'center', justifyContent: 'center', height: 226, marginTop: 4 },
   blobBack: {
@@ -622,6 +630,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B0614',
     borderTopWidth: 1,
     borderTopColor: 'rgba(196,181,253,0.12)',
+  },
+  barInner: {
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
   },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cta: {

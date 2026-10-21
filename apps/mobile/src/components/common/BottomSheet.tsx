@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 
@@ -26,6 +27,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   children,
   style,
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal
       visible={visible}
@@ -36,7 +39,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.backdrop}>
           <TouchableWithoutFeedback>
-            <View style={[styles.sheetContainer, style]}>
+            <View style={[styles.sheetContainer, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl) }, style]}>
               <View style={styles.handleBar} />
 
               {title && (
@@ -74,9 +77,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: darkThemeColors.borderSubtle,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
     paddingTop: spacing.sm,
     maxHeight: '85%',
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
   handleBar: {
     width: 40,

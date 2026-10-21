@@ -53,9 +53,14 @@ function sameHex(expected: string, given: string | undefined): boolean {
 export const orderSignatureValid = (orderId: string, paymentId: string, signature: string | undefined): boolean =>
   sameHex(hmac(process.env['RAZORPAY_KEY_SECRET'] ?? '', `${orderId}|${paymentId}`), signature);
 
-/** Checkout's signature for a subscription's first payment: HMAC(payment_id|subscription_id). */
-export const subscriptionSignatureValid = (subscriptionId: string, paymentId: string, signature: string | undefined): boolean =>
-  sameHex(hmac(process.env['RAZORPAY_KEY_SECRET'] ?? '', `${paymentId}|${subscriptionId}`), signature);
+/** Checkout's signature for a subscription's first payment: HMAC(payment_id|subscription_id) or HMAC(subscription_id|payment_id). */
+export const subscriptionSignatureValid = (subscriptionId: string, paymentId: string, signature: string | undefined): boolean => {
+  const secret = process.env['RAZORPAY_KEY_SECRET'] ?? '';
+  return (
+    sameHex(hmac(secret, `${paymentId}|${subscriptionId}`), signature) ||
+    sameHex(hmac(secret, `${subscriptionId}|${paymentId}`), signature)
+  );
+};
 
 /** A webhook is Razorpay's only when its X-Razorpay-Signature is HMAC(raw body) with the webhook secret. */
 export function webhookSignatureValid(rawBody: string, signature: string | undefined): boolean {

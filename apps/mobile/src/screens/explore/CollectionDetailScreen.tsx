@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -17,11 +18,13 @@ import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
 import type { CollectionCharacterItem, CharacterCatalogItem } from '@ai-companion/types';
+import { thumb, prefetchImages } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CollectionRouteProp = RouteProp<RootStackParamList, 'CollectionDetail'>;
 
 export const CollectionDetailScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<CollectionRouteProp>();
   const slug = route.params.collectionSlug;
@@ -30,6 +33,13 @@ export const CollectionDetailScreen: React.FC = () => {
     queryKey: ['discovery', 'collection', slug],
     queryFn: () => DiscoveryApi.getCollectionBySlug(slug),
   });
+
+  React.useEffect(() => {
+    if (collection?.items?.length) {
+      const urls = collection.items.map(it => it.character.avatarUrl).filter(Boolean) as string[];
+      prefetchImages(urls.slice(0, 12), 64);
+    }
+  }, [collection]);
 
   const handleOpenCharacter = (char: CharacterCatalogItem) => {
     navigation.navigate('CharacterDetail', {
@@ -46,7 +56,7 @@ export const CollectionDetailScreen: React.FC = () => {
         activeOpacity={0.85}
         onPress={() => handleOpenCharacter(char)}
       >
-        <Image source={{ uri: char.avatarUrl }} style={styles.avatar} />
+        <Image source={{ uri: thumb(char.avatarUrl, 64) || '', cache: 'force-cache' }} style={styles.avatar} />
         <View style={styles.info}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>
@@ -96,11 +106,11 @@ export const CollectionDetailScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Hero Header */}
-      <View style={styles.heroContainer}>
+      <View style={[styles.heroContainer, { height: 220 + insets.top }]}>
         {collection.heroImageUrl && (
-          <Image source={{ uri: collection.heroImageUrl }} style={styles.heroImage} />
+          <Image source={{ uri: thumb(collection.heroImageUrl, 420) || '', cache: 'force-cache' }} style={styles.heroImage} />
         )}
-        <View style={styles.heroOverlay}>
+        <View style={[styles.heroOverlay, { paddingTop: insets.top + spacing.sm }]}>
           <TouchableOpacity style={styles.backCircle} onPress={() => navigation.goBack()}>
             <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
@@ -121,7 +131,7 @@ export const CollectionDetailScreen: React.FC = () => {
         data={collection.items || []}
         keyExtractor={item => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -218,6 +228,9 @@ const styles = StyleSheet.create({
   listContent: {
     padding: spacing.lg,
     gap: spacing.md,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   card: {
     flexDirection: 'row',

@@ -1060,11 +1060,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               Platform.OS === 'ios'
                 ? keyboardHeight > 0
                   ? keyboardHeight
-                  : Math.max(insets.bottom, 8)
+                  : 0
                 : keyboardHeight > 0
-                  ? // Edge-to-edge (Android 15+): the window no longer shrinks for the keyboard, so lift by its height.
-                    keyboardHeight + 4
-                  : Math.max(insets.bottom, 8),
+                  ? keyboardHeight + insets.bottom + 6
+                  : 0,
           },
         ]}
       >
@@ -1219,13 +1218,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             styles.composerContainer,
             {
               paddingBottom:
-                Platform.OS === 'ios'
-                  ? keyboardHeight > 0
-                    ? keyboardHeight
-                    : Math.max(insets.bottom, 12)
-                  : keyboardHeight > 0
-                    ? 8
-                    : Math.max(insets.bottom, 12),
+                keyboardHeight > 0
+                  ? 8
+                  : Math.max(insets.bottom, 12),
             },
           ]}
         >

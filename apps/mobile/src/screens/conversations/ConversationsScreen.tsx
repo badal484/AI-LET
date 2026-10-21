@@ -33,6 +33,7 @@ import { SecureAuthStorage } from '../../services/auth/SecureAuthStorage.js';
 import { chatListTime } from '../../utils/chatDates.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { ToastService } from '../../components/common/Toast.js';
+import { prefetchImages } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -137,6 +138,12 @@ export const ConversationsScreen: React.FC = () => {
   };
 
   const listItems = data?.items || [];
+
+  React.useEffect(() => {
+    if (listItems.length > 0) {
+      prefetchImages(listItems.map(c => c.character?.avatarUrl), 48);
+    }
+  }, [listItems]);
 
   const filteredItems = listItems.filter(item => {
     if (!searchQuery.trim()) return true;
@@ -257,44 +264,46 @@ export const ConversationsScreen: React.FC = () => {
       <StatusBar barStyle="light-content" />
 
       <View style={styles.header}>
-        {isSearchActive ? (
-          <View style={styles.searchHeaderContainer}>
-            <Icon name="search" size={16} color="#8E8A9F" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search chats"
-              placeholderTextColor="#7A758B"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-              returnKeyType="search"
-            />
-            <TouchableOpacity
-              style={styles.closeSearchButton}
-              onPress={() => {
-                setIsSearchActive(false);
-                setSearchQuery('');
-              }}
-              hitSlop={8}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.title}>Chats</Text>
-            {listItems.length > 0 && (
+        <View style={styles.headerInner}>
+          {isSearchActive ? (
+            <View style={styles.searchHeaderContainer}>
+              <Icon name="search" size={16} color="#8E8A9F" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search chats"
+                placeholderTextColor="#7A758B"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+                returnKeyType="search"
+              />
               <TouchableOpacity
-                style={styles.searchIconButton}
-                onPress={() => setIsSearchActive(true)}
-                activeOpacity={0.7}
-                accessibilityLabel="Search chats"
+                style={styles.closeSearchButton}
+                onPress={() => {
+                  setIsSearchActive(false);
+                  setSearchQuery('');
+                }}
+                hitSlop={8}
               >
-                <Icon name="search" size={18} color="#FFFFFF" />
+                <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-            )}
-          </>
-        )}
+            </View>
+          ) : (
+            <>
+              <Text style={styles.title}>Chats</Text>
+              {listItems.length > 0 && (
+                <TouchableOpacity
+                  style={styles.searchIconButton}
+                  onPress={() => setIsSearchActive(true)}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Search chats"
+                >
+                  <Icon name="search" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+        </View>
       </View>
 
       {isLoading ? (
@@ -319,8 +328,10 @@ export const ConversationsScreen: React.FC = () => {
           renderItem={renderConversationItem}
           extraData={typingNow}
           initialNumToRender={12}
+          maxToRenderPerBatch={10}
           windowSize={9}
-          contentContainerStyle={styles.listContent}
+          removeClippedSubviews={true}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 80, 100) }]}
           refreshControl={
             <RefreshControl
               refreshing={pulling}
@@ -414,13 +425,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#07060B',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
     minHeight: 60,
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   title: {
     fontSize: 30,
@@ -461,10 +477,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    paddingBottom: 20,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   loadingContainer: {
     padding: 20,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   itemContainer: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import {
   RefreshControl,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -19,10 +20,12 @@ import type { RootStackParamList } from '../../navigation/types.js';
 import { darkThemeColors } from '../../theme/colors.js';
 import { spacing } from '../../theme/spacing.js';
 import { typography } from '../../theme/typography.js';
+import { thumb, prefetchImages } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 export const ExploreScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const [search, setSearch] = useState('');
 
@@ -30,6 +33,13 @@ export const ExploreScreen: React.FC = () => {
     queryKey: ['characters', 'explore', search],
     queryFn: () => CharacterApi.listCharacters({ search: search.trim() || undefined }),
   });
+
+  React.useEffect(() => {
+    if (data?.items?.length) {
+      const urls = data.items.map(c => c.avatarUrl).filter(Boolean) as string[];
+      prefetchImages(urls.slice(0, 15), 52);
+    }
+  }, [data]);
 
   const handleStartChat = (character: CharacterSummary) => {
     navigation.navigate('Chat', {
@@ -48,7 +58,10 @@ export const ExploreScreen: React.FC = () => {
       >
         <View style={styles.cardHeader}>
           {item.avatarUrl ? (
-            <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+            <Image
+              source={{ uri: thumb(item.avatarUrl, 52) || '', cache: 'force-cache' }}
+              style={styles.avatar}
+            />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
               <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
@@ -93,19 +106,21 @@ export const ExploreScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Explore Companions</Text>
-        <Text style={styles.subtitle}>Discover AI personalities with depth, memory, and warmth</Text>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search characters, traits, worlds..."
-            placeholderTextColor={darkThemeColors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={styles.headerInner}>
+          <Text style={styles.title}>Explore Companions</Text>
+          <Text style={styles.subtitle}>Discover AI personalities with depth, memory, and warmth</Text>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search characters, traits, worlds..."
+              placeholderTextColor={darkThemeColors.textMuted}
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
         </View>
       </View>
 
@@ -126,7 +141,12 @@ export const ExploreScreen: React.FC = () => {
           data={data?.items || []}
           keyExtractor={(item) => item.id}
           renderItem={renderCharacterCard}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xxl }]}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          initialNumToRender={6}
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
@@ -152,12 +172,16 @@ const styles = StyleSheet.create({
     backgroundColor: darkThemeColors.background,
   },
   header: {
-    paddingTop: spacing.xxl + spacing.md,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     backgroundColor: darkThemeColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: darkThemeColors.borderSubtle,
+  },
+  headerInner: {
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   title: {
     ...typography.displaySmall,
@@ -184,7 +208,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxl * 2,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: darkThemeColors.surface,

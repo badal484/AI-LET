@@ -49,6 +49,7 @@ export async function loadUpiConfig(force = false): Promise<UpiConfig | null> {
     const config = res.data.data as UpiConfig;
     cached = { at: Date.now(), config };
     void AsyncStorage.setItem(UPI_CONFIG_CACHE_KEY, JSON.stringify(config)).catch(() => undefined);
+    void flushPendingPaymentConfirmation();
     return cached.config;
   } catch {
     return cached?.config ?? null;
@@ -105,6 +106,22 @@ function shortSheet(kind: PayIntent['kind']) {
   };
 }
 
+const PENDING_PAYMENT_KEY = '@lovira/pending_payment_confirm';
+
+export async function flushPendingPaymentConfirmation(): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PAYMENT_KEY);
+    if (!raw) return;
+    const body = JSON.parse(raw);
+    if (body && typeof body === 'object') {
+      const ok = await confirmWithServer(body as Record<string, string | undefined>);
+      if (ok) {
+        await AsyncStorage.removeItem(PENDING_PAYMENT_KEY);
+      }
+    }
+  } catch {}
+}
+
 /** Confirms with the server; retried a few times on a bad connection (the webhook also confirms it). */
 async function confirmWithServer(body: Record<string, string | undefined>): Promise<boolean> {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -123,6 +140,7 @@ async function confirmWithServer(body: Record<string, string | undefined>): Prom
 
 /** Opens Razorpay for Premium or a coin pack. `googleToken` comes from Google's choice screen (user choice billing). */
 export async function payWithRazorpay(intent: PayIntent, googleToken?: string, method?: PayMethod): Promise<PayResult> {
+  await flushPendingPaymentConfirmation().catch(() => undefined);
   let started: Record<string, unknown>;
   try {
     started =
@@ -143,6 +161,7 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
           subscription_id: String(started['subscriptionId']),
           currency: 'INR',
           amount: Number(started['firstDayMinorUnits']) || (started['isTrial'] ? 100 : 49_900),
+          recurring: 1,
           description: started['isTrial']
             ? `Premium · ${rupees(Number(started['firstDayMinorUnits']))} today, then ${rupees(Number(started['monthlyMinorUnits']))}/month`
             : `Premium · ${rupees(Number(started['monthlyMinorUnits']))}/month`,
@@ -177,13 +196,20 @@ export async function payWithRazorpay(intent: PayIntent, googleToken?: string, m
     };
   }
 
-  const ok = await confirmWithServer({
+  const pendingPayload: Record<string, string | undefined> = {
     kind: intent.kind,
     paymentId: paid.razorpay_payment_id,
     signature: paid.razorpay_signature,
     subscriptionId: intent.kind === 'premium' ? paid.razorpay_subscription_id ?? String(started['subscriptionId']) : undefined,
     orderId: intent.kind === 'coins' ? paid.razorpay_order_id ?? String(started['orderId']) : undefined,
-  });
+  };
+
+  void AsyncStorage.setItem(PENDING_PAYMENT_KEY, JSON.stringify(pendingPayload)).catch(() => undefined);
+
+  const ok = await confirmWithServer(pendingPayload);
+  if (ok) {
+    void AsyncStorage.removeItem(PENDING_PAYMENT_KEY).catch(() => undefined);
+  }
   return ok
     ? { ok: true }
     : { ok: false, message: 'Payment received — it can take a minute to show. You won’t be charged twice.' };

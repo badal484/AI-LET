@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useOnboardingStore } from '../../stores/onboardingStore.js';
@@ -10,6 +11,7 @@ import type { OnboardingStackParamList } from '../../navigation/OnboardingNaviga
 import { Icon } from '../../components/common/index.js';
 
 export const WelcomeScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<StackNavigationProp<OnboardingStackParamList>>();
   const { completeCurrentStep, skipAll, isSubmitting } = useOnboardingStore();
 
@@ -31,8 +33,19 @@ export const WelcomeScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingTop: insets.top + spacing.lg,
+          paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xl),
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.innerWrapper}>
+        <View style={styles.content}>
         <View style={styles.badge}>
           <Icon name="sparkles" size={12} color={darkThemeColors.accent} style={{ marginRight: 6 }} />
           <Text style={styles.badgeText}>NEXT-GEN AI COMPANIONS</Text>
@@ -100,6 +113,7 @@ export const WelcomeScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
     </View>
+    </ScrollView>
   );
 };
 
@@ -107,10 +121,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: darkThemeColors.background,
-    justifyContent: 'space-between',
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl + spacing.lg,
-    paddingBottom: spacing.xxl,
+  },
+  innerWrapper: {
+    flex: 1,
+    justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
   },
   content: {
     flex: 1,

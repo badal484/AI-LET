@@ -11,6 +11,7 @@ import { SubscriptionStateMachine } from '../domain/SubscriptionStateMachine.js'
 import { EntitlementService } from '../entitlements/EntitlementService.js';
 import { BillingProviderFactory } from '../providers/BillingProviderFactory.js';
 import { logger } from '../../../config/logger.js';
+import { reconcileIncompleteSubscription } from '../razorpay/razorpay.service.js';
 
 export class SubscriptionService {
   /**
@@ -269,6 +270,7 @@ export class SubscriptionService {
    * Get user's current subscription summary.
    */
   public static async getUserSubscription(userId: string): Promise<BillingSubscription | null> {
+    await reconcileIncompleteSubscription(userId).catch(() => undefined);
     // A checkout that was opened but never paid (INCOMPLETE) never hides the real subscription.
     const sub = await prisma.billingSubscription.findFirst({
       where: { userId, status: { not: 'INCOMPLETE' } },

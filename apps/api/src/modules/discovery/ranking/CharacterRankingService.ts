@@ -134,7 +134,16 @@ export class CharacterRankingService {
 
     for (const candidate of candidates) {
       const doc = docMap.get(candidate.characterId);
-      if (!doc) continue;
+      if (!doc) {
+        ranked.push({
+          characterId: candidate.characterId,
+          score: candidate.initialScore ?? 0.5,
+          rankingVersion,
+          featureScores: { fallbackScore: candidate.initialScore ?? 0.5 },
+          candidateSources: candidate.candidateSources || [],
+        });
+        continue;
+      }
 
       const featureScores: Record<string, number> = {};
 

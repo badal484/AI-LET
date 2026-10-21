@@ -32,7 +32,7 @@ import { FadeIn } from '../../components/common/FadeIn.js';
 import { AGE_BLUR_RADIUS, AgeRestrictedBadge, ageRestricted, openIfAllowed } from '../../components/common/AgeRestricted.js';
 import { ContinueChatCard } from '../../components/home/ContinueChatCard.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
-import { thumb } from '../../utils/thumb.js';
+import { thumb, prefetchImages } from '../../utils/thumb.js';
 
 const CARD_WIDTH = 148;
 const CARD_HEIGHT = 210;
@@ -63,6 +63,23 @@ export const HomeScreen: React.FC = () => {
     queryKey: ['discovery', 'home'],
     queryFn: () => DiscoveryApi.getHomeFeed(false),
   });
+
+  // Automatically prime the image disk cache with the top character photos
+  useEffect(() => {
+    if (homeFeed?.sections) {
+      const urls: string[] = [];
+      for (const section of homeFeed.sections) {
+        if (section.items) {
+          for (const item of section.items) {
+            const it = item as { coverImageUrl?: string; avatarUrl?: string };
+            if (it.coverImageUrl) urls.push(it.coverImageUrl);
+            if (it.avatarUrl) urls.push(it.avatarUrl);
+          }
+        }
+      }
+      prefetchImages(urls.slice(0, 20), CARD_WIDTH);
+    }
+  }, [homeFeed]);
 
   const handleOpenCharacter = (char: CharacterCatalogItem) => {
     navigation.navigate('CharacterDetail', {
@@ -157,16 +174,18 @@ export const HomeScreen: React.FC = () => {
   // The same header in every state, so nothing jumps when the feed arrives.
   const topBar = (
     <View style={styles.topBar}>
-      <View style={styles.logoRow}>
-        <Text style={styles.logoLo}>Love</Text>
-        <Text style={styles.logoVira}>ek</Text>
-      </View>
+      <View style={styles.topBarInner}>
+        <View style={styles.logoRow}>
+          <Text style={styles.logoLo}>Love</Text>
+          <Text style={styles.logoVira}>ek</Text>
+        </View>
 
-      <TouchableOpacity style={styles.walletPill} activeOpacity={0.8} onPress={handleOpenWallet}>
-        <Text style={styles.coinIcon}>🪙</Text>
-        <Text style={styles.coinBalance}>{coins.toLocaleString('en-IN')}</Text>
-        <Text style={styles.coinPlus}>+</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.walletPill} activeOpacity={0.8} onPress={handleOpenWallet}>
+          <Text style={styles.coinIcon}>🪙</Text>
+          <Text style={styles.coinBalance}>{coins.toLocaleString('en-IN')}</Text>
+          <Text style={styles.coinPlus}>+</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -262,7 +281,7 @@ export const HomeScreen: React.FC = () => {
       <ScrollView
         ref={feedScrollRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 80, 100) }]}
         showsVerticalScrollIndicator={false}
         onScroll={handleFeedScroll}
         // Re-check where the page came to rest: the last throttled scroll event can arrive just
@@ -423,6 +442,7 @@ function renderSection(
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
         snapToInterval={SNAP_INTERVAL}
+        removeClippedSubviews={true}
         contentContainerStyle={styles.carouselScrollContent}
       >
         {items.map((char) => {
@@ -486,11 +506,16 @@ const styles = StyleSheet.create({
   },
   // Top Header Bar
   topBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  topBarInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
   },
   logoRow: {
     flexDirection: 'row',
@@ -547,6 +572,9 @@ const styles = StyleSheet.create({
   // Filter Chips
   filterBarContainer: {
     paddingVertical: 6,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
   },
   filterChipsScroll: {
     paddingHorizontal: 16,
@@ -602,7 +630,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
   },
 
   // Section

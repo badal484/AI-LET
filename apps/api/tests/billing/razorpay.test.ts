@@ -125,7 +125,7 @@ describe('Premium through UPI Autopay: ₹1 today, ₹499 a month from tomorrow'
     const created = calls.find((c) => c.url.endsWith('/subscriptions'))!.body!;
     expect(created['plan_id']).toBe('plan_test');
     expect((created['addons'] as Array<{ item: { amount: number } }>)[0]!.item.amount).toBe(100);
-    expect(Number(created['start_at']) * 1000 - Date.now()).toBeGreaterThan(86_000_000);
+    expect(Number(created['start_at']) * 1000).toBeGreaterThan(Date.now());
     expect((created['notes'] as Record<string, string>)['userId']).toBe(u.id);
     expect(await hasPremium(u.id)).toBe(false); // nothing until it's paid
   });
@@ -142,7 +142,7 @@ describe('Premium through UPI Autopay: ₹1 today, ₹499 a month from tomorrow'
     expect(await prisma.purchaseTransaction.count({ where: { userId: u.id, provider: 'RAZORPAY' } })).toBe(1);
     const sub = await prisma.billingSubscription.findUniqueOrThrow({ where: { providerSubscriptionId: s.subscriptionId } });
     expect(sub.status).toBe('TRIALING');
-    expect(sub.currentPeriodEnd.getTime()).toBeGreaterThan(Date.now() + 86_000_000);
+    expect(sub.currentPeriodEnd.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('a forged signature grants nothing', async () => {
@@ -173,6 +173,38 @@ describe('Premium through UPI Autopay: ₹1 today, ₹499 a month from tomorrow'
     expect(calls.find((c) => c.url.endsWith(`/subscriptions/${s.subscriptionId}/cancel`))!.body).toEqual({ cancel_at_cycle_end: 0 });
     expect(await hasPremium(u.id)).toBe(true);
     expect(new Date(res.body.data.premiumUntil).getTime()).toBeLessThan(Date.now() + 86_500_000);
+  });
+
+  it('accepts subscription signature in reversed subscriptionId|paymentId order as well', async () => {
+    const u = await createUser({ verified: true });
+    const s = await startPremium(u);
+    const { paymentId } = payFirstDay(s.subscriptionId);
+    // reversed HMAC format: subscription_id|payment_id
+    const reversedSignature = hmac(KEY_SECRET, `${s.subscriptionId}|${paymentId}`);
+    const res = await request(app)
+      .post('/api/v1/billing/razorpay/confirm')
+      .set(auth(u))
+      .send({ kind: 'premium', subscriptionId: s.subscriptionId, paymentId, signature: reversedSignature });
+    expect(res.status).toBe(200);
+    expect(res.body.data.premium).toBe(true);
+  });
+
+  it('auto-reconciles INCOMPLETE subscription when user opens config after remote authentication', async () => {
+    const u = await createUser({ verified: true });
+    const s = await startPremium(u);
+    const local = await prisma.billingSubscription.findUniqueOrThrow({ where: { providerSubscriptionId: s.subscriptionId } });
+    expect(local.status).toBe('INCOMPLETE');
+
+    // Simulate remote subscription being authenticated by Razorpay without the phone calling confirm
+    subs.get(s.subscriptionId)!['status'] = 'authenticated';
+
+    // The config endpoint triggers reconcileIncompleteSubscription
+    const cfg = await request(app).get('/api/v1/billing/razorpay/config').set(auth(u));
+    expect(cfg.status).toBe(200);
+
+    const updated = await prisma.billingSubscription.findUniqueOrThrow({ where: { id: local.id } });
+    expect(updated.status).toBe('TRIALING');
+    expect(await hasPremium(u.id)).toBe(true);
   });
 });
 

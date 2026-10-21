@@ -151,6 +151,18 @@ export default function UserPage() {
     onSuccess: (_d, memoryId) => setMemories((m) => m && { ...m, memories: m.memories.filter((x) => x.id !== memoryId) }),
   });
 
+  const syncSub = useMutation({
+    mutationFn: () => api<{ reconciled: boolean }>(`/console/users/${id}/sync-subscription`, { method: 'POST' }),
+    onSuccess: (data) => {
+      setResult(data?.reconciled ? 'Subscription found on Razorpay and activated!' : 'No new unconfirmed payments on Razorpay.');
+      void qc.invalidateQueries({ queryKey: ['user', id] });
+      void qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: unknown) => {
+      setResult(`Sync check: ${(err as Error)?.message || 'Error communicating with Razorpay'}`);
+    },
+  });
+
   const open = (a: Action) => {
     setAmount(ACTIONS[a].amount?.def ?? '');
     setReason('');
@@ -384,7 +396,15 @@ export default function UserPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Subscriptions and purchases</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Subscriptions and purchases</CardTitle>
+              <Button size="sm" variant="secondary" onClick={() => syncSub.mutate()} disabled={syncSub.isPending}>
+                <RotateCcw className={cn('mr-1.5 h-3.5 w-3.5', syncSub.isPending && 'animate-spin')} />
+                {syncSub.isPending ? 'Syncing...' : 'Sync with Razorpay'}
+              </Button>
+            </div>
+          </CardHeader>
           <CardBody className="px-0">
             {u.subscriptions.length + u.purchases.length === 0 ? (
               <Empty>Nothing yet.</Empty>

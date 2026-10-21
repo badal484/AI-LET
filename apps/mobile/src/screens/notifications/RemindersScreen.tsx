@@ -107,13 +107,15 @@ export const RemindersScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.glow} pointerEvents="none">
         <GradientFill radial colors={[['#A855F7', 0.2], ['#EC4899', 0.05], ['#0B0614', 0]]} />
       </View>
       <View style={styles.header}>
-        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
-        <Text style={styles.title}>Your reminders</Text>
+        <View style={styles.headerInner}>
+          <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
+          <Text style={styles.title}>Your reminders</Text>
+        </View>
       </View>
 
       {loading ? (
@@ -146,9 +148,10 @@ export const RemindersScreen: React.FC = () => {
 const styles = StyleSheet.create({
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  headerInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, maxWidth: 600, width: '100%', alignSelf: 'center' },
   title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
-  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm },
+  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, maxWidth: 600, width: '100%', alignSelf: 'center', paddingBottom: 48 },
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',

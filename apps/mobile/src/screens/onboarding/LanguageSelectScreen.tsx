@@ -178,24 +178,26 @@ export const LanguageSelectScreen: React.FC = () => {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-        <Pressable
-          onPress={handleContinue}
-          disabled={!ready || isSubmitting}
-          style={({ pressed }) => [styles.cta, (!ready || isSubmitting) && styles.ctaOff, pressed && ready && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !ready || isSubmitting }}
-        >
-          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-            <Defs>
-              <LinearGradient id="cta" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor="#EC4899" />
-                <Stop offset="1" stopColor="#8B5CF6" />
-              </LinearGradient>
-            </Defs>
-            <Rect x="0" y="0" width="100%" height="100%" rx="18" fill="url(#cta)" />
-          </Svg>
-          <Text style={styles.ctaText}>{isSubmitting ? 'Saving…' : 'Continue'}</Text>
-        </Pressable>
+        <View style={styles.footerInner}>
+          <Pressable
+            onPress={handleContinue}
+            disabled={!ready || isSubmitting}
+            style={({ pressed }) => [styles.cta, (!ready || isSubmitting) && styles.ctaOff, pressed && ready && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !ready || isSubmitting }}
+          >
+            <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+              <Defs>
+                <LinearGradient id="cta" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0" stopColor="#EC4899" />
+                  <Stop offset="1" stopColor="#8B5CF6" />
+                </LinearGradient>
+              </Defs>
+              <Rect x="0" y="0" width="100%" height="100%" rx="18" fill="url(#cta)" />
+            </Svg>
+            <Text style={styles.ctaText}>{isSubmitting ? 'Saving…' : 'Continue'}</Text>
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -205,7 +207,13 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0B0614' },
   flex: { flex: 1 },
   glow: { position: 'absolute', left: 0, right: 0, top: 0, height: 320 },
-  content: { paddingHorizontal: 22, paddingBottom: 24 },
+  content: {
+    paddingHorizontal: 22,
+    paddingBottom: 24,
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+  },
   logo: { width: 40, height: 40, borderRadius: 20, marginBottom: 10 },
   title: { color: '#FFFFFF', fontSize: 26, fontWeight: '900', letterSpacing: -0.4 },
   label: { color: '#E6E0F2', fontSize: 15, fontWeight: '800', marginTop: 24, marginBottom: 10 },
@@ -269,6 +277,7 @@ const styles = StyleSheet.create({
 
 
   footer: { paddingHorizontal: 22, paddingTop: 12, backgroundColor: '#0B0614', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.06)' },
+  footerInner: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   cta: { height: 56, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   ctaOff: { opacity: 0.4 },
   ctaText: { color: '#FFFFFF', fontSize: 17, fontWeight: '800' },
