@@ -44,3 +44,4 @@ Env reference: `docs/ENVIRONMENT_VARIABLES.md`.
 - The owner keeps work in progress uncommitted in `apps/mobile`: stage exact files, never `git add -A`.
 - Character text: no scripted templates; characters follow the user's way of talking (see persona packs).
 - Gemini quota is shared with the live app — keep eval runs small.
+- Never add "Co-Authored-By", AI attribution trailers, or bot metadata to git commit messages. All git commits must be authored solely and independently by the user.
