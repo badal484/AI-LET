@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { knowledgeApi } from '../../services/api/knowledgeApi.js';
 import {
   Button,
@@ -27,6 +28,7 @@ import type {
 import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const KnowledgeDocumentsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<'documents' | 'collections' | 'research'>('documents');
   const [documents, setDocuments] = useState<KnowledgeDocumentItem[]>([]);
@@ -154,56 +156,60 @@ export const KnowledgeDocumentsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Top Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          accessibilityLabel="Go back"
-        >
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Knowledge & Documents</Text>
-          <Text style={styles.headerSubtitle}>Grounded RAG & Web Research</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerInner}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Knowledge & Documents</Text>
+            <Text style={styles.headerSubtitle}>Grounded RAG & Web Research</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setUploadModalVisible(true)}
+          >
+            <Text style={styles.actionButtonText}>+ Add</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setUploadModalVisible(true)}
-        >
-          <Text style={styles.actionButtonText}>+ Add</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'documents' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('documents')}
-        >
-          <Text style={[styles.tabText, activeTab === 'documents' && styles.tabTextActive]}>
-            Documents ({documents.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'collections' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('collections')}
-        >
-          <Text style={[styles.tabText, activeTab === 'collections' && styles.tabTextActive]}>
-            Collections ({collections.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'research' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('research')}
-        >
-          <Text style={[styles.tabText, activeTab === 'research' && styles.tabTextActive]}>
-            Ask & Research
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.tabInner}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'documents' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('documents')}
+          >
+            <Text style={[styles.tabText, activeTab === 'documents' && styles.tabTextActive]}>
+              Documents ({documents.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'collections' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('collections')}
+          >
+            <Text style={[styles.tabText, activeTab === 'collections' && styles.tabTextActive]}>
+              Collections ({collections.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'research' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('research')}
+          >
+            <Text style={[styles.tabText, activeTab === 'research' && styles.tabTextActive]}>
+              Ask & Research
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -450,14 +456,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#090A0F',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 56,
     paddingHorizontal: 16,
     paddingBottom: 16,
     backgroundColor: '#12141C',
     borderBottomWidth: 1,
     borderBottomColor: '#1E2333',
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backButton: {
     padding: 8,
@@ -493,11 +503,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabContainer: {
-    flexDirection: 'row',
     backgroundColor: '#12141C',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#1E2333',
+  },
+  tabInner: {
+    flexDirection: 'row',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   tabButton: {
     paddingVertical: 12,
@@ -519,7 +534,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   centered: {
     alignItems: 'center',

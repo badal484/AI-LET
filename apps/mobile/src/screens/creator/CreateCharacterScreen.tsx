@@ -180,25 +180,27 @@ export const CreateCharacterScreen: React.FC<CreateCharacterScreenProps> = ({ na
   };
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 12), paddingBottom: Math.max(insets.bottom, 12) }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Icon name="arrow-left" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View style={styles.headerTitleCol}>
-          <Text style={styles.headerTitle}>Create AI Companion</Text>
-          <Text style={styles.headerSubtitle}>Personalized persona, traits & domain knowledge</Text>
+        <View style={styles.headerInner}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Icon name="arrow-left" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleCol}>
+            <Text style={styles.headerTitle}>Create AI Companion</Text>
+            <Text style={styles.headerSubtitle}>Personalized persona, traits & domain knowledge</Text>
+          </View>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* 1. Avatar Presets Section */}
         <Text style={styles.sectionTitle}>1. Choose an Aesthetic Avatar</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarList}>
@@ -457,12 +459,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#090812',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   backButton: {
     padding: 8,
@@ -484,7 +491,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   sectionTitle: {
     fontSize: 15,

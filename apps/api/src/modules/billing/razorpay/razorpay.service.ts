@@ -85,7 +85,7 @@ export async function hasUsedTrial(userId: string): Promise<boolean> {
         plan: { code: { not: 'FREE' } },
         OR: [
           { trialStart: { not: null } },
-          { status: { in: ['ACTIVE', 'TRIALING', 'CANCELLED', 'EXPIRED', 'PAST_DUE'] } },
+          { status: { in: ['ACTIVE', 'TRIALING'] } },
         ],
       },
       select: { id: true },
@@ -104,6 +104,9 @@ export async function hasUsedTrial(userId: string): Promise<boolean> {
 
 /** What the app needs to show Razorpay at all, plus the Premium screen's face. */
 export async function razorpayClientConfig(userId?: string) {
+  if (userId) {
+    void reconcileIncompleteSubscription(userId).catch(() => undefined);
+  }
   const eligibleForTrial = userId ? !(await hasUsedTrial(userId)) : true;
   return {
     face: await paywallFace(userId),
@@ -290,7 +293,6 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
   if (!['authorized', 'captured'].includes(payment.status)) {
     throw new BadRequestError('The payment has not gone through yet.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
   }
-  if (await prisma.purchaseTransaction.findUnique({ where: { providerTransactionId: payment.id } })) return; // done already
   const local = await prisma.billingSubscription.findUniqueOrThrow({ where: { id: localSubId } });
   const remote = await rzp<RzpSubscription>('GET', `/subscriptions/${local.providerSubscriptionId}`);
   if (notesOf(remote)['userId'] !== local.userId) {
@@ -300,6 +302,30 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
   const trialEnd = nextMidnightIst();
   const firstCharge = sec(remote.charge_at ?? remote.start_at) ?? (isTrial ? trialEnd : new Date(Date.now() + 30 * 86_400_000));
   const googleToken = (local.metadata as { googleToken?: string } | null)?.googleToken;
+
+  const existingTx = await prisma.purchaseTransaction.findUnique({ where: { providerTransactionId: payment.id } });
+  if (existingTx) {
+    if (local.status === 'INCOMPLETE') {
+      await prisma.billingSubscription.update({
+        where: { id: local.id },
+        data: {
+          status: isTrial ? 'TRIALING' : 'ACTIVE',
+          trialStart: isTrial ? new Date() : null,
+          trialEnd: isTrial ? trialEnd : null,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: isTrial
+            ? trialEnd
+            : new Date(Math.max(firstCharge.getTime(), Date.now() + 28 * 86_400_000) + CHARGE_GRACE_MS),
+          cancelAtPeriodEnd: false,
+          cancelledAt: null,
+          endedAt: null,
+        },
+      });
+      await EntitlementService.invalidateUserEntitlementsCache(local.userId);
+    }
+    return;
+  }
+
   let txId = '';
   try {
     await prisma.$transaction(async (db) => {
@@ -334,11 +360,100 @@ async function activateFirstPayment(localSubId: string, payment: RzpPayment) {
       txId = tx.id;
     });
   } catch (err) {
-    if ((err as { code?: string }).code === 'P2002') return; // the webhook got there at the same moment
+    if ((err as { code?: string }).code === 'P2002') {
+      await prisma.billingSubscription.update({
+        where: { id: local.id },
+        data: {
+          status: isTrial ? 'TRIALING' : 'ACTIVE',
+          trialStart: isTrial ? new Date() : null,
+          trialEnd: isTrial ? trialEnd : null,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: isTrial
+            ? trialEnd
+            : new Date(Math.max(firstCharge.getTime(), Date.now() + 28 * 86_400_000) + CHARGE_GRACE_MS),
+          cancelAtPeriodEnd: false,
+          cancelledAt: null,
+          endedAt: null,
+        },
+      }).catch(() => undefined);
+      await EntitlementService.invalidateUserEntitlementsCache(local.userId);
+      return;
+    }
     throw err;
   }
+  await EntitlementService.invalidateUserEntitlementsCache(local.userId);
   Realtime.admin({ kind: 'payment', text: 'Premium (UPI)', id: local.userId });
   await reportSale(txId).catch(() => undefined);
+}
+
+/** If Razorpay authenticated or activated the subscription, but invoice payment lookup is pending/empty. */
+async function activateSubscriptionWithoutPayment(localSubId: string, remote: RzpSubscription) {
+  const local = await prisma.billingSubscription.findUniqueOrThrow({ where: { id: localSubId } });
+  if (local.status !== 'INCOMPLETE') return;
+  if (notesOf(remote)['userId'] !== local.userId) {
+    throw new BadRequestError('This payment belongs to a different account.', ErrorCode.PURCHASE_VERIFICATION_FAILED);
+  }
+  const isTrial = (local.metadata as { isTrial?: boolean } | null)?.isTrial ?? true;
+  const trialEnd = nextMidnightIst();
+  const firstCharge = sec(remote.charge_at ?? remote.start_at) ?? (isTrial ? trialEnd : new Date(Date.now() + 30 * 86_400_000));
+  const googleToken = (local.metadata as { googleToken?: string } | null)?.googleToken;
+  const fallbackTxId = `rzp_sub_${remote.id}`;
+
+  try {
+    await prisma.$transaction(async (db) => {
+      await db.billingSubscription.update({
+        where: { id: local.id },
+        data: {
+          status: isTrial ? 'TRIALING' : 'ACTIVE',
+          trialStart: isTrial ? new Date() : null,
+          trialEnd: isTrial ? trialEnd : null,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: isTrial
+            ? trialEnd
+            : new Date(Math.max(firstCharge.getTime(), Date.now() + 28 * 86_400_000) + CHARGE_GRACE_MS),
+          cancelAtPeriodEnd: false,
+          cancelledAt: null,
+          endedAt: null,
+        },
+      });
+      await db.purchaseTransaction.create({
+        data: {
+          userId: local.userId,
+          subscriptionId: local.id,
+          provider: 'RAZORPAY',
+          providerTransactionId: fallbackTxId,
+          productId: 'premium_monthly',
+          currency: 'INR',
+          amountMinorUnits: isTrial ? RAZORPAY_PREMIUM.firstDayMinorUnits : RAZORPAY_PREMIUM.monthlyMinorUnits,
+          status: 'SUCCEEDED',
+          metadata: { kind: 'subscription_first', razorpaySubscriptionId: remote.id, google: googleState(googleToken) },
+        },
+      });
+    });
+  } catch (err) {
+    if ((err as { code?: string }).code === 'P2002') {
+      await prisma.billingSubscription.update({
+        where: { id: local.id },
+        data: {
+          status: isTrial ? 'TRIALING' : 'ACTIVE',
+          trialStart: isTrial ? new Date() : null,
+          trialEnd: isTrial ? trialEnd : null,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: isTrial
+            ? trialEnd
+            : new Date(Math.max(firstCharge.getTime(), Date.now() + 28 * 86_400_000) + CHARGE_GRACE_MS),
+          cancelAtPeriodEnd: false,
+          cancelledAt: null,
+          endedAt: null,
+        },
+      }).catch(() => undefined);
+      await EntitlementService.invalidateUserEntitlementsCache(local.userId);
+      return;
+    }
+    throw err;
+  }
+  await EntitlementService.invalidateUserEntitlementsCache(local.userId);
+  Realtime.admin({ kind: 'payment', text: 'Premium (UPI AutoPay)', id: local.userId });
 }
 
 async function grantCoinPack(userId: string, order: RzpOrder, payment: RzpPayment) {
@@ -421,6 +536,61 @@ export async function cancelSubscriptionRemote(providerSubId: string) {
   }
 }
 
+/** Fetches latest payment associated with a subscription via its invoices. */
+export async function fetchSubscriptionLatestPayment(subId: string): Promise<RzpPayment | null> {
+  try {
+    const res = await rzp<{ items?: Array<{ id: string; payment_id?: string; status?: string }> }>(
+      'GET',
+      `/invoices?subscription_id=${subId}&count=5`
+    );
+    const paidInvoice = res.items?.find((inv) => inv.payment_id);
+    if (paidInvoice?.payment_id) {
+      return await rzp<RzpPayment>('GET', `/payments/${paidInvoice.payment_id}`);
+    }
+  } catch (err) {
+    logger.warn(`Could not fetch invoices for subscription ${subId}: ${(err as Error).message}`);
+  }
+  return null;
+}
+
+/** Automatically activates any pending INCOMPLETE subscription if Razorpay confirmed it. */
+export async function reconcileIncompleteSubscription(userId: string): Promise<boolean> {
+  if (!razorpayConfigured()) return false;
+  const local = await prisma.billingSubscription.findFirst({
+    where: {
+      userId,
+      provider: 'RAZORPAY',
+      status: 'INCOMPLETE',
+      createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!local?.providerSubscriptionId) return false;
+
+  try {
+    const remote = await rzp<RzpSubscription>('GET', `/subscriptions/${local.providerSubscriptionId}`);
+    if (['authenticated', 'active'].includes(remote.status) || (remote.paid_count && remote.paid_count > 0)) {
+      const payment = await fetchSubscriptionLatestPayment(local.providerSubscriptionId);
+      if (payment) {
+        await activateFirstPayment(local.id, payment);
+      } else {
+        await activateSubscriptionWithoutPayment(local.id, remote);
+      }
+      return true;
+    }
+    if (remote.status === 'cancelled') {
+      await prisma.billingSubscription.update({
+        where: { id: local.id },
+        data: { status: 'CANCELLED', endedAt: new Date() },
+      });
+      return false;
+    }
+  } catch (err) {
+    logger.debug(`Reconcile check failed for user ${userId}: ${(err as Error).message}`);
+  }
+  return false;
+}
+
 // ── Webhooks ─────────────────────────────────────────────────────────────────
 
 interface RzpWebhook {
@@ -428,6 +598,7 @@ interface RzpWebhook {
   payload: {
     payment?: { entity: RzpPayment };
     subscription?: { entity: RzpSubscription };
+    invoice?: { entity: { id: string; subscription_id?: string; payment_id?: string; amount?: number; status?: string } };
     refund?: { entity: { id: string; payment_id: string; amount: number; created_at: number } };
   };
 }
@@ -460,6 +631,7 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
 async function applyEvent(body: RzpWebhook) {
   const sub = body.payload.subscription?.entity;
   const payment = body.payload.payment?.entity;
+  const invoice = body.payload.invoice?.entity;
   const local = sub ? await prisma.billingSubscription.findUnique({ where: { providerSubscriptionId: sub.id } }) : null;
   if (sub && !local) {
     logger.warn(`Razorpay ${body.event} for an unknown subscription ${sub.id}`);
@@ -470,8 +642,35 @@ async function applyEvent(body: RzpWebhook) {
     case 'subscription.authenticated':
     case 'subscription.activated':
       // The app normally confirms the ₹1 itself; this covers an app closed mid-way.
-      if (local?.status === 'INCOMPLETE' && payment) await activateFirstPayment(local.id, payment);
+      if (local?.status === 'INCOMPLETE') {
+        const pay = payment ?? (sub ? await fetchSubscriptionLatestPayment(sub.id) : null);
+        if (pay) {
+          await activateFirstPayment(local.id, pay);
+        } else if (sub) {
+          await activateSubscriptionWithoutPayment(local.id, sub);
+        }
+      }
       return;
+    case 'invoice.paid': {
+      const subId = invoice?.subscription_id;
+      if (subId) {
+        const subLocal = await prisma.billingSubscription.findUnique({ where: { providerSubscriptionId: subId } });
+        if (subLocal?.status === 'INCOMPLETE') {
+          const payId = invoice?.payment_id ?? payment?.id;
+          let payObj: RzpPayment | null = payment ?? null;
+          if (!payObj && payId) {
+            payObj = await rzp<RzpPayment>('GET', `/payments/${payId}`).catch(() => null);
+          }
+          if (payObj) {
+            await activateFirstPayment(subLocal.id, payObj);
+          } else {
+            const remoteSub = await rzp<RzpSubscription>('GET', `/subscriptions/${subId}`).catch(() => null);
+            if (remoteSub) await activateSubscriptionWithoutPayment(subLocal.id, remoteSub);
+          }
+        }
+      }
+      return;
+    }
     case 'subscription.charged':
       if (local && payment && sub) await recordRenewal(local.id, sub, payment);
       return;
@@ -502,6 +701,16 @@ async function applyEvent(body: RzpWebhook) {
         const order = await rzp<RzpOrder>('GET', `/orders/${payment.order_id}`);
         const userId = notesOf(order)['userId'];
         if (userId && notesOf(order)['packId']) await grantCoinPack(userId, order, payment);
+      } else if (payment?.invoice_id) {
+        try {
+          const inv = await rzp<{ subscription_id?: string }>('GET', `/invoices/${payment.invoice_id}`);
+          if (inv.subscription_id) {
+            const subLocal = await prisma.billingSubscription.findUnique({ where: { providerSubscriptionId: inv.subscription_id } });
+            if (subLocal?.status === 'INCOMPLETE') {
+              await activateFirstPayment(subLocal.id, payment);
+            }
+          }
+        } catch {}
       }
       return;
     case 'refund.processed': {

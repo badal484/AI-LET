@@ -70,7 +70,7 @@ export const LoginScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0614' },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32 },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32, maxWidth: 440, width: '100%', alignSelf: 'center' },
   actions: { marginTop: 40, gap: 14 },
   error: { color: '#F87171', fontSize: 13, textAlign: 'center' },
   demo: { alignItems: 'center', paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(196,181,253,0.25)' },

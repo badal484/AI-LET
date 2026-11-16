@@ -176,7 +176,7 @@ export const SubscriptionManagementScreen: React.FC<{ isTab?: boolean }> = ({ is
           : `Renews ${periodEnd}`;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={isTab ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom']}>
       <View style={styles.glow} pointerEvents="none">
         <GradientFill
           radial
@@ -188,16 +188,18 @@ export const SubscriptionManagementScreen: React.FC<{ isTab?: boolean }> = ({ is
         />
       </View>
       <View style={styles.header}>
-        {!isTab && (
-          <IconButton
-            icon="arrow-left"
-            size="sm"
-            variant="surface"
-            onPress={() => navigation.goBack()}
-            accessibilityLabel="Back"
-          />
-        )}
-        <Text style={styles.title}>Your Premium</Text>
+        <View style={styles.headerInner}>
+          {!isTab && (
+            <IconButton
+              icon="arrow-left"
+              size="sm"
+              variant="surface"
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Back"
+            />
+          )}
+          <Text style={styles.title}>Your Premium</Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -293,14 +295,19 @@ const styles = StyleSheet.create({
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 300 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
+  },
   title: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
-  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: 14, paddingBottom: 48 },
+  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: 14, paddingBottom: 48, maxWidth: 540, width: '100%', alignSelf: 'center' },
   hero: {
     borderRadius: 20,
     padding: 18,

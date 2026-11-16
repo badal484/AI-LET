@@ -74,16 +74,24 @@ export class CatalogService {
   }
 
 
+  private static categoriesMemoryCache: { data: CharacterCategorySummary[]; expiresAt: number } | null = null;
+
   /**
    * Retrieves all active character categories with character counts.
    */
   public static async getCategories(): Promise<CharacterCategorySummary[]> {
+    if (this.categoriesMemoryCache && this.categoriesMemoryCache.expiresAt > Date.now()) {
+      return this.categoriesMemoryCache.data;
+    }
+
     const cacheKey = 'discovery:categories:all';
 
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached) as CharacterCategorySummary[];
+        this.categoriesMemoryCache = { data: parsed, expiresAt: Date.now() + 300_000 };
+        return parsed;
       }
     } catch (err) {
       logger.warn(`[CatalogService] Redis read failure for ${cacheKey}: ${(err as Error).message}`);
@@ -139,6 +147,7 @@ export class CatalogService {
       updatedAt: c.updatedAt.toISOString(),
     }));
 
+    this.categoriesMemoryCache = { data: result, expiresAt: Date.now() + 300_000 };
     try {
       await redis.set(cacheKey, JSON.stringify(result), 'EX', this.CACHE_TTL_SECONDS);
     } catch (err) {

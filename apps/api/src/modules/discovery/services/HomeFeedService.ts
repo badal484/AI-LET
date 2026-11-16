@@ -14,7 +14,7 @@ import type {
 } from '@ai-companion/types';
 
 export class HomeFeedService {
-  private static CACHE_TTL_SECONDS = 120; // 2 minutes
+  private static memoryCache = new Map<string, { data: HomeFeedResponse; expiresAt: number }>();
 
   /**
    * Assembles the complete personalized Home feed using the multi-stage discovery pipeline:
@@ -31,13 +31,19 @@ export class HomeFeedService {
     } = {},
   ): Promise<HomeFeedResponse> {
     const limit = options.limit || 10;
-    const cacheKey = userId ? `home:user:${userId}:v27` : 'home:guest:v27';
+    const cacheKey = userId ? `home:user:${userId}:v28` : 'home:guest:v28';
 
     if (!options.refresh) {
+      const mem = this.memoryCache.get(cacheKey);
+      if (mem && mem.expiresAt > Date.now()) {
+        return mem.data;
+      }
       try {
         const cached = await redis.get(cacheKey);
         if (cached) {
-          return JSON.parse(cached);
+          const parsed = JSON.parse(cached) as HomeFeedResponse;
+          this.memoryCache.set(cacheKey, { data: parsed, expiresAt: Date.now() + 60_000 });
+          return parsed;
         }
       } catch (err) {
         logger.debug('Redis home cache read missed/failed', { err });
@@ -171,14 +177,14 @@ export class HomeFeedService {
       });
       if (dedupeAcrossSections) popularRanked.forEach(i => globalShownIds.add(i.characterId));
 
-      // 6. Hydrate All Published Characters with DB records
+      // 6. Hydrate All Published Characters with DB records (only select required voiceConfigData, not massive prompt snapshots)
       const characters = await prisma.character.findMany({
         where: { status: 'PUBLISHED', deletedAt: null },
         orderBy: [{ isFeatured: 'desc' }, { updatedAt: 'desc' }],
         include: {
           categoryRef: true,
           discoveryConfig: true,
-          currentPublishedVersion: true,
+          currentPublishedVersion: { select: { voiceConfigData: true } },
           tagLinks: { include: { tag: true } },
         },
       });
@@ -227,9 +233,10 @@ export class HomeFeedService {
         recommendationVersion: rankingVersion,
       };
 
-      // Cache result in Redis asynchronously
+      // Cache result in memory and Redis
+      this.memoryCache.set(cacheKey, { data: response, expiresAt: Date.now() + 120_000 });
       try {
-        await redis.set(cacheKey, JSON.stringify(response), 'EX', this.CACHE_TTL_SECONDS);
+        await redis.set(cacheKey, JSON.stringify(response), 'EX', 120);
       } catch {
         // ignore
       }
@@ -359,7 +366,7 @@ export class HomeFeedService {
       include: {
         categoryRef: true,
         discoveryConfig: true,
-        currentPublishedVersion: true,
+        currentPublishedVersion: { select: { voiceConfigData: true } },
         tagLinks: { include: { tag: true } },
       },
     });

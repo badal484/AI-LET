@@ -75,7 +75,7 @@ export const Avatar: React.FC<AvatarProps> = ({
     >
       {uri && !imageError ? (
         <Image
-          source={{ uri: thumb(uri, dim) }}
+          source={{ uri: thumb(uri, dim) || '', cache: 'force-cache' }}
           style={[styles.image, { width: dim, height: dim, borderRadius }]}
           onError={() => setImageError(true)}
           blurRadius={blurRadius}

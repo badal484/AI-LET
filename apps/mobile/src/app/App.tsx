@@ -1,6 +1,6 @@
 import { LimitReached } from '../services/limitReached.js';
 import React, { useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, StatusBar, AppState } from 'react-native';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -35,7 +35,7 @@ import { Realtime } from '../services/realtime/RealtimeClient.js';
 import { useTypingStore } from '../stores/typingStore.js';
 import { useBillingStore } from '../stores/billingStore.js';
 import { billingApi } from '../services/api/billingApi.js';
-import { loadUpiConfig } from '../services/razorpayCheckout.js';
+import { loadUpiConfig, flushPendingPaymentConfirmation } from '../services/razorpayCheckout.js';
 import { useNotificationStore } from '../stores/notificationStore.js';
 import { CampaignMessages } from '../components/CampaignMessages.js';
 import { AppAlert } from '../components/common/AppDialog.js';
@@ -169,6 +169,17 @@ export const AppContent: React.FC = () => {
       setCrashUser(null);
     }
   }, [status, userId]);
+
+  // When returning from UPI apps (PhonePe, Google Pay, etc.), automatically flush pending payments & refresh billing
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && status === 'authenticated') {
+        void flushPendingPaymentConfirmation();
+        void useBillingStore.getState().loadBillingState();
+      }
+    });
+    return () => sub.remove();
+  }, [status]);
 
   const trackScreen = () => {
     const name = navigationRef.getCurrentRoute()?.name;

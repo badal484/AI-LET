@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -23,11 +24,13 @@ import {
   Icon,
 } from '../../components/common/index.js';
 import { darkThemeColors, spacing } from '../../theme/index.js';
+import { thumb } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 type CreatorRouteProp = RouteProp<RootStackParamList, 'CreatorProfile'>;
 
 export const CreatorProfileScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<CreatorRouteProp>();
   const username = route.params?.username;
@@ -95,9 +98,9 @@ export const CreatorProfileScreen: React.FC = () => {
   const renderHeader = () => (
     <View style={styles.profileHeader}>
       {/* Banner */}
-      <View style={styles.bannerContainer}>
+      <View style={[styles.bannerContainer, { height: 140 + insets.top }]}>
         {profile.bannerUrl ? (
-          <Image source={{ uri: profile.bannerUrl }} style={styles.bannerImage} />
+          <Image source={{ uri: thumb(profile.bannerUrl, 420) || '', cache: 'force-cache' }} style={styles.bannerImage} />
         ) : (
           <View style={styles.bannerPlaceholder} />
         )}
@@ -107,7 +110,7 @@ export const CreatorProfileScreen: React.FC = () => {
           variant="glass"
           onPress={navigation.goBack}
           accessibilityLabel="Back"
-          style={styles.backButton}
+          style={[styles.backButton, { top: insets.top + spacing.xs }]}
         />
       </View>
 
@@ -191,7 +194,8 @@ export const CreatorProfileScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         renderItem={renderCharacterCard}
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
             icon="sparkles"
@@ -211,6 +215,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: spacing.xl,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   profileHeader: {
     marginBottom: spacing.md,

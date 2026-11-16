@@ -4,18 +4,17 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   ViewStyle,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { Badge } from './Badge.js';
 import { Avatar } from './Avatar.js';
 import { Icon } from './Icon.js';
+import { FallbackImage } from './FallbackImage.js';
+import { thumb } from '../../utils/thumb.js';
 import { darkThemeColors, spacing, radius } from '../../theme/index.js';
 import type { CharacterCatalogItem } from '@ai-companion/types';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface CharacterCardProps {
   character: CharacterCatalogItem;
@@ -34,6 +33,7 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   isFavorited = false,
   style,
 }) => {
+  const { width } = useWindowDimensions();
   const isPro = character.accessType !== 'free';
 
   if (variant === 'compact') {
@@ -106,8 +106,9 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
         accessibilityRole="button"
         accessibilityLabel={`Featured companion ${character.name}: ${character.tagline}`}
       >
-        <Image
-          source={{ uri: character.coverImageUrl || character.avatarUrl }}
+        <FallbackImage
+          uris={[thumb(character.coverImageUrl, Math.min(width, 600)), thumb(character.avatarUrl, Math.min(width, 600))]}
+          name={character.name}
           style={styles.featuredImage}
         />
         <View style={styles.featuredOverlay}>
@@ -151,14 +152,15 @@ export const CharacterCard: React.FC<CharacterCardProps> = ({
   // Default: Grid Card
   return (
     <TouchableOpacity
-      style={[styles.gridContainer, style]}
+      style={[styles.gridContainer, { width: Math.min(width * 0.56, 260) }, style]}
       activeOpacity={0.85}
       onPress={() => openIfAllowed(character, onPress)}
       accessibilityRole="button"
       accessibilityLabel={`${character.name}, ${character.tagline}`}
     >
-      <Image
-        source={{ uri: character.coverImageUrl || character.avatarUrl }}
+      <FallbackImage
+        uris={[thumb(character.coverImageUrl, 160), thumb(character.avatarUrl, 160)]}
+        name={character.name}
         style={styles.gridImage}
       />
 
@@ -238,6 +240,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: darkThemeColors.borderSubtle,
     marginBottom: spacing.md,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
   },
   horizontalInfo: {
     flex: 1,
@@ -259,7 +264,6 @@ const styles = StyleSheet.create({
 
   // Grid
   gridContainer: {
-    width: SCREEN_WIDTH * 0.56,
     height: 270,
     borderRadius: radius.lg + 2,
     overflow: 'hidden',
@@ -331,6 +335,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: darkThemeColors.borderSubtle,
     position: 'relative',
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
   featuredImage: {
     width: '100%',

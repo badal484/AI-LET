@@ -286,7 +286,7 @@ export const ProfileScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0614' },
-  content: { paddingHorizontal: spacing.lg, paddingBottom: 120, gap: spacing.md },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: 120, gap: spacing.md, maxWidth: 580, width: '100%', alignSelf: 'center' },
   glow: { position: 'absolute', top: 0, left: -spacing.lg, right: -spacing.lg, height: 320 },
   me: { alignItems: 'center', marginTop: spacing.xl, marginBottom: spacing.xs },
   ring: { width: 104, height: 104, borderRadius: 52, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
@@ -337,6 +337,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(196,181,253,0.2)',
+    maxWidth: 460,
+    width: '100%',
+    alignSelf: 'center',
   },
   sheetBadge: {
     alignSelf: 'center',

@@ -104,18 +104,20 @@ export const CreditWalletScreen: React.FC = () => {
   const isBusy = isLoading || purchaseState === 'verifying';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       {/* Top Header */}
       <View style={styles.topBar}>
-        <IconButton
-          icon="arrow-left"
-          size="sm"
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
-        <Text style={styles.headerTitle}>AI Credits Wallet</Text>
-        <View style={{ width: 36 }} />
+        <View style={styles.topBarInner}>
+          <IconButton
+            icon="arrow-left"
+            size="sm"
+            variant="ghost"
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+          />
+          <Text style={styles.headerTitle}>AI Credits Wallet</Text>
+          <View style={{ width: 36 }} />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -254,13 +256,18 @@ const styles = StyleSheet.create({
     backgroundColor: darkThemeColors.background,
   },
   topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: darkThemeColors.border,
+  },
+  topBarInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
   },
   backButton: {
     width: 36,
@@ -282,6 +289,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
   },
   balanceHeroCard: {
     backgroundColor: darkThemeColors.surfaceElevated,

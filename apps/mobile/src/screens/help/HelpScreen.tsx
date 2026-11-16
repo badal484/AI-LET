@@ -91,13 +91,15 @@ export const HelpScreen: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.glow} pointerEvents="none">
         <GradientFill radial colors={[['#A855F7', 0.2], ['#EC4899', 0.05], ['#0B0614', 0]]} />
       </View>
       <View style={styles.header}>
-        <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
-        <Text style={styles.headerTitle}>Help & contact us</Text>
+        <View style={styles.headerInner}>
+          <IconButton icon="arrow-left" size="sm" variant="surface" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
+          <Text style={styles.headerTitle}>Help & contact us</Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -178,9 +180,10 @@ export const HelpScreen: React.FC = () => {
 const styles = StyleSheet.create({
   glow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   container: { flex: 1, backgroundColor: darkThemeColors.background },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+  headerInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, maxWidth: 640, width: '100%', alignSelf: 'center' },
   headerTitle: { color: darkThemeColors.textPrimary, fontSize: 20, fontWeight: '700' },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl ?? 48, gap: spacing.md },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl ?? 48, gap: spacing.md, maxWidth: 640, width: '100%', alignSelf: 'center' },
   section: { color: darkThemeColors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: spacing.sm },
   card: { backgroundColor: darkThemeColors.surface, borderRadius: 16, borderWidth: 1, borderColor: darkThemeColors.border, padding: spacing.md, gap: spacing.sm },
   faq: { paddingVertical: 2 },

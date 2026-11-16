@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../navigation/types.js';
@@ -35,6 +36,7 @@ const CATEGORY_TABS: Array<{ label: string; key?: NotificationCategory }> = [
 ];
 
 export const NotificationCenterScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const {
     notifications,
@@ -172,57 +174,61 @@ export const NotificationCenterScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size="sm"
-          variant="ghost"
-          onPress={navigation.goBack}
-          accessibilityLabel="Back"
-        />
-        <View style={{ flex: 1, marginLeft: spacing.xs }}>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          <Text style={styles.headerSubtitle}>
-            {unreadCount > 0 ? `${unreadCount} unread update${unreadCount > 1 ? 's' : ''}` : 'All caught up'}
-          </Text>
-        </View>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
+        <View style={styles.headerInner}>
+          <IconButton
+            icon="arrow-left"
+            size="sm"
+            variant="ghost"
+            onPress={navigation.goBack}
+            accessibilityLabel="Back"
+          />
+          <View style={{ flex: 1, marginLeft: spacing.xs }}>
+            <Text style={styles.headerTitle}>Notifications</Text>
+            <Text style={styles.headerSubtitle}>
+              {unreadCount > 0 ? `${unreadCount} unread update${unreadCount > 1 ? 's' : ''}` : 'All caught up'}
+            </Text>
+          </View>
 
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={handleMarkAllRead} style={styles.markAllReadBtn}>
-            <Text style={styles.markAllReadText}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={handleMarkAllRead} style={styles.markAllReadBtn}>
+              <Text style={styles.markAllReadText}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Category Tabs */}
       <View style={styles.tabsContainer}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={CATEGORY_TABS}
-          keyExtractor={(t) => t.label}
-          contentContainerStyle={styles.tabsContent}
-          renderItem={({ item: tab }) => {
-            const isSelected = selectedCategory === tab.key;
-            return (
-              <TouchableOpacity
-                style={[styles.tabChip, isSelected && styles.tabChipActive]}
-                onPress={() => setSelectedCategory(tab.key)}
-                accessibilityRole="tab"
-                accessibilityLabel={`Filter by ${tab.label}`}
-              >
-                <Text style={[styles.tabChipText, isSelected && styles.tabChipTextActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
+        <View style={styles.tabsInner}>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={CATEGORY_TABS}
+            keyExtractor={(t) => t.label}
+            contentContainerStyle={styles.tabsContent}
+            renderItem={({ item: tab }) => {
+              const isSelected = selectedCategory === tab.key;
+              return (
+                <TouchableOpacity
+                  style={[styles.tabChip, isSelected && styles.tabChipActive]}
+                  onPress={() => setSelectedCategory(tab.key)}
+                  accessibilityRole="tab"
+                  accessibilityLabel={`Filter by ${tab.label}`}
+                >
+                  <Text style={[styles.tabChipText, isSelected && styles.tabChipTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
       </View>
 
       {/* Notifications List */}
       {loading && notifications.length === 0 ? (
-        <View style={{ padding: spacing.lg }}>
+        <View style={[styles.loadingContainer, { paddingBottom: insets.bottom + spacing.xl }]}>
           <Skeleton.Card height={90} />
           <Skeleton.Card height={90} />
           <Skeleton.Card height={90} />
@@ -232,7 +238,7 @@ export const NotificationCenterScreen: React.FC = () => {
           data={notifications}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -274,14 +280,18 @@ const styles = StyleSheet.create({
     backgroundColor: darkThemeColors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: spacing.xxl + spacing.xs,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     backgroundColor: darkThemeColors.background,
     borderBottomWidth: 1,
     borderBottomColor: darkThemeColors.borderSubtle,
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 20,
@@ -307,6 +317,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: darkThemeColors.borderSubtle,
   },
+  tabsInner: {
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+  },
   tabsContent: {
     paddingHorizontal: spacing.lg,
     gap: spacing.xs,
@@ -331,10 +346,18 @@ const styles = StyleSheet.create({
   tabChipTextActive: {
     color: darkThemeColors.accentText,
   },
+  loadingContainer: {
+    padding: spacing.lg,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+  },
   listContent: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxl * 2,
     gap: spacing.md,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   notificationCard: {
     backgroundColor: darkThemeColors.surfaceElevated,

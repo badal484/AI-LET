@@ -13,6 +13,7 @@ allowBuilds:
   'msgpackr-extract': false
   '@firebase/util': false
   protobufjs: false
+  workerd: set this to true or false
 
 # recharts 2 draws nothing on React 19 unless it uses react-is 19 (admin charts).
 overrides:

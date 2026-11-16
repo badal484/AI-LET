@@ -1,6 +1,6 @@
 'use client';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Download, Search } from 'lucide-react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, Download, Search, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Badge, PlanBadge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Live, LIVE_MS } from '@/components/ui/live';
+import { Modal } from '@/components/ui/modal';
 import { Switch } from '@/components/ui/switch';
 import { Table, Td, Th } from '@/components/ui/table';
 import { api } from '@/lib/api';
@@ -65,12 +66,31 @@ function Stat({ label, value, sub, onClick, active }: { label: string; value: nu
 }
 
 export default function UsersPage() {
+  const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('');
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'lastActive', dir: 'desc' });
   const [showTest, setShowTest] = useState(false);
   const [page, setPage] = useState(1);
+  const [purgeModal, setPurgeModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+
+  const purge = useMutation({
+    mutationFn: () => api<{ count: number }>('/console/users/purge-test', { method: 'POST', body: JSON.stringify({ reason: 'Purged from admin console' }) }),
+    onSuccess: () => {
+      setPurgeModal(false);
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: (userId: string) => api(`/console/users/${userId}/delete?immediate=1`, { method: 'POST', body: JSON.stringify({ reason: 'Deleted from admin console' }) }),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
   // Links like /users?filter=new open the list already filtered.
   useEffect(() => {
     const f = new URLSearchParams(window.location.search).get('filter');
@@ -135,6 +155,11 @@ export default function UsersPage() {
           <Switch checked={showTest} onChange={(v) => { setShowTest(v); setPage(1); }} label="Show test accounts" />
           Show test accounts
         </label>
+        {showTest && (
+          <Button variant="danger" size="sm" onClick={() => setPurgeModal(true)}>
+            <Trash2 size={14} className="mr-1.5" /> Purge test accounts
+          </Button>
+        )}
         <a
           href={`/api/v1/admin/console/users.csv?${query}`}
           className="inline-flex h-9 items-center gap-2 rounded-lg bg-surface-2 px-3 text-sm hover:bg-border"
@@ -170,17 +195,18 @@ export default function UsersPage() {
               <SortTh k="paid" right>Paid</SortTh>
               <SortTh k="lastActive">Last active</SortTh>
               <SortTh k="joined">Joined</SortTh>
+              <Th className="w-10"><span className="sr-only">Actions</span></Th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <Td colSpan={10} className="text-center text-muted">Loading…</Td>
+                <Td colSpan={11} className="text-center text-muted">Loading…</Td>
               </tr>
             )}
             {data?.users.length === 0 && (
               <tr>
-                <Td colSpan={10} className="py-10 text-center text-muted">No users match.</Td>
+                <Td colSpan={11} className="py-10 text-center text-muted">No users match.</Td>
               </tr>
             )}
             {data?.users.map((u) => (
@@ -208,6 +234,19 @@ export default function UsersPage() {
                 <Td className="text-right tabular-nums">{u.paid ? rupees(u.paid) : <span className="text-muted">—</span>}</Td>
                 <Td className="text-muted">{ago(u.lastActive)}</Td>
                 <Td className="text-muted">{ago(u.joined)}</Td>
+                <Td className="text-right">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(u);
+                    }}
+                    className="rounded p-1.5 text-muted hover:bg-surface hover:text-bad"
+                    title={u.test ? 'Delete test account' : 'Delete user'}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </Td>
               </tr>
             ))}
           </tbody>
@@ -221,6 +260,37 @@ export default function UsersPage() {
           </div>
         </div>
       </Card>
+
+      <Modal open={purgeModal} onClose={() => setPurgeModal(false)} title="Purge all test accounts">
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            This will permanently delete all test accounts (Google Cloud Test Lab, QA review, and eval accounts) and erase their data immediately. This cannot be undone.
+          </p>
+          {purge.error && <p className="text-sm text-bad">{(purge.error as Error).message}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setPurgeModal(false)}>Cancel</Button>
+            <Button variant="danger" disabled={purge.isPending} onClick={() => purge.mutate()}>
+              {purge.isPending ? 'Purging…' : 'Purge test accounts'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={deleteTarget !== null} onClose={() => setDeleteTarget(null)} title={deleteTarget?.test ? 'Delete test account' : 'Delete user'}>
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Are you sure you want to permanently delete <strong>{deleteTarget?.name ?? deleteTarget?.email}</strong>?
+            All their chats, memories, and logins will be erased immediately.
+          </p>
+          {deleteUser.error && <p className="text-sm text-bad">{(deleteUser.error as Error).message}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="danger" disabled={deleteUser.isPending} onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.id)}>
+              {deleteUser.isPending ? 'Deleting…' : 'Delete immediately'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

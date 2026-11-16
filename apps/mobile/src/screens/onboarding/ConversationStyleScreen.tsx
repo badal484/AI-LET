@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useOnboardingStore } from '../../stores/onboardingStore.js';
@@ -26,6 +27,7 @@ const STYLES: StyleOption[] = [
 ];
 
 export const ConversationStyleScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<StackNavigationProp<OnboardingStackParamList>>();
   const { selectedStyle, setStyle, completeCurrentStep, isSubmitting } = useOnboardingStore();
 
@@ -39,7 +41,16 @@ export const ConversationStyleScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top + spacing.sm,
+          paddingBottom: Math.max(insets.bottom + spacing.sm, spacing.lg),
+        },
+      ]}
+    >
+      <View style={styles.innerWrapper}>
       <View style={styles.header}>
         <Text style={styles.stepIndicator}>STEP 3 OF 4</Text>
         <Text style={styles.title}>How do you like conversations to feel?</Text>
@@ -89,6 +100,7 @@ export const ConversationStyleScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </View>
+      </View>
     </View>
   );
 };
@@ -98,8 +110,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: darkThemeColors.background,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl + spacing.md,
-    paddingBottom: spacing.xxl,
+  },
+  innerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
   header: {
     marginBottom: spacing.xl,

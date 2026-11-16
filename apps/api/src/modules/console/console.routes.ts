@@ -3,8 +3,8 @@ import { ADMIN_PERMISSIONS } from '@ai-companion/config';
 import { authenticateAdmin, requirePermission } from '../../shared/middleware/adminAuth.middleware.js';
 import { getOverview } from './overview.service.js';
 import {
-  addMessages, cancelDeletion, deleteMemory, getMemories, getUser, grantPremium, listUsers, removePremium, requestDeletion, resetToday,
-  setBlocked, signOutEverywhere, usersCsv, type ListParams,
+  addMessages, cancelDeletion, deleteMemory, getMemories, getUser, grantPremium, listUsers, purgeTestUsers, removePremium, requestDeletion, resetToday,
+  setBlocked, signOutEverywhere, syncUserSubscription, usersCsv, type ListParams,
 } from './users.service.js';
 import { addGalleryImage, getAiCost, getCharacter, getGallery, getMoney, listCharacters, setCharacterImage, setGallery, transactionsCsv, updateCharacter } from './insights.service.js';
 import express from 'express';
@@ -69,11 +69,13 @@ consoleRouter.get('/users.csv', requirePermission(P.USERS_READ), async (req, res
 consoleRouter.get('/users/:id', requirePermission(P.USERS_READ), handle((req) => getUser(idOf(req))));
 consoleRouter.post('/users/:id/premium', requirePermission(P.BILLING_WRITE), handle((req) => grantPremium(adminId(req), idOf(req), Number(req.body?.days), reasonOf(req))));
 consoleRouter.post('/users/:id/premium/remove', requirePermission(P.BILLING_WRITE), handle((req) => removePremium(adminId(req), idOf(req), reasonOf(req))));
+consoleRouter.post('/users/:id/sync-subscription', requirePermission(P.BILLING_WRITE), handle((req) => syncUserSubscription(adminId(req), idOf(req))));
 consoleRouter.post('/users/:id/messages', requirePermission(P.BILLING_CREDITS_GRANT), handle((req) => addMessages(adminId(req), idOf(req), Number(req.body?.amount), reasonOf(req))));
 consoleRouter.post('/users/:id/reset-today', requirePermission(P.BILLING_CREDITS_GRANT), handle((req) => resetToday(adminId(req), idOf(req), reasonOf(req))));
 consoleRouter.post('/users/:id/block', requirePermission(P.USERS_SUSPEND), handle((req) => setBlocked(adminId(req), idOf(req), Boolean(req.body?.blocked), reasonOf(req))));
 consoleRouter.post('/users/:id/sign-out', requirePermission(P.USERS_SUSPEND), handle((req) => signOutEverywhere(adminId(req), idOf(req), reasonOf(req))));
-consoleRouter.post('/users/:id/delete', requirePermission(P.USERS_DELETE), handle((req) => requestDeletion(adminId(req), idOf(req), reasonOf(req))));
+consoleRouter.post('/users/purge-test', requirePermission(P.USERS_DELETE), handle((req) => purgeTestUsers(adminId(req), reasonOf(req))));
+consoleRouter.post('/users/:id/delete', requirePermission(P.USERS_DELETE), handle((req) => requestDeletion(adminId(req), idOf(req), reasonOf(req), req.query['immediate'] === '1' || req.body?.immediate === true)));
 consoleRouter.post('/users/:id/delete/cancel', requirePermission(P.USERS_DELETE), handle((req) => cancelDeletion(adminId(req), idOf(req))));
 // Memories are private: opening them needs a reason and is written to the audit log.
 consoleRouter.post('/users/:id/memories', requirePermission(P.MEMORIES_READ), handle((req) => getMemories(adminId(req), idOf(req), reasonOf(req))));

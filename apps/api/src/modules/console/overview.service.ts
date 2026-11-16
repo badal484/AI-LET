@@ -7,7 +7,39 @@ import { getSetting } from './appSettings.js';
  * Money is in rupees; AI cost is converted from USD at INR_PER_USD (default 88).
  */
 
-export const TEST_USERS = `(u.email LIKE 'eval\\_%' OR u.email LIKE '%@test.local' OR u.email LIKE '%@example.com')`;
+/**
+ * Test and eval accounts (eval_*, *@test.local, *@example.com, Firebase/Google Play Test Lab, QA review accounts, etc.)
+ * are always left out from real user KPIs, charts, campaign blasts, and default user lists.
+ */
+export const TEST_USERS = `(
+  lower(u.email) LIKE 'eval\\_%'
+  OR lower(u.email) LIKE '%@test.local'
+  OR lower(u.email) LIKE '%@example.com'
+  OR lower(u.email) LIKE '%@cloudtestlabaccounts.com'
+  OR lower(u.email) LIKE '%cloudtestlab%'
+  OR lower(u.email) LIKE '%qualityone%'
+  OR lower(u.email) LIKE 'boracay.%'
+  OR lower(u.email) LIKE '%boracay%'
+  OR lower(u.email) LIKE '%+test%@%'
+  OR lower(u.email) LIKE 'test.%'
+  OR lower(u.email) LIKE 'test\\_%'
+  OR lower(u.email) LIKE 'test-%'
+  OR lower(u.email) LIKE '%@test.%'
+  OR lower(u.email) LIKE 'danniejarrett%'
+  OR lower(u.email) LIKE 'leslienichols%'
+  OR lower(u.email) LIKE 'daisysummers%'
+  OR lower(u.email) ~ '^[a-z]+(\\.[a-z]+)?\\.[0-9]{4,6}@gmail\\.com$'
+  OR EXISTS (
+    SELECT 1 FROM user_profiles pr_t
+    WHERE pr_t.user_id = u.id
+      AND (
+        lower(pr_t.display_name) LIKE '%quality test%'
+        OR lower(pr_t.display_name) LIKE '%test user%'
+        OR lower(pr_t.display_name) LIKE 'test %'
+        OR lower(pr_t.display_name) = 'test'
+      )
+  )
+)`;
 export const REAL_USERS = `(NOT ${TEST_USERS})`;
 const INR = () => Number(process.env['INR_PER_USD'] ?? 88);
 

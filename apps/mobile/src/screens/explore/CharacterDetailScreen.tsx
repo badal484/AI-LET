@@ -36,7 +36,7 @@ import { Analytics } from '../../services/analytics/AnalyticsSDK.js';
 import { AppAlert } from '../../components/common/AppDialog.js';
 import { GradientFill } from '../../components/common/GradientFill.js';
 import { FallbackImage } from '../../components/common/FallbackImage.js';
-import { thumb } from '../../utils/thumb.js';
+import { thumb, prefetchImages } from '../../utils/thumb.js';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -59,8 +59,8 @@ export const CharacterDetailScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  // Three across inside the page's side padding.
-  const galleryTile = Math.floor((screenWidth - spacing.lg * 2 - GALLERY_GAP * 2) / 3);
+  const galleryCols = screenWidth >= 900 ? 5 : screenWidth >= 600 ? 4 : 3;
+  const galleryTile = Math.floor((screenWidth - spacing.lg * 2 - GALLERY_GAP * (galleryCols - 1)) / galleryCols);
 
   const identifier = route.params.characterSlug || route.params.characterId;
   const { favoriteIds, toggleFavoriteOptimistic } = useDiscoveryStore();
@@ -73,8 +73,14 @@ export const CharacterDetailScreen: React.FC = () => {
   // One view per character page open (feeds creator analytics).
   const viewedCharacterId = profile?.id;
   useEffect(() => {
-    if (viewedCharacterId) Analytics.trackCharacterViewed(viewedCharacterId);
-  }, [viewedCharacterId]);
+    if (viewedCharacterId) {
+      Analytics.trackCharacterViewed(viewedCharacterId);
+      if (Array.isArray(profile?.galleryImages)) {
+        const valid = (profile.galleryImages as string[]).filter(u => typeof u === 'string' && u.startsWith('http'));
+        prefetchImages(valid.slice(0, 6), galleryTile);
+      }
+    }
+  }, [viewedCharacterId, profile?.galleryImages, galleryTile]);
 
   const isFavorited = profile?.id
     ? favoriteIds.has(profile.id) || profile.isFavorite
@@ -238,7 +244,11 @@ export const CharacterDetailScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 110 + insets.bottom }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Cover Hero Header */}
         <View style={styles.heroContainer}>
           <FallbackImage
@@ -336,7 +346,7 @@ export const CharacterDetailScreen: React.FC = () => {
                 {gallery.map((imgUrl, idx) => (
                   <View key={imgUrl} style={[styles.galleryCard, { width: galleryTile, height: Math.round(galleryTile * 1.6) }]}>
                     <Image
-                      source={{ uri: thumb(imgUrl, galleryTile) }}
+                      source={{ uri: thumb(imgUrl, galleryTile) || '', cache: 'force-cache' }}
                       style={styles.galleryImage}
                       resizeMode="cover"
                       blurRadius={ageRestricted(profile) ? AGE_BLUR_RADIUS : 0}
@@ -475,22 +485,24 @@ export const CharacterDetailScreen: React.FC = () => {
       </ModalDialog>
 
       {/* Primary Sticky Bottom CTA */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.startChattingBtn}
-          onPress={() => handleStartChat()}
-          activeOpacity={0.88}
-        >
-          <Text style={styles.startChattingBtnText}>
-            {ageRestricted(profile)
-              ? '18+ only'
-              : profile.isLockedForUser
-              ? 'Unlock with Premium'
-              : profile.existingConversationId
-              ? 'Continue chat'
-              : 'Start chat'}
-          </Text>
-        </TouchableOpacity>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 8, 20) }]}>
+        <View style={styles.bottomBarInner}>
+          <TouchableOpacity
+            style={styles.startChattingBtn}
+            onPress={() => handleStartChat()}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.startChattingBtnText}>
+              {ageRestricted(profile)
+                ? '18+ only'
+                : profile.isLockedForUser
+                ? 'Unlock with Premium'
+                : profile.existingConversationId
+                ? 'Continue chat'
+                : 'Start chat'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -705,7 +717,11 @@ const styles = StyleSheet.create({
     borderTopColor: '#1F142E',
     paddingHorizontal: spacing.lg,
     paddingTop: 12,
-    paddingBottom: 28,
+  },
+  bottomBarInner: {
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
   },
   startChattingBtn: {
     backgroundColor: '#7C3AED',

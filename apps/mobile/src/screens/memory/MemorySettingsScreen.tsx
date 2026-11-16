@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { memoryApi } from '../../services/api/memoryApi.js';
 import {
   IconButton,
@@ -27,6 +28,7 @@ import type { MemoryDetail, UserMemorySettingsData } from '@ai-companion/types';
 import { AppAlert } from '../../components/common/AppDialog.js';
 
 export const MemorySettingsScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [settings, setSettings] = useState<UserMemorySettingsData | null>(null);
   const [memories, setMemories] = useState<MemoryDetail[]>([]);
@@ -164,11 +166,13 @@ export const MemorySettingsScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <IconButton icon="←" size="sm" variant="ghost" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
-          <Text style={styles.title}>Memory & Privacy</Text>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
+          <View style={styles.headerInner}>
+            <IconButton icon="←" size="sm" variant="ghost" onPress={() => navigation.goBack()} accessibilityLabel="Back" />
+            <Text style={styles.title}>Memory & Privacy</Text>
+          </View>
         </View>
-        <View style={{ padding: spacing.lg }}>
+        <View style={[styles.loadingContainer, { paddingBottom: insets.bottom + spacing.xl }]}>
           <Skeleton.Card height={90} />
           <Skeleton.Card height={90} />
           <Skeleton.Card height={90} />
@@ -180,23 +184,25 @@ export const MemorySettingsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="←"
-          size="sm"
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Back"
-        />
-        <View style={{ flex: 1, marginLeft: spacing.xs }}>
-          <Text style={styles.title}>Memory & Privacy</Text>
-          <Text style={styles.subtitle}>Control what companions remember about you</Text>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.xs }]}>
+        <View style={styles.headerInner}>
+          <IconButton
+            icon="←"
+            size="sm"
+            variant="ghost"
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Back"
+          />
+          <View style={{ flex: 1, marginLeft: spacing.xs }}>
+            <Text style={styles.title}>Memory & Privacy</Text>
+            <Text style={styles.subtitle}>Control what companions remember about you</Text>
+          </View>
         </View>
       </View>
 
       <ScrollView
         style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing.xl }]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -384,14 +390,18 @@ const styles = StyleSheet.create({
     backgroundColor: darkThemeColors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: spacing.xxl + spacing.xs,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     backgroundColor: darkThemeColors.surface,
     borderBottomWidth: 1,
     borderBottomColor: darkThemeColors.borderSubtle,
+  },
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   title: {
     fontSize: 20,
@@ -403,12 +413,20 @@ const styles = StyleSheet.create({
     color: darkThemeColors.textMuted,
     marginTop: 2,
   },
+  loadingContainer: {
+    padding: spacing.lg,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+  },
   scrollContainer: {
     flex: 1,
   },
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   settingCard: {
     flexDirection: 'row',
