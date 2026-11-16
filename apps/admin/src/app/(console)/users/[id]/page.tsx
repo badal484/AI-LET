@@ -49,7 +49,7 @@ interface Memories {
   memories: Array<{ id: string; content: string; category: string; sensitive: boolean; character: string; at: string }>;
 }
 
-type Action = 'premium' | 'removePremium' | 'messages' | 'reset' | 'signOut' | 'block' | 'delete' | 'cancelDelete' | 'memories';
+type Action = 'premium' | 'removePremium' | 'messages' | 'reset' | 'signOut' | 'block' | 'delete' | 'deleteImmediate' | 'cancelDelete' | 'memories';
 
 const ACTIONS: Record<Action, { title: string; amount?: { label: string; def: string; max: number }; note?: string; danger?: boolean; path: string; done: string }> = {
   premium: { title: 'Give Premium for free', amount: { label: 'Days of Premium', def: '30', max: 365 }, path: 'premium', done: 'Premium given.' },
@@ -64,8 +64,15 @@ const ACTIONS: Record<Action, { title: string; amount?: { label: string; def: st
   reset: { title: "Reset today's message limit", note: 'They get today\'s free messages back right away.', path: 'reset-today', done: "Today's limit reset." },
   signOut: { title: 'Sign out of all devices', note: 'They are signed out on every phone and can sign in again (e.g. a lost phone).', path: 'sign-out', done: 'Signed out everywhere.' },
   block: { title: 'Block this user', note: "They'll be signed out and can't use the app until you unblock them.", danger: true, path: 'block', done: 'Done.' },
+  deleteImmediate: {
+    title: 'Delete account immediately (Purge)',
+    note: 'Permanently erases this account, chats, memories, and logins right now without waiting 24 hours. Recommended for test accounts.',
+    danger: true,
+    path: 'delete?immediate=1',
+    done: 'Account deleted immediately. Redirecting…',
+  },
   delete: {
-    title: 'Delete this account',
+    title: 'Delete this account (24h grace)',
     note: 'The account is deleted in 24 hours (you can cancel until then): chats, memories and login are erased for good. Payment records are kept without their name, as the law requires.',
     danger: true,
     path: 'delete',
@@ -143,6 +150,11 @@ export default function UserPage() {
       setReason('');
       void qc.invalidateQueries({ queryKey: ['user', id] });
       void qc.invalidateQueries({ queryKey: ['users'] });
+      if (a === 'deleteImmediate') {
+        setTimeout(() => {
+          window.location.href = '/users';
+        }, 800);
+      }
     },
   });
 
@@ -184,7 +196,8 @@ export default function UserPage() {
     { a: 'removePremium', label: 'Cancel / Remove Premium', icon: <XCircle size={16} />, show: Boolean(active), danger: true },
     { a: 'reset', label: "Reset today's limit", icon: <RotateCcw size={16} />, show: true },
     { a: 'signOut', label: 'Sign out of all devices', icon: <LogOut size={16} />, show: true },
-    { a: 'delete', label: 'Delete account', icon: <Trash2 size={16} />, show: !u.deletion, danger: true },
+    { a: 'deleteImmediate', label: 'Delete immediately (Purge)', icon: <Trash2 size={16} />, show: true, danger: true },
+    { a: 'delete', label: 'Delete account (in 24h)', icon: <Trash2 size={16} />, show: !u.deletion, danger: true },
     { a: 'cancelDelete', label: 'Cancel deletion', icon: <Undo2 size={16} />, show: u.deletion?.status === 'PENDING' },
   ];
 

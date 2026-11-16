@@ -450,18 +450,58 @@ export async function signOutEverywhere(adminId: string, userId: string, reason:
 }
 
 /**
- * Deletes the account through the normal deletion pipeline (AccountDeletionService): 24 hours to
- * change your mind, then their chats, memories and login are erased; payments are kept, anonymised.
+ * Deletes the account through the normal deletion pipeline (AccountDeletionService):
+ * by default 24 hours to change your mind, or immediately when immediate=true (e.g. for test accounts).
+ * Chats, memories and login are erased; payments are kept, anonymised.
  */
-export async function requestDeletion(adminId: string, userId: string, reason: string) {
+export async function requestDeletion(adminId: string, userId: string, reason: string, immediate = false) {
   await mustExist(userId);
-  const existing = await prisma.accountDeletionRequest.findFirst({ where: { userId, status: { in: ['PENDING', 'PROCESSING', 'FAILED'] } } });
-  if (existing) return { ok: true, scheduledFor: existing.scheduledFor };
-  const req = await prisma.accountDeletionRequest.create({
-    data: { userId, status: 'PENDING', reason: `Admin: ${reason}`.slice(0, 1000), scheduledFor: new Date(Date.now() + 24 * 3600_000), anonymizeFinancialRecords: true },
-  });
+  let req = await prisma.accountDeletionRequest.findFirst({ where: { userId, status: { in: ['PENDING', 'PROCESSING', 'FAILED'] } } });
+  if (!req) {
+    req = await prisma.accountDeletionRequest.create({
+      data: {
+        userId,
+        status: 'PENDING',
+        reason: `Admin: ${reason}`.slice(0, 1000),
+        scheduledFor: immediate ? new Date() : new Date(Date.now() + 24 * 3600_000),
+        anonymizeFinancialRecords: true,
+      },
+    });
+  } else if (immediate && req.status === 'PENDING') {
+    req = await prisma.accountDeletionRequest.update({
+      where: { id: req.id },
+      data: { scheduledFor: new Date() },
+    });
+  }
+
+  if (immediate) {
+    await AccountDeletionService.process(req.id);
+    await audit(adminId, 'console.user.deleted_immediately', userId, { reason, requestId: req.id });
+    return { ok: true, scheduledFor: req.scheduledFor, deletedImmediately: true };
+  }
+
   await audit(adminId, 'console.user.deletion_requested', userId, { reason, requestId: req.id });
   return { ok: true, scheduledFor: req.scheduledFor };
+}
+
+/**
+ * Instantly deletes all test accounts through the deletion pipeline.
+ */
+export async function purgeTestUsers(adminId: string, reason = 'Purged test accounts') {
+  const testUsers = await prisma.$queryRawUnsafe<Array<{ id: string; email: string }>>(
+    `SELECT u.id, u.email FROM users u WHERE u.status <> 'DELETED' AND ${TEST_USERS}`
+  );
+  const deleted: string[] = [];
+  for (const tu of testUsers) {
+    try {
+      await requestDeletion(adminId, tu.id, reason, true);
+      deleted.push(tu.id);
+    } catch {
+      // Continue with remaining test users
+    }
+  }
+  await audit(adminId, 'console.users.purged_test_accounts', 'all', { count: deleted.length, userIds: deleted, reason });
+  return { ok: true, count: deleted.length, deleted };
 }
 
 export async function cancelDeletion(adminId: string, userId: string) {
